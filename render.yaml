@@ -13,7 +13,7 @@ services:
     env: docker
     dockerfilePath: ./supportflast_ai/Dockerfile
     dockerContext: ./supportflast_ai
-    plan: starter
+    plan: free
     region: singapore
     healthCheckPath: /health
     envVars:
@@ -32,13 +32,8 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: ./
-    plan: starter
+    plan: free
     region: singapore
-    # Persistent Disk bảo lưu toàn vẹn dữ liệu SQLite WAL, Keys và Packages
-    disk:
-      name: supportflast-data
-      mountPath: /app/data
-      sizeGB: 10
     # Healthcheck HTTP kiểm tra định kỳ sức khỏe engine
     healthCheckPath: /api/health
     envVars:
