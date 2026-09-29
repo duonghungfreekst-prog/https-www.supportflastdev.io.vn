@@ -865,17 +865,7 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := `
-		SELECT 
-			id, name, version, COALESCE(platform, ''), COALESCE(category, ''), 
-			COALESCE(desc, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), 
-			COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), 
-			COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), 
-			COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), 
-			COALESCE(user_id, '')
-		FROM apps 
-		WHERE id = ?
-	`
+	query := "SELECT id, name, version, COALESCE(platform, ''), COALESCE(category, ''), COALESCE(`desc`, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), COALESCE(user_id, '') FROM apps WHERE id = ?"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Printf("[ENGINE] [REGISTRY] [ERROR] Prepare select app by ID failed: %v", err)
@@ -1277,12 +1267,7 @@ func AppUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if db != nil {
 		var existing AppItem
 		var uid string
-		queryFind := `SELECT id, name, version, COALESCE(platform, ''), COALESCE(category, ''), 
-			COALESCE(desc, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), 
-			COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), 
-			COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), 
-			COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), 
-			COALESCE(user_id, '') FROM apps WHERE id = ?`
+		queryFind := "SELECT id, name, version, COALESCE(platform, ''), COALESCE(category, ''), COALESCE(`desc`, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), COALESCE(user_id, '') FROM apps WHERE id = ?"
 		err := db.QueryRow(queryFind, req.ID).Scan(
 			&existing.ID, &existing.Name, &existing.Version, &existing.Platform, &existing.Category,
 			&existing.Desc, &existing.FileName, &existing.SizeBytes, &existing.SizeFormatted,

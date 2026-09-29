@@ -56,9 +56,39 @@ services:
         value: /app/supportflast_ui
       - key: JWT_KEYS_DIR
         value: /app/data/keys
+      # Cấu hình Cơ sở dữ liệu TiDB Cloud Serverless
+      - key: DB_DRIVER
+        value: tidb
+      - key: TIDB_HOST
+        value: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
+      - key: TIDB_PORT
+        value: "4000"
+      - key: TIDB_USER
+        value: 2KGt5QqixkveQPP.root
+      - key: TIDB_PASSWORD
+        sync: false
+      - key: TIDB_DATABASE
+        value: supportflast
+      - key: TIDB_TLS
+        value: "true"
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OAUTH_CLIENT_ID
+        sync: false
+      - key: OAUTH_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_REDIRECT_URL
+        value: https://supportflastdev.io.vn/api/accounts/oauth/callback
+      - key: CLOUDPOOL_MASTER_KEY
+        sync: false
       # Kết nối nội bộ tới Python AI Service
       - key: AI_ENGINE_URL
         fromService:
           type: web
           name: supportflast-ai
           property: host
+
