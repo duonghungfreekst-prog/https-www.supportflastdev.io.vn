@@ -571,12 +571,21 @@ const FilesManager = {
 
     // 3. Sort files
     displayFiles.sort((a, b) => {
-      // Folders always first
+      const timeA = Utils.getTimestamp(a.updated_at || a.created_at);
+      const timeB = Utils.getTimestamp(b.updated_at || b.created_at);
+
+      if (this.currentSort === 'date_desc') {
+        // Tệp tin hoặc thư mục mới tải lên gần đây nhất sẽ luôn hiển thị trên đầu
+        if (timeB !== timeA) return timeB - timeA;
+        if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+        return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true });
+      }
+
+      // Đối với sắp xếp theo tên hoặc các tiêu chí khác: Folders first
       if (a.is_dir !== b.is_dir) {
         return a.is_dir ? -1 : 1;
       }
-      const timeA = Utils.getTimestamp(a.updated_at || a.created_at);
-      const timeB = Utils.getTimestamp(b.updated_at || b.created_at);
+
       switch (this.currentSort) {
         case 'name_asc':
           return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true });
@@ -592,17 +601,49 @@ const FilesManager = {
           return (a.chunk_count || 0) - (b.chunk_count || 0);
         case 'date_asc':
           return timeA - timeB;
-        case 'date_desc':
         default:
           return timeB - timeA;
       }
     });
+
+    // Cập nhật số lượng đếm trên các filter chips
+    this.updateCategoryCounts();
 
     if (this.viewMode === 'grid') {
       this.renderGridView(displayFiles);
     } else {
       this.renderListView(displayFiles);
     }
+  },
+
+  updateCategoryCounts() {
+    let videoCnt = 0, imgCnt = 0, docCnt = 0, otherCnt = 0, dirCnt = 0;
+    (this.files || []).forEach(f => {
+      if (f.is_dir) {
+        dirCnt++;
+      } else {
+        const lowerName = (f.name || '').toLowerCase();
+        const lowerMime = (f.mime_type || '').toLowerCase();
+        if (lowerMime.startsWith('video/') || /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|3gp)$/i.test(lowerName)) {
+          videoCnt++;
+        } else if (lowerMime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|bmp)$/i.test(lowerName)) {
+          imgCnt++;
+        } else if (lowerMime.includes('pdf') || lowerMime.includes('word') || lowerMime.includes('sheet') || /\.(pdf|doc|docx|xls|xlsx|csv|txt)$/i.test(lowerName)) {
+          docCnt++;
+        } else {
+          otherCnt++;
+        }
+      }
+    });
+
+    const videoChip = document.querySelector('.filter-chip[data-cat="video"]');
+    if (videoChip) videoChip.textContent = `🎬 Video (${videoCnt})`;
+    const allChip = document.querySelector('.filter-chip[data-cat="all"]');
+    if (allChip) allChip.textContent = `📂 Tất cả (${this.files ? this.files.length : 0})`;
+    const imgChip = document.querySelector('.filter-chip[data-cat="image"]');
+    if (imgChip) imgChip.textContent = `🖼️ Hình ảnh (${imgCnt})`;
+    const docChip = document.querySelector('.filter-chip[data-cat="document"]');
+    if (docChip) docChip.textContent = `📄 Tài liệu (${docCnt})`;
   },
 
   toggleSort(field) {
