@@ -251,6 +251,12 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/admin/update/rollback", s.handleUpdateRollback)
 	mux.HandleFunc("/api/admin/update/restart", s.handleRestartEngine)
 
+	// GitHub Auto-Sync Endpoints
+	mux.HandleFunc("/api/admin/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/admin/git/status", registry.GitStatusHandler)
+	mux.HandleFunc("/api/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/git/status", registry.GitStatusHandler)
+
 	// 3. Static Web UI files
 	fileServer := http.FileServer(http.Dir(s.uiDir))
 	mux.Handle("/", fileServer)

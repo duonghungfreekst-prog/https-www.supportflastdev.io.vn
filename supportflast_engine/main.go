@@ -608,6 +608,12 @@ func main() {
 	mux.HandleFunc("/api/admin/system/maintenance", registry.AdminMaintenanceHandler)
 	mux.HandleFunc("/api/admin/system/hot-reload", registry.AdminHotReloadHandler)
 
+	// 2.6.1. API Tự Động Cập Nhật & Đồng Bộ GitHub (GitHub Auto-Sync API)
+	mux.HandleFunc("/api/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/git/status", registry.GitStatusHandler)
+	mux.HandleFunc("/api/admin/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/admin/git/status", registry.GitStatusHandler)
+
 	// 2.7. Tự Động Đồng Bộ Cấu Hình Thiết Bị & Tối Ưu Hóa Hiệu Năng Thích Ứng
 	mux.HandleFunc("/api/device/sync", registry.DeviceSyncHandler)
 
