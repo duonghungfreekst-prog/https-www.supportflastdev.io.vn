@@ -53,6 +53,7 @@ const API = {
         headers['X-User-ID'] = user.id;
       }
       options.headers = headers;
+      options.credentials = options.credentials || 'include';
       
       const timeoutMs = options.timeout !== undefined ? options.timeout : 30000;
       const controller = new AbortController();
@@ -372,6 +373,9 @@ const API = {
     });
     if (res && res.token) {
       this.setToken(res.token);
+    }
+    if (res && res.user) {
+      this.setCurrentUser(res.user);
     }
     return res;
   },

@@ -57,13 +57,28 @@ const AuthManager = {
     this.bindEvents();
     this.fetchTurnstileConfig();
 
-    // Check if there is an active validated session on the backend
+    // 1. Phục hồi ngay lập tức trạng thái đăng nhập từ localStorage để chống nhấp nháy UI (Zero-flicker on F5)
+    const cachedUser = API.getCurrentUser();
+    if (cachedUser && (cachedUser.id || cachedUser.username)) {
+      this.currentUser = cachedUser;
+      if (cachedUser.role === 'admin' || cachedUser.username === 'admin') {
+        App.isAdminUnlocked = true;
+        sessionStorage.setItem('cloudpool_admin_session', 'true');
+      }
+      this.updateUserUI();
+    }
+
+    // 2. Xác thực phiên làm việc trực tiếp với backend (Server validation)
     try {
-      const me = await API.getMe();
-      if (me && me.id && me.role) {
+      const res = await API.getMe();
+      const me = (res && res.user) ? res.user : res;
+      if (me && (me.id || me.username) && me.role) {
         this.currentUser = me;
         API.setCurrentUser(me);
-        if (me.role !== 'admin') {
+        if (me.role === 'admin' || me.username === 'admin') {
+          App.isAdminUnlocked = true;
+          sessionStorage.setItem('cloudpool_admin_session', 'true');
+        } else {
           App.isAdminUnlocked = false;
           sessionStorage.removeItem('cloudpool_admin_session');
         }
@@ -73,11 +88,18 @@ const AuthManager = {
         App.isAdminUnlocked = false;
         sessionStorage.removeItem('cloudpool_admin_session');
       }
-    } catch (_) {
-      this.currentUser = null;
-      API.setCurrentUser(null);
-      App.isAdminUnlocked = false;
-      sessionStorage.removeItem('cloudpool_admin_session');
+    } catch (err) {
+      console.warn('[AUTH] Kiểm tra phiên /api/auth/me:', err);
+      const errMsg = (err && err.message) ? err.message.toLowerCase() : '';
+      if (errMsg.includes('401') || errMsg.includes('chưa đăng nhập') || errMsg.includes('hết hạn') || errMsg.includes('unauthorized') || errMsg.includes('403')) {
+        this.currentUser = null;
+        API.setCurrentUser(null);
+        API.setToken(null);
+        App.isAdminUnlocked = false;
+        sessionStorage.removeItem('cloudpool_admin_session');
+      } else {
+        console.log('[AUTH] Duy trì phiên đăng nhập từ bộ nhớ đệm (Chống văng khi mạng chậm hoặc reload)');
+      }
     }
 
     this.updateUserUI();
@@ -129,13 +151,17 @@ const AuthManager = {
 
         try {
           const res = await API.login(username, password, logToken);
-          this.currentUser = res.user;
-          API.setCurrentUser(res.user);
+          const userData = (res && res.user) ? res.user : res;
+          this.currentUser = userData;
+          API.setCurrentUser(userData);
+          if (res.token) {
+            API.setToken(res.token);
+          }
           this.closeAuthModal();
           this.updateUserUI();
 
           // If admin, auto-unlock admin mode
-          if (res.user.role === 'admin') {
+          if (userData.role === 'admin' || userData.username === 'admin') {
             App.isAdminUnlocked = true;
             sessionStorage.setItem('cloudpool_admin_session', 'true');
           } else {
@@ -145,7 +171,7 @@ const AuthManager = {
 
           App.applyAdminState();
           FilesManager.loadFiles('root');
-          Toast.success(`Chào mừng trở lại, ${res.user.display_name}!`);
+          Toast.success(`Chào mừng trở lại, ${userData.display_name || userData.username}!`);
         } catch (err) {
           Toast.error(err.message);
           if (typeof turnstile !== 'undefined' && this.turnstileWidgetId !== null) {

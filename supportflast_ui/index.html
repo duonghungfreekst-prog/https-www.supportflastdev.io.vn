@@ -6616,7 +6616,7 @@
             try {
                 const token = localStorage.getItem('cloudpool_jwt_token') || '';
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-                const res = await fetch('/api/auth/me', { headers });
+                const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
                 if (res.ok) {
                     const data = await res.json();
                     const user = (data && data.user) ? data.user : data;
