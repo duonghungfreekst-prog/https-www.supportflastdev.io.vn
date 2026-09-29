@@ -4016,6 +4016,10 @@
                             <span>📦</span>
                             <span>Kho Ứng Dụng Của Tôi</span>
                         </div>
+                        <div class="user-dropdown-item" style="color: #10b981;" onclick="triggerGDriveBackupHub(); closeUserDropdown();">
+                            <span>☁️</span>
+                            <span>Sao Lưu CSDL Về Google Drive</span>
+                        </div>
                         <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: 4px;"></div>
                         <div class="user-dropdown-item" style="color: #ef4444;" onclick="handleUserLogout(); closeUserDropdown();">
                             <span>🚪</span>
@@ -6881,6 +6885,51 @@
                 sessionStorage.removeItem('cloudpool_admin_session');
                 updateAdminUI(false, null);
                 alert('Đã đăng xuất tài khoản Quản Trị Viên an toàn.');
+            }
+        }
+
+        async function triggerGDriveBackupHub() {
+            if (!confirm('Bạn có chắc chắn muốn tạo bản sao lưu toàn diện CSDL SupportFlast & CloudPool và tải trực tiếp lên Google Drive duongmanhhung9900@gmail.com ngay bây giờ?\n\nBản sao lưu sẽ có timestamp ngày giờ riêng để bảo toàn lịch sử và không bị ghi đè dữ liệu.')) {
+                return;
+            }
+            if (typeof showStateToast === 'function') {
+                showStateToast('🚀 Đang đóng gói CSDL & tải lên Google Drive...', '⏳', 10000);
+            }
+            try {
+                const res = await fetch('/api/sql/backup/gdrive', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + (localStorage.getItem('sf_admin_token') || localStorage.getItem('token') || '')
+                    }
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    const sizeKb = (data.size_bytes / 1024).toFixed(1);
+                    if (typeof showStateToast === 'function') {
+                        showStateToast(`✅ Đã sao lưu ${data.filename} (${sizeKb} KB) lên Drive!`, '☁️', 6000);
+                    }
+                    const openDrive = confirm(`🎉 SAO LƯU GOOGLE DRIVE THÀNH CÔNG!\n\n` +
+                        `• Tệp sao lưu: ${data.filename}\n` +
+                        `• Dung lượng: ${sizeKb} KB\n` +
+                        `• Tài khoản: ${data.target_email || 'duongmanhhung9900@gmail.com'}\n` +
+                        `• Drive File ID: ${data.gdrive_file_id}\n\n` +
+                        `Bạn có muốn mở xem tệp trên Google Drive ngay không?`);
+                    if (openDrive && data.gdrive_web_link) {
+                        window.open(data.gdrive_web_link, '_blank');
+                    }
+                } else {
+                    const err = data.error || 'Lỗi không xác định';
+                    if (typeof showStateToast === 'function') {
+                        showStateToast('❌ Sao lưu thất bại: ' + err, '⚠️', 5000);
+                    }
+                    alert('Lỗi sao lưu Google Drive: ' + err);
+                }
+            } catch (e) {
+                if (typeof showStateToast === 'function') {
+                    showStateToast('❌ Lỗi kết nối: ' + e.message, '⚠️', 5000);
+                }
+                alert('Lỗi kết nối khi sao lưu: ' + e.message);
             }
         }
 

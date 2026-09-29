@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -568,6 +569,18 @@ func main() {
 		}
 	}()
 
+	// Background Google Drive Auto-Backup Worker (Tự động sao lưu toàn diện CSDL về duongmanhhung9900@gmail.com mỗi 6 tiếng)
+	go func() {
+		time.Sleep(2 * time.Minute)
+		triggerScheduledGDriveBackup(dataDir)
+
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			triggerScheduledGDriveBackup(dataDir)
+		}
+	}()
+
 	// Khởi tạo hệ thống người dùng & tài khoản Admin mặc định
 	registry.InitAuth()
 
@@ -1027,4 +1040,67 @@ func main() {
 			log.Fatalf("[ENGINE] Server failed: %v", err)
 		}
 	}
+}
+
+// triggerScheduledGDriveBackup thực thi sao lưu tự động CSDL và đồng bộ lên Google Drive
+func triggerScheduledGDriveBackup(baseDir string) {
+	scriptCandidates := []string{
+		`F:\supportflast.dev\tools\backup_to_gdrive.py`,
+	}
+	if execPath, err := os.Executable(); err == nil {
+		execDir := filepath.Dir(execPath)
+		scriptCandidates = append(scriptCandidates, filepath.Join(execDir, "tools", "backup_to_gdrive.py"))
+	}
+	if baseDir != "" {
+		scriptCandidates = append(scriptCandidates, filepath.Join(baseDir, "tools", "backup_to_gdrive.py"))
+		scriptCandidates = append(scriptCandidates, filepath.Join(baseDir, "..", "tools", "backup_to_gdrive.py"))
+	}
+	scriptCandidates = append(scriptCandidates, filepath.Join("tools", "backup_to_gdrive.py"))
+
+	var scriptPath, workingDir string
+	for _, p := range scriptCandidates {
+		if _, err := os.Stat(p); err == nil {
+			scriptPath = p
+			workingDir = filepath.Dir(filepath.Dir(p))
+			break
+		}
+	}
+	if scriptPath == "" {
+		scriptPath = `F:\supportflast.dev\tools\backup_to_gdrive.py`
+		workingDir = `F:\supportflast.dev`
+	}
+
+	pyCandidates := []string{
+		`C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe`,
+		`C:\Users\Administrator\AppData\Local\Microsoft\WindowsApps\python.exe`,
+		`python`,
+		`python3`,
+	}
+	pyExe := "python"
+	for _, p := range pyCandidates {
+		if strings.Contains(p, `\`) {
+			if _, err := os.Stat(p); err == nil {
+				pyExe = p
+				break
+			}
+		} else {
+			if path, err := exec.LookPath(p); err == nil {
+				pyExe = path
+				break
+			}
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, pyExe, scriptPath, "--json")
+	cmd.Dir = workingDir
+
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[ENGINE] [AUTO-BACKUP] [WARN] Tự động sao lưu Google Drive cảnh báo: %v, output: %s", err, string(outBytes))
+		return
+	}
+	log.Printf("[ENGINE] [AUTO-BACKUP] [SUCCESS] Tự động sao lưu định kỳ Google Drive hoàn tất: %s", strings.TrimSpace(string(outBytes)))
 }

@@ -603,4 +603,123 @@ const SQLStudio = {
       Toast.error('Lỗi tạo sao lưu: ' + err.message);
     }
   },
+
+  async backupGDrive() {
+    try {
+      const confirmed = confirm('Bạn có chắc chắn muốn tạo bản sao lưu toàn diện CSDL và tải trực tiếp lên Google Drive duongmanhhung9900@gmail.com?\n\nBản sao lưu sẽ có ngày giờ riêng biệt để chống ghi đè và bảo toàn dữ liệu.');
+      if (!confirmed) return;
+
+      Toast.info('🚀 Đang đóng gói CSDL và tải lên Google Drive (duongmanhhung9900@gmail.com)... Vui lòng đợi trong giây lát!');
+      const btn = document.getElementById('btn-gdrive-backup');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ Đang tải lên Drive...</span>';
+      }
+
+      const res = await API.sqlGDriveBackup();
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>☁️ Sao Lưu Về Google Drive (duongmanhhung9900)</span>';
+      }
+
+      if (res && res.status === 'success') {
+        const sizeKb = (res.size_bytes / 1024).toFixed(1);
+        Toast.success(`✅ Đã sao lưu thành công tệp ${res.filename} (${sizeKb} KB) lên Google Drive!`);
+        
+        const modalHtml = `
+          <div style="text-align: left; line-height: 1.6; font-size: 13px;">
+            <p style="color: #10b981; font-weight: 700; font-size: 15px; margin-top: 0;">🎉 Sao lưu lên Google Drive thành công!</p>
+            <p><strong>Tệp sao lưu:</strong> <code style="background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px;">${res.filename}</code></p>
+            <p><strong>Kích thước:</strong> ${sizeKb} KB</p>
+            <p><strong>Tài khoản đích:</strong> <code style="color: #3b82f6;">${res.target_email || 'duongmanhhung9900@gmail.com'}</code></p>
+            <p><strong>Drive File ID:</strong> <code>${res.gdrive_file_id}</code></p>
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+              <a href="${res.gdrive_web_link}" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; padding: 6px 14px;">
+                🔗 Mở trên Google Drive
+              </a>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('custom-sql-modal').remove()">Đóng</button>
+            </div>
+          </div>
+        `;
+        this.showCustomModal('Thông Tin Bản Sao Lưu Google Drive', modalHtml);
+      } else {
+        Toast.error('Sao lưu thất bại: ' + (res.error || 'Lỗi không xác định'));
+      }
+    } catch (err) {
+      const btn = document.getElementById('btn-gdrive-backup');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>☁️ Sao Lưu Về Google Drive (duongmanhhung9900)</span>';
+      }
+      Toast.error('Lỗi sao lưu Google Drive: ' + err.message);
+    }
+  },
+
+  async showBackupHistory() {
+    try {
+      Toast.info('Đang tải danh sách lịch sử sao lưu...');
+      const list = await API.sqlGDriveBackupHistory();
+      if (!list || list.length === 0) {
+        Toast.info('Chưa có bản sao lưu Google Drive nào.');
+        return;
+      }
+
+      let rowsHtml = list.map((item, idx) => `
+        <tr style="border-bottom: 1px solid var(--border-subtle);">
+          <td style="padding: 8px 10px; font-weight: 600;">#${idx + 1}</td>
+          <td style="padding: 8px 10px;">${item.created_at || item.timestamp}</td>
+          <td style="padding: 8px 10px; font-family: var(--font-mono); font-size: 11px;">${item.filename}</td>
+          <td style="padding: 8px 10px;">${(item.size_bytes / 1024).toFixed(1)} KB</td>
+          <td style="padding: 8px 10px;">
+            <a href="${item.gdrive_web_link}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 2px 8px; text-decoration: none;">
+              🔗 Xem trên Drive
+            </a>
+          </td>
+        </tr>
+      `).join('');
+
+      const tableHtml = `
+        <div style="overflow-x: auto; max-height: 400px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+            <thead>
+              <tr style="background: var(--bg-tertiary); border-bottom: 1px solid var(--border-subtle);">
+                <th style="padding: 8px 10px;">STT</th>
+                <th style="padding: 8px 10px;">Thời Gian</th>
+                <th style="padding: 8px 10px;">Tên Tệp Nén</th>
+                <th style="padding: 8px 10px;">Dung Lượng</th>
+                <th style="padding: 8px 10px;">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      this.showCustomModal('Lịch Sử Sao Lưu Về Google Drive duongmanhhung9900', tableHtml);
+    } catch (err) {
+      Toast.error('Không thể lấy lịch sử sao lưu: ' + err.message);
+    }
+  },
+
+  showCustomModal(title, contentHtml) {
+    const existing = document.getElementById('custom-sql-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'custom-sql-modal';
+    overlay.className = 'modal-overlay active';
+    overlay.style.zIndex = '99999';
+    overlay.innerHTML = `
+      <div class="modal-card" style="max-width: 680px; width: 92%; background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+          <h3 style="margin: 0; font-size: 16px; color: var(--text-primary); font-weight: 700;">${title}</h3>
+          <button class="action-icon-btn" onclick="document.getElementById('custom-sql-modal').remove()" style="background: transparent; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted);">&times;</button>
+        </div>
+        <div>${contentHtml}</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  },
 };

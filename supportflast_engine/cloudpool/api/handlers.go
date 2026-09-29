@@ -1816,6 +1816,141 @@ func (s *Server) handleSQLBackup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleGDriveBackup thực hiện sao lưu toàn bộ CSDL và upload trực tiếp về Google Drive duongmanhhung9900@gmail.com
+func findPythonExe() string {
+	candidates := []string{
+		`C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe`,
+		`C:\Users\Administrator\AppData\Local\Microsoft\WindowsApps\python.exe`,
+		`python`,
+		`python3`,
+	}
+	for _, p := range candidates {
+		if strings.Contains(p, `\`) {
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		} else {
+			if path, err := exec.LookPath(p); err == nil {
+				return path
+			}
+		}
+	}
+	return "python"
+}
+
+func findBackupScript(baseDir string) (string, string) {
+	candidates := []string{
+		`F:\supportflast.dev\tools\backup_to_gdrive.py`,
+	}
+	if execPath, err := os.Executable(); err == nil {
+		execDir := filepath.Dir(execPath)
+		candidates = append(candidates, filepath.Join(execDir, "tools", "backup_to_gdrive.py"))
+	}
+	if baseDir != "" {
+		candidates = append(candidates, filepath.Join(baseDir, "tools", "backup_to_gdrive.py"))
+		candidates = append(candidates, filepath.Join(baseDir, "..", "tools", "backup_to_gdrive.py"))
+	}
+	candidates = append(candidates, filepath.Join("tools", "backup_to_gdrive.py"))
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p, filepath.Dir(filepath.Dir(p))
+		}
+	}
+	return `F:\supportflast.dev\tools\backup_to_gdrive.py`, `F:\supportflast.dev`
+}
+
+// handleGDriveBackup thực hiện sao lưu toàn bộ CSDL và upload trực tiếp về Google Drive duongmanhhung9900@gmail.com
+func (s *Server) handleGDriveBackup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
+		return
+	}
+
+	user := s.getUserFromRequest(r)
+	if user == nil || user.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Yêu cầu quyền Quản trị viên để thực hiện sao lưu Google Drive", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+
+	scriptPath, workingDir := findBackupScript(s.baseDir)
+	pyExe := findPythonExe()
+
+	cmd := exec.CommandContext(ctx, pyExe, scriptPath, "--json")
+	cmd.Dir = workingDir
+
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[ENGINE] [BACKUP] Lỗi sao lưu Google Drive: %v, output: %s", err, string(outBytes))
+		writeError(w, http.StatusInternalServerError, "Sao lưu Google Drive thất bại: "+strings.TrimSpace(string(outBytes)), err)
+		return
+	}
+
+	var result map[string]interface{}
+	lines := strings.Split(strings.TrimSpace(string(outBytes)), "\n")
+	var parsed bool
+	for i := len(lines) - 1; i >= 0; i-- {
+		if json.Unmarshal([]byte(lines[i]), &result) == nil {
+			parsed = true
+			break
+		}
+	}
+	if !parsed {
+		writeError(w, http.StatusInternalServerError, "Lỗi phân tích phản hồi sao lưu", nil)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// handleGDriveBackupHistory lấy danh sách lịch sử các bản sao lưu đã đẩy lên Google Drive
+func (s *Server) handleGDriveBackupHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	scriptPath, workingDir := findBackupScript(s.baseDir)
+	pyExe := findPythonExe()
+
+	cmd := exec.CommandContext(ctx, pyExe, scriptPath, "--history")
+	cmd.Dir = workingDir
+
+	outBytes, err := cmd.CombinedOutput()
+	if err == nil {
+		var list []map[string]interface{}
+		if json.Unmarshal(outBytes, &list) == nil {
+			writeJSON(w, http.StatusOK, list)
+			return
+		}
+	}
+
+	// Fallback đọc trực tiếp file json
+	historyPath := filepath.Join(workingDir, "data", "backups", "backup_history.json")
+	if _, err := os.Stat(historyPath); err != nil {
+		historyPath = filepath.Join("data", "backups", "backup_history.json")
+	}
+
+	data, err := os.ReadFile(historyPath)
+	if err != nil {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	var history []map[string]interface{}
+	if err := json.Unmarshal(data, &history); err != nil {
+		writeJSON(w, http.StatusOK, []interface{}{})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, history)
+}
+
 // -------------------------------------------------------------
 // User Authentication & Management Handlers
 // -------------------------------------------------------------

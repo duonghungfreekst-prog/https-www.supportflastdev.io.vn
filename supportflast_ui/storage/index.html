@@ -619,6 +619,12 @@
           <button id="btn-sql-backup" class="btn btn-secondary btn-sm" onclick="SQLStudio.backupDB()" title="Tạo bản snapshot sao lưu tức thời an toàn">
             <span>💾 Sao lưu Snapshot</span>
           </button>
+          <button id="btn-gdrive-backup" class="btn btn-primary btn-sm" onclick="SQLStudio.backupGDrive()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #059669; font-weight: 700;" title="Tự động đóng gói ZIP kèm ngày giờ và tải trực tiếp về Google Drive duongmanhhung9900@gmail.com">
+            <span>☁️ Sao Lưu Về Google Drive (duongmanhhung9900)</span>
+          </button>
+          <button id="btn-gdrive-history" class="btn btn-secondary btn-sm" onclick="SQLStudio.showBackupHistory()" title="Xem lịch sử các bản sao lưu đã đẩy lên Google Drive">
+            <span>🕒 Lịch sử Drive Backups</span>
+          </button>
           <a href="/api/sql/download" download class="btn btn-secondary btn-sm" style="text-decoration: none;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             <span>Tải file CSDL (.db)</span>

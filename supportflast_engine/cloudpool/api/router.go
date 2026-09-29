@@ -151,8 +151,9 @@ func (s *Server) setupSubMuxes() {
 	m.sqlMux.HandleFunc("/api/sql/query", s.handleSQLQuery)
 	m.sqlMux.HandleFunc("/api/sql/download", s.handleSQLDownloadDB)
 	m.sqlMux.HandleFunc("/api/sql/optimize", s.handleSQLOptimize)
-	m.sqlMux.HandleFunc("/api/sql/check", s.handleSQLCheck)
 	m.sqlMux.HandleFunc("/api/sql/backup", s.handleSQLBackup)
+	m.sqlMux.HandleFunc("/api/sql/backup/gdrive", s.handleGDriveBackup)
+	m.sqlMux.HandleFunc("/api/sql/backup/history", s.handleGDriveBackupHistory)
 
 	// 6. Settings Sub-Mux
 	m.settingsMux = http.NewServeMux()

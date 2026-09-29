@@ -453,6 +453,14 @@ const API = {
     return this.request('/api/sql/backup', { method: 'POST' });
   },
 
+  sqlGDriveBackup() {
+    return this.request('/api/sql/backup/gdrive', { method: 'POST' });
+  },
+
+  sqlGDriveBackupHistory() {
+    return this.request('/api/sql/backup/history');
+  },
+
   setSecurityPin(oldPin, newPin, tier = 2) {
     return this.request('/api/auth/security-pin', {
       method: 'POST',
