@@ -1,72 +1,340 @@
 // ==========================================================================
 // CloudPool Media & Document Preview Controller (PRO Edition)
+// Supports PDF, Office (PPTX, DOCX, XLSX, CSV, TSV), 50+ Code & Text formats
 // ==========================================================================
 
 const PreviewManager = {
   currentCodeText: '',
+  currentFileName: '',
+  currentDownloadURL: '',
+  codeLines: [],
+  isWordWrap: false,
+  codeSearchQuery: '',
 
+  // Hỗ trợ hơn 50 định dạng Code, Data, Config và Văn bản
   isTextOrCode(name, mime) {
+    if (!name) return false;
     const ext = name.toLowerCase().split('.').pop();
-    const codeExts = ['txt', 'log', 'md', 'markdown', 'json', 'sql', 'go', 'rs', 'js', 'ts', 'jsx', 'tsx', 'py', 'html', 'htm', 'css', 'scss', 'xml', 'yaml', 'yml', 'sh', 'bat', 'cmd', 'ps1', 'ini', 'conf', 'cfg', 'env', 'proto'];
+    const codeExts = [
+      // Text & Documents
+      'txt', 'log', 'md', 'markdown', 'rst', 'tex', 'rtf', 'nfo',
+      // Web
+      'html', 'htm', 'xhtml', 'css', 'scss', 'sass', 'less', 'js', 'mjs', 'cjs', 'ts', 'jsx', 'tsx', 'vue', 'svelte',
+      // Backend & Systems
+      'py', 'pyw', 'go', 'rs', 'c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'cs', 'java', 'kt', 'kts', 'php', 'rb', 'r', 'dart', 'lua', 'swift', 'scala', 'v', 'zig', 'asm',
+      // Shell & Scripts
+      'sh', 'bash', 'zsh', 'bat', 'cmd', 'ps1', 'psm1', 'psd1',
+      // Data & Config
+      'json', 'jsonc', 'json5', 'sql', 'xml', 'xaml', 'yaml', 'yml', 'toml', 'ini', 'conf', 'cfg', 'env', 'proto', 'graphql', 'gql',
+      // Version Control & Build
+      'diff', 'patch', 'dockerfile', 'makefile', 'gitignore', 'gitattributes', 'lock', 'prisma'
+    ];
+
     if (codeExts.includes(ext)) return true;
-    if (mime && (mime.startsWith('text/') || mime === 'application/json' || mime === 'application/xml')) return true;
+    if (mime && (
+      mime.startsWith('text/') ||
+      mime === 'application/json' ||
+      mime === 'application/xml' ||
+      mime === 'application/javascript' ||
+      mime === 'application/x-sh' ||
+      mime === 'application/sql' ||
+      mime === 'application/x-yaml'
+    )) return true;
+
     return false;
   },
 
-  async openTextPreview(fileId, fileName, streamURL) {
+  getLanguageMeta(fileName) {
+    const ext = (fileName || '').toLowerCase().split('.').pop();
+    const metaMap = {
+      go: { name: 'Go', icon: '🐹' },
+      rs: { name: 'Rust', icon: '🦀' },
+      py: { name: 'Python', icon: '🐍' },
+      js: { name: 'JavaScript', icon: '🟨' },
+      ts: { name: 'TypeScript', icon: '🔷' },
+      jsx: { name: 'React JSX', icon: '⚛️' },
+      tsx: { name: 'React TSX', icon: '⚛️' },
+      json: { name: 'JSON', icon: '📦' },
+      sql: { name: 'SQL', icon: '🗄️' },
+      html: { name: 'HTML', icon: '🌐' },
+      css: { name: 'CSS', icon: '🎨' },
+      scss: { name: 'SCSS', icon: '🎨' },
+      sh: { name: 'Shell Script', icon: '🐚' },
+      bash: { name: 'Bash', icon: '🐚' },
+      bat: { name: 'Batch', icon: '⚙️' },
+      cmd: { name: 'Command', icon: '⚙️' },
+      ps1: { name: 'PowerShell', icon: '💻' },
+      md: { name: 'Markdown', icon: '📝' },
+      xml: { name: 'XML', icon: '📰' },
+      yaml: { name: 'YAML', icon: '⚙️' },
+      yml: { name: 'YAML', icon: '⚙️' },
+      toml: { name: 'TOML', icon: '⚙️' },
+      c: { name: 'C', icon: '⚙️' },
+      cpp: { name: 'C++', icon: '⚙️' },
+      cs: { name: 'C#', icon: '🟣' },
+      java: { name: 'Java', icon: '☕' },
+      kt: { name: 'Kotlin', icon: '🟣' },
+      php: { name: 'PHP', icon: '🐘' },
+      rb: { name: 'Ruby', icon: '💎' },
+      dart: { name: 'Dart', icon: '🎯' },
+      lua: { name: 'Lua', icon: '🌙' },
+      txt: { name: 'Văn Bản', icon: '📄' },
+      log: { name: 'Log File', icon: '📋' }
+    };
+    return metaMap[ext] || { name: ext.toUpperCase() || 'VĂN BẢN', icon: '📄' };
+  },
+
+  async openTextPreview(fileId, fileName, streamURL, downloadURL = '') {
     const modal = document.getElementById('modal-code-viewer');
     const titleEl = document.getElementById('code-viewer-title');
     const infoEl = document.getElementById('code-viewer-info');
     const container = document.getElementById('code-viewer-container');
     const footerMeta = document.getElementById('code-viewer-footer-meta');
+    const iconEl = document.getElementById('code-viewer-icon');
+    const langBadge = document.getElementById('code-viewer-lang-badge');
+    const downloadBtn = document.getElementById('btn-download-code-file');
+    const formatJsonBtn = document.getElementById('btn-format-json');
+    const searchInput = document.getElementById('code-viewer-search-input');
+    const searchClear = document.getElementById('code-viewer-search-clear');
 
     if (!modal || !container) return;
 
-    titleEl.textContent = fileName;
-    infoEl.textContent = 'Đang tải dữ liệu...';
-    container.textContent = 'Đang tải tệp tin từ Google Drive...';
+    this.currentFileName = fileName;
+    this.currentDownloadURL = downloadURL || streamURL.replace('/stream', '/download');
+    this.currentCodeText = '';
+    this.codeLines = [];
+    this.codeSearchQuery = '';
+    this.isWordWrap = false;
+
+    const langMeta = this.getLanguageMeta(fileName);
+    if (titleEl) titleEl.textContent = fileName;
+    if (iconEl) iconEl.textContent = langMeta.icon;
+    if (langBadge) langBadge.textContent = langMeta.name;
+    if (infoEl) infoEl.textContent = 'Đang tải dữ liệu...';
+    if (downloadBtn) {
+      downloadBtn.href = this.currentDownloadURL;
+      downloadBtn.download = fileName;
+    }
+    if (formatJsonBtn) {
+      formatJsonBtn.style.display = fileName.toLowerCase().endsWith('.json') ? 'inline-flex' : 'none';
+    }
+    if (searchInput) searchInput.value = '';
+    if (searchClear) searchClear.style.display = 'none';
+
+    this._updateWrapLabel();
+
+    container.innerHTML = `
+      <div style="padding: 40px; text-align: center; color: var(--text-muted, #94a3b8);">
+        <div style="font-size: 32px; margin-bottom: 12px; animation: spin 1.2s linear infinite;">⏳</div>
+        <div style="font-size: 14px; font-weight: 600; color: #38bdf8;">Đang nạp nội dung tệp tin...</div>
+      </div>
+    `;
+
     modal.classList.add('active');
 
     try {
-      const res = await fetch(streamURL);
-      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+      const headers = { 'ngrok-skip-browser-warning': 'true' };
+      try {
+        const u = localStorage.getItem('cloudpool_current_user');
+        if (u) {
+          const user = JSON.parse(u);
+          if (user && user.id) headers['X-User-ID'] = user.id;
+        }
+      } catch (_) {}
+
+      const res = await fetch(streamURL, { headers, credentials: 'include' });
+      if (!res.ok) throw new Error(`Lỗi kết nối HTTP ${res.status}`);
       const text = await res.text();
       this.currentCodeText = text;
+      this.codeLines = text.split('\n');
 
-      const lines = text.split('\n');
-      infoEl.textContent = `${lines.length} dòng • ${Utils.formatBytes(text.length)}`;
-      if (footerMeta) footerMeta.textContent = `Định dạng: ${fileName.split('.').pop().toUpperCase()} • Mã hóa: UTF-8`;
+      const byteLength = new Blob([text]).size;
+      const formattedSize = (typeof Utils !== 'undefined' && Utils.formatBytes) ? Utils.formatBytes(byteLength) : `${(byteLength / 1024).toFixed(1)} KB`;
+      if (infoEl) infoEl.textContent = `${this.codeLines.length.toLocaleString()} dòng • ${formattedSize} • ${text.length.toLocaleString()} ký tự`;
+      if (footerMeta) footerMeta.textContent = `Định dạng: ${langMeta.name} • Mã hóa: UTF-8 • ${this.codeLines.length} dòng`;
 
-      // Render line numbered code view
-      let formattedHtml = '';
-      lines.forEach((line, idx) => {
-        const lineNum = idx + 1;
-        const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        formattedHtml += `<div style="display: flex; min-height: 19px;"><span style="user-select: none; width: 45px; text-align: right; margin-right: 16px; color: #475569; font-size: 11px;">${lineNum}</span><span style="flex: 1; white-space: pre-wrap; word-break: break-all;">${escaped || ' '}</span></div>`;
-      });
-      container.innerHTML = formattedHtml || '<span style="color: #64748b;">(Tệp trống)</span>';
+      this.renderCodeLines();
+
+      // Hook search event
+      if (searchInput) {
+        searchInput.oninput = (e) => {
+          this.codeSearchQuery = (e.target.value || '').trim();
+          if (searchClear) searchClear.style.display = this.codeSearchQuery ? 'block' : 'none';
+          this.renderCodeLines();
+        };
+      }
+      if (searchClear) {
+        searchClear.onclick = () => {
+          if (searchInput) searchInput.value = '';
+          searchClear.style.display = 'none';
+          this.codeSearchQuery = '';
+          this.renderCodeLines();
+        };
+      }
+
     } catch (err) {
-      container.innerHTML = `<span style="color: #ef4444;">Lỗi khi đọc tệp tin: ${err.message}</span>`;
-      infoEl.textContent = 'Lỗi nạp';
+      console.warn('Text preview error:', err);
+      if (infoEl) infoEl.textContent = 'Lỗi nạp tệp';
+      container.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; color: #ef4444; max-width: 520px; margin: 0 auto;">
+          <div style="font-size: 42px; margin-bottom: 12px;">⚠️</div>
+          <div style="font-size: 15px; font-weight: 700; margin-bottom: 8px;">Không thể đọc nội dung tệp tin trực tiếp</div>
+          <div style="font-size: 12.5px; color: #94a3b8; margin-bottom: 20px; line-height: 1.5;">${err.message || 'Lỗi mạng hoặc tệp dữ liệu không hợp lệ.'}</div>
+          <div style="display: flex; gap: 10px; justify-content: center;">
+            <a href="${this.currentDownloadURL}" class="btn btn-primary btn-sm" download="${fileName}" style="padding: 6px 16px; font-size: 12px; text-decoration: none;">
+              ⬇️ Tải Tệp Về Máy
+            </a>
+          </div>
+        </div>
+      `;
+    }
+  },
+
+  renderCodeLines() {
+    const container = document.getElementById('code-viewer-container');
+    if (!container) return;
+
+    if (!this.codeLines || this.codeLines.length === 0) {
+      container.innerHTML = '<div style="padding: 24px; color: #64748b; text-align: center;">(Tệp tin trống)</div>';
+      return;
+    }
+
+    const q = this.codeSearchQuery.toLowerCase();
+    const isWrap = this.isWordWrap;
+    let matchCount = 0;
+
+    let html = `
+      <table style="width: 100%; border-collapse: collapse; font-family: inherit; font-size: inherit; line-height: inherit;">
+        <tbody>
+    `;
+
+    const highlightSearch = (escapedText) => {
+      if (!q) return escapedText;
+      const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return escapedText.replace(regex, '<mark style="background: rgba(245,158,11,0.4); color: #fef08a; padding: 0 2px; border-radius: 2px;">$1</mark>');
+    };
+
+    // Render limit for performance on huge files (e.g. 5,000 lines)
+    const maxRender = Math.min(this.codeLines.length, 5000);
+
+    for (let idx = 0; idx < maxRender; idx++) {
+      const line = this.codeLines[idx];
+      const lineNum = idx + 1;
+      const isMatch = q && line.toLowerCase().includes(q);
+      if (isMatch) matchCount++;
+
+      const escaped = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      const rowBg = isMatch
+        ? 'background: rgba(245, 158, 11, 0.12);'
+        : (idx % 2 === 0 ? 'background: rgba(255, 255, 255, 0.01);' : 'background: transparent;');
+
+      const codeWhiteSpace = isWrap ? 'white-space: pre-wrap; word-break: break-all;' : 'white-space: pre;';
+
+      html += `
+        <tr class="code-line-row" style="${rowBg} transition: background 0.1s;">
+          <td style="width: 52px; min-width: 52px; text-align: right; padding: 1px 12px 1px 6px; color: #475569; font-size: 11px; user-select: none; border-right: 1px solid rgba(255, 255, 255, 0.06); vertical-align: top; background: #080c14;">
+            ${lineNum}
+          </td>
+          <td style="padding: 1px 16px; ${codeWhiteSpace} color: #e2e8f0; vertical-align: top;">
+            ${highlightSearch(escaped) || '&nbsp;'}
+          </td>
+        </tr>
+      `;
+    }
+
+    if (this.codeLines.length > 5000) {
+      html += `
+        <tr>
+          <td colspan="2" style="padding: 16px; text-align: center; color: #94a3b8; font-style: italic; background: rgba(0,0,0,0.3);">
+            Đã hiển thị 5,000 / ${this.codeLines.length.toLocaleString()} dòng đầu tiên. Tải tệp về máy để xem trọn vẹn tệp cực lớn.
+          </td>
+        </tr>
+      `;
+    }
+
+    html += `
+        </tbody>
+      </table>
+    `;
+
+    container.innerHTML = html;
+
+    const infoEl = document.getElementById('code-viewer-info');
+    if (infoEl && q) {
+      infoEl.textContent = `Tìm thấy ${matchCount} dòng khớp với "${q}" • ${this.codeLines.length} dòng`;
+    }
+  },
+
+  toggleWordWrap() {
+    this.isWordWrap = !this.isWordWrap;
+    this._updateWrapLabel();
+    this.renderCodeLines();
+  },
+
+  _updateWrapLabel() {
+    const label = document.getElementById('label-word-wrap');
+    const btn = document.getElementById('btn-toggle-word-wrap');
+    if (label) label.textContent = this.isWordWrap ? 'Wrap: Bật' : 'Wrap: Tắt';
+    if (btn) {
+      btn.style.borderColor = this.isWordWrap ? 'var(--accent-blue, #3b82f6)' : '';
+      btn.style.background = this.isWordWrap ? 'rgba(59, 130, 246, 0.2)' : '';
+      btn.style.color = this.isWordWrap ? '#60a5fa' : '';
+    }
+  },
+
+  formatJson() {
+    if (!this.currentCodeText) return;
+    try {
+      const parsed = JSON.parse(this.currentCodeText);
+      const pretty = JSON.stringify(parsed, null, 2);
+      this.currentCodeText = pretty;
+      this.codeLines = pretty.split('\n');
+      this.renderCodeLines();
+      if (typeof Toast !== 'undefined' && Toast.success) Toast.success('Đã định dạng JSON thành công!');
+    } catch (err) {
+      if (typeof Toast !== 'undefined' && Toast.error) Toast.error(`Cú pháp JSON không hợp lệ: ${err.message}`);
     }
   },
 
   copyCodeContent() {
     if (!this.currentCodeText) return;
+    const btn = document.getElementById('btn-copy-code-content');
     navigator.clipboard.writeText(this.currentCodeText).then(() => {
-      Toast.success('Đã sao chép toàn bộ nội dung tệp!');
+      if (typeof Toast !== 'undefined' && Toast.success) {
+        Toast.success('Đã sao chép toàn bộ nội dung tệp!');
+      }
+      if (btn) {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span>✓</span><span>Đã chép</span>';
+        btn.style.color = '#10b981';
+        setTimeout(() => {
+          btn.innerHTML = originalHtml;
+          btn.style.color = '';
+        }, 2000);
+      }
     }).catch(() => {
-      Toast.error('Không thể sao chép');
+      if (typeof Toast !== 'undefined' && Toast.error) Toast.error('Không thể sao chép văn bản');
     });
   },
 
+  // ─────────────────────────────────────────────────────────────
+  // Universal Preview Router
+  // Điều hướng chính xác theo định dạng tệp tin
+  // ─────────────────────────────────────────────────────────────
   openPreview(fileId, fileName, mimeType, otpCode = '') {
     let streamURL = `/api/files/stream?id=${encodeURIComponent(fileId)}`;
     let downloadURL = `/api/files/download?id=${encodeURIComponent(fileId)}`;
 
     // Gắn token xác thực nếu có
     const user = (typeof API !== 'undefined' && API.getCurrentUser) ? API.getCurrentUser() : null;
-    const authToken = (typeof API !== 'undefined' && API.getToken) ? API.getToken() : (localStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_token') || sessionStorage.getItem('cloudpool_token') || (user && user.token ? user.token : ''));
+    const authToken = (typeof API !== 'undefined' && API.getToken)
+      ? API.getToken()
+      : (localStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_token') || sessionStorage.getItem('cloudpool_token') || (user && user.token ? user.token : ''));
+
     if (authToken) {
       streamURL += `&token=${encodeURIComponent(authToken)}`;
       downloadURL += `&token=${encodeURIComponent(authToken)}`;
@@ -77,9 +345,21 @@ const PreviewManager = {
       downloadURL += `&otp=${encodeURIComponent(otpCode)}`;
     }
 
-    // Check if Text or Code file
+    // 1. Check if Text / Code file (50+ formats)
     if (this.isTextOrCode(fileName, mimeType)) {
-      this.openTextPreview(fileId, fileName, streamURL);
+      this.openTextPreview(fileId, fileName, streamURL, downloadURL);
+      return;
+    }
+
+    const lowerName = (fileName || '').toLowerCase();
+
+    // 2. Check if Image -> Open Lightbox PRO Album Viewer
+    const isImage = (typeof ImageArchiveViewer !== 'undefined' && ImageArchiveViewer.isImageFile)
+      ? ImageArchiveViewer.isImageFile(fileName, mimeType)
+      : (mimeType?.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|ico|avif|tiff|tif|heic|heif)$/i.test(lowerName));
+
+    if (isImage && typeof ImageArchiveViewer !== 'undefined' && typeof ImageArchiveViewer.openImageViewer === 'function') {
+      ImageArchiveViewer.openImageViewer(fileId, fileName, mimeType, streamURL, downloadURL);
       return;
     }
 
@@ -87,54 +367,67 @@ const PreviewManager = {
     const titleEl = document.getElementById('preview-file-title');
     const area = document.getElementById('preview-content-area');
 
-    titleEl.textContent = fileName;
+    if (!modal || !area) return;
+
+    if (titleEl) titleEl.textContent = fileName;
     area.innerHTML = '';
 
-    const lowerName = fileName.toLowerCase();
+    // 3. Check if Archive -> Open Zero-Unpack Archive Inspector
+    const isArchive = (typeof ImageArchiveViewer !== 'undefined' && ImageArchiveViewer.isArchiveFile)
+      ? ImageArchiveViewer.isArchiveFile(fileName, mimeType)
+      : (/\.(zip|rar|7z|tar|gz|tgz|bz2|xz|jar|apk)$/i.test(lowerName) || (mimeType && (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('tar') || mimeType.includes('archive'))));
+
+    if (isArchive && typeof ImageArchiveViewer !== 'undefined' && typeof ImageArchiveViewer.renderArchiveInspector === 'function') {
+      ImageArchiveViewer.renderArchiveInspector(area, streamURL, fileName, downloadURL, fileId);
+      modal.classList.add('active');
+      return;
+    }
+
     const isPDF = (mimeType === 'application/pdf' || lowerName.endsWith('.pdf'));
     const isPPT = (/\.(pptx|ppt|ppsx|key|odp)$/i.test(lowerName));
-    const isExcel = (/\.(xlsx|xls|ods|numbers)$/i.test(lowerName));
+    const isExcel = (/\.(xlsx|xls|csv|tsv|ods|xlsb|numbers)$/i.test(lowerName));
     const isWord = (/\.(docx|doc|odt|rtf)$/i.test(lowerName));
-    const isCSV = (/\.(csv|tsv)$/i.test(lowerName));
+    const viewer = (typeof OfficeViewer !== 'undefined' ? OfficeViewer : (typeof window !== 'undefined' ? window.OfficeViewer : null));
 
+    // 2. PDF Document (Interactive Embedded Viewer)
     if (isPDF) {
-      area.innerHTML = `
-        <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
-          <iframe
-            src="${streamURL}"
-            style="width: 100%; height: 75vh; border: none; border-radius: var(--radius-md); background: #525659;"
-            title="${fileName}"
-            loading="lazy"
-          ></iframe>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
-              🔍 Xem bản đồ Chunks
-            </button>
-            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">
-              Tải PDF về máy
-            </a>
+      if (viewer && typeof viewer.renderPDF === 'function') {
+        viewer.renderPDF(area, streamURL, fileName, downloadURL);
+      } else {
+        area.innerHTML = `
+          <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+            <iframe
+              src="${streamURL}"
+              style="width: 100%; height: 75vh; border: none; border-radius: var(--radius-md, 8px); background: #525659;"
+              title="${fileName}"
+              loading="lazy"
+            ></iframe>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">
+                ⬇️ Tải PDF về máy
+              </a>
+            </div>
           </div>
-        </div>
-      `;
-
-    } else if (isPPT) {
-      // PowerPoint Presentation Native Slide Deck Viewer
-      const viewer = (typeof OfficeViewer !== 'undefined' ? OfficeViewer : (typeof window !== 'undefined' ? window.OfficeViewer : null));
+        `;
+      }
+    }
+    // 3. PowerPoint Presentations
+    else if (isPPT) {
       if (viewer && typeof viewer.renderPPTX === 'function') {
         viewer.renderPPTX(area, streamURL, fileName, downloadURL);
       } else {
         area.innerHTML = `
           <div style="padding: 30px; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 12px;">📽️</div>
-            <div style="font-size: 15px; font-weight: 700; color: var(--accent-amber);">${fileName}</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin: 10px 0 20px 0;">Bản trình chiếu PowerPoint</div>
+            <div style="font-size: 15px; font-weight: 700; color: #f59e0b;">${fileName}</div>
+            <div style="font-size: 12px; color: #94a3b8; margin: 10px 0 20px 0;">Bản trình chiếu PowerPoint</div>
             <a href="${downloadURL}" class="btn btn-primary" download="${fileName}">⬇️ Tải File PPTX Về Máy</a>
           </div>
         `;
       }
-    } else if (isExcel) {
-      // Native Excel Spreadsheet Viewer (Zero External Dependency)
-      const viewer = (typeof OfficeViewer !== 'undefined' ? OfficeViewer : (typeof window !== 'undefined' ? window.OfficeViewer : null));
+    }
+    // 4. Excel & Spreadsheets (XLSX, XLS, CSV, TSV)
+    else if (isExcel) {
       if (viewer && typeof viewer.renderExcel === 'function') {
         viewer.renderExcel(area, streamURL, fileName, downloadURL);
       } else {
@@ -142,14 +435,14 @@ const PreviewManager = {
           <div style="padding: 30px; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 12px;">📊</div>
             <div style="font-size: 15px; font-weight: 700; color: #10b981;">${fileName}</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin: 10px 0 20px 0;">Bảng tính Excel</div>
+            <div style="font-size: 12px; color: #94a3b8; margin: 10px 0 20px 0;">Bảng tính Excel</div>
             <a href="${downloadURL}" class="btn btn-primary" download="${fileName}">⬇️ Tải File Excel Về Máy</a>
           </div>
         `;
       }
-    } else if (isWord) {
-      // Native Word Document Viewer (Zero External Dependency)
-      const viewer = (typeof OfficeViewer !== 'undefined' ? OfficeViewer : (typeof window !== 'undefined' ? window.OfficeViewer : null));
+    }
+    // 5. Word Documents (DOCX, DOC)
+    else if (isWord) {
       if (viewer && typeof viewer.renderDocx === 'function') {
         viewer.renderDocx(area, streamURL, fileName, downloadURL);
       } else {
@@ -157,100 +450,35 @@ const PreviewManager = {
           <div style="padding: 30px; text-align: center;">
             <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
             <div style="font-size: 15px; font-weight: 700; color: #38bdf8;">${fileName}</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin: 10px 0 20px 0;">Tài liệu Word</div>
+            <div style="font-size: 12px; color: #94a3b8; margin: 10px 0 20px 0;">Tài liệu Word</div>
             <a href="${downloadURL}" class="btn btn-primary" download="${fileName}">⬇️ Tải File Word Về Máy</a>
           </div>
         `;
       }
-    } else if (isCSV) {
-      // Interactive CSV Spreadsheet Table
-      area.innerHTML = `
-        <div style="width: 100%; display: flex; flex-direction: column; gap: 10px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 13px; color: var(--accent-cyan); font-weight: 600;">📊 Bảng Dữ Liệu Phân Tách (${fileName})</span>
-            <input type="text" id="csv-filter-input" placeholder="🔍 Lọc dòng dữ liệu..." class="form-control" style="max-width: 250px; font-size: 12px; padding: 4px 10px;">
-          </div>
-          <div id="csv-table-wrapper" style="width: 100%; max-height: 65vh; overflow: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #0d1117;">
-            <div style="padding: 24px; text-align: center; color: var(--text-muted);">Đang nạp và phân tích dữ liệu bảng...</div>
-          </div>
-          <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
-              🔍 Xem bản đồ Chunks
-            </button>
-            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">
-              ⬇️ Tải CSV về máy
-            </a>
-          </div>
-        </div>
-      `;
-
-      fetch(streamURL)
-        .then(r => r.text())
-        .then(csvText => {
-          const wrapper = document.getElementById('csv-table-wrapper');
-          if (!wrapper) return;
-          const rows = csvText.split('\n').filter(r => r.trim().length > 0);
-          if (rows.length === 0) {
-            wrapper.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">Tệp CSV trống</div>';
-            return;
-          }
-
-          const parseRow = (line) => line.split(',').map(c => c.replace(/^"|"$/g, '').trim());
-          const headerCols = parseRow(rows[0]);
-          let tableHtml = '<table class="files-table" style="font-size: 12px; margin: 0; min-width: 100%;"><thead><tr>';
-          headerCols.forEach(col => {
-            tableHtml += `<th style="padding: 8px 12px; background: rgba(255,255,255,0.05);">${col}</th>`;
-          });
-          tableHtml += '</tr></thead><tbody id="csv-tbody">';
-          for (let i = 1; i < Math.min(rows.length, 500); i++) {
-            const cols = parseRow(rows[i]);
-            tableHtml += '<tr>';
-            cols.forEach(c => {
-              tableHtml += `<td style="padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);">${c}</td>`;
-            });
-            tableHtml += '</tr>';
-          }
-          tableHtml += '</tbody></table>';
-          if (rows.length > 500) {
-            tableHtml += `<div style="padding: 8px; text-align: center; font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.02);">Hiển thị 500 / ${rows.length} dòng đầu tiên. Tải về để xem toàn bộ.</div>`;
-          }
-          wrapper.innerHTML = tableHtml;
-
-          // Search filter for CSV
-          document.getElementById('csv-filter-input')?.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase().trim();
-            const trs = document.querySelectorAll('#csv-tbody tr');
-            trs.forEach(tr => {
-              tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-          });
-        })
-        .catch(err => {
-          const wrapper = document.getElementById('csv-table-wrapper');
-          if (wrapper) wrapper.innerHTML = `<div style="padding: 20px; color: #ef4444;">Lỗi: ${err.message}</div>`;
-        });
-    } else if (mimeType.startsWith('video/')) {
+    }
+    // 6. Video Player
+    else if (mimeType && mimeType.startsWith('video/')) {
       area.innerHTML = `
         <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
-          <div id="video-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md); font-size: 12px; color: var(--accent-blue);">
+          <div id="video-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md, 8px); font-size: 12px; color: var(--accent-blue, #3b82f6);">
             <span>⚡ Đang đệm luồng video trực tuyến từ Google Drive...</span>
           </div>
-          <video id="pro-video-player" controls autoplay preload="auto" playsinline style="width: 100%; max-height: 60vh; border-radius: var(--radius-md); background: #000;">
+          <video id="pro-video-player" controls autoplay preload="auto" playsinline style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000;">
             <source src="${streamURL}" type="${mimeType}">
             Trình duyệt của bạn không hỗ trợ phát trực tiếp định dạng video này.
           </video>
-          <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md); text-align: center;">
+          <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md, 8px); text-align: center;">
             <div id="video-error-msg" style="color: #ef4444; font-size: 13px; font-weight: 500; margin-bottom: 10px; line-height: 1.5;">⚠️ Không thể phát trực tiếp trên trình duyệt này.</div>
             <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
               <button class="btn btn-secondary btn-sm" onclick="PreviewManager.retryVideoPlayback()">🔄 Thử phát lại</button>
               <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải tệp video về máy</a>
             </div>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--text-secondary, #94a3b8); flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; gap: 6px; align-items: center;">
               <span>Tốc độ:</span>
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(0.5)">0.5x</span>
-              <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(1.0)" style="color: var(--accent-blue);">1x</span>
+              <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(1.0)" style="color: var(--accent-blue, #3b82f6);">1x</span>
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(1.25)">1.25x</span>
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(1.5)">1.5x</span>
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(2.0)">2x</span>
@@ -280,75 +508,80 @@ const PreviewManager = {
         vidPlayer.addEventListener('canplay', () => {
           if (loadStatus) loadStatus.style.display = 'none';
         });
-        vidPlayer.addEventListener('waiting', () => {
-          if (loadStatus) {
-            loadStatus.style.display = 'flex';
-            loadStatus.innerHTML = '<span>⚡ Đang nạp tiếp luồng video từ đám mây Google Drive...</span>';
-          }
-        });
-        vidPlayer.addEventListener('stalled', () => {
-          if (loadStatus) {
-            loadStatus.style.display = 'flex';
-            loadStatus.innerHTML = '<span>⚡ Đang đệm dữ liệu video...</span>';
-          }
-        });
         vidPlayer.addEventListener('error', () => {
           const err = vidPlayer.error;
           if (loadStatus) loadStatus.style.display = 'none';
-          // Bỏ qua lỗi 1 (MEDIA_ERR_ABORTED - xảy ra khi người dùng dừng hoặc đổi đoạn)
           if (!err || err.code === 1) return;
-
           if (errStatus) {
             errStatus.style.display = 'block';
             let detail = 'Không thể phát trực tiếp định dạng video này trên trình duyệt hiện tại.';
-            if (err.code === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
-              detail = 'Video sử dụng định dạng nén camera cao cấp (H.265 / HEVC 10-bit HDR) mà trình duyệt máy tính chưa hỗ trợ sẵn bộ giải mã phần cứng. Bạn có thể mở trực tiếp trên điện thoại di động hoặc tải về xem offline qua VLC / Media Player:';
-            } else if (err.code === 2) { // MEDIA_ERR_NETWORK
+            if (err.code === 4) {
+              detail = 'Video sử dụng định dạng nén camera cao cấp (H.265 / HEVC 10-bit HDR) mà trình duyệt chưa hỗ trợ bộ giải mã phần cứng. Bạn có thể mở trên điện thoại hoặc tải về xem offline:';
+            } else if (err.code === 2) {
               detail = 'Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây. Bạn có thể nhấn Thử lại:';
-            } else if (err.code === 3) { // MEDIA_ERR_DECODE
-              detail = 'Bộ giải mã video trình duyệt gặp lỗi trong quá trình xử lý khung hình:';
             }
             if (errMsg) errMsg.textContent = '⚠️ ' + detail;
           }
         });
       }
-    } else if (mimeType.startsWith('audio/')) {
+    }
+    // 7. Audio Player
+    else if (mimeType && mimeType.startsWith('audio/')) {
       area.innerHTML = `
         <div style="padding: 36px; text-align: center; width: 100%;">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-amber); margin-bottom: 20px;"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-          <audio controls autoplay style="width: 100%; max-width: 500px;">
+          <div style="font-size: 56px; margin-bottom: 16px;">🎵</div>
+          <p style="font-size: 15px; font-weight: 700; margin-bottom: 16px; color: var(--text-primary, #f1f5f9);">${fileName}</p>
+          <audio controls autoplay style="width: 100%; max-width: 480px;">
             <source src="${streamURL}" type="${mimeType}">
             Trình duyệt không hỗ trợ phát nhạc.
           </audio>
-          <div style="margin-top: 16px;">
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
-              🔍 Xem bản đồ Chunks
-            </button>
+          <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: center;">
+            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải nhạc về máy</a>
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">🔍 Bản đồ Chunks</button>
           </div>
         </div>
       `;
-    } else if (mimeType.startsWith('image/')) {
+    }
+    // 8. Image Viewer (Fallback)
+    else if (isImage || (mimeType && mimeType.startsWith('image/'))) {
+      if (typeof ImageArchiveViewer !== 'undefined' && typeof ImageArchiveViewer.openImageViewer === 'function') {
+        modal.classList.remove('active');
+        ImageArchiveViewer.openImageViewer(fileId, fileName, mimeType, streamURL, downloadURL);
+        return;
+      }
       area.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;">
-          <img src="${streamURL}" alt="${fileName}" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: var(--radius-md);">
-          <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
-            🔍 Xem bản đồ Chunks
-          </button>
+          <img src="${streamURL}" alt="${fileName}" style="max-width: 100%; max-height: 68vh; object-fit: contain; border-radius: var(--radius-md, 8px); box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải ảnh về máy</a>
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">🔍 Bản đồ Chunks</button>
+          </div>
         </div>
       `;
-    } else {
+    }
+    // 8.5 Archive Inspector (Fallback)
+    else if (isArchive) {
+      if (typeof ImageArchiveViewer !== 'undefined' && typeof ImageArchiveViewer.renderArchiveInspector === 'function') {
+        ImageArchiveViewer.renderArchiveInspector(area, streamURL, fileName, downloadURL, fileId);
+      }
+    }
+    // 9. Generic / Binary Files
+    else {
       area.innerHTML = `
-        <div style="padding: 40px; text-align: center;">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-secondary); margin-bottom: 16px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
-          <p style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">${fileName}</p>
-          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">Tệp dữ liệu nhị phân đã được mã hóa an toàn trên Google Drive.</p>
-          <div style="display: flex; gap: 10px; justify-content: center;">
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
-              🔍 Xem bản đồ Chunks
-            </button>
-            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">
-              Tải tệp về máy
+        <div style="padding: 40px 20px; text-align: center; max-width: 520px; margin: 0 auto;">
+          <div style="font-size: 54px; margin-bottom: 16px;">📦</div>
+          <p style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary, #f1f5f9); word-break: break-word;">${fileName}</p>
+          <p style="font-size: 12.5px; color: var(--text-muted, #94a3b8); margin-bottom: 22px; line-height: 1.5;">
+            Tệp dữ liệu nhị phân đã được mã hóa an toàn trên các tài khoản Google Drive.<br>
+            Bạn có thể tải tệp tin về thiết bị để mở bằng ứng dụng tương thích.
+          </p>
+          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}" style="padding: 8px 20px; font-size: 13px; text-decoration: none;">
+              ⬇️ Tải Tệp Về Máy
             </a>
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')" style="padding: 8px 16px; font-size: 13px;">
+              🔍 Xem Bản Đồ Chunks
+            </button>
           </div>
         </div>
       `;
@@ -366,7 +599,7 @@ const PreviewManager = {
     if (video) {
       video.playbackRate = speed;
       document.querySelectorAll('.video-speed-badge').forEach(badge => {
-        badge.style.color = badge.textContent.includes(speed + 'x') ? 'var(--accent-blue)' : 'var(--text-secondary)';
+        badge.style.color = badge.textContent.includes(speed + 'x') ? 'var(--accent-blue, #3b82f6)' : 'var(--text-secondary, #94a3b8)';
       });
     }
   },
@@ -384,6 +617,5 @@ const PreviewManager = {
       video.load();
       video.play().catch(() => {});
     }
-  },
+  }
 };
-

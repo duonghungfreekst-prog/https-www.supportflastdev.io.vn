@@ -287,6 +287,7 @@ func (s *DB) migrate() error {
 			sha256 TEXT,
 			chunk_count INTEGER DEFAULT 0,
 			is_encrypted BOOLEAN DEFAULT 1,
+			has_missing_chunks BOOLEAN DEFAULT 0,
 			created_at DATETIME,
 			updated_at DATETIME
 		);`,
@@ -394,6 +395,10 @@ func (s *DB) migrate() error {
 	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN is_deleted BOOLEAN DEFAULT 0;")
 	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN deleted_at DATETIME;")
 	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_deleted ON virtual_files(is_deleted);")
+
+	// Missing Chunks & Data Integrity Flag
+	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN has_missing_chunks BOOLEAN DEFAULT 0;")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_missing_chunks ON virtual_files(has_missing_chunks);")
 
 	// Deduplication Chunk Reference Count
 	_, _ = s.db.Exec("ALTER TABLE file_chunks ADD COLUMN ref_count INTEGER DEFAULT 1;")
@@ -842,8 +847,8 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 		f.UserID = "user_admin"
 	}
 
-	query := `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	query := `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			user_id=excluded.user_id,
 			parent_id=excluded.parent_id,
@@ -856,11 +861,12 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 			is_encrypted=excluded.is_encrypted,
 			is_deleted=excluded.is_deleted,
 			deleted_at=excluded.deleted_at,
+			has_missing_chunks=excluded.has_missing_chunks,
 			updated_at=excluded.updated_at`
 
 	_, err := s.db.Exec(query,
 		f.ID, f.UserID, f.ParentID, f.Name, f.Path, f.IsDir, f.SizeBytes,
-		f.MimeType, f.SHA256, f.ChunkCount, f.IsEncrypted, f.IsTrashed, f.DeletedAt, f.CreatedAt, f.UpdatedAt,
+		f.MimeType, f.SHA256, f.ChunkCount, f.IsEncrypted, f.IsTrashed, f.DeletedAt, f.HasMissingChunks, f.CreatedAt, f.UpdatedAt,
 	)
 	return err
 }
@@ -869,12 +875,12 @@ func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE id = ?`, id)
 	var f models.VirtualFile
 	var sha, uid sql.NullString
-	var isDel sql.NullBool
+	var isDel, hasMissing sql.NullBool
 	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt)
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -886,6 +892,9 @@ func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	}
 	if isDel.Valid {
 		f.IsTrashed = isDel.Bool
+	}
+	if hasMissing.Valid {
+		f.HasMissingChunks = hasMissing.Bool
 	}
 	f.DeletedAt = delAt
 	return &f, nil
@@ -895,12 +904,12 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE path = ? AND is_deleted = 0`, path)
+	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE path = ? AND is_deleted = 0`, path)
 	var f models.VirtualFile
 	var sha, uid sql.NullString
-	var isDel sql.NullBool
+	var isDel, hasMissing sql.NullBool
 	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt)
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -912,6 +921,9 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	}
 	if isDel.Valid {
 		f.IsTrashed = isDel.Bool
+	}
+	if hasMissing.Valid {
+		f.HasMissingChunks = hasMissing.Bool
 	}
 	f.DeletedAt = delAt
 	return &f, nil
@@ -926,13 +938,13 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 
 	if userID == "all" || userID == "user_admin" || userID == "admin" || userID == "" {
 		// Admin sees all files and system partitions
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
+		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
 	} else if userID == "guest" {
 		// Guest only sees guest partition
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE user_id = 'guest' AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
+		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = 'guest' AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
 	} else {
 		// Child user is strictly isolated to their own uploaded files only
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE user_id = ? AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, userID, parentID)
+		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = ? AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, userID, parentID)
 	}
 
 	if err != nil {
@@ -944,9 +956,9 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 	for rows.Next() {
 		var f models.VirtualFile
 		var sha, uid sql.NullString
-		var isDel sql.NullBool
+		var isDel, hasMissing sql.NullBool
 		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -957,6 +969,9 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		}
 		if isDel.Valid {
 			f.IsTrashed = isDel.Bool
+		}
+		if hasMissing.Valid {
+			f.HasMissingChunks = hasMissing.Bool
 		}
 		f.DeletedAt = delAt
 
@@ -1003,7 +1018,7 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT DISTINCT f.id, f.parent_id, f.name, f.path, f.is_dir, f.size_bytes, f.mime_type, f.sha256, f.chunk_count, f.is_encrypted, f.is_deleted, f.deleted_at, f.created_at, f.updated_at 
+	query := `SELECT DISTINCT f.id, f.parent_id, f.name, f.path, f.is_dir, f.size_bytes, f.mime_type, f.sha256, f.chunk_count, f.is_encrypted, f.is_deleted, f.deleted_at, f.has_missing_chunks, f.created_at, f.updated_at 
 		FROM virtual_files f
 		INNER JOIN file_chunks c ON f.id = c.file_id
 		WHERE c.account_id = ? AND f.id != 'root' AND f.is_deleted = 0
@@ -1019,9 +1034,9 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 	for rows.Next() {
 		var f models.VirtualFile
 		var sha sql.NullString
-		var isDel sql.NullBool
+		var isDel, hasMissing sql.NullBool
 		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		if err := rows.Scan(&f.ID, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1029,6 +1044,9 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 		}
 		if isDel.Valid {
 			f.IsTrashed = isDel.Bool
+		}
+		if hasMissing.Valid {
+			f.HasMissingChunks = hasMissing.Bool
 		}
 		f.DeletedAt = delAt
 		list = append(list, f)
@@ -1084,9 +1102,9 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 	var err error
 
 	if userID == "all" || userID == "" || userID == "user_admin" {
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE is_deleted = 1 ORDER BY deleted_at DESC`)
+		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE is_deleted = 1 ORDER BY deleted_at DESC`)
 	} else {
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE user_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC`, userID)
+		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC`, userID)
 	}
 
 	if err != nil {
@@ -1098,9 +1116,9 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 	for rows.Next() {
 		var f models.VirtualFile
 		var sha, uid sql.NullString
-		var isDel sql.NullBool
+		var isDel, hasMissing sql.NullBool
 		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1111,6 +1129,9 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 		}
 		if isDel.Valid {
 			f.IsTrashed = isDel.Bool
+		}
+		if hasMissing.Valid {
+			f.HasMissingChunks = hasMissing.Bool
 		}
 		f.DeletedAt = delAt
 		list = append(list, f)
@@ -1145,12 +1166,12 @@ func (s *DB) GetTrashFileIDs(userID string) ([]string, error) {
 }
 
 func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
-	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, created_at, updated_at FROM virtual_files WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE id = ?`, id)
 	var f models.VirtualFile
 	var sha, uid sql.NullString
-	var isDel sql.NullBool
+	var isDel, hasMissing sql.NullBool
 	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt)
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -1163,8 +1184,89 @@ func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
 	if isDel.Valid {
 		f.IsTrashed = isDel.Bool
 	}
+	if hasMissing.Valid {
+		f.HasMissingChunks = hasMissing.Bool
+	}
 	f.DeletedAt = delAt
 	return &f, nil
+}
+
+// UpdateFileMissingChunks cập nhật cờ cảnh báo thiếu chunks cho một virtual file
+func (s *DB) UpdateFileMissingChunks(fileID string, hasMissing bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec("UPDATE virtual_files SET has_missing_chunks = ?, updated_at = ? WHERE id = ?", hasMissing, time.Now(), fileID)
+	return err
+}
+
+// UpdateChunkStatus cập nhật trạng thái của chunk ("uploaded", "missing", "failed")
+func (s *DB) UpdateChunkStatus(chunkID string, status string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec("UPDATE file_chunks SET status = ? WHERE chunk_id = ?", status, chunkID)
+	return err
+}
+
+// UpdateChunkStatusByDriveID cập nhật trạng thái của chunk theo gdrive_file_id
+func (s *DB) UpdateChunkStatusByDriveID(gdriveFileID string, status string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.Exec("UPDATE file_chunks SET status = ? WHERE gdrive_file_id = ?", status, gdriveFileID)
+	return err
+}
+
+// GetAllFilesForIntegrityCheck lấy danh sách các tệp (không phải thư mục) chưa bị xóa để kiểm tra toàn vẹn
+func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.VirtualFile, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	query := `SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at 
+		FROM virtual_files 
+		WHERE is_dir = 0 AND id != 'root' AND is_deleted = 0`
+	var rows *sql.Rows
+	var err error
+
+	if filterFileID != "" {
+		query += " AND id = ?"
+		rows, err = s.db.Query(query, filterFileID)
+	} else {
+		query += " ORDER BY updated_at DESC"
+		rows, err = s.db.Query(query)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.VirtualFile
+	for rows.Next() {
+		var f models.VirtualFile
+		var sha, uid sql.NullString
+		var isDel, hasMissing sql.NullBool
+		var delAt *time.Time
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if sha.Valid {
+			f.SHA256 = sha.String
+		}
+		if uid.Valid {
+			f.UserID = uid.String
+		}
+		if isDel.Valid {
+			f.IsTrashed = isDel.Bool
+		}
+		if hasMissing.Valid {
+			f.HasMissingChunks = hasMissing.Bool
+		}
+		f.DeletedAt = delAt
+		files = append(files, f)
+	}
+	return files, nil
 }
 
 
@@ -2117,6 +2219,39 @@ func (s *DB) VerifyAndBurnOTP(fileID, userID, otpCode string) (bool, error) {
 	_, err := s.db.Exec(`UPDATE file_access_otps SET is_used = 1, used_by = ?, used_at = ? WHERE id = ?`, userID, now, otpID)
 	if err != nil {
 		return false, err
+	}
+
+	return true, nil
+}
+
+// VerifyOTPOnly kiểm tra tính hợp lệ của mã OTP mà không huỷ/burn mã (dùng cho status check hoặc preview probe)
+func (s *DB) VerifyOTPOnly(fileID, userID, otpCode string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	otpCode = strings.TrimSpace(otpCode)
+	if otpCode == "" {
+		return false, fmt.Errorf("Mã OTP không được để trống")
+	}
+
+	var otpID string
+	var expiresAt time.Time
+	var isUsed int
+
+	row := s.db.QueryRow(`SELECT id, expires_at, is_used FROM file_access_otps 
+		WHERE file_id = ? AND otp_code = ? AND (target_user_id = 'all' OR target_user_id = ?) 
+		ORDER BY created_at DESC LIMIT 1`, fileID, otpCode, userID)
+
+	if err := row.Scan(&otpID, &expiresAt, &isUsed); err != nil {
+		return false, fmt.Errorf("Mã OTP không chính xác hoặc không áp dụng cho tệp tin này")
+	}
+
+	if isUsed == 1 {
+		return false, fmt.Errorf("Mã OTP này đã được sử dụng")
+	}
+
+	if time.Now().After(expiresAt) {
+		return false, fmt.Errorf("Mã OTP đã hết thời hạn hiệu lực")
 	}
 
 	return true, nil

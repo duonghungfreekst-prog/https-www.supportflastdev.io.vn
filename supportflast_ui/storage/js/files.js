@@ -102,7 +102,11 @@ const FilesManager = {
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
-          this.handleFilesUpload(Array.from(e.target.files));
+          if (typeof UploadManager !== 'undefined') {
+            UploadManager.uploadFiles(Array.from(e.target.files), this.currentFolderId);
+          } else {
+            this.handleFilesUpload(Array.from(e.target.files));
+          }
           fileInput.value = '';
         }
       });
@@ -111,7 +115,11 @@ const FilesManager = {
     if (folderInput) {
       folderInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
-          this.handleFolderUpload(Array.from(e.target.files));
+          if (typeof UploadManager !== 'undefined') {
+            UploadManager.uploadFolderInput(e.target.files, this.currentFolderId);
+          } else {
+            this.handleFolderUpload(Array.from(e.target.files));
+          }
           folderInput.value = '';
         }
       });
@@ -167,6 +175,11 @@ const FilesManager = {
       });
 
       dropZone.addEventListener('drop', async (e) => {
+        if (typeof UploadManager !== 'undefined') {
+          UploadManager.handleDrop(e, this.currentFolderId);
+          return;
+        }
+
         const items = e.dataTransfer?.items;
         if (items && items.length > 0) {
           const filesToUpload = [];
@@ -276,6 +289,9 @@ const FilesManager = {
   },
 
   async scanEntry(entry, currentPath = '') {
+    if (typeof UploadManager !== 'undefined') {
+      return UploadManager.scanEntryRecursive(entry, currentPath);
+    }
     if (entry.isFile) {
       return new Promise((resolve) => {
         entry.file((file) => {
@@ -285,9 +301,14 @@ const FilesManager = {
       });
     } else if (entry.isDirectory) {
       const dirReader = entry.createReader();
-      const entries = await new Promise((resolve) => {
-        dirReader.readEntries((entries) => resolve(entries), () => resolve([]));
-      });
+      const entries = [];
+      while (true) {
+        const batch = await new Promise((resolve) => {
+          dirReader.readEntries((b) => resolve(b), () => resolve([]));
+        });
+        if (!batch || batch.length === 0) break;
+        entries.push(...batch);
+      }
       const results = [];
       const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
       for (const child of entries) {
@@ -332,6 +353,21 @@ const FilesManager = {
       }
     });
 
+    const ctxDownloadZip = document.getElementById('ctx-download-zip');
+    if (ctxDownloadZip) {
+      ctxDownloadZip.addEventListener('click', () => {
+        if (this.selectedIds.size > 0) {
+          this.handleBulkZipDownload();
+        } else if (this.contextTarget) {
+          if (typeof DownloadManager !== 'undefined') {
+            DownloadManager.downloadZip([this.contextTarget.id], `${this.contextTarget.name}.zip`);
+          } else {
+            window.open(`/api/files/download-zip?ids=${encodeURIComponent(this.contextTarget.id)}`, '_blank');
+          }
+        }
+      });
+    }
+
     document.getElementById('ctx-rename').addEventListener('click', () => {
       if (this.contextTarget) {
         this.openRenameModal(this.contextTarget.id, this.contextTarget.name);
@@ -354,15 +390,20 @@ const FilesManager = {
     const ctxShare = document.getElementById('ctx-share');
     const ctxChunks = document.getElementById('ctx-chunks');
     const ctxDownload = document.getElementById('ctx-download');
+    const ctxDownloadZip = document.getElementById('ctx-download-zip');
 
     if (ctxShare) ctxShare.style.display = 'flex';
 
     if (file.is_dir) {
       ctxChunks.style.display = 'none';
       ctxDownload.style.display = 'none';
+      if (ctxDownloadZip) ctxDownloadZip.style.display = 'flex';
     } else {
       ctxChunks.style.display = 'flex';
       ctxDownload.style.display = 'flex';
+      if (ctxDownloadZip) {
+        ctxDownloadZip.style.display = (this.selectedIds.size > 1) ? 'flex' : 'none';
+      }
     }
 
     menu.style.left = `${Math.min(e.clientX, window.innerWidth - 200)}px`;
@@ -920,7 +961,37 @@ const FilesManager = {
   handleBulkZipDownload() {
     const ids = Array.from(this.selectedIds);
     if (ids.length === 0) return;
-    window.open(`/api/files/zip?ids=${encodeURIComponent(ids.join(','))}`, '_blank');
+    if (typeof DownloadManager !== 'undefined') {
+      DownloadManager.downloadZip(ids);
+    } else {
+      window.open(`/api/files/download-zip?ids=${encodeURIComponent(ids.join(','))}`, '_blank');
+    }
+  },
+
+  downloadCurrentFolderZip() {
+    if (this.selectedIds && this.selectedIds.size > 0) {
+      this.handleBulkZipDownload();
+      return;
+    }
+    if (this.currentFolderId && this.currentFolderId !== 'root') {
+      const folderName = (this.breadcrumbs && this.breadcrumbs.length > 0) ? this.breadcrumbs[this.breadcrumbs.length - 1].name : 'folder';
+      if (typeof DownloadManager !== 'undefined') {
+        DownloadManager.downloadZip([this.currentFolderId], `${folderName}.zip`);
+      } else {
+        window.open(`/api/files/download-zip?ids=${encodeURIComponent(this.currentFolderId)}`, '_blank');
+      }
+    } else {
+      if (!this.files || this.files.length === 0) {
+        Toast.warning('Thư mục hiện tại không có tệp tin nào để nén tải');
+        return;
+      }
+      const allIds = this.files.map(f => f.id);
+      if (typeof DownloadManager !== 'undefined') {
+        DownloadManager.downloadZip(allIds, 'CloudPool_Root_Archive.zip');
+      } else {
+        window.open(`/api/files/download-zip?ids=${encodeURIComponent(allIds.join(','))}`, '_blank');
+      }
+    }
   },
 
   async showChunkMap(fileId, fileName) {
@@ -1040,6 +1111,10 @@ const FilesManager = {
 
   downloadFile(id) {
     const file = this.files.find(f => f.id === id);
+    if (typeof DownloadManager !== 'undefined') {
+      DownloadManager.downloadFile(file || id);
+      return;
+    }
     const isMember = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'member');
     if (file && isMember && (file.is_admin_owned || file.requires_otp)) {
       this.openOTPModal(file, 'download');
@@ -1114,7 +1189,12 @@ const FilesManager = {
       // Tự động mở file (auto_unlock từ backend xác nhận)
       if (this.otpActionType === 'download') {
         Toast.success('🔓 Đã xác thực! Bắt đầu tải xuống...');
-        window.location.href = `/api/files/download?id=${encodeURIComponent(this.otpTargetFile.id)}&otp=${encodeURIComponent(otpCode)}`;
+        if (typeof DownloadManager !== 'undefined') {
+          DownloadManager.otpCache[this.otpTargetFile.id] = otpCode;
+          DownloadManager.downloadFile(this.otpTargetFile, { otp: otpCode });
+        } else {
+          window.location.href = `/api/files/download?id=${encodeURIComponent(this.otpTargetFile.id)}&otp=${encodeURIComponent(otpCode)}`;
+        }
       } else {
         Toast.success('🔓 Đã xác thực! Đang mở xem trực tiếp...');
         PreviewManager.openPreviewWithOTP(this.otpTargetFile.id, this.otpTargetFile.name, this.otpTargetFile.mime_type, otpCode);
@@ -1459,6 +1539,10 @@ const FilesManager = {
   async handleFilesUpload(fileList) {
     if (!fileList || fileList.length === 0) return;
 
+    if (typeof UploadManager !== 'undefined') {
+      return UploadManager.uploadFiles(fileList, this.currentFolderId);
+    }
+
     // Kiểm tra đăng nhập
     const user = API.getCurrentUser();
     if (!user) {
@@ -1736,6 +1820,11 @@ const FilesManager = {
   // ────────────────────────────────────────────────────────
   async handleFolderUpload(files) {
     if (!files || files.length === 0) return;
+
+    if (typeof UploadManager !== 'undefined') {
+      return UploadManager.uploadFolderInput(files, this.currentFolderId);
+    }
+
     const drawer = document.getElementById('upload-drawer');
     const listEl = document.getElementById('upload-list');
     const titleEl = document.getElementById('upload-drawer-title');

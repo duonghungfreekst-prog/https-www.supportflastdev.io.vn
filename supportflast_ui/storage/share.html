@@ -1025,14 +1025,18 @@
       // PDF Documents
       else if (mime.includes('pdf') || /\.pdf$/.test(ext)) {
         iconBox.textContent = '📑';
-        viewerBody.innerHTML = `
-          <div class="doc-container" style="width: 100%; height: 75vh; border-radius: 12px; overflow: hidden; background: #fff; position: relative;">
-            <object data="${streamUrl}" type="application/pdf" width="100%" height="100%">
-              <embed src="${streamUrl}" type="application/pdf" width="100%" height="100%" />
-              <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
-            </object>
-          </div>
-        `;
+        if (typeof OfficeViewer !== 'undefined' && typeof OfficeViewer.renderPDF === 'function') {
+          OfficeViewer.renderPDF(viewerBody, streamUrl, fileName, downloadUrl);
+        } else {
+          viewerBody.innerHTML = `
+            <div class="doc-container" style="width: 100%; height: 75vh; border-radius: 12px; overflow: hidden; background: #fff; position: relative;">
+              <object data="${streamUrl}" type="application/pdf" width="100%" height="100%">
+                <embed src="${streamUrl}" type="application/pdf" width="100%" height="100%" />
+                <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
+              </object>
+            </div>
+          `;
+        }
       } 
       // PowerPoint Presentations
       else if (/\.(pptx|ppt|ppsx|key|odp)$/i.test(ext)) {
@@ -1050,8 +1054,8 @@
           `;
         }
       }
-      // Excel Spreadsheets
-      else if (/\.(xlsx|xls|ods|numbers)$/i.test(ext)) {
+      // Excel Spreadsheets & CSV/TSV
+      else if (/\.(xlsx|xls|csv|tsv|ods|numbers)$/i.test(ext)) {
         iconBox.textContent = '📊';
         if (typeof OfficeViewer !== 'undefined') {
           OfficeViewer.renderExcel(viewerBody, streamUrl, fileName, downloadUrl);
@@ -1325,11 +1329,15 @@
           </div>
         `;
       } else if (mime.includes('pdf') || /\.pdf$/.test(ext)) {
-        modalBody.innerHTML = `
-          <div style="width:100%; height:75vh; border-radius:8px; overflow:hidden; background:#fff;">
-            <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
-          </div>
-        `;
+        if (typeof OfficeViewer !== 'undefined' && typeof OfficeViewer.renderPDF === 'function') {
+          OfficeViewer.renderPDF(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
+        } else {
+          modalBody.innerHTML = `
+            <div style="width:100%; height:75vh; border-radius:8px; overflow:hidden; background:#fff;">
+              <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
+            </div>
+          `;
+        }
       } else if (/\.(pptx|ppt|ppsx|key|odp)$/i.test(ext)) {
         if (typeof OfficeViewer !== 'undefined') {
           OfficeViewer.renderPPTX(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
@@ -1343,7 +1351,7 @@
             </div>
           `;
         }
-      } else if (/\.(xlsx|xls|ods|numbers)$/i.test(ext)) {
+      } else if (/\.(xlsx|xls|csv|tsv|ods|numbers)$/i.test(ext)) {
         if (typeof OfficeViewer !== 'undefined') {
           OfficeViewer.renderExcel(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
         } else {

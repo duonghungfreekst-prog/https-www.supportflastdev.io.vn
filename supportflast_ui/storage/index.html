@@ -6,7 +6,7 @@
   <meta name="googlebot" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CloudPool - Kho Lưu Trữ Đa Google Drive Hợp Nhất</title>
-  <link rel="stylesheet" href="css/style.css?v=2.7.11">
+  <link rel="stylesheet" href="css/style.css?v=3.0.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
@@ -259,6 +259,10 @@
           <button id="btn-new-folder" class="btn btn-secondary btn-sm" title="Tạo thư mục mới">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
             <span class="btn-text-responsive">Thư mục mới</span>
+          </button>
+          <button id="btn-zip-current-folder" class="btn btn-secondary btn-sm" onclick="FilesManager.downloadCurrentFolderZip()" title="Nén và tải trọn gói Zip toàn bộ tệp và thư mục đang xem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            <span class="btn-text-responsive">Tải trọn gói Zip</span>
           </button>
           <button id="btn-upload-folder-explorer" class="btn btn-secondary btn-sm" title="Tải lên toàn bộ thư mục cùng tất cả tệp tin bên trong">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><polyline points="12 11 12 17 12 11"></polyline><polyline points="9 14 12 11 15 14"></polyline></svg>
@@ -1040,10 +1044,95 @@
   </div>
 </div>
 
+<!-- PRO Lightbox Image Viewer Modal -->
+<div id="modal-image-lightbox" class="lightbox-pro-overlay" style="display: none;">
+  <!-- Lightbox Header Bar -->
+  <div class="lightbox-pro-header">
+    <div class="lightbox-pro-meta">
+      <span class="lightbox-pro-badge">ẢNH PRO</span>
+      <span id="lb-title" class="lightbox-pro-title" title="">Tên tệp ảnh</span>
+      <span id="lb-counter" class="lightbox-pro-pill">1 / 1</span>
+      <span id="lb-dims" class="lightbox-pro-pill" style="color: #38bdf8;">0 × 0 px</span>
+      <span id="lb-filesize" class="lightbox-pro-pill" style="display: none;">0 KB</span>
+    </div>
+    <div class="lightbox-pro-actions">
+      <button id="lb-btn-chunk" class="lightbox-action-btn" title="Xem bản đồ Chunks trên CloudPool">
+        🔍 Xem Chunks
+      </button>
+      <a id="lb-btn-download" class="lightbox-action-btn" title="Tải ảnh gốc về máy" download>
+        ⬇️ Tải về
+      </a>
+      <button id="lb-btn-fullscreen" class="lightbox-action-btn" title="Toàn màn hình (F)">
+        ⛶ Toàn màn hình
+      </button>
+      <button id="lb-btn-close" class="lightbox-close-btn" title="Đóng Lightbox (ESC)">
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <!-- Stage Area with Nav Arrows -->
+  <div class="lightbox-pro-stage" id="lb-stage">
+    <!-- Navigation Buttons -->
+    <button id="lb-btn-prev" class="lightbox-nav-arrow prev" title="Ảnh trước (Mũi tên Trái / A)">❮</button>
+    <button id="lb-btn-next" class="lightbox-nav-arrow next" title="Ảnh kế tiếp (Mũi tên Phải / D)">❯</button>
+
+    <!-- Loading Spinner -->
+    <div id="lb-loading" class="lightbox-spinner-wrap" style="display: none;">
+      <div class="lightbox-spinner"></div>
+      <span>Đang nạp ảnh từ Google Drive...</span>
+    </div>
+
+    <!-- Center Image Wrapper for Pan & Zoom -->
+    <div class="lightbox-pro-img-wrapper" id="lb-img-wrapper">
+      <img id="lb-img-element" class="lightbox-pro-img" src="" alt="Preview" draggable="false" style="display: none;">
+    </div>
+  </div>
+
+  <!-- Bottom Floating Glassmorphism Toolbar Dock -->
+  <div class="lightbox-pro-dock">
+    <button class="lightbox-dock-btn" id="lb-tool-zoom-out" title="Thu nhỏ (Ctrl - / Lăn chuột xuống)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+    </button>
+    <span id="lb-zoom-badge" class="lightbox-dock-zoom-badge" title="Nhấn để reset tỷ lệ 100%">100%</span>
+    <button class="lightbox-dock-btn" id="lb-tool-zoom-in" title="Phóng to (Ctrl + / Lăn chuột lên)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+    </button>
+    <div class="lightbox-dock-divider"></div>
+    <button class="lightbox-dock-btn" id="lb-tool-fit" title="Vừa khít khung hình">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+    </button>
+    <button class="lightbox-dock-btn" id="lb-tool-1to1" title="Kích thước thực tế (1:1)" style="font-size: 11px; font-weight: 700;">
+      1:1
+    </button>
+    <div class="lightbox-dock-divider"></div>
+    <button class="lightbox-dock-btn" id="lb-tool-rotate-left" title="Xoay ngược chiều 90°">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+    </button>
+    <button class="lightbox-dock-btn" id="lb-tool-rotate-right" title="Xoay thuận chiều 90° (R)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>
+    </button>
+    <div class="lightbox-dock-divider"></div>
+    <button class="lightbox-dock-btn" id="lb-tool-flip-h" title="Lật ảnh ngang (H)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M7 8l-5 4 5 4V8zM17 8l5 4-5 4V8z"></path></svg>
+    </button>
+    <button class="lightbox-dock-btn" id="lb-tool-flip-v" title="Lật ảnh dọc (V)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M8 7l4-5 4 5H8zM8 17l4 5 4-5H8z"></path></svg>
+    </button>
+    <div class="lightbox-dock-divider"></div>
+    <button class="lightbox-dock-btn" id="lb-tool-reset" title="Khôi phục góc nhìn gốc (0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+    </button>
+  </div>
+</div>
+
 <!-- Bulk Action Bar -->
 <div id="bulk-action-bar" class="bulk-bar">
   <span id="bulk-selected-count" class="bulk-count">Đã chọn 0 tệp</span>
-  <button id="btn-bulk-zip" class="btn btn-secondary btn-sm">Tải về (.zip)</button>
+  <button id="btn-bulk-zip" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; font-weight: 600;" title="Nén và tải trọn gói Zip duy nhất chứa tất cả tệp tin và thư mục đã chọn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+    <span>Tải trọn gói Zip</span>
+  </button>
   <button id="btn-bulk-delete" class="btn btn-danger btn-sm">Xóa đã chọn</button>
   <button id="btn-bulk-cancel" class="btn btn-secondary btn-sm">Hủy</button>
 </div>
@@ -1065,6 +1154,10 @@
   <div class="context-menu-item" id="ctx-download">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
     <span>Tải về máy</span>
+  </div>
+  <div class="context-menu-item" id="ctx-download-zip" style="display: none;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+    <span>Tải trọn gói Zip</span>
   </div>
   <div class="context-menu-item" id="ctx-rename">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
@@ -1092,14 +1185,57 @@
   </div>
 </div>
 
-<!-- Upload Progress Drawer -->
+<!-- Upload Progress Drawer (Đột Phá: Folder Scan, Parallel Chunk, Speed, ETA, Controls) -->
 <div id="upload-drawer" class="upload-drawer">
-  <div class="upload-drawer-header">
-    <span id="upload-drawer-title">Tiến trình Tải lên &amp; Phân tán Song song</span>
-    <button id="btn-close-upload-drawer" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">&times;</button>
+  <!-- Minimized Bar: hiển thị khi thu nhỏ -->
+  <div id="upload-drawer-minimized" class="upload-drawer-minimized-bar" title="Nhấn để mở rộng bảng tải lên">
+    <div class="upload-drawer-minimized-info">
+      <span style="font-size: 14px;">☁️</span>
+      <span id="upload-minimized-text">Đang tải lên...</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 4px;">
+      <button id="btn-expand-upload-drawer" class="upload-drawer-icon-btn" title="Mở rộng">🗖</button>
+      <button id="btn-close-minimized-drawer" class="upload-drawer-icon-btn" onclick="UploadManager.closeDrawer()" title="Đóng">&times;</button>
+    </div>
+    <div class="upload-drawer-minimized-progress">
+      <div id="upload-minimized-bar" class="upload-drawer-minimized-fill"></div>
+    </div>
   </div>
-  <div id="upload-list" class="upload-drawer-list">
-    <!-- Dynamic upload progress items -->
+
+  <!-- Full Content: hiển thị đầy đủ -->
+  <div class="upload-drawer-full-content">
+    <div class="upload-drawer-header">
+      <div class="upload-drawer-header-left">
+        <span style="font-size: 15px; color: var(--accent-blue-hover);">☁️</span>
+        <span id="upload-drawer-title">Quản lý tải lên</span>
+        <span id="upload-drawer-badge" class="upload-drawer-badge">0/0</span>
+      </div>
+      <div class="upload-drawer-header-actions">
+        <button id="btn-minimize-upload-drawer" class="upload-drawer-icon-btn" title="Thu nhỏ">–</button>
+        <button id="btn-close-upload-drawer" class="upload-drawer-icon-btn" title="Đóng">&times;</button>
+      </div>
+    </div>
+
+    <!-- Thanh tổng quan tiến độ (Overall Progress & Quick Controls) -->
+    <div class="upload-drawer-overall">
+      <div class="upload-overall-progress-track">
+        <div id="upload-overall-progress-bar" class="upload-overall-progress-fill"></div>
+      </div>
+      <div class="upload-overall-row">
+        <span id="upload-overall-stats-text">0 B / 0 B (0%)</span>
+        <div class="upload-overall-actions">
+          <button id="btn-upload-pause-all" class="upload-overall-btn" title="Tạm dừng tất cả tệp đang tải">⏸ Tạm dừng</button>
+          <button id="btn-upload-resume-all" class="upload-overall-btn" title="Tiếp tục tất cả tệp">▶ Tiếp tục</button>
+          <button id="btn-upload-cancel-all" class="upload-overall-btn" title="Hủy tất cả tệp">✕ Hủy</button>
+          <button id="btn-upload-clear-done" class="upload-overall-btn" title="Xóa các tệp đã hoàn tất">🧹 Xóa đã xong</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danh sách tệp đang tải -->
+    <div id="upload-list" class="upload-drawer-list">
+      <!-- Dynamic upload progress items -->
+    </div>
   </div>
 </div>
 
@@ -1659,52 +1795,78 @@
   </div>
 </div>
 
-<!-- Modal Trình Đọc Mã Nguồn / Văn Bản / PDF (Code & Document Viewer) -->
+<!-- Modal Trình Đọc Mã Nguồn / Văn Bản (Code & Document Viewer PRO) -->
 <div id="modal-code-viewer" class="modal-overlay">
-  <div class="modal-box" style="max-width: 860px; width: 90vw;">
-    <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--border-subtle);">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <div id="code-viewer-icon" style="font-size: 18px;">📄</div>
-        <div>
-          <h3 id="code-viewer-title" style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Xem tệp</h3>
+  <div class="modal-box" style="max-width: 1080px; width: 95vw; max-height: 92vh; display: flex; flex-direction: column;">
+    <div class="modal-header" style="padding: 10px 18px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+        <div id="code-viewer-icon" style="font-size: 20px; flex-shrink: 0;">📄</div>
+        <div style="min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 id="code-viewer-title" style="font-size: 13.5px; font-weight: 700; margin: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;">Xem tệp</h3>
+            <span id="code-viewer-lang-badge" style="font-size: 10px; font-weight: 700; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); text-transform: uppercase;">TEXT</span>
+          </div>
           <span id="code-viewer-info" style="font-size: 11px; color: var(--text-muted);">0 lines</span>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <button id="btn-copy-code-content" class="btn btn-secondary btn-sm" onclick="PreviewManager.copyCodeContent()" style="font-size: 11px; padding: 3px 8px;">📋 Sao chép</button>
-        <button class="modal-close-btn" data-close="modal-code-viewer" style="font-size: 18px;">×</button>
+
+      <!-- Code Actions Toolbar -->
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        <div style="position: relative; display: flex; align-items: center;">
+          <input type="text" id="code-viewer-search-input" placeholder="🔍 Tìm trong code..." style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); color: #fff; font-size: 11px; padding: 4px 24px 4px 8px; border-radius: 6px; width: 140px; outline: none;" />
+          <button id="code-viewer-search-clear" style="position: absolute; right: 6px; background: none; border: none; color: #94a3b8; font-size: 11px; cursor: pointer; display: none;" title="Xóa tìm kiếm">✕</button>
+        </div>
+        <button id="btn-toggle-word-wrap" class="btn btn-secondary btn-sm" onclick="PreviewManager.toggleWordWrap()" style="font-size: 11px; padding: 4px 8px; gap: 4px;" title="Chuyển chế độ ngắt dòng tự động">
+          <span>↩️</span><span id="label-word-wrap">Wrap: Tắt</span>
+        </button>
+        <button id="btn-format-json" class="btn btn-secondary btn-sm" onclick="PreviewManager.formatJson()" style="display: none; font-size: 11px; padding: 4px 8px; gap: 4px;" title="Định dạng thụt lề JSON chuẩn">
+          <span>{}</span><span>Format</span>
+        </button>
+        <button id="btn-copy-code-content" class="btn btn-secondary btn-sm" onclick="PreviewManager.copyCodeContent()" style="font-size: 11px; padding: 4px 8px; gap: 4px;" title="Sao chép toàn bộ nội dung">
+          <span>📋</span><span>Sao chép</span>
+        </button>
+        <a id="btn-download-code-file" class="btn btn-primary btn-sm" download="" style="font-size: 11px; padding: 4px 10px; gap: 4px; text-decoration: none;" title="Tải tệp tin về máy">
+          <span>⬇️</span><span>Tải về</span>
+        </a>
+        <button class="modal-close-btn" data-close="modal-code-viewer" style="font-size: 18px; margin-left: 4px;">×</button>
       </div>
     </div>
-    <div class="modal-body" style="padding: 0; max-height: 70vh; overflow: hidden; background: #0f172a; display: flex; flex-direction: column;">
-      <div id="code-viewer-container" style="flex: 1; overflow: auto; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: #e2e8f0; white-space: pre;">
+
+    <!-- Code Viewer Scroll Canvas -->
+    <div class="modal-body" style="padding: 0; flex: 1; min-height: 380px; max-height: 74vh; overflow: hidden; background: #0b0f19; display: flex; flex-direction: column;">
+      <div id="code-viewer-container" style="flex: 1; overflow: auto; padding: 0; font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.65; color: #e2e8f0;">
         Đang nạp dữ liệu...
       </div>
     </div>
-    <div class="modal-footer" style="padding: 10px 20px; justify-content: space-between; background: var(--bg-tertiary);">
+
+    <div class="modal-footer" style="padding: 8px 18px; justify-content: space-between; background: var(--bg-tertiary); border-top: 1px solid var(--border-subtle); display: flex; align-items: center;">
       <span id="code-viewer-footer-meta" style="font-size: 11px; color: var(--text-muted);">UTF-8</span>
-      <button class="btn btn-primary btn-sm" data-close="modal-code-viewer">Đóng</button>
+      <button class="btn btn-secondary btn-sm" data-close="modal-code-viewer">Đóng</button>
     </div>
   </div>
 </div>
 
 
-<script src="js/responsive.js?v=2.9.0"></script>
-<script src="js/jszip.min.js?v=2.9.0"></script>
-<script src="js/xlsx.full.min.js?v=2.9.0"></script>
-<script src="js/docx-preview.min.js?v=2.9.0"></script>
-<script src="js/mammoth.browser.min.js?v=2.9.0"></script>
-<script src="js/api.js?v=2.9.0"></script>
-<script src="js/auth.js?v=2.9.0"></script>
-<script src="js/accounts.js?v=2.9.0"></script>
-<script src="js/files.js?v=2.9.0"></script>
-<script src="js/office_viewer.js?v=2.9.0"></script>
-<script src="js/preview.js?v=2.9.0"></script>
-<script src="js/remote.js?v=2.9.0"></script>
-<script src="js/tunnel.js?v=2.9.0"></script>
-<script src="js/settings.js?v=2.9.0"></script>
-<script src="js/sql_studio.js?v=2.9.0"></script>
-<script src="js/updater.js?v=2.9.0"></script>
-<script src="js/app.js?v=2.9.0"></script>
+<script src="js/responsive.js?v=3.0.0"></script>
+<script src="js/jszip.min.js?v=3.0.0"></script>
+<script src="js/xlsx.full.min.js?v=3.0.0"></script>
+<script src="js/docx-preview.min.js?v=3.0.0"></script>
+<script src="js/mammoth.browser.min.js?v=3.0.0"></script>
+<script src="js/api.js?v=3.0.0"></script>
+<script src="js/auth.js?v=3.0.0"></script>
+<script src="js/accounts.js?v=3.0.0"></script>
+<script src="js/upload_manager.js?v=3.0.0"></script>
+<script src="js/download_manager.js?v=3.0.0"></script>
+<script src="js/files.js?v=3.0.0"></script>
+<script src="js/office_viewer.js?v=3.0.0"></script>
+<script src="js/image_archive_viewer.js?v=3.0.0"></script>
+<script src="js/preview.js?v=3.0.0"></script>
+<script src="js/remote.js?v=3.0.0"></script>
+<script src="js/tunnel.js?v=3.0.0"></script>
+<script src="js/settings.js?v=3.0.0"></script>
+<script src="js/sql_studio.js?v=3.0.0"></script>
+<script src="js/updater.js?v=3.0.0"></script>
+<script src="js/app.js?v=3.0.0"></script>
 
 </body>
 </html>

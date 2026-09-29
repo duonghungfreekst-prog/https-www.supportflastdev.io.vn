@@ -1036,3 +1036,35 @@ func (m *Manager) ScanExistingDriveFiles(ctx context.Context, accountID string) 
 	return results, nil
 }
 
+// CheckChunkExists kiểm tra xem file chunk có thực sự tồn tại và còn nguyên vẹn trên Google Drive hay không
+// Trả về (false, nil) nếu file bị 404 (đã bị xóa/di chuyển), hoặc file nằm trong Thùng rác (trashed = true)
+// Trả về (true, nil) nếu file tồn tại bình thường
+// Trả về (false, err) nếu gặp lỗi mạng, auth, hoặc quota rate-limit
+func (m *Manager) CheckChunkExists(ctx context.Context, accountID, gdriveFileID string) (bool, error) {
+	if strings.TrimSpace(gdriveFileID) == "" {
+		return false, nil
+	}
+	srv, _, err := m.GetService(ctx, accountID)
+	if err != nil {
+		return false, fmt.Errorf("failed to get drive service for account %s: %w", accountID, err)
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	f, err := srv.Files.Get(gdriveFileID).Fields("id, name, size, trashed").Context(callCtx).Do()
+	if err != nil {
+		errStr := strings.ToLower(err.Error())
+		if strings.Contains(errStr, "404") || strings.Contains(errStr, "notfound") || strings.Contains(errStr, "filenotfound") {
+			return false, nil // File đã bị xóa trên Google Drive (404)
+		}
+		return false, err // Lỗi kết nối hoặc chứng chỉ
+	}
+
+	if f == nil || f.Trashed {
+		return false, nil // Nằm trong thùng rác hoặc không hợp lệ
+	}
+
+	return true, nil
+}
+

@@ -149,6 +149,8 @@ func TestCloudPoolNativeRoutes(t *testing.T) {
 	mux.HandleFunc("/api/admin/otp/", cloudpoolApi.AdminOTPHandler)
 	mux.HandleFunc("/api/admin/update", cloudpoolApi.UpdateHandler)
 	mux.HandleFunc("/api/admin/update/", cloudpoolApi.UpdateHandler)
+	mux.HandleFunc("/api/admin/storage", cloudpoolApi.AdminStorageHandler)
+	mux.HandleFunc("/api/admin/storage/", cloudpoolApi.AdminStorageHandler)
 	mux.HandleFunc("/api/public/share/", cloudpoolApi.PublicShareHandler)
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)

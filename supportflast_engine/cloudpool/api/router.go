@@ -30,6 +30,7 @@ var (
 	TunnelHandler      http.HandlerFunc
 	AdminDriveHandler  http.HandlerFunc
 	AdminOTPHandler    http.HandlerFunc
+	AdminStorageHandler http.HandlerFunc
 	PublicShareHandler http.HandlerFunc
 	UpdateHandler      http.HandlerFunc
 	WebDAVHandler      http.Handler
@@ -60,6 +61,7 @@ func InitHandlers(db *storage.DB, gd *gdrive.Manager, vfsEngine *vfs.VFS, uiDir 
 		TunnelHandler = s.TunnelHandler
 		AdminDriveHandler = s.AdminDriveHandler
 		AdminOTPHandler = s.AdminOTPHandler
+		AdminStorageHandler = s.AdminStorageHandler
 		PublicShareHandler = s.PublicShareHandler
 		UpdateHandler = s.UpdateHandler
 		WebDAVHandler = s.WebDAVHandler()
@@ -82,6 +84,7 @@ type cloudPoolSubMuxes struct {
 	otpMux         *http.ServeMux
 	publicShareMux *http.ServeMux
 	updateMux      *http.ServeMux
+	storageMux     *http.ServeMux
 	davHandler     http.Handler
 }
 
@@ -95,6 +98,8 @@ func (s *Server) setupSubMuxes() {
 	m.filesMux = http.NewServeMux()
 	m.filesMux.HandleFunc("/api/files", s.handleListFiles)
 	m.filesMux.HandleFunc("/api/files/", s.handleListFiles)
+	m.filesMux.HandleFunc("/api/files/status", s.handleFileStatus)
+	m.filesMux.HandleFunc("/api/files/status/", s.handleFileStatus)
 	m.filesMux.HandleFunc("/api/files/mkdir", s.handleMkdir)
 	m.filesMux.HandleFunc("/api/files/rename", s.handleRenameFile)
 	m.filesMux.HandleFunc("/api/files/delete", s.handleDeleteFile)
@@ -180,6 +185,8 @@ func (s *Server) setupSubMuxes() {
 	m.driveMux.HandleFunc("/api/admin/drive/", s.handleListDriveFiles)
 	m.driveMux.HandleFunc("/api/admin/drive/import", s.handleImportDriveFiles)
 	m.driveMux.HandleFunc("/api/admin/drive/files", s.handleListDriveFiles)
+	m.driveMux.HandleFunc("/api/admin/storage/integrity-check", s.handleIntegrityCheck)
+	m.driveMux.HandleFunc("/api/admin/storage/integrity-check/", s.handleIntegrityCheck)
 
 	// 10. Admin OTP Sub-Mux
 	m.otpMux = http.NewServeMux()
@@ -200,12 +207,6 @@ func (s *Server) setupSubMuxes() {
 	m.publicShareMux.HandleFunc("/api/public/share/stream", s.handlePublicShareStream)
 	m.publicShareMux.HandleFunc("/api/public/share/download", s.handlePublicShareDownload)
 
-	// 11. Update Sub-Mux
-	m.updateMux = http.NewServeMux()
-	m.updateMux.HandleFunc("/api/admin/update/info", s.handleUpdateInfo)
-	m.updateMux.HandleFunc("/api/admin/update/upload", s.handleUpdateUpload)
-	m.updateMux.HandleFunc("/api/admin/update/rollback", s.handleUpdateRollback)
-
 	// 11. Update Sub-Mux (In-App Software Update & Granular Hot-Patching)
 	m.updateMux = http.NewServeMux()
 	m.updateMux.HandleFunc("/api/admin/update", s.handleUpdateInfo)
@@ -214,6 +215,11 @@ func (s *Server) setupSubMuxes() {
 	m.updateMux.HandleFunc("/api/admin/update/upload", s.handleUpdateUpload)
 	m.updateMux.HandleFunc("/api/admin/update/rollback", s.handleUpdateRollback)
 	m.updateMux.HandleFunc("/api/admin/update/restart", s.handleRestartEngine)
+
+	// 12. Admin Storage Sub-Mux (Integrity & Maintenance)
+	m.storageMux = http.NewServeMux()
+	m.storageMux.HandleFunc("/api/admin/storage/integrity-check", s.handleIntegrityCheck)
+	m.storageMux.HandleFunc("/api/admin/storage/integrity-check/", s.handleIntegrityCheck)
 
 	// WebDAV Handler
 	m.davHandler = webdav.CreateWebDAVHandler(s.vfs, s.db)
@@ -348,6 +354,15 @@ func (s *Server) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, `{"error":"Update handler not initialized"}`, http.StatusServiceUnavailable)
+}
+
+func (s *Server) AdminStorageHandler(w http.ResponseWriter, r *http.Request) {
+	m := s.getSubMuxes()
+	if m != nil && m.storageMux != nil {
+		m.storageMux.ServeHTTP(w, r)
+		return
+	}
+	http.Error(w, `{"error":"Admin Storage handler not initialized"}`, http.StatusServiceUnavailable)
 }
 
 func (s *Server) WebDAVHandler() http.Handler {

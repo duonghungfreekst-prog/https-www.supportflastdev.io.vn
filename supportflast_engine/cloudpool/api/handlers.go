@@ -180,6 +180,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/files/stream", s.handleStreamFile)
 	mux.HandleFunc("/api/files/chunks", s.handleFileChunks)
 	mux.HandleFunc("/api/files/zip", s.handleDownloadZip)
+	mux.HandleFunc("/api/files/download-zip", s.handleDownloadZip)
 
 	// Recycle Bin (Trash) Endpoints
 	mux.HandleFunc("/api/files/trash", s.handleListTrashFiles)
@@ -1181,6 +1182,87 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// toASCIIFallback chuyển đổi chuỗi tiếng Việt thành chuỗi ASCII an toàn làm fallback cho client cũ
+func toASCIIFallback(s string) string {
+	var sb strings.Builder
+	for _, r := range s {
+		switch r {
+		case 'à', 'á', 'ả', 'ã', 'ạ', 'ă', 'ằ', 'ắ', 'ẳ', 'ẵ', 'ặ', 'â', 'ầ', 'ấ', 'ẩ', 'ẫ', 'ậ':
+			sb.WriteRune('a')
+		case 'À', 'Á', 'Ả', 'Ã', 'Ạ', 'Ă', 'Ằ', 'Ắ', 'Ẳ', 'Ẵ', 'Ặ', 'Â', 'Ầ', 'Ấ', 'Ẩ', 'Ẫ', 'Ậ':
+			sb.WriteRune('A')
+		case 'đ':
+			sb.WriteRune('d')
+		case 'Đ':
+			sb.WriteRune('D')
+		case 'è', 'é', 'ẻ', 'ẽ', 'ẹ', 'ê', 'ề', 'ế', 'ể', 'ễ', 'ệ':
+			sb.WriteRune('e')
+		case 'È', 'É', 'Ẻ', 'Ẽ', 'Ẹ', 'Ê', 'Ề', 'Ế', 'Ể', 'Ễ', 'Ệ':
+			sb.WriteRune('E')
+		case 'ì', 'í', 'ỉ', 'ĩ', 'ị':
+			sb.WriteRune('i')
+		case 'Ì', 'Í', 'Ỉ', 'Ĩ', 'Ị':
+			sb.WriteRune('I')
+		case 'ò', 'ó', 'ỏ', 'õ', 'ọ', 'ô', 'ồ', 'ố', 'ổ', 'ỗ', 'ộ', 'ơ', 'ờ', 'ớ', 'ở', 'ỡ', 'ợ':
+			sb.WriteRune('o')
+		case 'Ò', 'Ó', 'Ỏ', 'Õ', 'Ọ', 'Ô', 'Ồ', 'Ố', 'Ổ', 'Ỗ', 'Ộ', 'Ơ', 'Ờ', 'Ớ', 'Ở', 'Ỡ', 'Ợ':
+			sb.WriteRune('O')
+		case 'ù', 'ú', 'ủ', 'ũ', 'ụ', 'ư', 'ừ', 'ứ', 'ử', 'ữ', 'ự':
+			sb.WriteRune('u')
+		case 'Ù', 'Ú', 'Ủ', 'Ũ', 'Ụ', 'Ư', 'Ừ', 'Ứ', 'Ử', 'Ữ', 'Ự':
+			sb.WriteRune('U')
+		case 'ỳ', 'ý', 'ỷ', 'ỹ', 'ỵ':
+			sb.WriteRune('y')
+		case 'Ỳ', 'Ý', 'Ỷ', 'Ỹ', 'Ỵ':
+			sb.WriteRune('Y')
+		default:
+			if r > 31 && r < 127 && r != '"' && r != '\\' && r != ';' {
+				sb.WriteRune(r)
+			} else if r == ' ' {
+				sb.WriteRune(' ')
+			} else {
+				sb.WriteRune('_')
+			}
+		}
+	}
+	res := strings.TrimSpace(sb.String())
+	if res == "" {
+		return "download"
+	}
+	return res
+}
+
+// formatContentDisposition tạo header Content-Disposition tuân thủ RFC 6266 và RFC 5987
+// Hỗ trợ tiếng Việt có dấu chuẩn xác và chống CRLF Header Injection (Rule PHAN 3.6)
+func formatContentDisposition(dispositionType, filename string) string {
+	if dispositionType == "" {
+		dispositionType = "attachment"
+	}
+	// Sanitize chống CRLF Header Injection (Rule PHAN 3.6)
+	cleanName := strings.ReplaceAll(filename, "\r", "")
+	cleanName = strings.ReplaceAll(cleanName, "\n", "")
+	cleanName = strings.ReplaceAll(cleanName, `"`, `_`)
+
+	// Fallback ASCII cho client cũ không hỗ trợ RFC 5987
+	fallback := toASCIIFallback(cleanName)
+
+	// RFC 5987 percent-encode:
+	// attr-char = ALPHA / DIGIT / "!" / "#" / "$" / "&" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+	var rfc5987 strings.Builder
+	for i := 0; i < len(cleanName); i++ {
+		b := cleanName[i]
+		if (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') ||
+			b == '!' || b == '#' || b == '$' || b == '&' || b == '+' || b == '-' ||
+			b == '.' || b == '^' || b == '_' || b == '`' || b == '|' || b == '~' {
+			rfc5987.WriteByte(b)
+		} else {
+			rfc5987.WriteString(fmt.Sprintf("%%%02X", b))
+		}
+	}
+
+	return fmt.Sprintf(`%s; filename="%s"; filename*=UTF-8''%s`, dispositionType, fallback, rfc5987.String())
+}
+
 func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
@@ -1249,6 +1331,11 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if vfile.HasMissingChunks {
+		writeError(w, http.StatusGone, "⚠️ Tệp bị thiếu dữ liệu nguồn (chunk đã bị xóa trên Google Drive). Không thể phát trực tuyến.", nil)
+		return
+	}
+
 	streamer, err := s.vfs.NewFileStreamer(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Lá»—i khá»Ÿi táº¡o luá»“ng stream: "+err.Error(), err)
@@ -1257,30 +1344,20 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	defer streamer.Close()
 
 	mimeType := vfile.MimeType
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
-	ext := strings.ToLower(filepath.Ext(vfile.Name))
-	if ext == ".pdf" {
-		mimeType = "application/pdf"
-	} else if ext == ".webm" {
-		mimeType = "video/webm"
-	} else if ext == ".mp4" {
-		mimeType = "video/mp4"
-	} else if ext == ".mp3" {
-		mimeType = "audio/mpeg"
-	} else if ext == ".jpg" || ext == ".jpeg" {
-		mimeType = "image/jpeg"
-	} else if ext == ".png" {
-		mimeType = "image/png"
+	if mimeType == "" || mimeType == "application/octet-stream" {
+		mimeType = models.ResolveMimeType(vfile.Name)
+	} else {
+		resolved := models.ResolveMimeType(vfile.Name)
+		if resolved != "application/octet-stream" {
+			mimeType = resolved
+		}
 	}
 
-	escapedFilename := url.PathEscape(vfile.Name)
 	w.Header().Set("Content-Type", mimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"; filename*=UTF-8''%s`, vfile.Name, escapedFilename))
+	w.Header().Set("Content-Disposition", formatContentDisposition("inline", vfile.Name))
 	w.Header().Set("Accept-Ranges", "bytes")
 	// Cho phép cache phạm vi (Range Cache) cho video và âm thanh để trình duyệt tua và đệm mượt
-	if strings.HasPrefix(mimeType, "video/") || strings.HasPrefix(mimeType, "audio/") {
+	if models.IsMediaStreamable(mimeType) {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 	} else {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
@@ -1361,131 +1438,346 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Direct zero-latency streaming for unencrypted native Google Drive files
-	chunks, err := s.db.GetChunksForFile(id)
-	if err == nil && len(chunks) == 1 && (!vfile.IsEncrypted || chunks[0].EncryptedSizeBytes == 0) {
-		stream, _, streamErr := s.vfs.DownloadStream(r.Context(), chunks[0].AccountID, chunks[0].GDriveFileID)
-		if streamErr == nil {
-			defer stream.Close()
-			escapedFilename := url.PathEscape(vfile.Name)
-			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, vfile.Name, escapedFilename))
-			w.Header().Set("Content-Type", vfile.MimeType)
-			if vfile.SizeBytes > 0 {
-				w.Header().Set("Content-Length", fmt.Sprintf("%d", vfile.SizeBytes))
-			}
-			w.Header().Set("Accept-Ranges", "bytes")
-			if flusher, ok := w.(http.Flusher); ok {
-				flusher.Flush()
-			}
-			_, _ = io.Copy(w, stream)
-			return
-		}
+	if vfile.HasMissingChunks {
+		writeError(w, http.StatusGone, "⚠️ Tệp bị thiếu dữ liệu nguồn (chunk đã bị xóa trên Google Drive). Không thể tải về toàn vẹn.", nil)
+		return
 	}
 
 	streamer, err := s.vfs.NewFileStreamer(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº£i tá»‡p: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi nạp tệp tải xuống: "+err.Error(), err)
 		return
 	}
 	defer streamer.Close()
 
-	escapedFilename := url.PathEscape(vfile.Name)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, vfile.Name, escapedFilename))
-	w.Header().Set("Content-Type", vfile.MimeType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", vfile.SizeBytes))
-	w.Header().Set("Accept-Ranges", "bytes")
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
+	mimeType := vfile.MimeType
+	if mimeType == "" || mimeType == "application/octet-stream" {
+		mimeType = models.ResolveMimeType(vfile.Name)
 	}
 
-	_, _ = io.Copy(w, streamer)
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Content-Disposition", formatContentDisposition("attachment", vfile.Name))
+	w.Header().Set("Accept-Ranges", "bytes")
+
+	modTime := streamer.ModTime()
+	if modTime.IsZero() {
+		modTime = vfile.UpdatedAt
+	}
+	if modTime.IsZero() {
+		modTime = time.Now()
+	}
+
+	// Hỗ trợ đầy đủ HTTP Range (cho phép pause/resume quá trình tải xuống qua trình duyệt hoặc IDM)
+	http.ServeContent(w, r, vfile.Name, modTime, streamer)
 }
 
 func (s *Server) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
-	idsParam := r.URL.Query().Get("ids")
+	var folderID string
+	var idsParam string
+	var otp string
+
+	otp = r.URL.Query().Get("otp")
+	if otp == "" {
+		otp = r.Header.Get("X-File-OTP")
+	}
+
+	folderID = strings.TrimSpace(r.URL.Query().Get("folder_id"))
+	if folderID == "" {
+		folderID = strings.TrimSpace(r.FormValue("folder_id"))
+	}
+
+	idsParam = strings.TrimSpace(r.URL.Query().Get("file_ids"))
 	if idsParam == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u danh sÃ¡ch file ID", nil)
+		idsParam = strings.TrimSpace(r.URL.Query().Get("ids"))
+	}
+	if idsParam == "" {
+		idsParam = strings.TrimSpace(r.FormValue("file_ids"))
+	}
+	if idsParam == "" {
+		idsParam = strings.TrimSpace(r.FormValue("ids"))
+	}
+
+	// Hỗ trợ POST JSON body
+	if r.Method == http.MethodPost && folderID == "" && idsParam == "" && r.Body != nil && strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		var reqBody struct {
+			FolderID string   `json:"folder_id"`
+			FileIDs  []string `json:"file_ids"`
+			IDs      []string `json:"ids"`
+			Name     string   `json:"name"`
+			OTP      string   `json:"otp"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err == nil {
+			if folderID == "" {
+				folderID = strings.TrimSpace(reqBody.FolderID)
+			}
+			if len(reqBody.FileIDs) > 0 {
+				idsParam = strings.Join(reqBody.FileIDs, ",")
+			} else if len(reqBody.IDs) > 0 {
+				idsParam = strings.Join(reqBody.IDs, ",")
+			}
+			if otp == "" && reqBody.OTP != "" {
+				otp = strings.TrimSpace(reqBody.OTP)
+			}
+		}
+	}
+
+	if folderID == "" && idsParam == "" {
+		writeError(w, http.StatusBadRequest, "Vui lòng cung cấp folder_id hoặc danh sách file_ids cần tải", nil)
 		return
 	}
 
 	user := s.getUserFromRequest(r)
 	isAdmin := user != nil && user.Role == "admin"
-	otp := r.URL.Query().Get("otp")
-	if otp == "" {
-		otp = r.Header.Get("X-File-OTP")
+	settings, _ := s.db.GetSettings()
+	guestMode := "view_only"
+	if settings != nil && settings.GuestAccessMode != "" {
+		guestMode = settings.GuestAccessMode
 	}
 
-	rawIDs := strings.Split(idsParam, ",")
-	var validFiles []*models.VirtualFile
+	type zipEntry struct {
+		file    *models.VirtualFile
+		zipPath string
+	}
 
-	for _, fileID := range rawIDs {
-		fileID = strings.TrimSpace(fileID)
-		if fileID == "" {
-			continue
+	canAccessFile := func(vfile *models.VirtualFile) bool {
+		if vfile == nil || vfile.IsTrashed {
+			return false
 		}
-
-		vfile, err := s.db.GetVirtualFile(fileID)
-		if err != nil || vfile.IsDir {
-			continue
-		}
-
 		isOwner := user != nil && vfile.UserID == user.ID
-		if !isAdmin && !isOwner {
-			// File khÃ´ng pháº£i cá»§a user nÃ y vÃ  ngÆ°á»i gá»i khÃ´ng pháº£i Admin
-			// Kiá»ƒm tra xem file hoáº·c thÆ° má»¥c cha cÃ³ Ä‘Æ°á»£c chia sáº» cÃ´ng khai khÃ´ng
-			if !s.db.IsFileOrAncestorShared(vfile.ID) {
-				if user == nil {
-					continue
-				}
+		if isAdmin || isOwner {
+			return true
+		}
+		if s.db.IsFileOrAncestorShared(vfile.ID) {
+			return true
+		}
 
-				// Regular user accessing admin file requires valid single-use OTP
-				if (vfile.UserID == "user_admin" || vfile.UserID == "") && otp != "" {
-					valid, err := s.db.VerifyAndBurnOTP(vfile.ID, user.ID, otp)
-					if !valid || err != nil {
-						continue
-					}
+		isAdminOwned := (vfile.UserID == "user_admin" || vfile.UserID == "")
+		if isAdminOwned {
+			if otp != "" {
+				verifyUserID := "guest"
+				if user != nil {
+					verifyUserID = user.ID
+				}
+				valid, err := s.db.VerifyAndBurnOTP(vfile.ID, verifyUserID, otp)
+				if valid && err == nil {
 					_ = s.db.LogActivity(&models.ActivityLog{
-						UserID:    user.ID,
-						Username:  user.Username,
+						UserID:    verifyUserID,
+						Username:  verifyUserID,
 						Action:    "OTP_DOWNLOAD",
 						Target:    vfile.Name,
 						IPAddress: getClientIP(r),
-						Details:   "Má»Ÿ khÃ³a táº£i tá»‡p tin Admin trong file Zip thÃ nh cÃ´ng báº±ng mÃ£ OTP 1 láº§n",
+						Details:   "Mở khóa tải tệp tin Admin trong gói Zip thành công bằng mã OTP 1 lần",
 					})
-				} else {
+					return true
+				}
+			}
+			if guestMode != "strict" {
+				return true
+			}
+		}
+		return false
+	}
+
+	var validFiles []zipEntry
+	var targetArchiveName string
+
+	// 1. Trường hợp tải trọn gói 1 thư mục qua folder_id
+	if folderID != "" {
+		folder, err := s.db.GetVirtualFile(folderID)
+		if err != nil || folder.IsTrashed {
+			writeError(w, http.StatusNotFound, "Thư mục không tồn tại", err)
+			return
+		}
+		if !folder.IsDir {
+			writeError(w, http.StatusBadRequest, "ID được cung cấp không phải là thư mục", nil)
+			return
+		}
+		if !canAccessFile(folder) {
+			writeError(w, http.StatusForbidden, "Bạn không có quyền truy cập thư mục này", nil)
+			return
+		}
+
+		targetArchiveName = folder.Name
+		filesInTree, err := s.db.GetAllFilesInFolderTree(folder.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "Lỗi đọc cấu trúc thư mục: "+err.Error(), err)
+			return
+		}
+
+		for _, item := range filesInTree {
+			itemCopy := item.File
+			if itemCopy.IsTrashed {
+				continue
+			}
+			if canAccessFile(&itemCopy) {
+				relPath := item.RelativePath
+				if relPath == "" {
+					relPath = itemCopy.Name
+				}
+				validFiles = append(validFiles, zipEntry{
+					file:    &itemCopy,
+					zipPath: path.Clean(filepath.ToSlash(relPath)),
+				})
+			}
+		}
+	} else {
+		// 2. Trường hợp tải theo danh sách file_ids
+		rawIDs := strings.Split(idsParam, ",")
+		var singleName string
+		trimmedCount := 0
+
+		for _, fileID := range rawIDs {
+			fileID = strings.TrimSpace(fileID)
+			if fileID == "" {
+				continue
+			}
+			trimmedCount++
+			vfile, err := s.db.GetVirtualFile(fileID)
+			if err != nil || vfile.IsTrashed {
+				continue
+			}
+
+			if vfile.IsDir {
+				if trimmedCount == 1 && len(rawIDs) == 1 {
+					singleName = vfile.Name
+				}
+				if !canAccessFile(vfile) {
 					continue
+				}
+				// Lấy toàn bộ cây thư mục con
+				filesInTree, err := s.db.GetAllFilesInFolderTree(vfile.ID)
+				if err == nil {
+					for _, item := range filesInTree {
+						itemCopy := item.File
+						if itemCopy.IsTrashed {
+							continue
+						}
+						if canAccessFile(&itemCopy) {
+							relPath := item.RelativePath
+							if relPath == "" {
+								relPath = itemCopy.Name
+							}
+							entryPath := path.Clean(filepath.ToSlash(path.Join(vfile.Name, relPath)))
+							validFiles = append(validFiles, zipEntry{
+								file:    &itemCopy,
+								zipPath: entryPath,
+							})
+						}
+					}
+				}
+			} else {
+				if trimmedCount == 1 && len(rawIDs) == 1 {
+					singleName = strings.TrimSuffix(vfile.Name, path.Ext(vfile.Name))
+				}
+				if canAccessFile(vfile) {
+					validFiles = append(validFiles, zipEntry{
+						file:    vfile,
+						zipPath: vfile.Name,
+					})
 				}
 			}
 		}
 
-		validFiles = append(validFiles, vfile)
+		if singleName != "" {
+			targetArchiveName = singleName
+		}
 	}
 
 	if len(validFiles) == 0 {
-		writeError(w, http.StatusForbidden, "KhÃ´ng cÃ³ tá»‡p tin nÃ o há»£p lá»‡ hoáº·c báº¡n khÃ´ng cÃ³ quyá»n táº£i cÃ¡c tá»‡p tin nÃ y", nil)
+		writeError(w, http.StatusForbidden, "Không có tệp tin nào hợp lệ hoặc bạn không có quyền tải các mục này", nil)
 		return
 	}
 
-	w.Header().Set("Content-Disposition", `attachment; filename="cloudpool_archive.zip"`)
-	w.Header().Set("Content-Type", "application/zip")
+	zipFilename := r.URL.Query().Get("name")
+	if zipFilename == "" {
+		if targetArchiveName != "" {
+			zipFilename = fmt.Sprintf("%s.zip", targetArchiveName)
+		} else {
+			zipFilename = fmt.Sprintf("cloudpool_archive_%s.zip", time.Now().Format("20060102_150405"))
+		}
+	}
+	if !strings.HasSuffix(strings.ToLower(zipFilename), ".zip") {
+		zipFilename += ".zip"
+	}
 
+	// Đảm bảo không trùng lặp đường dẫn tệp trong file zip
+	usedPaths := make(map[string]int)
+	for i := range validFiles {
+		targetZipPath := validFiles[i].zipPath
+		if count, exists := usedPaths[targetZipPath]; exists {
+			usedPaths[targetZipPath] = count + 1
+			ext := path.Ext(targetZipPath)
+			base := strings.TrimSuffix(targetZipPath, ext)
+			validFiles[i].zipPath = fmt.Sprintf("%s (%d)%s", base, count+1, ext)
+		} else {
+			usedPaths[targetZipPath] = 0
+		}
+	}
+
+	// Thiết lập Header HTTP cho Zip Streaming tuân thủ RFC 5987 (Rule PHAN 3.4 & PHAN 3.6)
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", formatContentDisposition("attachment", zipFilename))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+
+	// Sử dụng archive/zip stream trực tiếp ra ResponseWriter dạng On-The-Fly (Zero-Copy)
+	// Tuân thủ Rule 1.4: Không tạo bất kỳ file tạm nào trên ổ đĩa
 	zipWriter := zip.NewWriter(w)
 	defer zipWriter.Close()
 
-	for _, vfile := range validFiles {
-		streamer, err := s.vfs.NewFileStreamer(r.Context(), vfile.ID)
+	for _, entry := range validFiles {
+		streamer, err := s.vfs.NewFileStreamer(r.Context(), entry.file.ID)
 		if err != nil {
+			log.Printf("[ENGINE] [ZIP STREAM] Lỗi nạp luồng tệp %s (%s): %v", entry.file.Name, entry.file.ID, err)
 			continue
 		}
 
-		zf, err := zipWriter.Create(vfile.Name)
+		modTime := entry.file.UpdatedAt
+		if modTime.IsZero() {
+			modTime = time.Now()
+		}
+
+		header := &zip.FileHeader{
+			Name:     entry.zipPath,
+			Modified: modTime,
+		}
+
+		// Tối ưu CPU: Các định dạng tệp đã nén sẵn/media sử dụng Store (0% CPU),
+		// các định dạng văn bản/mã nguồn sử dụng Deflate
+		ext := strings.ToLower(path.Ext(entry.file.Name))
+		if ext == ".zip" || ext == ".rar" || ext == ".7z" || ext == ".gz" || ext == ".tar" ||
+			ext == ".mp4" || ext == ".mkv" || ext == ".mp3" || ext == ".jpg" || ext == ".jpeg" ||
+			ext == ".png" || ext == ".webp" || ext == ".iso" {
+			header.Method = zip.Store
+		} else {
+			header.Method = zip.Deflate
+		}
+
+		zf, err := zipWriter.CreateHeader(header)
 		if err != nil {
 			streamer.Close()
+			log.Printf("[ENGINE] [ZIP STREAM] Lỗi tạo header entry %s: %v", entry.zipPath, err)
 			continue
 		}
 
-		_, _ = io.Copy(zf, streamer)
+		_, copyErr := io.Copy(zf, streamer)
 		streamer.Close()
+		if copyErr != nil {
+			// Client có thể đã đóng tab hoặc ngắt kết nối tải về, dừng stream
+			log.Printf("[ENGINE] [ZIP STREAM] Ngắt luồng tải zip %s: %v", entry.zipPath, copyErr)
+			return
+		}
+
+		// Đẩy dữ liệu ra mạng ngay lập tức cho client on-the-fly
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+	}
+
+	_ = zipWriter.Close()
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
 	}
 }
 
@@ -4192,27 +4484,17 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	defer streamer.Close()
 
 	mimeType := targetMimeType
-	ext := strings.ToLower(filepath.Ext(targetFileName))
-	if ext == ".pdf" {
-		mimeType = "application/pdf"
-	} else if ext == ".webm" {
-		mimeType = "video/webm"
-	} else if ext == ".mp4" {
-		mimeType = "video/mp4"
-	} else if ext == ".mp3" {
-		mimeType = "audio/mpeg"
-	} else if ext == ".jpg" || ext == ".jpeg" {
-		mimeType = "image/jpeg"
-	} else if ext == ".png" {
-		mimeType = "image/png"
-	} else if ext == ".xls" {
-		mimeType = "application/vnd.ms-excel"
-	} else if ext == ".xlsx" {
-		mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	if mimeType == "" || mimeType == "application/octet-stream" {
+		mimeType = models.ResolveMimeType(targetFileName)
+	} else {
+		resolved := models.ResolveMimeType(targetFileName)
+		if resolved != "application/octet-stream" {
+			mimeType = resolved
+		}
 	}
 
 	w.Header().Set("Content-Type", mimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", url.PathEscape(targetFileName)))
+	w.Header().Set("Content-Disposition", formatContentDisposition("inline", targetFileName))
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	http.ServeContent(w, r, targetFileName, streamer.ModTime(), streamer)
@@ -4257,8 +4539,12 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 		}
 		defer streamer.Close()
 
-		w.Header().Set("Content-Type", vfile.MimeType)
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", url.PathEscape(vfile.Name)))
+		downloadMime := vfile.MimeType
+		if downloadMime == "" || downloadMime == "application/octet-stream" {
+			downloadMime = models.ResolveMimeType(vfile.Name)
+		}
+		w.Header().Set("Content-Type", downloadMime)
+		w.Header().Set("Content-Disposition", formatContentDisposition("attachment", vfile.Name))
 		w.Header().Set("Accept-Ranges", "bytes")
 		http.ServeContent(w, r, vfile.Name, streamer.ModTime(), streamer)
 		return
@@ -4268,13 +4554,16 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 	if sh.IsDir {
 		filesInTree, err := s.db.GetAllFilesInFolderTree(sh.FileID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Lá»—i Ä‘á»c cÃ¢y thÆ° má»¥c: "+err.Error(), err)
+			writeError(w, http.StatusInternalServerError, "Lỗi đọc cây thư mục: "+err.Error(), err)
 			return
 		}
 
 		zipName := fmt.Sprintf("%s.zip", sh.FileName)
 		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", url.PathEscape(zipName)))
+		w.Header().Set("Content-Disposition", formatContentDisposition("attachment", zipName))
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
 
 		zipWriter := zip.NewWriter(w)
 		defer zipWriter.Close()
@@ -4290,14 +4579,42 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 				entryPath = item.File.Name
 			}
 
-			zf, err := zipWriter.Create(entryPath)
+			modTime := item.File.UpdatedAt
+			if modTime.IsZero() {
+				modTime = time.Now()
+			}
+
+			header := &zip.FileHeader{
+				Name:     entryPath,
+				Modified: modTime,
+			}
+			ext := strings.ToLower(filepath.Ext(item.File.Name))
+			if ext == ".zip" || ext == ".rar" || ext == ".7z" || ext == ".gz" || ext == ".tar" ||
+				ext == ".mp4" || ext == ".mkv" || ext == ".mp3" || ext == ".jpg" || ext == ".jpeg" ||
+				ext == ".png" || ext == ".webp" || ext == ".iso" {
+				header.Method = zip.Store
+			} else {
+				header.Method = zip.Deflate
+			}
+
+			zf, err := zipWriter.CreateHeader(header)
 			if err != nil {
 				streamer.Close()
 				continue
 			}
 
-			_, _ = io.Copy(zf, streamer)
+			_, copyErr := io.Copy(zf, streamer)
 			streamer.Close()
+			if copyErr != nil {
+				return
+			}
+			if flusher, ok := w.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		}
+		_ = zipWriter.Close()
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
 		}
 		return
 	}
@@ -4305,13 +4622,13 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 	// Single File Download
 	streamer, err := s.vfs.NewFileStreamer(r.Context(), sh.FileID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i náº¡p tá»‡p: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi nạp tệp: "+err.Error(), err)
 		return
 	}
 	defer streamer.Close()
 
 	w.Header().Set("Content-Type", sh.MimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", url.PathEscape(sh.FileName)))
+	w.Header().Set("Content-Disposition", formatContentDisposition("attachment", sh.FileName))
 	w.Header().Set("Accept-Ranges", "bytes")
 	http.ServeContent(w, r, sh.FileName, streamer.ModTime(), streamer)
 }
@@ -4361,4 +4678,179 @@ func validatePasswordStrength(password string) error {
 	}
 	return nil
 }
+
+// handleFileStatus kiểm tra nhanh tính sẵn sàng và tính toàn vẹn của tệp trước khi mở stream
+// Endpoint: GET /api/files/status?id=... (hoặc POST {"id":"..."})
+func (s *Server) handleFileStatus(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" && r.Method == http.MethodPost {
+		var req struct {
+			ID string `json:"id"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		id = req.ID
+	}
+
+	if strings.TrimSpace(id) == "" {
+		writeError(w, http.StatusBadRequest, "Thiếu id tệp tin", nil)
+		return
+	}
+
+	vfile, err := s.db.GetVirtualFile(id)
+	if err != nil || vfile == nil {
+		writeError(w, http.StatusNotFound, "Tệp tin không tồn tại", err)
+		return
+	}
+
+	user := s.getUserFromRequest(r)
+	isAdmin := user != nil && user.Role == "admin"
+	isOwner := user != nil && vfile.UserID == user.ID
+
+	// Kiểm tra quyền truy cập tương tự stream/download
+	if !isAdmin && !isOwner {
+		if !s.db.IsFileOrAncestorShared(vfile.ID) {
+			settings, _ := s.db.GetSettings()
+			guestMode := "view_only"
+			if settings != nil && settings.GuestAccessMode != "" {
+				guestMode = settings.GuestAccessMode
+			}
+			if vfile.UserID == "user_admin" || vfile.UserID == "" {
+				otp := r.URL.Query().Get("otp")
+				if otp != "" {
+					valid, _ := s.db.VerifyOTPOnly(vfile.ID, "user_admin", otp)
+					if !valid {
+						writeError(w, http.StatusForbidden, "Mã OTP không hợp lệ", nil)
+						return
+					}
+				} else if guestMode == "strict" {
+					writeError(w, http.StatusUnauthorized, "Yêu cầu đăng nhập hoặc mã OTP", nil)
+					return
+				}
+			}
+		}
+	}
+
+	if vfile.IsDir {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"file_id":            vfile.ID,
+			"name":               vfile.Name,
+			"is_dir":             true,
+			"ready":              true,
+			"status":             "ready",
+			"has_missing_chunks": false,
+			"message":            "Thư mục hợp lệ",
+		})
+		return
+	}
+
+	chunks, err := s.db.GetChunksForFile(vfile.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Không thể đọc dữ liệu chunks của tệp", err)
+		return
+	}
+
+	totalChunks := len(chunks)
+	missingCount := 0
+	uploadedCount := 0
+
+	for _, c := range chunks {
+		if c.Status == "missing" {
+			missingCount++
+		} else if c.Status == "uploaded" {
+			uploadedCount++
+		}
+	}
+
+	// Tùy chọn kiểm tra trực tiếp Drive nếu tham số verify_drive=true
+	if r.URL.Query().Get("verify_drive") == "true" && s.gd != nil && missingCount == 0 {
+		for _, c := range chunks {
+			if c.GDriveFileID != "" {
+				exists, chkErr := s.gd.CheckChunkExists(r.Context(), c.AccountID, c.GDriveFileID)
+				if chkErr == nil && !exists {
+					missingCount++
+					_ = s.db.UpdateChunkStatus(c.ChunkID, "missing")
+					_ = s.db.UpdateFileMissingChunks(vfile.ID, true)
+					vfile.HasMissingChunks = true
+				}
+			}
+		}
+	}
+
+	hasMissing := vfile.HasMissingChunks || missingCount > 0 || (vfile.ChunkCount > 0 && totalChunks == 0)
+
+	statusStr := "ready"
+	msg := "Tệp tin sẵn sàng phát hoặc tải về"
+	if hasMissing {
+		statusStr = "missing_chunks"
+		msg = "⚠️ Tệp bị thiếu dữ liệu nguồn (chunk đã bị xóa trên Google Drive)"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"file_id":            vfile.ID,
+		"name":               vfile.Name,
+		"size_bytes":         vfile.SizeBytes,
+		"mime_type":          vfile.MimeType,
+		"ready":              !hasMissing,
+		"status":             statusStr,
+		"has_missing_chunks": hasMissing,
+		"chunk_count":        vfile.ChunkCount,
+		"total_chunks":       totalChunks,
+		"uploaded_chunks":    uploadedCount,
+		"missing_chunks":     missingCount,
+		"message":            msg,
+		"requires_otp":       vfile.RequiresOTP,
+		"is_admin_owned":     vfile.IsAdminOwned,
+	})
+}
+
+// handleIntegrityCheck thực hiện chẩn đoán & khắc phục tính toàn vẹn dữ liệu Chunks
+// Endpoint: POST hoặc GET /api/admin/storage/integrity-check
+func (s *Server) handleIntegrityCheck(w http.ResponseWriter, r *http.Request) {
+	user := s.getUserFromRequest(r)
+	if user == nil || user.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Chỉ Quản Trị Viên mới có quyền thực hiện kiểm tra tính toàn vẹn lưu trữ", nil)
+		return
+	}
+
+	var opts storage.IntegrityCheckOptions
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&opts)
+	}
+
+	// Ưu tiên tham số URL query nếu có
+	if qFileID := r.URL.Query().Get("file_id"); qFileID != "" {
+		opts.FileID = qFileID
+	}
+	if qAccountID := r.URL.Query().Get("account_id"); qAccountID != "" {
+		opts.AccountID = qAccountID
+	}
+	if r.URL.Query().Get("force") == "true" {
+		opts.Force = true
+	}
+	if qConcurrency := r.URL.Query().Get("concurrency"); qConcurrency != "" {
+		if c, err := strconv.Atoi(qConcurrency); err == nil && c > 0 {
+			opts.Concurrency = c
+		}
+	}
+
+	integrityService := storage.NewIntegrityService(s.db, s.gd)
+	report, err := integrityService.RunCheck(r.Context(), opts)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Lỗi trong quá trình kiểm tra tính toàn vẹn: "+err.Error(), err)
+		return
+	}
+
+	// Ghi nhật ký hoạt động kiểm tra
+	_ = s.db.LogActivity(&models.ActivityLog{
+		UserID:    user.ID,
+		Username:  user.Username,
+		Action:    "STORAGE_INTEGRITY_CHECK",
+		Target:    fmt.Sprintf("Quét %d tệp, %d chunks", report.TotalFilesScanned, report.TotalChunksScanned),
+		IPAddress: getClientIP(r),
+		Details:   fmt.Sprintf("Kết quả: %d lành lặn, %d thiếu dữ liệu, %d chunks missing trong %dms", report.HealthyFilesCount, report.CorruptedFilesCount, report.MissingChunksCount, report.DurationMs),
+	})
+
+	writeJSON(w, http.StatusOK, report)
+}
+
 

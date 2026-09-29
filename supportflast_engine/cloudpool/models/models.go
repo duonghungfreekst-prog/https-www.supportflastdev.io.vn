@@ -96,7 +96,8 @@ type VirtualFile struct {
 	IsTrashed      bool       `json:"is_trashed"`
 	IsAdminOwned   bool       `json:"is_admin_owned,omitempty"`   // True if file belongs to Admin and child user is viewing
 	RequiresOTP    bool       `json:"requires_otp,omitempty"`    // True if OTP is required for child user to view/download
-	Replaced       bool       `json:"replaced,omitempty"`        // True náº¿u file nÃ y Ä‘Ã£ ghi Ä‘Ã¨ file cÅ© cÃ¹ng tÃªn (auto-replace)
+	Replaced       bool       `json:"replaced,omitempty"`        // True nếu file này đã ghi đè file cũ cùng tên (auto-replace)
+	HasMissingChunks bool     `json:"has_missing_chunks"`        // True nếu tệp bị thiếu dữ liệu nguồn (chunk bị 404 trên Drive)
 	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`

@@ -1,15 +1,12 @@
-package vfs
+﻿package vfs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
-	"mime"
 	"path"
-	"path/filepath"
-	"sort"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +24,7 @@ type VFS struct {
 	gd            *gdrive.Manager
 	rrIndex       int
 	inFlightQuota map[string]int64
+	rateLimits    map[string]time.Time
 	mu            sync.Mutex
 }
 
@@ -35,6 +33,7 @@ func NewVFS(db *storage.DB, gd *gdrive.Manager) *VFS {
 		db:            db,
 		gd:            gd,
 		inFlightQuota: make(map[string]int64),
+		rateLimits:    make(map[string]time.Time),
 	}
 }
 
@@ -82,117 +81,6 @@ func (v *VFS) DownloadStream(ctx context.Context, accountID, gdriveFileID string
 	return v.gd.DownloadStream(ctx, accountID, gdriveFileID)
 }
 
-// SelectAccountForChunk chooses a Google Drive account based on the configured allocation strategy,
-// accounting for in-flight reserved quota and optional excluded account IDs (e.g. on failover).
-func (v *VFS) SelectAccountForChunk(strategy string, requiredBytes int64, excludeAccountIDs ...string) (*models.Account, error) {
-	accounts, err := v.db.ListAccounts()
-	if err != nil {
-		return nil, err
-	}
-
-	excludeMap := make(map[string]bool)
-	for _, id := range excludeAccountIDs {
-		if id != "" {
-			excludeMap[id] = true
-		}
-	}
-
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	var activeAccounts []models.Account
-	for _, a := range accounts {
-		if a.Status != "active" || excludeMap[a.ID] || a.IsUploadExcludedAccount() {
-			continue
-		}
-
-		// TÃ­nh dung lÆ°á»£ng áº£o kháº£ dá»¥ng: trá»« Ä‘i dung lÆ°á»£ng in-flight Ä‘ang chá» upload
-		inflight := int64(0)
-		if v.inFlightQuota != nil {
-			inflight = v.inFlightQuota[a.ID]
-		}
-		effectiveFree := a.FreeQuotaBytes - inflight
-		if effectiveFree >= requiredBytes {
-			accCopy := a
-			accCopy.FreeQuotaBytes = effectiveFree
-			activeAccounts = append(activeAccounts, accCopy)
-		}
-	}
-
-	if len(activeAccounts) == 0 {
-		return nil, errors.New("khÃ´ng cÃ³ tÃ i khoáº£n Google Drive nÃ o cÃ²n Ä‘á»§ dung lÆ°á»£ng kháº£ dá»¥ng")
-	}
-
-	switch strategy {
-	case "least_used":
-		// Sáº¯p xáº¿p giáº£m dáº§n theo dung lÆ°á»£ng áº£o cÃ²n trá»‘ng (nhiá»u chá»— trá»‘ng nháº¥t lÃªn Ä‘áº§u)
-		sort.Slice(activeAccounts, func(i, j int) bool {
-			return activeAccounts[i].FreeQuotaBytes > activeAccounts[j].FreeQuotaBytes
-		})
-
-		// Há»— trá»£ phÃ¢n bá»• luÃ¢n phiÃªn / phÃ¢n tÃ¡n Ä‘á»u chunk Ä‘a á»• Ä‘Ä©a:
-		// Náº¿u cÃ³ nhiá»u tÃ i khoáº£n dá»“i dÃ o dung lÆ°á»£ng kháº£ dá»¥ng, luÃ¢n phiÃªn phÃ¢n bá»• giá»¯a cÃ¡c tÃ i khoáº£n Ä‘Ã³
-		// Ä‘á»ƒ cÃ¡c chunk liÃªn tiáº¿p cá»§a má»™t tá»‡p lá»›n Ä‘Æ°á»£c phÃ¢n tÃ¡n Ä‘á»u qua nhiá»u tÃ i khoáº£n Google Drive khÃ¡c nhau.
-		if len(activeAccounts) > 1 {
-			maxFree := activeAccounts[0].FreeQuotaBytes
-			var candidateCount int
-			for _, a := range activeAccounts {
-				if a.FreeQuotaBytes >= requiredBytes*5 && a.FreeQuotaBytes >= maxFree/5 {
-					candidateCount++
-				} else {
-					break
-				}
-			}
-			if candidateCount > 1 {
-				idx := v.rrIndex % candidateCount
-				v.rrIndex = (v.rrIndex + 1) % candidateCount
-				chosen := activeAccounts[idx]
-				return &chosen, nil
-			}
-		}
-		chosen := activeAccounts[0]
-		return &chosen, nil
-
-	case "waterfill":
-		// Chá»n tÃ i khoáº£n Ä‘áº§u tiÃªn cÃ²n Ä‘á»§ dung lÆ°á»£ng áº£o kháº£ dá»¥ng
-		chosen := activeAccounts[0]
-		return &chosen, nil
-
-	case "round_robin":
-		if v.rrIndex >= len(activeAccounts) {
-			v.rrIndex = 0
-		}
-		chosen := activeAccounts[v.rrIndex]
-		v.rrIndex = (v.rrIndex + 1) % len(activeAccounts)
-		return &chosen, nil
-
-	default:
-		// Máº·c Ä‘á»‹nh: least_used vá»›i há»— trá»£ luÃ¢n phiÃªn phÃ¢n tÃ¡n Ä‘á»u chunk
-		sort.Slice(activeAccounts, func(i, j int) bool {
-			return activeAccounts[i].FreeQuotaBytes > activeAccounts[j].FreeQuotaBytes
-		})
-		if len(activeAccounts) > 1 {
-			maxFree := activeAccounts[0].FreeQuotaBytes
-			var candidateCount int
-			for _, a := range activeAccounts {
-				if a.FreeQuotaBytes >= requiredBytes*5 && a.FreeQuotaBytes >= maxFree/5 {
-					candidateCount++
-				} else {
-					break
-				}
-			}
-			if candidateCount > 1 {
-				idx := v.rrIndex % candidateCount
-				v.rrIndex = (v.rrIndex + 1) % candidateCount
-				chosen := activeAccounts[idx]
-				return &chosen, nil
-			}
-		}
-		chosen := activeAccounts[0]
-		return &chosen, nil
-	}
-}
-
 // UploadFile streams data, chunks it, encrypts it, and distributes it in parallel across Google Drive accounts
 func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string, src io.Reader, sizeHint int64) (*models.VirtualFile, error) {
 	if userID == "" {
@@ -221,11 +109,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 	}
 
 	filePath := path.Clean(path.Join(parentPath, fileName))
-	ext := filepath.Ext(fileName)
-	mimeType := mime.TypeByExtension(ext)
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
+	mimeType := models.ResolveMimeType(fileName)
 
 	fileID := "file_" + uuid.New().String()
 	var totalSize int64
@@ -233,9 +117,9 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 
 	type uploadJob struct {
 		chunkIndex     int
+		plainData      []byte
 		plainSize      int64
 		encLen         int64
-		encData        []byte
 		chunkHash      string
 		accountID      string
 		gfileID        string
@@ -243,8 +127,15 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		err            error
 	}
 
-	// Parallel upload with bounded worker pool (Rule PHAN 7.1)
-	numWorkers := 4
+	// Bounded worker pool tối ưu đa luồng theo CPU cores (Rule PHAN 7.1)
+	numWorkers := runtime.NumCPU() * 2
+	if numWorkers < 4 {
+		numWorkers = 4
+	}
+	if numWorkers > 8 {
+		numWorkers = 8
+	}
+
 	jobChan := make(chan *uploadJob, numWorkers*2)
 	var wg sync.WaitGroup
 	var uploadErr error
@@ -257,8 +148,8 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 	}
 	var uploadedChunkIDs []uploadedChunkInfo
 	var chunkIDsMu sync.Mutex
-	
-	// Khá»Ÿi Ä‘á»™ng cÃ¡c worker trÆ°á»›c
+
+	// Khởi động các worker trong pool: xử lý song song SHA256, AES Encrypt và Upload
 	for w := 0; w < numWorkers; w++ {
 		wg.Add(1)
 		go func() {
@@ -267,50 +158,110 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 				errMu.Lock()
 				if uploadErr != nil {
 					errMu.Unlock()
-					continue // Drain channel but do nothing
+					job.plainData = nil
+					continue // Drain channel nhưng bỏ qua xử lý để dừng nhanh
 				}
 				errMu.Unlock()
 
-				if job.isDeduplicated {
+				// 1. Tính toán SHA256 song song trên worker
+				chunkHash := core.HashSHA256(job.plainData)
+				job.chunkHash = chunkHash
+
+				// 2. Kiểm tra Deduplication trong DB
+				existingChunk, _ := v.db.FindChunkByHash(chunkHash)
+				if existingChunk != nil && existingChunk.GDriveFileID != "" {
+					job.isDeduplicated = true
+					job.accountID = existingChunk.AccountID
+					job.gfileID = existingChunk.GDriveFileID
+					job.encLen = existingChunk.EncryptedSizeBytes
+					job.plainData = nil // Giải phóng bộ nhớ RAM ngay
 					continue
 				}
 
-				chunkRemoteName := fmt.Sprintf("chunk_%s_%d.enc", fileID, job.chunkIndex)
-				gfileID, err := v.gd.UploadChunk(ctx, job.accountID, chunkRemoteName, job.encData)
-				if err != nil {
-					// Failover: Thá»­ cÃ¡c tÃ i khoáº£n kháº£ dá»¥ng khÃ¡c, loáº¡i trá»« tÃ i khoáº£n vá»«a bá»‹ há»ng (job.accountID)
-					failedAccIDs := []string{job.accountID}
-					for retry := 0; retry < 2; retry++ {
-						altAcc, altErr := v.SelectAccountForChunk("least_used", job.encLen, failedAccIDs...)
-						if altErr != nil || altAcc.ID == job.accountID {
-							break
-						}
-						// Chuyá»ƒn in-flight reservation sang tÃ i khoáº£n thay tháº¿
-						oldAccID := job.accountID
-						v.ReleaseInFlightQuota(oldAccID, job.encLen)
-						v.ReserveInFlightQuota(altAcc.ID, job.encLen)
-						job.accountID = altAcc.ID
-						failedAccIDs = append(failedAccIDs, altAcc.ID)
+				// 3. Mã hóa AES-256-GCM song song trên worker
+				encData, encErr := core.EncryptChunk(encKey, job.plainData)
+				job.plainData = nil // Giải phóng plainData ngay lập tức sau khi mã hóa để tiết kiệm RAM!
+				if encErr != nil {
+					errMu.Lock()
+					if uploadErr == nil {
+						uploadErr = fmt.Errorf("lỗi mã hóa AES chunk %d: %w", job.chunkIndex, encErr)
+					}
+					errMu.Unlock()
+					continue
+				}
 
-						gfileID, err = v.gd.UploadChunk(ctx, altAcc.ID, chunkRemoteName, job.encData)
-						if err == nil {
-							break
+				job.encLen = int64(len(encData))
+
+				// 4. Lựa chọn tài khoản Google Drive: Tuyệt đối LOẠI TRỪ 3 tài khoản bị cấm
+				acc, selErr := v.PickAccount(settings.AllocationStrategy, job.encLen)
+				if selErr != nil {
+					errMu.Lock()
+					if uploadErr == nil {
+						uploadErr = fmt.Errorf("lỗi chọn tài khoản Google Drive cho chunk %d: %w", job.chunkIndex, selErr)
+					}
+					errMu.Unlock()
+					continue
+				}
+
+				job.accountID = acc.ID
+				v.ReserveInFlightQuota(acc.ID, job.encLen)
+
+				// 5. Upload lên Google Drive với cơ chế Tự động Retry & Rate-limit Handling & Failover
+				chunkRemoteName := fmt.Sprintf("chunk_%s_%d.enc", fileID, job.chunkIndex)
+				gfileID, err := v.gd.UploadChunk(ctx, job.accountID, chunkRemoteName, encData)
+
+				if err != nil {
+					failedAccIDs := []string{job.accountID}
+					maxRetries := 3
+					for retry := 1; retry <= maxRetries; retry++ {
+						// Nếu gặp rate limit, đánh dấu cooldown tạm thời cho tài khoản này
+						if IsRateLimitError(err) {
+							v.MarkAccountRateLimited(job.accountID, 60*time.Second)
+						}
+
+						// Tìm tài khoản thay thế khả dụng (tự động né các tài khoản bị rate-limit và bị cấm)
+						altAcc, altErr := v.PickAccount(settings.AllocationStrategy, job.encLen, failedAccIDs...)
+						if altErr == nil && altAcc != nil && altAcc.ID != job.accountID {
+							// Failover sang tài khoản thay thế
+							oldAccID := job.accountID
+							v.ReleaseInFlightQuota(oldAccID, job.encLen)
+							v.ReserveInFlightQuota(altAcc.ID, job.encLen)
+							job.accountID = altAcc.ID
+							failedAccIDs = append(failedAccIDs, altAcc.ID)
+
+							gfileID, err = v.gd.UploadChunk(ctx, altAcc.ID, chunkRemoteName, encData)
+							if err == nil {
+								break
+							}
+						} else {
+							// Không còn tài khoản khác, thực hiện Exponential Backoff retry
+							backoff := time.Duration(retry) * 1 * time.Second
+							select {
+							case <-ctx.Done():
+								err = ctx.Err()
+								break
+							case <-time.After(backoff):
+							}
+							gfileID, err = v.gd.UploadChunk(ctx, job.accountID, chunkRemoteName, encData)
+							if err == nil {
+								break
+							}
 						}
 					}
 				}
 
-				job.encData = nil // Free memory immediately
+				encData = nil // Giải phóng bộ nhớ RAM ngay lập tức sau khi upload
 
 				if err != nil {
 					errMu.Lock()
 					if uploadErr == nil {
-						uploadErr = fmt.Errorf("lá»—i táº£i chunk %d lÃªn Google Drive: %w", job.chunkIndex, err)
+						uploadErr = fmt.Errorf("lỗi tải chunk %d lên Google Drive: %w", job.chunkIndex, err)
 					}
 					errMu.Unlock()
 				} else {
 					job.gfileID = gfileID
 					job.err = nil
-					// Track chunk đã upload thành công để cleanup nếu upload fail
+					// Ghi nhận chunk đã upload thành công để cleanup nếu phiên upload thất bại
 					chunkIDsMu.Lock()
 					uploadedChunkIDs = append(uploadedChunkIDs, uploadedChunkInfo{
 						AccountID: job.accountID,
@@ -325,7 +276,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 	buf := make([]byte, chunkSize)
 	var jobs []*uploadJob
 
-	// Read and prepare encrypted chunks, pushing to jobChan (Blocks if RAM limit reached)
+	// Producer: Đọc stream dữ liệu và đẩy vào jobChan (Blocking channel kiểm soát chặt chẽ dung lượng RAM)
 	for {
 		errMu.Lock()
 		if uploadErr != nil {
@@ -340,45 +291,14 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 			copy(chunkData, buf[:n])
 			totalSize += int64(n)
 
-			encData, encErr := core.EncryptChunk(encKey, chunkData)
-			if encErr != nil {
-				errMu.Lock()
-				uploadErr = fmt.Errorf("lá»—i mÃ£ hÃ³a AES chunk %d: %w", chunkIndex, encErr)
-				errMu.Unlock()
-				break
-			}
-
-			chunkHash := core.HashSHA256(chunkData)
-			existingChunk, _ := v.db.FindChunkByHash(chunkHash)
-			
 			job := &uploadJob{
 				chunkIndex: chunkIndex,
+				plainData:  chunkData,
 				plainSize:  int64(n),
-				encLen:     int64(len(encData)),
-				chunkHash:  chunkHash,
-			}
-
-			if existingChunk != nil && existingChunk.GDriveFileID != "" {
-				job.isDeduplicated = true
-				job.accountID = existingChunk.AccountID
-				job.gfileID = existingChunk.GDriveFileID
-				job.encData = nil
-			} else {
-				acc, selErr := v.SelectAccountForChunk(settings.AllocationStrategy, int64(len(encData)))
-				if selErr != nil {
-					errMu.Lock()
-					uploadErr = selErr
-					errMu.Unlock()
-					break
-				}
-				job.isDeduplicated = false
-				job.accountID = acc.ID
-				job.encData = encData
-				v.ReserveInFlightQuota(acc.ID, int64(len(encData)))
 			}
 
 			jobs = append(jobs, job)
-			jobChan <- job // Blocking here limits RAM usage to (numWorkers * 2 * chunkSize)
+			jobChan <- job // Blocking tại đây giới hạn lượng RAM tối đa an toàn (numWorkers * 2 * chunkSize)
 
 			chunkIndex++
 		}
@@ -388,7 +308,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		}
 		if readErr != nil {
 			errMu.Lock()
-			uploadErr = fmt.Errorf("error reading file data: %w", readErr)
+			uploadErr = fmt.Errorf("lỗi đọc dữ liệu tệp: %w", readErr)
 			errMu.Unlock()
 			break
 		}
@@ -411,7 +331,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 			go func(chunks []uploadedChunkInfo) {
 				for _, c := range chunks {
 					if err := v.gd.DeleteChunk(context.Background(), c.AccountID, c.FileID); err != nil {
-						log.Printf("[ENGINE] Warning: failed to delete orphan chunk %s: %v", c.FileID, err)
+						log.Printf("[ENGINE] Cảnh báo: không thể xóa orphan chunk %s: %v", c.FileID, err)
 					}
 				}
 			}(uploadedChunkIDs)
@@ -821,12 +741,8 @@ func (v *VFS) ImportExistingDriveFiles(ctx context.Context, accountID string) (i
 			}
 
 			mimeType := f.MimeType
-			if mimeType == "" {
-				ext := filepath.Ext(f.Name)
-				mimeType = mime.TypeByExtension(ext)
-				if mimeType == "" {
-					mimeType = "application/octet-stream"
-				}
+			if mimeType == "" || mimeType == "application/octet-stream" {
+				mimeType = models.ResolveMimeType(f.Name)
 			}
 
 			filePath := path.Clean(path.Join("/"+folderName, f.Name))
