@@ -469,21 +469,31 @@ const PreviewManager = {
         `;
       }
     }
-    // 6. Video Player PRO (Native Stream + Direct Source + 6s Watchdog)
+    // 6. Video Player PRO (Native Stream + Direct Source + Smart Resume + Anti-Flicker)
     else if ((mimeType && mimeType.startsWith('video/')) || /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|3gp|vob|ogv)$/i.test(lowerName)) {
+      this._currentFileId = fileId;
+      this._currentFileName = fileName;
+      this._currentStreamURL = streamURL;
+      this._currentDownloadURL = downloadURL;
+      this._lastVideoTime = 0;
+      this._isRetrying = false;
+
       area.innerHTML = `
         <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
           <div id="video-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md, 8px); font-size: 12px; color: var(--accent-blue, #3b82f6);">
             <span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
-            <span>⚡ Đang đệm luồng video trực tuyến từ Google Drive...</span>
+            <span id="video-loading-text">⚡ Đang đệm luồng video trực tuyến từ Google Drive...</span>
           </div>
-          <video id="pro-video-player" src="${streamURL}" controls autoplay preload="metadata" playsinline style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000; box-shadow: 0 4px 24px rgba(0,0,0,0.6);">
+          <div id="video-unmute-hint" style="display: none; padding: 8px 14px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-md, 8px); font-size: 12px; color: #60a5fa; text-align: center; cursor: pointer;">
+            🔊 Trình duyệt đang tắt tiếng tự động. Chạm vào đây để bật âm thanh.
+          </div>
+          <video id="pro-video-player" src="${streamURL}" controls playsinline preload="metadata" style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000; box-shadow: 0 4px 24px rgba(0,0,0,0.6);">
             Trình duyệt của bạn không hỗ trợ phát trực tiếp định dạng video này.
           </video>
           <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md, 8px); text-align: center;">
             <div id="video-error-msg" style="color: #ef4444; font-size: 13px; font-weight: 500; margin-bottom: 10px; line-height: 1.5;">⚠️ Không thể phát trực tiếp trên trình duyệt này.</div>
             <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-              <button class="btn btn-secondary btn-sm" onclick="PreviewManager.retryVideoPlayback()">🔄 Thử phát lại</button>
+              <button id="btn-retry-video" class="btn btn-secondary btn-sm" onclick="PreviewManager.retryVideoPlayback()">🔄 Thử phát lại</button>
               <button class="btn btn-secondary btn-sm" onclick="PreviewManager.copyStreamLink('${streamURL}')">📋 Sao chép link (VLC / PotPlayer)</button>
               <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải tệp video về máy</a>
             </div>
@@ -514,12 +524,21 @@ const PreviewManager = {
 
       const vidPlayer = document.getElementById('pro-video-player');
       const loadStatus = document.getElementById('video-loading-status');
+      const loadText = document.getElementById('video-loading-text');
       const errStatus = document.getElementById('video-error-status');
       const errMsg = document.getElementById('video-error-msg');
+      const unmuteHint = document.getElementById('video-unmute-hint');
 
       if (this._videoWatchdog) {
         clearTimeout(this._videoWatchdog);
         this._videoWatchdog = null;
+      }
+
+      if (unmuteHint && vidPlayer) {
+        unmuteHint.addEventListener('click', () => {
+          vidPlayer.muted = false;
+          unmuteHint.style.display = 'none';
+        });
       }
 
       if (vidPlayer) {
@@ -530,6 +549,7 @@ const PreviewManager = {
           }
           if (loadStatus) loadStatus.style.display = 'none';
           if (errStatus) errStatus.style.display = 'none';
+          PreviewManager._isRetrying = false;
         };
 
         vidPlayer.addEventListener('playing', onPlaybackSuccess);
@@ -538,14 +558,32 @@ const PreviewManager = {
           if (loadStatus) loadStatus.style.display = 'none';
         });
 
+        // Theo dõi tiến trình để ghi nhớ mốc thời gian xem dở (phục vụ tự động nối luồng)
+        vidPlayer.addEventListener('timeupdate', () => {
+          if (vidPlayer.currentTime > 0) {
+            PreviewManager._lastVideoTime = vidPlayer.currentTime;
+          }
+        });
+
+        // Đệm dữ liệu mượt mà, không giật màn hình khi mạng chậm
+        vidPlayer.addEventListener('waiting', () => {
+          if (loadStatus && !PreviewManager._isRetrying) {
+            loadStatus.style.display = 'flex';
+            if (loadText) loadText.textContent = '⚡ Đang đệm thêm dữ liệu từ Google Drive...';
+          }
+        });
+
         const handleVideoFailure = async () => {
+          // Nếu đang trong tiến trình reconnect chủ động, không kích hoạt lỗi để tránh chớp màn hình
+          if (PreviewManager._isRetrying) return;
+
           if (PreviewManager._videoWatchdog) {
             clearTimeout(PreviewManager._videoWatchdog);
             PreviewManager._videoWatchdog = null;
           }
           if (loadStatus) loadStatus.style.display = 'none';
 
-          // Gọi API trạng thái để xác định chính xác có phải tệp bị mất chunks trên Google Drive
+          // Gọi API trạng thái để kiểm tra nếu tệp thực sự bị xóa mất chunk trên Google Drive
           try {
             const st = await fetch(`/api/files/status?id=${encodeURIComponent(fileId)}`).then(r => r.json());
             if (st && (st.has_missing_chunks || st.status === 'missing_chunks')) {
@@ -559,25 +597,51 @@ const PreviewManager = {
             errStatus.style.display = 'block';
             const err = vidPlayer.error;
             let detail = 'Không thể phát trực tiếp định dạng video này trên trình duyệt hiện tại.';
+            const resumeTime = PreviewManager._lastVideoTime || 0;
+            const m = Math.floor(resumeTime / 60);
+            const s = Math.floor(resumeTime % 60);
+            const timeStr = `${m}:${s < 10 ? '0' : ''}${s}`;
+
             if (err) {
               if (err.code === 4) {
-                detail = 'Video sử dụng định dạng nén camera (H.265 / HEVC 10-bit HDR) mà trình duyệt chưa hỗ trợ bộ giải mã phần cứng. Bạn có thể sao chép link phát dán vào VLC / PotPlayer hoặc tải về xem offline:';
+                // Nếu video đã từng phát được một đoạn (> 0s), đây là đứt kết nối luồng chứ không phải do sai codec!
+                if (resumeTime > 0) {
+                  detail = `Luồng dữ liệu đám mây tạm thời bị ngắt quãng tại phút ${timeStr}. Bạn có thể bấm Thử phát lại để tiếp tục xem từ đoạn này:`;
+                } else {
+                  detail = 'Video sử dụng định dạng nén camera (H.265 / HEVC 10-bit HDR) mà trình duyệt chưa hỗ trợ bộ giải mã phần cứng. Bạn có thể sao chép link phát dán vào VLC / PotPlayer hoặc tải về xem offline:';
+                }
               } else if (err.code === 2) {
-                detail = 'Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây. Bạn có thể nhấn Thử lại:';
+                detail = resumeTime > 0
+                  ? `Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây tại phút ${timeStr}. Bạn có thể nhấn Thử phát lại:`
+                  : 'Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây. Bạn có thể nhấn Thử lại:';
               }
+            } else if (resumeTime > 0) {
+              detail = `Luồng video tạm thời bị nghẽn tại phút ${timeStr}. Bạn có thể nhấn Thử phát lại:`;
             }
+
             if (errMsg) errMsg.innerHTML = '⚠️ ' + detail;
           }
         };
 
         vidPlayer.addEventListener('error', handleVideoFailure);
 
-        // Watchdog Timeout (6 giây): Tuyệt đối không để treo spinner vô tận nếu tệp 410/lỗi mạng
-        this._videoWatchdog = setTimeout(async () => {
-          if (vidPlayer && (vidPlayer.paused || vidPlayer.readyState < 2)) {
+        // Khởi động phát video thông minh với xử lý chính sách Autoplay trên thiết bị di động
+        vidPlayer.play().catch(playErr => {
+          if (playErr && playErr.name === 'NotAllowedError') {
+            // Trình duyệt di động chặn tự động phát có tiếng -> fallback sang tắt tiếng để hiển thị hình ảnh
+            vidPlayer.muted = true;
+            vidPlayer.play().catch(() => {});
+            if (unmuteHint) unmuteHint.style.display = 'block';
+          }
+        });
+
+        // Watchdog Timeout (15 giây): Chỉ kích hoạt nếu trình duyệt hoàn toàn không nhận được dữ liệu (readyState = 0)
+        // Tuyệt đối không bắt lỗi khi video chỉ đang bị paused bởi người dùng
+        this._videoWatchdog = setTimeout(() => {
+          if (vidPlayer && vidPlayer.readyState === 0 && !vidPlayer.error) {
             handleVideoFailure();
           }
-        }, 6000);
+        }, 15000);
       }
     }
     // 7. Audio Player PRO (Native Stream + Direct Source)
@@ -695,11 +759,91 @@ const PreviewManager = {
     const video = document.getElementById('pro-video-player');
     const errStatus = document.getElementById('video-error-status');
     const loadStatus = document.getElementById('video-loading-status');
-    if (video) {
-      if (errStatus) errStatus.style.display = 'none';
-      if (loadStatus) {
-        loadStatus.style.display = 'flex';
-        loadStatus.innerHTML = '<span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span><span>⚡ Đang kết nối lại luồng video...</span>';
+    const loadText = document.getElementById('video-loading-text');
+    const retryBtn = document.getElementById('btn-retry-video');
+
+    if (!video || this._isRetrying) return;
+    this._isRetrying = true;
+
+    // Vô hiệu hóa nút tạm thời và đổi chữ để ngăn bấm dồn dập gây giật màn hình
+    if (retryBtn) {
+      retryBtn.disabled = true;
+      retryBtn.innerHTML = '⏳ Đang kết nối lại...';
+    }
+
+    if (errStatus) errStatus.style.display = 'none';
+
+    const resumeTime = this._lastVideoTime || 0;
+    const m = Math.floor(resumeTime / 60);
+    const s = Math.floor(resumeTime % 60);
+    const timeStr = `${m}:${s < 10 ? '0' : ''}${s}`;
+
+    if (loadStatus) {
+      loadStatus.style.display = 'flex';
+      const msg = resumeTime > 0
+        ? `⚡ Đang kết nối lại luồng video tại phút ${timeStr}...`
+        : '⚡ Đang kết nối lại luồng video đám mây...';
+      if (loadText) {
+        loadText.textContent = msg;
+      } else {
+        loadStatus.innerHTML = `<span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span><span>${msg}</span>`;
+      }
+    }
+
+    // Thêm tham số _retry để bypass cache bị lỗi
+    try {
+      const curUrl = new URL(this._currentStreamURL || video.src, window.location.origin);
+      curUrl.searchParams.set('_retry', Date.now().toString());
+
+      const onResumeReady = () => {
+        video.removeEventListener('loadedmetadata', onResumeReady);
+        video.removeEventListener('canplay', onResumeReady);
+
+        if (resumeTime > 0) {
+          try {
+            video.currentTime = resumeTime;
+          } catch (_) {}
+        }
+
+        video.play().catch(e => {
+          if (e && e.name === 'NotAllowedError') {
+            video.muted = true;
+            video.play().catch(() => {});
+            const hint = document.getElementById('video-unmute-hint');
+            if (hint) hint.style.display = 'block';
+          }
+        }).finally(() => {
+          setTimeout(() => {
+            this._isRetrying = false;
+            if (retryBtn) {
+              retryBtn.disabled = false;
+              retryBtn.innerHTML = '🔄 Thử phát lại';
+            }
+          }, 1000);
+        });
+      };
+
+      video.addEventListener('loadedmetadata', onResumeReady, { once: true });
+      video.addEventListener('canplay', onResumeReady, { once: true });
+
+      video.src = curUrl.toString();
+      video.load();
+
+      // Fallback bảo vệ: Tự động mở khóa nút sau 5 giây nếu không nhận được metadata
+      setTimeout(() => {
+        if (this._isRetrying) {
+          this._isRetrying = false;
+          if (retryBtn) {
+            retryBtn.disabled = false;
+            retryBtn.innerHTML = '🔄 Thử phát lại';
+          }
+        }
+      }, 5000);
+    } catch (e) {
+      this._isRetrying = false;
+      if (retryBtn) {
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '🔄 Thử phát lại';
       }
       video.load();
       video.play().catch(() => {});
