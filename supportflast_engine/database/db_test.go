@@ -469,3 +469,186 @@ func TestPreparedStatements_SQLInjectionProof(t *testing.T) {
 	}
 }
 
+func TestInitSQLite_DirectAndCustomPath(t *testing.T) {
+	testDBPath, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_ = CloseDB()
+	db, err := InitSQLite(testDBPath)
+	if err != nil {
+		t.Fatalf("InitSQLite thất bại: %v", err)
+	}
+	if db == nil {
+		t.Fatal("DB instance từ InitSQLite là nil")
+	}
+
+	if ActiveDriver() != "sqlite" {
+		t.Errorf("Kỳ vọng ActiveDriver='sqlite', thực tế: '%s'", ActiveDriver())
+	}
+
+	getDB := GetDB()
+	if getDB != db {
+		t.Errorf("GetDB() phải trả về cùng instance với InitSQLite()")
+	}
+}
+
+func TestInitDB_DriverSelection(t *testing.T) {
+	testDBPath, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	// 1. Kiểm tra khi DB_DRIVER="" hoặc "sqlite"
+	_ = CloseDB()
+	_ = os.Setenv("DB_DRIVER", "sqlite")
+	defer os.Unsetenv("DB_DRIVER")
+
+	db, err := InitDB(testDBPath)
+	if err != nil {
+		t.Fatalf("InitDB với DB_DRIVER=sqlite thất bại: %v", err)
+	}
+	if ActiveDriver() != "sqlite" {
+		t.Errorf("Kỳ vọng driver là 'sqlite', thực tế: '%s'", ActiveDriver())
+	}
+	_ = db
+
+	// 2. Kiểm tra khi DB_DRIVER để trống
+	_ = CloseDB()
+	_ = os.Setenv("DB_DRIVER", "")
+	db2, err := InitDB(testDBPath)
+	if err != nil {
+		t.Fatalf("InitDB khi DB_DRIVER để trống thất bại: %v", err)
+	}
+	if ActiveDriver() != "sqlite" {
+		t.Errorf("Kỳ vọng driver mặc định là 'sqlite', thực tế: '%s'", ActiveDriver())
+	}
+	_ = db2
+
+	// 3. Kiểm tra khi DB_DRIVER="tidb" không có customPath
+	_ = CloseDB()
+	_ = os.Setenv("DB_DRIVER", "tidb")
+	_ = os.Setenv("TIDB_HOST", "127.0.0.1")
+	_ = os.Setenv("TIDB_PORT", "19999") // Cổng không có server để kiểm tra nó gọi InitTiDB
+	_ = os.Setenv("TIDB_CONNECT_TIMEOUT", "1s")
+	_ = os.Setenv("TIDB_PING_TIMEOUT", "1s")
+	defer func() {
+		_ = os.Unsetenv("TIDB_HOST")
+		_ = os.Unsetenv("TIDB_PORT")
+		_ = os.Unsetenv("TIDB_CONNECT_TIMEOUT")
+		_ = os.Unsetenv("TIDB_PING_TIMEOUT")
+	}()
+
+	// Khi DB_DRIVER=tidb và không truyền customPath, InitDB phải gọi InitTiDB()
+	_, errTiDB := InitDB()
+	if errTiDB == nil {
+		t.Log("InitDB kết nối thành công tới TiDB")
+	} else {
+		// Kỳ vọng lỗi ping hoặc kết nối tới TiDB (chứng tỏ đã gọi InitTiDB)
+		if !strings.Contains(errTiDB.Error(), "TiDB") && !strings.Contains(errTiDB.Error(), "connection refused") && !strings.Contains(errTiDB.Error(), "127.0.0.1:19999") {
+			t.Errorf("InitDB với DB_DRIVER=tidb không gọi InitTiDB(): %v", errTiDB)
+		}
+	}
+}
+
+func TestSaveSecurityEvent_AliasAndRecordSecurityEvent(t *testing.T) {
+	testDBPath, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_ = CloseDB()
+	_, err := InitSQLite(testDBPath)
+	if err != nil {
+		t.Fatalf("InitSQLite thất bại: %v", err)
+	}
+
+	ip := "203.0.113.195"
+	blockedUntil := time.Now().Add(2 * time.Hour)
+
+	// Gọi SaveSecurityEvent
+	err = SaveSecurityEvent("port_scan", ip, "high", "Quét cổng tự động phát hiện", &blockedUntil)
+	if err != nil {
+		t.Fatalf("SaveSecurityEvent thất bại: %v", err)
+	}
+
+	// Kiểm tra qua IsIPBlocked
+	blocked, exp, err := IsIPBlocked(ip)
+	if err != nil {
+		t.Fatalf("IsIPBlocked thất bại: %v", err)
+	}
+	if !blocked {
+		t.Errorf("Kỳ vọng IP %s bị chặn qua SaveSecurityEvent", ip)
+	}
+	if exp.Before(time.Now()) {
+		t.Errorf("Thời hạn mở khóa %v phải trong tương lai", exp)
+	}
+
+	// Lấy sự kiện qua GetSecurityEvents
+	events, err := GetSecurityEvents(10, 0)
+	if err != nil {
+		t.Fatalf("GetSecurityEvents thất bại: %v", err)
+	}
+	if len(events) == 0 || events[0].IPAddress != ip {
+		t.Errorf("Sự kiện lưu bởi SaveSecurityEvent không tìm thấy trong GetSecurityEvents: %+v", events)
+	}
+}
+
+func TestDualDatabase_DateTimeAndCompatibility(t *testing.T) {
+	testDBPath, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_ = CloseDB()
+	db, err := InitSQLite(testDBPath)
+	if err != nil {
+		t.Fatalf("InitSQLite thất bại: %v", err)
+	}
+
+	// 1. Giả lập mode "tidb" trên connection DB để kiểm tra nhánh format MySQL/TiDB
+	SetDBInstance(db, "tidb")
+	if !isMySQLOrTiDB() {
+		t.Fatal("isMySQLOrTiDB() phải trả về true khi SetDBInstance với driver='tidb'")
+	}
+
+	// Ghi audit log dưới mode TiDB (sử dụng định dạng ngày 2006-01-02 15:04:05)
+	err = RecordAuditLog("usr-admin-001", "tidb_audit_action", "10.10.10.10", "TiDB-Client/1.0", "Thao tác trên chế độ TiDB")
+	if err != nil {
+		t.Fatalf("RecordAuditLog trong mode TiDB thất bại: %v", err)
+	}
+
+	// Ghi security event dưới mode TiDB (blockedUntil định dạng DATETIME chuẩn)
+	tidbBlockedIP := "203.0.113.88"
+	futureTime := time.Now().Add(3 * time.Hour)
+	err = SaveSecurityEvent("ddos_flood", tidbBlockedIP, "critical", "Tấn công DDoS từ cụm IP", &futureTime)
+	if err != nil {
+		t.Fatalf("SaveSecurityEvent trong mode TiDB thất bại: %v", err)
+	}
+
+	// Kiểm tra IsIPBlocked hoạt động chính xác trong mode TiDB
+	blocked, exp, err := IsIPBlocked(tidbBlockedIP)
+	if err != nil {
+		t.Fatalf("IsIPBlocked trong mode TiDB thất bại: %v", err)
+	}
+	if !blocked {
+		t.Errorf("IP %s phải bị chặn trong mode TiDB", tidbBlockedIP)
+	}
+	if exp.Before(time.Now()) {
+		t.Errorf("Thời hạn mở khóa %v phải trong tương lai", exp)
+	}
+
+	// Chuyển lại mode SQLite và xác nhận cả 2 sự kiện đều đọc và truy vấn được
+	SetDBInstance(db, "sqlite")
+	if isMySQLOrTiDB() {
+		t.Fatal("isMySQLOrTiDB() phải trả về false khi SetDBInstance với driver='sqlite'")
+	}
+
+	logs, err := GetAuditLogsByAction("tidb_audit_action", 10, 0)
+	if err != nil {
+		t.Fatalf("GetAuditLogsByAction thất bại: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Errorf("Kỳ vọng 1 log audit ghi từ mode TiDB, thực tế: %d", len(logs))
+	}
+
+	blocked2, _, err := IsIPBlocked(tidbBlockedIP)
+	if err != nil || !blocked2 {
+		t.Errorf("IsIPBlocked trong mode SQLite vẫn phải nhận diện được IP bị chặn: %v, blocked=%v", err, blocked2)
+	}
+}
+
+

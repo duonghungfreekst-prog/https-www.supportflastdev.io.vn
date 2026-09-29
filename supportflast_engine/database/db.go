@@ -32,9 +32,14 @@ const (
 )
 
 var (
-	dbInstance *sql.DB
-	dbMutex    sync.RWMutex
+	dbInstance   *sql.DB
+	dbMutex      sync.RWMutex
+	activeDriver atomic.Value
 )
+
+func init() {
+	activeDriver.Store("sqlite")
+}
 
 // SchemaDDL danh sách câu lệnh DDL định nghĩa bảng và chỉ mục (INDEX)
 const SchemaDDL = `
@@ -312,17 +317,57 @@ func ResolveDBPath(customPath ...string) string {
 	return filepath.Join("data", "supportflast.db")
 }
 
-// InitDB khởi tạo kết nối cơ sở dữ liệu SQLite thread-safe
+// isMySQLOrTiDB kiểm tra xem driver hiện hành, kết nối db hoặc biến môi trường DB_DRIVER có phải là tidb hoặc mysql hay không (Lock-free)
+func isMySQLOrTiDB(db ...*sql.DB) bool {
+	if len(db) > 0 && db[0] != nil {
+		driverType := strings.ToLower(fmt.Sprintf("%T", db[0].Driver()))
+		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
+			return true
+		}
+	}
+	drv := ActiveDriver()
+	return drv == "tidb" || drv == "mysql"
+}
+
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql", hoặc "") (Lock-free)
+func ActiveDriver() string {
+	if v, ok := activeDriver.Load().(string); ok && v != "" {
+		return v
+	}
+	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if d == "tidb" || d == "mysql" {
+		return d
+	}
+	return "sqlite"
+}
+
+// SetDBInstance gán con trỏ kết nối DB và cập nhật activeDriver phục vụ unit test và tích hợp
+func SetDBInstance(db *sql.DB, driver ...string) {
+	dbMutex.Lock()
+	defer dbMutex.Unlock()
+	dbInstance = db
+	drv := "sqlite"
+	if len(driver) > 0 && strings.TrimSpace(driver[0]) != "" {
+		drv = strings.ToLower(strings.TrimSpace(driver[0]))
+	}
+	activeDriver.Store(drv)
+	if drv == "tidb" || drv == "mysql" {
+		SetTiDBInstance(db)
+	}
+}
+
+// InitSQLite khởi tạo kết nối cơ sở dữ liệu SQLite thread-safe
 // Nếu truyền customPath thì sử dụng đường dẫn đó (hữu ích cho unit test),
 // nếu không truyền thì tự động phân giải qua ResolveDBPath().
-func InitDB(customPath ...string) (*sql.DB, error) {
+func InitSQLite(customPath ...string) (*sql.DB, error) {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 
-	if dbInstance != nil {
+	if dbInstance != nil && ActiveDriver() == "sqlite" {
 		return dbInstance, nil
 	}
 
+	activeDriver.Store("sqlite")
 	dbPath := ResolveDBPath(customPath...)
 
 	db, err := openDatabaseLocked(dbPath)
@@ -334,8 +379,35 @@ func InitDB(customPath ...string) (*sql.DB, error) {
 	return dbInstance, nil
 }
 
+// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe theo cấu hình DB_DRIVER:
+// - Kiểm tra biến môi trường DB_DRIVER:
+//   * Nếu DB_DRIVER=tidb hoặc mysql: gọi InitTiDB()
+//   * Nếu DB_DRIVER=sqlite hoặc để trống: gọi InitSQLite(customPath...)
+// - Nếu có truyền customPath cụ thể (hữu ích cho unit test cục bộ), ưu tiên gọi InitSQLite(customPath...).
+func InitDB(customPath ...string) (*sql.DB, error) {
+	// Nếu truyền customPath hợp lệ (thường dùng trong unit test), ưu tiên khởi tạo SQLite theo đường dẫn đó
+	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
+		return InitSQLite(customPath[0])
+	}
+
+	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if driver == "tidb" || driver == "mysql" {
+		db, err := InitTiDB()
+		if err != nil {
+			return nil, err
+		}
+		dbMutex.Lock()
+		dbInstance = db
+		activeDriver.Store(driver)
+		dbMutex.Unlock()
+		return db, nil
+	}
+
+	return InitSQLite()
+}
+
 // GetDB trả về con trỏ kết nối *sql.DB thread-safe cho các module khác truy cập.
-// Nếu chưa gọi InitDB, hàm sẽ tự động khởi tạo kết nối mặc định an toàn.
+// Nếu chưa gọi InitDB, hàm sẽ tự động phân giải biến DB_DRIVER và khởi tạo kết nối thích hợp.
 func GetDB() *sql.DB {
 	dbMutex.RLock()
 	if dbInstance != nil {
@@ -344,29 +416,21 @@ func GetDB() *sql.DB {
 	}
 	dbMutex.RUnlock()
 
-	dbMutex.Lock()
-	defer dbMutex.Unlock()
-
-	if dbInstance != nil {
-		return dbInstance
-	}
-
-	dbPath := ResolveDBPath()
-	db, err := openDatabaseLocked(dbPath)
+	// Tự động khởi tạo kết nối dựa theo DB_DRIVER (SQLite hoặc TiDB/MySQL)
+	db, err := InitDB()
 	if err != nil {
 		log.Printf("[ENGINE] [DATABASE] [ERROR] Failed to auto-initialize DB in GetDB: %v", err)
 		return nil
 	}
-	dbInstance = db
-	return dbInstance
+	return db
 }
 
-// CheckpointWAL thực hiện checkpoint và truncate file journal WAL về database chính
+// CheckpointWAL thực hiện checkpoint và truncate file journal WAL về database chính (chỉ áp dụng cho SQLite)
 func CheckpointWAL() error {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 
-	if dbInstance != nil {
+	if dbInstance != nil && ActiveDriver() == "sqlite" {
 		_, err := dbInstance.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
 		return err
 	}
@@ -378,18 +442,27 @@ func CloseDB() error {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 
+	var lastErr error
 	if dbInstance != nil {
-		_, _ = dbInstance.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
-		err := dbInstance.Close()
+		if ActiveDriver() == "sqlite" {
+			_, _ = dbInstance.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
+		}
+		if err := dbInstance.Close(); err != nil {
+			lastErr = err
+		}
 		dbInstance = nil
-		return err
+		activeDriver.Store("")
 	}
-	return nil
+
+	// Đóng đồng thời instance TiDB nếu đang mở độc lập
+	_ = CloseTiDB()
+	return lastErr
 }
 
 // SeedInitialData kiểm tra bảng users. Nếu rỗng, tạo sẵn tài khoản Admin chuẩn:
 // username='admin', email='admin@supportflastdev.io.vn', password_hash (BCrypt cost 12),
 // role='admin', display_name='Quản Trị Viên Hệ Thống'.
+// Hỗ trợ đồng nhất cả SQLite và TiDB/MySQL.
 // TUYỆT ĐỐI KHÔNG seed app rác hoặc review giả lập (Tuân thủ nghiêm ngặt Rule 9.1).
 func SeedInitialData(db *sql.DB) error {
 	if db == nil {
@@ -408,8 +481,11 @@ func SeedInitialData(db *sql.DB) error {
 		return fmt.Errorf("failed to query users count: %w", err)
 	}
 
-	if userCount > 0 {
-		return nil // Đã có dữ liệu, không ghi đè
+	// Kiểm tra trước khi chèn tài khoản admin để tương thích 100% cả SQLite lẫn TiDB MySQL (tránh duplicate key)
+	var adminExists int
+	_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ? OR username = ?", DefaultAdminID, DefaultAdminUsername).Scan(&adminExists)
+	if adminExists > 0 {
+		return nil // Đã tồn tại tài khoản admin chuẩn, không chèn lại
 	}
 
 	// Băm mật khẩu quản trị viên với BCrypt cost 12
@@ -418,12 +494,28 @@ func SeedInitialData(db *sql.DB) error {
 		return fmt.Errorf("failed to hash default admin password: %w", err)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	query := `
-		INSERT OR IGNORE INTO users (
-			id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	var now string
+	var lastLoginVal interface{}
+	var query string
+
+	if isMySQLOrTiDB(db) {
+		now = time.Now().UTC().Format("2006-01-02 15:04:05")
+		lastLoginVal = nil // MySQL/TiDB DATETIME không nhận chuỗi rỗng '' trong STRICT mode
+		query = `
+			INSERT IGNORE INTO users (
+				id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	} else {
+		now = time.Now().UTC().Format(time.RFC3339)
+		lastLoginVal = ""
+		query = `
+			INSERT OR IGNORE INTO users (
+				id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	}
+
 	stmtInsert, err := db.Prepare(query)
 	if err != nil {
 		return fmt.Errorf("failed to prepare admin insert query: %w", err)
@@ -440,7 +532,7 @@ func SeedInitialData(db *sql.DB) error {
 		DefaultAdminAvatar,
 		now,
 		now,
-		"",
+		lastLoginVal,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert initial admin user: %w", err)
@@ -465,6 +557,7 @@ func generateLogID(prefix string, seq *uint64) string {
 
 // RecordAuditLog lưu vết hành động bảo mật vào bảng audit_logs bằng Prepared Statement chống SQL Injection tuyệt đối
 // Hỗ trợ lưu vết: đăng nhập, đổi mật khẩu, đổi mã PIN, truy cập Honeypot, thay đổi cấu hình
+// Hoạt động đồng nhất cho cả SQLite và TiDB/MySQL
 func RecordAuditLog(userID, action, ipAddress, userAgent, details string) error {
 	db := GetDB()
 	if db == nil {
@@ -482,15 +575,20 @@ func RecordAuditLog(userID, action, ipAddress, userAgent, details string) error 
 	defer stmt.Close()
 
 	id := generateLogID("aud", &auditLogSeq)
-	now := time.Now().UTC().Format(time.RFC3339)
+	var now string
+	if isMySQLOrTiDB() {
+		now = time.Now().UTC().Format("2006-01-02 15:04:05")
+	} else {
+		now = time.Now().UTC().Format(time.RFC3339)
+	}
 
 	var uid *string
 	if strings.TrimSpace(userID) != "" {
 		trimmed := strings.TrimSpace(userID)
 		// Kiểm tra user có tồn tại để thỏa mãn ràng buộc khóa ngoại (Foreign Keys ON)
-		var userExists bool
-		_ = db.QueryRow("SELECT COUNT(*) > 0 FROM users WHERE id = ?", trimmed).Scan(&userExists)
-		if userExists {
+		var userCount int
+		_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ?", trimmed).Scan(&userCount)
+		if userCount > 0 {
 			uid = &trimmed
 		}
 	}
@@ -602,6 +700,7 @@ func GetAuditLogsByAction(action string, limit, offset int) ([]AuditLog, error) 
 }
 
 // RecordSecurityEvent lưu trữ sự kiện đe dọa an ninh, IP bị chặn và thời gian hết hạn bằng Prepared Statement
+// Hoạt động đồng nhất cho cả SQLite và TiDB/MySQL
 func RecordSecurityEvent(eventType, ipAddress, severity, details string, blockedUntil *time.Time) error {
 	db := GetDB()
 	if db == nil {
@@ -619,11 +718,23 @@ func RecordSecurityEvent(eventType, ipAddress, severity, details string, blocked
 	defer stmt.Close()
 
 	id := generateLogID("sec", &securityEventSeq)
-	now := time.Now().UTC().Format(time.RFC3339)
+	var now string
+	var blockedVal interface{}
 
-	var blockedUntilStr string
-	if blockedUntil != nil && !blockedUntil.IsZero() {
-		blockedUntilStr = blockedUntil.UTC().Format(time.RFC3339)
+	if isMySQLOrTiDB() {
+		now = time.Now().UTC().Format("2006-01-02 15:04:05")
+		if blockedUntil != nil && !blockedUntil.IsZero() {
+			blockedVal = blockedUntil.UTC().Format("2006-01-02 15:04:05")
+		} else {
+			blockedVal = nil
+		}
+	} else {
+		now = time.Now().UTC().Format(time.RFC3339)
+		if blockedUntil != nil && !blockedUntil.IsZero() {
+			blockedVal = blockedUntil.UTC().Format(time.RFC3339)
+		} else {
+			blockedVal = nil
+		}
 	}
 
 	cleanIP := strings.ReplaceAll(strings.ReplaceAll(ipAddress, "\n", ""), "\r", "")
@@ -632,11 +743,16 @@ func RecordSecurityEvent(eventType, ipAddress, severity, details string, blocked
 		severity = "warning"
 	}
 
-	_, err = stmt.Exec(id, eventType, cleanIP, severity, cleanDetails, blockedUntilStr, now)
+	_, err = stmt.Exec(id, eventType, cleanIP, severity, cleanDetails, blockedVal, now)
 	if err != nil {
 		return fmt.Errorf("failed to execute security event insert: %w", err)
 	}
 	return nil
+}
+
+// SaveSecurityEvent lưu trữ sự kiện an ninh và phòng thủ (bí danh đồng nhất của RecordSecurityEvent hỗ trợ cả SQLite và TiDB/MySQL)
+func SaveSecurityEvent(eventType, ipAddress, severity, details string, blockedUntil *time.Time) error {
+	return RecordSecurityEvent(eventType, ipAddress, severity, details, blockedUntil)
 }
 
 // GetSecurityEvents lấy danh sách các sự kiện an ninh mới nhất bằng Prepared Statement
@@ -687,6 +803,7 @@ func GetSecurityEvents(limit, offset int) ([]SecurityEvent, error) {
 }
 
 // IsIPBlocked kiểm tra xem địa chỉ IP có đang bị chặn trong bảng security_events hay không bằng Prepared Statement
+// Tương thích đồng nhất cho cả SQLite và TiDB/MySQL
 func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 	db := GetDB()
 	if db == nil {
@@ -698,14 +815,34 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 		return false, time.Time{}, nil
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	query := `
-		SELECT blocked_until
-		FROM security_events
-		WHERE ip_address = ? AND blocked_until > ?
-		ORDER BY blocked_until DESC
-		LIMIT 1
-	`
+	nowRFC := time.Now().UTC().Format(time.RFC3339)
+	nowSQL := time.Now().UTC().Format("2006-01-02 15:04:05")
+
+	var query string
+	var args []interface{}
+	if isMySQLOrTiDB() {
+		query = `
+			SELECT blocked_until
+			FROM security_events
+			WHERE ip_address = ? AND blocked_until > ?
+			ORDER BY blocked_until DESC
+			LIMIT 1
+		`
+		args = []interface{}{cleanIP, nowSQL}
+	} else {
+		query = `
+			SELECT blocked_until
+			FROM security_events
+			WHERE ip_address = ? AND (
+				(blocked_until LIKE '%T%' AND blocked_until > ?) OR
+				(blocked_until NOT LIKE '%T%' AND blocked_until > ?)
+			)
+			ORDER BY blocked_until DESC
+			LIMIT 1
+		`
+		args = []interface{}{cleanIP, nowRFC, nowSQL}
+	}
+
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return false, time.Time{}, fmt.Errorf("failed to prepare is IP blocked query: %w", err)
@@ -713,7 +850,7 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 	defer stmt.Close()
 
 	var blockedUntilStr string
-	err = stmt.QueryRow(cleanIP, now).Scan(&blockedUntilStr)
+	err = stmt.QueryRow(args...).Scan(&blockedUntilStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return false, time.Time{}, nil
@@ -721,8 +858,15 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 		return false, time.Time{}, err
 	}
 
+	// Hỗ trợ phân tích cả định dạng RFC3339 lẫn định dạng DATETIME chuẩn MySQL
 	t, parseErr := time.Parse(time.RFC3339, blockedUntilStr)
 	if parseErr != nil {
+		if t2, err2 := time.Parse("2006-01-02 15:04:05", blockedUntilStr); err2 == nil {
+			return true, t2, nil
+		}
+		if t3, err3 := time.Parse("2006-01-02T15:04:05", blockedUntilStr); err3 == nil {
+			return true, t3, nil
+		}
 		return true, time.Now().Add(time.Hour), nil
 	}
 	return true, t, nil

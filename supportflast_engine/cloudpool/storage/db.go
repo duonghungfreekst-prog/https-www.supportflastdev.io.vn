@@ -513,7 +513,11 @@ func (s *DB) migrate() error {
 }
 
 func (s *DB) setDefaultSetting(key, val string) {
-	_, _ = s.db.Exec("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", key, val)
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM settings WHERE key = ?", key).Scan(&count)
+	if count == 0 {
+		_, _ = s.db.Exec("INSERT INTO settings (key, value) VALUES (?, ?)", key, val)
+	}
 }
 
 // -------------------------------------------------------------

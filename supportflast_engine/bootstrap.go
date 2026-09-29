@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"supportflast_engine/config"
 	cloudpoolStorage "supportflast_engine/cloudpool/storage"
@@ -221,7 +222,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	res.AdminUsername = "admin"
 	registry.InitAuth()
 
-	// Xác thực tài khoản Admin trong SQLite
+	// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc TiDB/MySQL)
 	var adminUser database.User
 	err = db.QueryRow("SELECT id, username, email, password_hash, role FROM users WHERE username = 'admin'").Scan(
 		&adminUser.ID, &adminUser.Username, &adminUser.Email, &adminUser.PasswordHash, &adminUser.Role,
@@ -233,16 +234,47 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		if hashErr != nil {
 			return nil, fmt.Errorf("lỗi băm mật khẩu admin: %w", hashErr)
 		}
-		now := config.Get("BOOTSTRAP_TIME", "")
-		if now == "" {
-			now = database.DefaultAdminDisplayName
-		}
-		_, insertErr := db.Exec(`
-			INSERT OR IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
-			VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), '')
-		`, database.DefaultAdminID, database.DefaultAdminUsername, database.DefaultAdminEmail, string(hash), database.DefaultAdminDisplayName, database.DefaultAdminRole, database.DefaultAdminAvatar)
-		if insertErr != nil {
-			return nil, fmt.Errorf("lỗi khởi tạo tài khoản admin: %w", insertErr)
+
+		var adminExists int
+		_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR id = ?", database.DefaultAdminUsername, database.DefaultAdminID).Scan(&adminExists)
+		if adminExists == 0 {
+			isMySQL := database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "tidb" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
+
+			var insertSQL string
+			var nowVal interface{}
+			var lastLoginVal interface{}
+
+			if isMySQL {
+				nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
+				lastLoginVal = nil
+				insertSQL = `
+					INSERT IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`
+			} else {
+				nowVal = time.Now().UTC().Format(time.RFC3339)
+				lastLoginVal = ""
+				insertSQL = `
+					INSERT OR IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`
+			}
+
+			_, insertErr := db.Exec(insertSQL,
+				database.DefaultAdminID,
+				database.DefaultAdminUsername,
+				database.DefaultAdminEmail,
+				string(hash),
+				database.DefaultAdminDisplayName,
+				database.DefaultAdminRole,
+				database.DefaultAdminAvatar,
+				nowVal,
+				nowVal,
+				lastLoginVal,
+			)
+			if insertErr != nil {
+				return nil, fmt.Errorf("lỗi khởi tạo tài khoản admin: %w", insertErr)
+			}
 		}
 		res.AdminUserCreated = true
 	} else {

@@ -121,3 +121,72 @@ func TestFormatBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestIsTiDBOrMySQL(t *testing.T) {
+	// 1. Kiểm tra qua DB_DRIVER=tidb
+	t.Setenv("DB_DRIVER", "tidb")
+	if !isTiDBOrMySQL(nil) {
+		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi DB_DRIVER=tidb")
+	}
+
+	// 2. Kiểm tra qua DB_DRIVER=mysql
+	t.Setenv("DB_DRIVER", "mysql")
+	if !isTiDBOrMySQL(nil) {
+		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi DB_DRIVER=mysql")
+	}
+
+	// 3. Kiểm tra qua DB_DRIVER=sqlite
+	t.Setenv("DB_DRIVER", "sqlite")
+	if isTiDBOrMySQL(nil) {
+		t.Errorf("kỳ vọng isTiDBOrMySQL trả về false khi DB_DRIVER=sqlite")
+	}
+
+	// 4. Kiểm tra qua TIDB_HOST khi DB_DRIVER không đặt
+	t.Setenv("DB_DRIVER", "")
+	t.Setenv("TIDB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
+	if !isTiDBOrMySQL(nil) {
+		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi TIDB_HOST được cấu hình")
+	}
+}
+
+func TestPerformDiagnostics_TiDB_Config(t *testing.T) {
+	tempDir := t.TempDir()
+	dataDir := filepath.Join(tempDir, "data")
+	storageDir := filepath.Join(tempDir, "storage")
+	_ = os.MkdirAll(dataDir, 0755)
+	_ = os.MkdirAll(storageDir, 0755)
+
+	t.Setenv("DATA_DIR", dataDir)
+	t.Setenv("STORAGE_DIR", storageDir)
+	t.Setenv("DB_DRIVER", "tidb")
+	t.Setenv("TIDB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
+	t.Setenv("TIDB_PORT", "4000")
+	t.Setenv("TIDB_DATABASE", "supportflast")
+
+	resp := PerformDiagnostics()
+
+	if resp.Status != "success" {
+		t.Fatalf("kỳ vọng resp.Status là success, nhận: %s", resp.Status)
+	}
+
+	dbCheck := resp.Diagnostics.Database
+	if dbCheck.Driver != "tidb" {
+		t.Errorf("kỳ vọng dbCheck.Driver là 'tidb', nhận: %s", dbCheck.Driver)
+	}
+
+	if dbCheck.Title != "Cơ Sở Dữ Liệu TiDB Cloud (Database Engine)" {
+		t.Errorf("kỳ vọng Title TiDB Cloud, nhận: %s", dbCheck.Title)
+	}
+
+	expectedPath := "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/supportflast"
+	if dbCheck.DBPath != expectedPath {
+		t.Errorf("kỳ vọng DBPath '%s', nhận: '%s'", expectedPath, dbCheck.DBPath)
+	}
+
+	if !dbCheck.WALModeActive {
+		t.Errorf("kỳ vọng WALModeActive là true cho TiDB")
+	}
+	if !dbCheck.ForeignKeysEnabled {
+		t.Errorf("kỳ vọng ForeignKeysEnabled là true cho TiDB")
+	}
+}

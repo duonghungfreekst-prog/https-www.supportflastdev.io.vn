@@ -176,7 +176,7 @@ func GetReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			       stars, text, COALESCE(status, 'approved'), COALESCE(created_at, '')
 			FROM reviews
 			WHERE (status = 'approved' OR status IS NULL OR status = '') AND app_id = ?
-			ORDER BY datetime(created_at) DESC, rowid DESC
+			ORDER BY created_at DESC, id DESC
 		`
 		args = append(args, appIDFilter)
 	} else {
@@ -185,7 +185,7 @@ func GetReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			       stars, text, COALESCE(status, 'approved'), COALESCE(created_at, '')
 			FROM reviews
 			WHERE status = 'approved' OR status IS NULL OR status = ''
-			ORDER BY datetime(created_at) DESC, rowid DESC
+			ORDER BY created_at DESC, id DESC
 		`
 	}
 
@@ -400,35 +400,40 @@ func CreateReviewHandler(w http.ResponseWriter, r *http.Request) {
 		appIDVal = cleanAppID
 	}
 
-	// 5. Lưu vào cơ sở dữ liệu SQLite bảng 'reviews'
+	// 5. Lưu vào cơ sở dữ liệu (SQLite hoặc TiDB Cloud) bảng 'reviews'
 	db := database.GetDB()
 	if db == nil {
-		log.Printf("[ENGINE] [REVIEWS] [ERROR] Không thể kết nối cơ sở dữ liệu SQLite để lưu đánh giá")
+		log.Printf("[ENGINE] [REVIEWS] [ERROR] Không thể kết nối cơ sở dữ liệu để lưu đánh giá")
 		http.Error(w, `{"error":"Không thể kết nối cơ sở dữ liệu hệ thống"}`, http.StatusInternalServerError)
 		return
 	}
 
-	insertSQL := `
-		INSERT INTO reviews (id, app_id, user_id, author_name, author_role, stars, text, status, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?)
-	`
+	// Kiểm tra trước khi chèn để tương thích 100% cả SQLite lẫn TiDB MySQL (tránh lỗi trùng lặp key / idempotent)
+	var count int
+	_ = db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM reviews WHERE id = ?", reviewID).Scan(&count)
+	if count == 0 {
+		insertSQL := `
+			INSERT INTO reviews (id, app_id, user_id, author_name, author_role, stars, text, status, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?)
+		`
 
-	_, err := db.ExecContext(
-		r.Context(),
-		insertSQL,
-		reviewID,
-		appIDVal,
-		userIDVal,
-		cleanAuthorName,
-		cleanAuthorRole,
-		stars,
-		cleanText,
-		createdAt,
-	)
-	if err != nil {
-		log.Printf("[ENGINE] [REVIEWS] [ERROR] Lỗi chèn đánh giá vào SQLite DB: %v", err)
-		http.Error(w, `{"error":"Lỗi lưu trữ đánh giá vào cơ sở dữ liệu"}`, http.StatusInternalServerError)
-		return
+		_, err := db.ExecContext(
+			r.Context(),
+			insertSQL,
+			reviewID,
+			appIDVal,
+			userIDVal,
+			cleanAuthorName,
+			cleanAuthorRole,
+			stars,
+			cleanText,
+			createdAt,
+		)
+		if err != nil {
+			log.Printf("[ENGINE] [REVIEWS] [ERROR] Lỗi chèn đánh giá vào cơ sở dữ liệu: %v", err)
+			http.Error(w, `{"error":"Lỗi lưu trữ đánh giá vào cơ sở dữ liệu"}`, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	var assignedUserID string
