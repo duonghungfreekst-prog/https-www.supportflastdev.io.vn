@@ -610,11 +610,8 @@ func main() {
 	mux.HandleFunc("/api/auth/security-pin", registry.SecurityPINHandler)
 	mux.HandleFunc("/api/auth/verify-pin", registry.VerifyPINHandler)
 	mux.HandleFunc("/api/auth/public-key", registry.PublicKeyHandler)
-	mux.HandleFunc("/api/auth/verify-admin-pass", cloudpoolApi.VerifyAdminPassHandler)
 	mux.HandleFunc("/api/admin/users", registry.AdminUsersListHandler)
 	mux.HandleFunc("/api/admin/users/reset-password", registry.AdminResetPasswordHandler)
-	mux.HandleFunc("/api/admin/users/quota", cloudpoolApi.UpdateUserQuotaHandler)
-	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
 	mux.HandleFunc("/api/admin/logs", registry.AdminLogsHandler)
 	mux.HandleFunc("/api/admin/sessions", registry.AdminSessionsHandler)
 
@@ -884,6 +881,9 @@ func main() {
 	mux.HandleFunc("/api/admin/storage", cloudpoolApi.AdminStorageHandler)
 	mux.HandleFunc("/api/admin/storage/", cloudpoolApi.AdminStorageHandler)
 	mux.HandleFunc("/api/public/share/", cloudpoolApi.PublicShareHandler)
+	mux.HandleFunc("/api/auth/verify-admin-pass", cloudpoolApi.VerifyAdminPassHandler)
+	mux.HandleFunc("/api/admin/users/quota", cloudpoolApi.UpdateUserQuotaHandler)
+	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
 

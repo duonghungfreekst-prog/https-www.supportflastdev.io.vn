@@ -9,7 +9,7 @@
 # ------------------------------------------------------------------------------
 # Stage 1: Builder (Golang Alpine Multi-Stage Multi-Arch Build)
 # ------------------------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
 
 # Tự động nhận diện kiến trúc đích từ Docker Buildx (amd64 / arm64 / v7 / ...)
 ARG TARGETPLATFORM
