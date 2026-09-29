@@ -855,7 +855,20 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		InvalidateAppsCache()
 	}
 
-	// Kiểm tra xem file có trên disk không
+	// 1. Kiểm tra chính xác theo targetApp.FileName hoặc appID_targetApp.FileName
+	exactPaths := []string{
+		filepath.Join(getStorageDir(), targetApp.FileName),
+		filepath.Join(getStorageDir(), fmt.Sprintf("%s_%s", appID, targetApp.FileName)),
+	}
+	for _, p := range exactPaths {
+		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
+			http.ServeFile(w, r, p)
+			return
+		}
+	}
+
+	// 2. Dự phòng: tìm kiếm theo pattern appID_*
 	pattern := filepath.Join(getStorageDir(), fmt.Sprintf("%s_*", appID))
 	matches, _ := filepath.Glob(pattern)
 	if len(matches) > 0 {

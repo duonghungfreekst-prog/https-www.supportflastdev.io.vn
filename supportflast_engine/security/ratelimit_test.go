@@ -282,6 +282,10 @@ func TestMultiTierRateLimitMiddleware_Tier1GlobalLimit(t *testing.T) {
 	GlobalMultiTierLimiter.ResetAll()
 	defer GlobalMultiTierLimiter.ResetAll()
 
+	oldMax := GlobalMultiTierLimiter.tier1Global.maxRequests
+	GlobalMultiTierLimiter.tier1Global.maxRequests = 120
+	defer func() { GlobalMultiTierLimiter.tier1Global.maxRequests = oldMax }()
+
 	testIP := "203.0.113.88"
 	handler := MultiTierRateLimitMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

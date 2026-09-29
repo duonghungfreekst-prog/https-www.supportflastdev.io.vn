@@ -290,6 +290,8 @@ func (s *DB) migrate() error {
 			created_at DATETIME,
 			updated_at DATETIME
 		);`,
+		`CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);`,
+		`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent ON virtual_files(parent_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_path ON virtual_files(path);`,
 		`CREATE TABLE IF NOT EXISTS file_chunks (
@@ -306,6 +308,7 @@ func (s *DB) migrate() error {
 			FOREIGN KEY(account_id) REFERENCES accounts(id)
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_chunks_file ON file_chunks(file_id, chunk_index);`,
+		`CREATE INDEX IF NOT EXISTS idx_chunks_account ON file_chunks(account_id);`,
 		`CREATE TABLE IF NOT EXISTS activity_logs (
 			id TEXT PRIMARY KEY,
 			user_id TEXT,
