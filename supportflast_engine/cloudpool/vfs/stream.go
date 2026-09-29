@@ -110,7 +110,7 @@ type FileStreamer struct {
 	offset            int64
 	chunkSize         int64
 	mu                sync.Mutex
-	lastPrefetchedIdx int
+	lastPrefetchedIdx atomic.Int32
 }
 
 // NewFileStreamer creates a seeker-capable stream reader for a virtual file
@@ -146,16 +146,17 @@ func (v *VFS) NewFileStreamer(ctx context.Context, fileID string) (*FileStreamer
 		}
 	}
 
-	return &FileStreamer{
-		ctx:               ctx,
-		vfs:               v,
-		file:              vFile,
-		chunks:            chunks,
-		encKey:            encKey,
-		offset:            0,
-		chunkSize:         chunkSize,
-		lastPrefetchedIdx: -1,
-	}, nil
+	fs := &FileStreamer{
+		ctx:       ctx,
+		vfs:       v,
+		file:      vFile,
+		chunks:    chunks,
+		encKey:    encKey,
+		offset:    0,
+		chunkSize: chunkSize,
+	}
+	fs.lastPrefetchedIdx.Store(-1)
+	return fs, nil
 }
 
 // Size returns total virtual file size in bytes
@@ -197,7 +198,7 @@ func (s *FileStreamer) Read(p []byte) (n int, err error) {
 		}
 
 		// Kích hoạt nạp trước chunk tiếp theo vào RAM cache (chỉ trigger 1 lần khi chuyển chunk)
-		if chunkIdx+1 < len(s.chunks) && s.lastPrefetchedIdx != chunkIdx+1 {
+		if chunkIdx+1 < len(s.chunks) && int(s.lastPrefetchedIdx.Load()) != chunkIdx+1 {
 			s.triggerPrefetch(chunkIdx + 1)
 		}
 
@@ -277,7 +278,7 @@ func (s *FileStreamer) ReadAt(p []byte, off int64) (n int, err error) {
 		}
 
 		// Kích hoạt nạp trước chunk tiếp theo vào RAM cache (chỉ trigger 1 lần khi chuyển chunk)
-		if chunkIdx+1 < len(s.chunks) && s.lastPrefetchedIdx != chunkIdx+1 {
+		if chunkIdx+1 < len(s.chunks) && int(s.lastPrefetchedIdx.Load()) != chunkIdx+1 {
 			s.triggerPrefetch(chunkIdx + 1)
 		}
 
@@ -399,13 +400,13 @@ func (s *FileStreamer) triggerPrefetch(nextChunkIdx int) {
 		return
 	}
 
-	s.mu.Lock()
-	if s.lastPrefetchedIdx == nextChunkIdx {
-		s.mu.Unlock()
+	old := s.lastPrefetchedIdx.Load()
+	if int(old) == nextChunkIdx {
 		return
 	}
-	s.lastPrefetchedIdx = nextChunkIdx
-	s.mu.Unlock()
+	if !s.lastPrefetchedIdx.CompareAndSwap(old, int32(nextChunkIdx)) {
+		return
+	}
 
 	nextChunk := s.chunks[nextChunkIdx]
 	cacheKey := fmt.Sprintf("chunk_%s_%s", nextChunk.AccountID, nextChunk.GDriveFileID)
