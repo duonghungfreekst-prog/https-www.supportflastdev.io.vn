@@ -6612,26 +6612,35 @@
                 updateAdminUI(true, cachedUser);
             }
 
-            // Nguồn sự thật DUY NHẤT: Cookie SSO → /api/auth/me → Server xác thực JWT RS256
+            // Nguồn sự thật DUY NHẤT: Cookie SSO & Bearer Token → /api/auth/me → Server xác thực JWT RS256
             try {
-                const res = await fetch('/api/auth/me');
+                const token = localStorage.getItem('cloudpool_jwt_token') || '';
+                const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch('/api/auth/me', { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data && data.user && data.user.role === 'admin') {
-                        localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
+                    const user = (data && data.user) ? data.user : data;
+                    if (user && (user.role === 'admin' || user.username === 'admin')) {
+                        localStorage.setItem('cloudpool_current_user', JSON.stringify(user));
                         sessionStorage.setItem('cloudpool_admin_session', 'true');
-                        updateAdminUI(true, data.user);
+                        updateAdminUI(true, user);
                         return;
                     }
+                } else if (res.status === 401 || res.status === 403) {
+                    // Server xác nhận hết phiên đăng nhập
+                    localStorage.removeItem('cloudpool_current_user');
+                    localStorage.removeItem('cloudpool_jwt_token');
+                    sessionStorage.removeItem('cloudpool_admin_session');
+                    updateAdminUI(false, null);
+                    return;
                 }
             } catch(e) {
-                console.warn('[AUTH] Không thể kết nối server xác thực, xóa cache cũ');
+                console.warn('[AUTH] Không thể kết nối server xác thực, duy trì cache tạm thời');
+                if (cachedUser && cachedUser.role === 'admin') {
+                    updateAdminUI(true, cachedUser);
+                    return;
+                }
             }
-
-            // Server xác nhận KHÔNG phải admin (hoặc lỗi kết nối) → XÓA cache cũ, ẩn tuyệt đối
-            localStorage.removeItem('cloudpool_current_user');
-            sessionStorage.removeItem('cloudpool_admin_session');
-            updateAdminUI(false, null);
         }
 
         function updateAdminUI(isAdmin, user) {
@@ -7069,6 +7078,7 @@
                             });
                             const loginData = await loginRes.json();
                             if (loginRes.ok && loginData.status === 'success') {
+                                if (loginData.token) localStorage.setItem('cloudpool_jwt_token', loginData.token);
                                 localStorage.setItem('cloudpool_current_user', JSON.stringify(loginData.user));
                                 sessionStorage.setItem('cloudpool_admin_session', 'true');
                                 updateAdminUI(true, loginData.user);
@@ -7145,6 +7155,7 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.status === 'success') {
+                    if (data.token) localStorage.setItem('cloudpool_jwt_token', data.token);
                     localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
                     sessionStorage.setItem('cloudpool_admin_session', 'true');
                     updateAdminUI(true, data.user);
