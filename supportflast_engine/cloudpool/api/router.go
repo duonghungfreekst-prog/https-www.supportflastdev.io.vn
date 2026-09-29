@@ -34,6 +34,11 @@ var (
 	PublicShareHandler http.HandlerFunc
 	UpdateHandler      http.HandlerFunc
 	WebDAVHandler      http.Handler
+
+	// Auth & Admin User Handlers
+	VerifyAdminPassHandler http.HandlerFunc
+	UpdateUserQuotaHandler http.HandlerFunc
+	DeleteUserHandler      http.HandlerFunc
 )
 
 // InitHandlers khởi tạo và liên kết toàn bộ Native Route Handlers cho CloudPool
@@ -65,6 +70,11 @@ func InitHandlers(db *storage.DB, gd *gdrive.Manager, vfsEngine *vfs.VFS, uiDir 
 		PublicShareHandler = s.PublicShareHandler
 		UpdateHandler = s.UpdateHandler
 		WebDAVHandler = s.WebDAVHandler()
+
+		// Auth & Admin User Handlers
+		VerifyAdminPassHandler = s.handleVerifyAdminPass
+		UpdateUserQuotaHandler = s.handleUpdateUserQuota
+		DeleteUserHandler = s.handleDeleteUser
 
 		log.Printf("[ENGINE] [CLOUDPOOL] Toàn bộ Native Route Handlers đã được tích hợp thành công vào Go Engine!")
 	})
@@ -159,6 +169,7 @@ func (s *Server) setupSubMuxes() {
 	m.sqlMux.HandleFunc("/api/sql/backup", s.handleSQLBackup)
 	m.sqlMux.HandleFunc("/api/sql/backup/gdrive", s.handleGDriveBackup)
 	m.sqlMux.HandleFunc("/api/sql/backup/history", s.handleGDriveBackupHistory)
+	m.sqlMux.HandleFunc("/api/sql/check", s.handleSQLCheck)
 
 	// 6. Settings Sub-Mux
 	m.settingsMux = http.NewServeMux()
