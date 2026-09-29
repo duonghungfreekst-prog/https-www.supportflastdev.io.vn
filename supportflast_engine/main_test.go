@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
 	"testing"
-	"time"
 )
 
 func TestEnvironmentConfiguration_Defaults(t *testing.T) {

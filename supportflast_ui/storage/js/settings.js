@@ -35,6 +35,9 @@ const SettingsManager = {
       if (document.getElementById('set-google-client-id')) {
         document.getElementById('set-google-client-id').value = data.google_client_id || '';
       }
+      if (document.getElementById('set-google-client-secret')) {
+        document.getElementById('set-google-client-secret').value = data.google_client_secret || '';
+      }
       if (document.getElementById('set-redirect-url')) {
         document.getElementById('set-redirect-url').value = data.redirect_url || '';
       }

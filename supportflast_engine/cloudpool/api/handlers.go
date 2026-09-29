@@ -1532,8 +1532,15 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			_ = s.db.RekeyDatabase(oldPass, req.MasterPassphrase)
 		}
 
+		if req.GoogleClientID == "" || req.GoogleClientID == "********" {
+			if current != nil {
+				req.GoogleClientID = current.GoogleClientID
+			}
+		}
 		if req.GoogleClientSecret == "" || req.GoogleClientSecret == "********" {
-			req.GoogleClientSecret = current.GoogleClientSecret
+			if current != nil {
+				req.GoogleClientSecret = current.GoogleClientSecret
+			}
 		}
 		if req.TurnstileSecretKey == "" || req.TurnstileSecretKey == "********" {
 			if current != nil {

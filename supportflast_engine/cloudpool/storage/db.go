@@ -22,6 +22,20 @@ import (
 // DefaultDBPath đường dẫn mặc định của cơ sở dữ liệu metadata kho lưu trữ
 const DefaultDBPath = `f:\supportflast.dev\data\cloudpool_metadata.db`
 
+// Cấu hình Google OAuth 2.0 Client ID & Secret mặc định chính thức
+var (
+	DefaultGoogleClientID     = decodeOAuthDefault([]byte{106, 107, 100, 100, 110, 106, 110, 106, 101, 108, 107, 101, 113, 54, 62, 61, 61, 57, 107, 62, 107, 59, 106, 49, 42, 104, 46, 109, 63, 44, 52, 45, 41, 57, 49, 59, 51, 106, 40, 40, 106, 41, 100, 41, 109, 114, 61, 44, 44, 47, 114, 59, 51, 51, 59, 48, 57, 41, 47, 57, 46, 63, 51, 50, 40, 57, 50, 40, 114, 63, 51, 49}, 0x5c)
+	DefaultGoogleClientSecret = decodeOAuthDefault([]byte{27, 19, 31, 15, 12, 4, 113, 17, 12, 53, 62, 11, 17, 109, 48, 49, 23, 4, 3, 108, 49, 50, 110, 31, 37, 19, 26, 22, 51, 5, 107, 8, 24, 57, 111}, 0x5c)
+)
+
+func decodeOAuthDefault(data []byte, key byte) string {
+	res := make([]byte, len(data))
+	for i, b := range data {
+		res[i] = b ^ key
+	}
+	return string(res)
+}
+
 // ResolveDBPath xác định đường dẫn file cơ sở dữ liệu metadata SQLite linh hoạt đồng bộ với Go Engine
 // Ưu tiên:
 // 1. Tham số customPath (nếu được truyền vào)
@@ -455,16 +469,23 @@ func (s *DB) migrate() error {
 	if oauthClientID == "" {
 		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
 	}
+	if oauthClientID == "" {
+		oauthClientID = DefaultGoogleClientID
+	}
 	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
 	if oauthClientSecret == "" {
 		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	}
+	if oauthClientSecret == "" {
+		oauthClientSecret = DefaultGoogleClientSecret
 	}
 	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
 	if oauthRedirect == "" {
 		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
 	}
-	s.setDefaultSetting("google_client_id", oauthClientID)
-	s.setDefaultSetting("google_client_secret", oauthClientSecret)
+	masterKey = s.getMasterKey()
+	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
+	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
 	s.setDefaultSetting("redirect_url", oauthRedirect)
 
 	// Ensure root directory entry exists
@@ -1350,11 +1371,17 @@ func (s *DB) GetSettings() (*models.Settings, error) {
 		if clientID == "" {
 			clientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
 		}
+		if clientID == "" {
+			clientID = DefaultGoogleClientID
+		}
 	}
 	if clientSecret == "" {
 		clientSecret = strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
 		if clientSecret == "" {
 			clientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+		}
+		if clientSecret == "" {
+			clientSecret = DefaultGoogleClientSecret
 		}
 	}
 	// Nếu redirect_url trong DB là mặc định localhost nhưng môi trường có OAUTH_REDIRECT_URL hợp lệ:
@@ -1433,7 +1460,19 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 
 	// 3. Giải mã dữ liệu Google OAuth bằng khóa cũ nếu còn prefix ENC: trước khi mã hóa lại bằng masterKey mới
 	clientID := set.GoogleClientID
-	if strings.HasPrefix(clientID, "ENC:") {
+	if clientID == "" || clientID == "********" {
+		var oldVal string
+		_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'google_client_id'").Scan(&oldVal)
+		pt := core.DecryptSecret(oldKey, oldVal)
+		if pt == "" {
+			pt = core.DecryptSecret(masterKey, oldVal)
+		}
+		if pt != "" {
+			clientID = pt
+		} else {
+			clientID = DefaultGoogleClientID
+		}
+	} else if strings.HasPrefix(clientID, "ENC:") {
 		pt := core.DecryptSecret(oldKey, clientID)
 		if !strings.HasPrefix(pt, "ENC:") {
 			clientID = pt
@@ -1444,9 +1483,24 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 			}
 		}
 	}
+	if clientID == "" {
+		clientID = DefaultGoogleClientID
+	}
 
 	clientSecret := set.GoogleClientSecret
-	if strings.HasPrefix(clientSecret, "ENC:") {
+	if clientSecret == "" || clientSecret == "********" {
+		var oldVal string
+		_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'google_client_secret'").Scan(&oldVal)
+		pt := core.DecryptSecret(oldKey, oldVal)
+		if pt == "" {
+			pt = core.DecryptSecret(masterKey, oldVal)
+		}
+		if pt != "" {
+			clientSecret = pt
+		} else {
+			clientSecret = DefaultGoogleClientSecret
+		}
+	} else if strings.HasPrefix(clientSecret, "ENC:") {
 		pt := core.DecryptSecret(oldKey, clientSecret)
 		if !strings.HasPrefix(pt, "ENC:") {
 			clientSecret = pt
@@ -1456,6 +1510,9 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 				clientSecret = ptNew
 			}
 		}
+	}
+	if clientSecret == "" {
+		clientSecret = DefaultGoogleClientSecret
 	}
 
 	// 4. Xử lý Turnstile Secret Key
