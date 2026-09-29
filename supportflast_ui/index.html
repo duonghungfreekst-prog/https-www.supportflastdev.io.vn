@@ -3997,6 +3997,10 @@
                             <span>🔑</span>
                             <span>Cấp &amp; Quản Lý Mã API Key</span>
                         </div>
+                        <div class="user-dropdown-item" onclick="openGitSyncModal(); closeUserDropdown();">
+                            <span>🐙</span>
+                            <span>Đồng Bộ GitHub (Auto-Sync)</span>
+                        </div>
                         <div class="user-dropdown-item" onclick="switchMainView('download'); closeUserDropdown();">
                             <span>📦</span>
                             <span>Kho Ứng Dụng Của Tôi</span>
@@ -7218,6 +7222,137 @@
                 document.body.appendChild(m);
             } else {
                 m.style.display = 'flex';
+            }
+        }
+
+        /* Modal Đồng Bộ GitHub Tự Động */
+        async function openGitSyncModal() {
+            let m = document.getElementById('git-sync-modal');
+            if (!m) {
+                m = document.createElement('div');
+                m.id = 'git-sync-modal';
+                m.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);padding:18px;';
+                m.innerHTML = `
+                    <div style="background:#0a0f1d;border:1px solid rgba(0,229,255,0.4);border-radius:20px;max-width:580px;width:100%;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,0.9);position:relative;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="width:42px;height:42px;border-radius:12px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.35);display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🐙</div>
+                                <div>
+                                    <div style="color:#fff;font-weight:800;font-size:1.15rem;">Đồng Bộ GitHub Tự Động (Auto-Sync)</div>
+                                    <div style="color:#00e5ff;font-size:0.75rem;font-weight:700;">API /api/git/sync &bull; REPO CHÍNH THỨC</div>
+                                </div>
+                            </div>
+                            <button onclick="document.getElementById('git-sync-modal').style.display='none'" style="background:transparent;border:none;color:#94a3b8;font-size:1.6rem;cursor:pointer;line-height:1;padding:4px 8px;">✕</button>
+                        </div>
+                        <div id="git-sync-status-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:18px;font-size:0.86rem;color:#cbd5e1;line-height:1.7;">
+                            <div style="text-align:center;color:#94a3b8;padding:12px 0;">Đang kiểm tra trạng thái Git...</div>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="display:block;color:#94a3b8;font-size:0.82rem;font-weight:600;margin-bottom:6px;">Ghi chú Commit (Tùy chọn):</label>
+                            <input type="text" id="git-sync-commit-msg" placeholder="Nhập ghi chú thay đổi (để trống sẽ dùng mặc định)..." style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.88rem;outline:none;">
+                        </div>
+                        <div id="git-sync-result-msg" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:10px;font-size:0.84rem;"></div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <a href="https://github.com/duonghungfreekst-prog/https-www.supportflastdev.io.vn" target="_blank" style="color:#00e5ff;font-size:0.84rem;text-decoration:none;display:flex;align-items:center;gap:6px;">Mở GitHub Repo &rarr;</a>
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="document.getElementById('git-sync-modal').style.display='none'" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:#94a3b8;padding:9px 18px;border-radius:10px;font-weight:600;font-size:0.85rem;cursor:pointer;">Đóng</button>
+                                <button id="btn-trigger-git-sync" onclick="triggerGitSyncNow()" style="background:linear-gradient(135deg, #00e5ff, #3b82f6);color:#010308;padding:9px 20px;border-radius:10px;font-weight:700;font-size:0.86rem;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,229,255,0.35);">Đồng Bộ Ngay &uarr;</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(m);
+            } else {
+                m.style.display = 'flex';
+            }
+            fetchGitStatusModal();
+        }
+
+        async function fetchGitStatusModal() {
+            const box = document.getElementById('git-sync-status-box');
+            if (!box) return;
+            try {
+                const res = await fetch('/api/git/status');
+                if (!res.ok) throw new Error('Không thể tải trạng thái Git');
+                const data = await res.json();
+                const statusBadge = data.is_clean 
+                    ? '<span style="color:#4ade80;font-weight:700;">● Đã đồng bộ mới nhất (Clean)</span>'
+                    : `<span style="color:#facc15;font-weight:700;">● Có ${data.changed_files_count} tệp tin thay đổi chưa commit</span>`;
+                
+                box.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#94a3b8;">Kho chứa (Repository):</span>
+                        <span style="color:#00e5ff;font-weight:600;font-family:'JetBrains Mono',monospace;word-break:break-all;">duonghungfreekst-prog/https-www.supportflastdev.io.vn</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#94a3b8;">Nhánh (Branch):</span>
+                        <span style="color:#fff;font-weight:700;font-family:'JetBrains Mono',monospace;">${data.branch || 'main'}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                        <span style="color:#94a3b8;">Trạng thái kho:</span>
+                        <span>${statusBadge}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span style="color:#94a3b8;">Commit gần nhất:</span>
+                        <span style="color:#cbd5e1;font-family:'JetBrains Mono',monospace;">${data.last_commit && data.last_commit.hash ? data.last_commit.hash + ' - ' + (data.last_commit.subject || '') : 'N/A'}</span>
+                    </div>
+                `;
+            } catch (err) {
+                box.innerHTML = `<div style="color:#ef4444;text-align:center;">Lỗi kiểm tra trạng thái: ${err.message}</div>`;
+            }
+        }
+
+        async function triggerGitSyncNow() {
+            const btn = document.getElementById('btn-trigger-git-sync');
+            const msgEl = document.getElementById('git-sync-result-msg');
+            const commitInput = document.getElementById('git-sync-commit-msg');
+            const customMsg = commitInput ? commitInput.value.trim() : '';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Đang đồng bộ...';
+            }
+            if (msgEl) msgEl.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/git/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: customMsg })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    if (msgEl) {
+                        msgEl.style.display = 'block';
+                        msgEl.style.background = 'rgba(74,222,128,0.1)';
+                        msgEl.style.border = '1px solid rgba(74,222,128,0.3)';
+                        msgEl.style.color = '#4ade80';
+                        msgEl.innerHTML = `🎉 <strong>Thành công:</strong> ${data.message} (Commit: <code>${data.commit_hash}</code>)`;
+                    }
+                    if (commitInput) commitInput.value = '';
+                    fetchGitStatusModal();
+                } else {
+                    if (msgEl) {
+                        msgEl.style.display = 'block';
+                        msgEl.style.background = 'rgba(239,68,68,0.1)';
+                        msgEl.style.border = '1px solid rgba(239,68,68,0.3)';
+                        msgEl.style.color = '#ef4444';
+                        msgEl.innerHTML = `⚠️ <strong>Thất bại:</strong> ${data.error || 'Có lỗi xảy ra khi đẩy lên GitHub'}`;
+                    }
+                }
+            } catch (err) {
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    msgEl.style.background = 'rgba(239,68,68,0.1)';
+                    msgEl.style.border = '1px solid rgba(239,68,68,0.3)';
+                    msgEl.style.color = '#ef4444';
+                    msgEl.innerHTML = `⚠️ <strong>Lỗi kết nối:</strong> ${err.message}`;
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = 'Đồng Bộ Ngay ↑';
+                }
             }
         }
 
