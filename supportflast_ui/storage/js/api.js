@@ -54,6 +54,14 @@ const API = {
       }
       options.headers = headers;
       options.credentials = options.credentials || 'include';
+
+      // Cache busting: bypass trình duyệt/CDN cache cho tất cả GET API request
+      const method = (options.method || 'GET').toUpperCase();
+      if (method === 'GET' && endpoint.startsWith('/api/')) {
+        const sep = endpoint.includes('?') ? '&' : '?';
+        endpoint = endpoint + sep + '_t=' + Date.now();
+      }
+      options.cache = options.cache || 'no-store';
       
       const timeoutMs = options.timeout !== undefined ? options.timeout : 30000;
       const controller = new AbortController();
