@@ -566,7 +566,7 @@ func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBy
 
 	var activeAccounts []models.Account
 	for _, a := range accounts {
-		if a.Status != "active" || excludeMap[a.ID] {
+		if a.Status != "active" || excludeMap[a.ID] || a.IsUploadExcludedAccount() {
 			continue
 		}
 		if a.FreeQuotaBytes >= requiredBytes {

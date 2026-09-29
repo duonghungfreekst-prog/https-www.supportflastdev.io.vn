@@ -309,3 +309,86 @@ func indexOf(s, substr string) int {
 	}
 	return -1
 }
+
+func TestManager_UploadExcludedAccounts(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	mgr := NewManager(db)
+	ctx := context.Background()
+
+	// 1. Thêm 3 tài khoản cần né lưu trữ với dung lượng trống rất lớn (100GB mỗi tài khoản)
+	excluded1 := &models.Account{
+		ID:              "acc_ex_1",
+		Email:           "duongmanhhung9900@gmail.com",
+		Name:            "Hung Admin Backup",
+		AuthType:        "oauth",
+		RootFolderID:    "rf_1",
+		TotalQuotaBytes: 200 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  100 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  100 * 1024 * 1024 * 1024, // 100GB
+		Status:          "active",
+		CreatedAt:       time.Now(),
+	}
+	excluded2 := &models.Account{
+		ID:              "acc_ex_2",
+		Email:           "duongmanhhunghospital@gmail.com",
+		Name:            "Hospital Backup",
+		AuthType:        "oauth",
+		RootFolderID:    "rf_2",
+		TotalQuotaBytes: 200 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  100 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  100 * 1024 * 1024 * 1024, // 100GB
+		Status:          "active",
+		CreatedAt:       time.Now(),
+	}
+	excluded3 := &models.Account{
+		ID:              "acc_ex_3",
+		Email:           "phephabaylac@gmail.com",
+		Name:            "Special Storage",
+		AuthType:        "oauth",
+		RootFolderID:    "rf_3",
+		TotalQuotaBytes: 200 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  100 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  100 * 1024 * 1024 * 1024, // 100GB
+		Status:          "active",
+		CreatedAt:       time.Now(),
+	}
+	// 2. Thêm 1 tài khoản thông thường chỉ có 10GB trống
+	regular := &models.Account{
+		ID:              "acc_regular",
+		Email:           "normal_user_drive@gmail.com",
+		Name:            "Normal Storage Drive",
+		AuthType:        "oauth",
+		RootFolderID:    "rf_normal",
+		TotalQuotaBytes: 50 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  40 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  10 * 1024 * 1024 * 1024, // Chỉ 10GB
+		Status:          "active",
+		CreatedAt:       time.Now(),
+	}
+
+	for _, a := range []*models.Account{excluded1, excluded2, excluded3, regular} {
+		if err := db.SaveAccount(a); err != nil {
+			t.Fatalf("Lỗi tạo account test: %v", err)
+		}
+	}
+
+	// 3. Khi chọn tài khoản tải lên 1GB:
+	// Mặc dù 3 tài khoản bị né có 100GB trống (nhiều hơn nhiều so với 10GB của regular),
+	// hệ thống BẮT BUỘC phải bỏ qua 3 tài khoản đó và chỉ chọn tài khoản regular!
+	chosen, err := mgr.SelectAccount(ctx, StrategyLeastUsed, 1024*1024*1024)
+	if err != nil {
+		t.Fatalf("SelectAccount thất bại: %v", err)
+	}
+	if chosen.ID != "acc_regular" {
+		t.Fatalf("Kỳ vọng chọn 'acc_regular' nhưng lại chọn '%s' (%s). Tính năng né lưu trữ thất bại!", chosen.ID, chosen.Email)
+	}
+
+	// 4. Nếu yêu cầu 20GB (vượt quá 10GB của regular, trong khi 3 tài khoản né vẫn có 100GB trống):
+	// Hệ thống BẮT BUỘC phải báo lỗi không đủ dung lượng chứ TUYỆT ĐỐI KHÔNG ĐƯỢC xâm phạm vào 3 tài khoản né!
+	_, errBig := mgr.SelectAccount(ctx, StrategyLeastUsed, 20*1024*1024*1024)
+	if errBig == nil {
+		t.Fatalf("Kỳ vọng báo lỗi hết dung lượng khả dụng khi không tính 3 tài khoản né, nhưng lại chọn được tài khoản!")
+	}
+}

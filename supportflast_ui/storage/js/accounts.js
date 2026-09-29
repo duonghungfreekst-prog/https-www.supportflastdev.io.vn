@@ -186,8 +186,17 @@ const AccountsManager = {
           <div class="account-meta">
             <div class="account-name" title="${this.isPrivacyMode ? 'Đã che giấu an toàn' : (acc.name || acc.email)}">${displayName}</div>
             <div class="account-email" style="font-family: var(--font-mono); font-size: 11.5px;" title="${this.isPrivacyMode ? 'Đã che giấu an toàn' : acc.email}">${displayEmail}</div>
-            <div style="display: flex; gap: 6px; align-items: center; margin-top: 3px;">
+            <div style="display: flex; gap: 6px; align-items: center; margin-top: 3px; flex-wrap: wrap;">
               <span class="account-type-pill">${authTypeLabel}</span>
+              ${acc.is_upload_excluded ? `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); color: #fbbf24; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700;" title="Đã né lưu trữ khi tải lên để tránh bị đầy tài khoản. Dành riêng cho sao lưu hệ thống &amp; đọc dữ liệu cũ.">
+                  🛡️ Né Upload (Chống đầy)
+                </span>
+              ` : `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 600;" title="Sẵn sàng nhận các mảnh tệp tin khi người dùng tải lên">
+                  ☁️ Sẵn sàng Upload
+                </span>
+              `}
             </div>
           </div>
           <span class="account-status-badge ${badgeClass}" title="${acc.last_error ? `Lỗi: ` + acc.last_error : badgeText}">${badgeText}</span>
