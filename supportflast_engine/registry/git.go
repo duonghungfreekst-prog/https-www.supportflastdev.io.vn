@@ -55,6 +55,8 @@ func runGitCommand(ctx context.Context, args ...string) (string, error) {
 	// Tránh git treo chờ nhập tài khoản mật khẩu trên terminal và đảm bảo định danh khi chạy dưới dịch vụ Windows SYSTEM
 	cmd.Env = append(os.Environ(),
 		"GIT_TERMINAL_PROMPT=0",
+		"USERPROFILE=C:\\Users\\Administrator",
+		"HOME=C:\\Users\\Administrator",
 		"GIT_AUTHOR_NAME=duonghungfreekst-prog",
 		"GIT_AUTHOR_EMAIL=duonghungfreekst-prog@users.noreply.github.com",
 		"GIT_COMMITTER_NAME=duonghungfreekst-prog",
