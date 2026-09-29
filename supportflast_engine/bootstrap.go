@@ -249,7 +249,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		res.AdminUserCreated = true
 		// Kiểm tra mật khẩu tài khoản admin
 		if bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(database.DefaultAdminPassword)) == nil {
-			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin' / 'Admin@2026!SupportFlast', role='admin') đã được xác thực an toàn.")
+			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã được xác thực an toàn.")
 		}
 	}
 

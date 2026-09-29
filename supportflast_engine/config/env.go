@@ -244,7 +244,7 @@ OAUTH_REDIRECT_URL=https://supportflastdev.io.vn/api/accounts/oauth/callback
 	}
 
 	log.Printf("[CONFIG] [ENV] [AUTO-GEN] Phát hiện chưa có file '.env'. Đã tự động tạo mới '.env' tại: '%s'", targetEnvPath)
-	log.Println("[CONFIG] [ENV] [AUTO-GEN] Đã cấu hình ADMIN_USERNAME='admin', ADMIN_PASSWORD='Admin@2026!SupportFlast', và sinh JWT_SECRET (256-bit hex) ngẫu nhiên.")
+	log.Println("[CONFIG] [ENV] [AUTO-GEN] Đã cấu hình ADMIN_USERNAME='admin', mật khẩu Quản Trị Viên được bảo mật, và sinh JWT_SECRET (256-bit hex) ngẫu nhiên.")
 
 	return targetEnvPath, nil
 }
@@ -296,7 +296,7 @@ func autoGenerateEnvFromExample() (string, error) {
 
 	log.Printf("[CONFIG] [ENV] [AUTO-GEN] Phát hiện chưa có file '.env'. Đã tự động tạo mới '.env' từ '%s' tại: '%s'",
 		filepath.Base(examplePath), targetEnvPath)
-	log.Println("[CONFIG] [ENV] [AUTO-GEN] Đã cấu hình ADMIN_USERNAME='admin', ADMIN_PASSWORD='Admin@2026!SupportFlast', và sinh JWT_SECRET (256-bit hex) ngẫu nhiên.")
+	log.Println("[CONFIG] [ENV] [AUTO-GEN] Đã cấu hình ADMIN_USERNAME='admin', mật khẩu Quản Trị Viên được bảo mật, và sinh JWT_SECRET (256-bit hex) ngẫu nhiên.")
 
 	return targetEnvPath, nil
 }
