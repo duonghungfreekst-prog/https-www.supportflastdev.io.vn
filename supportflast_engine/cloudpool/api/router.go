@@ -196,8 +196,6 @@ func (s *Server) setupSubMuxes() {
 	m.driveMux.HandleFunc("/api/admin/drive/", s.handleListDriveFiles)
 	m.driveMux.HandleFunc("/api/admin/drive/import", s.handleImportDriveFiles)
 	m.driveMux.HandleFunc("/api/admin/drive/files", s.handleListDriveFiles)
-	m.driveMux.HandleFunc("/api/admin/storage/integrity-check", s.handleIntegrityCheck)
-	m.driveMux.HandleFunc("/api/admin/storage/integrity-check/", s.handleIntegrityCheck)
 
 	// 10. Admin OTP Sub-Mux
 	m.otpMux = http.NewServeMux()

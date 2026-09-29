@@ -288,6 +288,8 @@ func (s *DB) migrate() error {
 			chunk_count INTEGER DEFAULT 0,
 			is_encrypted BOOLEAN DEFAULT 1,
 			has_missing_chunks BOOLEAN DEFAULT 0,
+			is_deleted BOOLEAN DEFAULT 0,
+			deleted_at DATETIME,
 			created_at DATETIME,
 			updated_at DATETIME
 		);`,
@@ -305,6 +307,7 @@ func (s *DB) migrate() error {
 			encrypted_size_bytes INTEGER DEFAULT 0,
 			sha256 TEXT,
 			status TEXT DEFAULT 'uploaded',
+			ref_count INTEGER DEFAULT 1,
 			FOREIGN KEY(file_id) REFERENCES virtual_files(id) ON DELETE CASCADE,
 			FOREIGN KEY(account_id) REFERENCES accounts(id)
 		);`,
@@ -419,6 +422,24 @@ func (s *DB) migrate() error {
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN email_hash TEXT DEFAULT '';")
 	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN email_hash TEXT DEFAULT '';")
 	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN name_hash TEXT DEFAULT '';")
+
+	// Missing Performance Indexes
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users(username_hash);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_deleted ON virtual_files(parent_id, is_deleted);")
+
+	// Backup history table (also created by Python backup script)
+	_, _ = s.db.Exec(`CREATE TABLE IF NOT EXISTS gdrive_backups (
+		id TEXT PRIMARY KEY,
+		filename TEXT NOT NULL,
+		size_bytes INTEGER NOT NULL,
+		sha256 TEXT NOT NULL,
+		gdrive_file_id TEXT NOT NULL,
+		gdrive_web_link TEXT NOT NULL,
+		target_email TEXT NOT NULL,
+		manifest_json TEXT,
+		created_at TEXT NOT NULL
+	);`)
 
 
 	// Encrypt any existing plaintext credentials/tokens in database
