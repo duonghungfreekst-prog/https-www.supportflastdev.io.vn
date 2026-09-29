@@ -1,0 +1,1 @@
+Thu muc luu tru tep tin tai len cua nguoi dung (Cloud Storage).

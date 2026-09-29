@@ -1,0 +1,77 @@
+# ==============================================================================
+# .dockerignore for SupportFlast Enterprise (supportflastdev.io.vn)
+# Loại trừ các file rác, file tạm, artifacts và thư mục phát triển
+# ==============================================================================
+
+# Hệ thống quản lý mã nguồn (Git)
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Hệ thống AI Agent & Workspace Logs
+.agents/
+.gemini/
+brain/
+scratch/
+
+# Tệp hệ điều hành & Thư mục rác (Windows / macOS)
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+
+# IDE & Editor Caches
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build Binaries & Executables (Tránh mang binary của host vào container Linux)
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.out
+*.test
+supportflast_engine/supportflast.exe
+supportflast_engine/supportflast_linux*
+
+# Python Runtime, Virtualenv & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+supportflast_ai/__pycache__/
+supportflast_ai/tmp_scans/
+.pytest_cache/
+
+# Test coverage, Benchmark & Profiling
+*.prof
+coverage.out
+*.cov
+
+# Log files & Server debug logs
+*.log
+engine.log
+logs/
+
+# SQLite WAL & Journal Temp Files (Tránh lock database khi copy image)
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Windows Batch scripts & PowerShell (Không cần thiết trong Linux container)
+*.bat
+*.ps1
+
+# Local infrastructure / proxy config overrides (Dùng mount khi cần)
+cloudflared_config.yml
+cloudflare_waf_rules.json
+nginx_supportflastdev.io.vn.conf
+Makefile

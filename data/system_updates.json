@@ -1,0 +1,12 @@
+{
+  "system": {
+    "version": "v2.6.0",
+    "updated_at": "2026-09-24T09:00:00+07:00",
+    "build_hash": "e89f41a",
+    "maintenance_mode": false,
+    "broadcast_enabled": false,
+    "broadcast_message": "",
+    "broadcast_level": "success"
+  },
+  "releases": []
+}

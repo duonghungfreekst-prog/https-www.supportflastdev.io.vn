@@ -1,0 +1,22 @@
+[
+  {
+    "id": "APP-7290",
+    "name": "AI Equalizer Pro & Audio Processor",
+    "version": "2.2.0",
+    "platform": "Android 8.0+ & Web Audio HUD",
+    "category": "Âm thanh & Đa phương tiện",
+    "desc": "Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, hiệu ứng không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực (Spectrum/Waveform/Ring/Stars/Mirror). Hỗ trợ phát nhạc cục bộ, nhạc nền Synth Ambient, thu âm Mic trực tiếp và lọc âm hệ thống (YouTube, Spotify, Game) chuẩn xác không độ trễ.",
+    "file_name": "APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip",
+    "size_bytes": 11389868,
+    "size_formatted": "10.9 MB",
+    "sha256": "027c9401cd5575871ee7c1ece73238cf4a0c2e960583795181f324651c75f256",
+    "author": "Dương Mạnh Hùng (DMH Tech & Antigravity)",
+    "downloads": 1,
+    "status": "Đã xuất bản",
+    "published_at": "2026-09-29T08:20:19.613091+07:00",
+    "download_url": "/api/apps/download/APP-7290",
+    "video_url": "https://supportflastdev.io.vn/videos/ai_equalizer_pro_huong_dan.html",
+    "guide": "# 🎛️ HƯỚNG DẪN CÀI ĐẶT & SỬ DỤNG: AI EQUALIZER PRO v2.2.0\n\n> **Phiên bản:** v2.2.0 (Build 2026.09)  \n> **Nền tảng:** Android 8.0+ (APK) & Web Audio HUD (Cross-Platform)  \n> **Mã API Cấp Phép:** `sf_live_db1ead71775e5129ed0533574b8ca7ae317791b7e77d9290`  \n> **Cổng Phân Phối:** https://supportflastdev.io.vn  \n\n---\n\n## 🚀 1. HƯỚNG DẪN CÀI ĐẶT\n\n### A. Dành Cho Điện Thoại Android (File APK)\n1. Tải gói cài đặt **`AIEqualizerPro-v2.2.apk`** trực tiếp từ Cổng SupportFlast.\n2. Mở file từ thư mục **Download / Quản lý tệp**.\n3. Cho phép cài đặt ứng dụng ngoài (Allow from this source).\n4. Khởi động ứng dụng và cấp quyền Microphone nếu muốn sử dụng chế độ Visualizer / Thu âm trực tiếp.\n\n### B. Dành Cho Web / Máy Tính (Web Audio HUD)\n1. Giải nén gói **`APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip`**, vào thư mục `web/` và mở `index.html`.\n2. Ứng dụng chạy trực tiếp 100% trên trình duyệt (Chrome, Edge, Cốc Cốc, Safari, Firefox), độ trễ cực thấp (< 12ms).\n3. Để lọc âm cho YouTube/Spotify: Chuyển sang Tab **\"Thu Hệ Thống\"** ➔ Chọn Tab trình duyệt ➔ Tích **\"Chia sẻ âm thanh hệ thống\"**.\n\n---\n\n## 🎚️ 2. TÍNH NĂNG VÀ CÁC THÔNG SỐ XỬ LÝ ÂM THANH\n\n- **10 Băng Tần EQ Chuẩn Phòng Thu:**\n  - `32Hz`, `64Hz`: Tần số siêu trầm Sub-bass (tiếng sấm, trống kick điện tử).\n  - `125Hz`, `250Hz`: Dải âm trầm Bass & Mid-bass (tiếng guitar bass, ấm áp).\n  - `500Hz`, `1kHz`, `2kHz`: Dải trung âm Vocal (giọng hát chính, nhạc cụ dẫn dắt).\n  - `4kHz`, `8kHz`, `16kHz`: Dải âm cao Treble & Air (tiếng hi-hat, độ sáng, không gian rộng mở).\n- **Bộ Hiệu Ứng Bổ Trợ (Audio DSP Effects):**\n  - **Preamp (-12dB đến +12dB):** Tăng giảm gain trước khi đi vào bộ lọc.\n  - **Siêu Trầm (Bass Boost):** Tăng cường tần số thấp với thuật toán bảo vệ chống méo tiếng (Soft Limiter).\n  - **Không Gian 3D (3D Spatial Widener):** Mở rộng trường âm thanh nổi (Stereo Widening).\n  - **Độ Vang (Reverb):** Tái tạo độ vang của hội trường chuyên nghiệp.\n- **5 Kiểu Trực Quan Hóa Âm Thanh Real-Time:** Phổ cột (Bars), Dạng sóng (Waveform), Vòng năng lượng (Ring), Hạt ánh sao (Stars/Particles), Gương phản chiếu (Mirror).\n- **Đồng Bộ Cấu Hình Đám Mây:** Lưu trữ và đồng bộ Preset qua SupportFlast API Token.\n\n---\n\n## ⌨️ 3. PHÍM TẮT TIỆN LỢI\n- `Phím Space`: Tạm dừng / Tiếp tục phát âm thanh.\n- `Ctrl + R`: Reset toàn bộ thanh trượt EQ và hiệu ứng về mặc định (0dB).\n- `Nhấp đúp chuột vào thanh trượt`: Đưa riêng băng tần đó về mức cân bằng 0dB.\n\n---\n*Bản quyền phát hành thuộc về SupportFlast Multi-Agent Platform & DMH Tech.*\n",
+    "user_id": "usr-admin-001"
+  }
+]

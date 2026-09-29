@@ -1,0 +1,48 @@
+# ==============================================================================
+# Fly.io App Configuration (fly.toml) - Fly Machines v2
+# Cấu hình triển khai Go Monolith Engine với Persistent Volume cho SQLite & Packages
+# Domain: supportflastdev.io.vn | Cổng phục vụ duy nhất: 8080
+# ==============================================================================
+
+app = "supportflast-engine"
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  DOMAIN = "supportflastdev.io.vn"
+  DATA_DIR = "/app/data"
+  STORAGE_DIR = "/app/data/storage"
+  UI_DIR = "/app/supportflast_ui"
+  STATIC_DIR = "/app/supportflast_ui"
+  JWT_KEYS_DIR = "/app/data/keys"
+
+# Gắn kết Persistent Volume bảo lưu toàn vẹn cơ sở dữ liệu SQLite và kho packages
+[mounts]
+  source = "supportflast_data"
+  destination = "/app/data"
+  initial_size = "10gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+# Kiểm tra định kỳ trạng thái hoạt động của Engine qua HTTP Health Check
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpus = 1

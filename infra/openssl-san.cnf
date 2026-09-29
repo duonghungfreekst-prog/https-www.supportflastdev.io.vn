@@ -1,0 +1,31 @@
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = req_ext
+distinguished_name = dn
+
+[dn]
+C = VN
+ST = Hanoi
+L = Hanoi
+O = SupportFlast Local Development
+OU = High Security Division
+CN = localhost
+
+[req_ext]
+subjectAltName = @alt_names
+
+[v3_ca]
+subjectAltName = @alt_names
+basicConstraints = critical, CA:FALSE
+keyUsage = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = supportflast.local
+DNS.3 = supportflastdev.io.vn
+DNS.4 = *.supportflast.local
+IP.1 = 127.0.0.1
+IP.2 = ::1

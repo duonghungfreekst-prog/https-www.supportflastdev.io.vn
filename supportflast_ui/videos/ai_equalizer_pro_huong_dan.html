@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Hướng Dẫn: AI Equalizer Pro v2.2.0 (10-Band EQ & 3D Audio)</title>
+    <style>
+        :root {
+            --primary-cyan: #00f0ff;
+            --secondary-cyan: #0284c7;
+            --accent-purple: #a855f7;
+            --accent-pink: #ec4899;
+            --accent-gold: #f59e0b;
+            --bg-deep: #05070f;
+            --bg-card: #0d1222;
+            --bg-card-hover: #131b31;
+            --border-color: rgba(0, 240, 255, 0.25);
+            --border-glow: rgba(0, 240, 255, 0.5);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success-neon: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Header Bar */
+        .header-bar {
+            padding: 14px 28px;
+            background: linear-gradient(180deg, rgba(13, 18, 34, 0.98) 0%, rgba(5, 7, 15, 0.95) 100%);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 50;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon-box {
+            width: 44px;
+            height: 44px;
+            background: radial-gradient(circle, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.05) 100%);
+            border: 1px solid var(--primary-cyan);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.35);
+        }
+
+        .brand-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-subtitle {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .badge-4k {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(168, 85, 247, 0.15));
+            color: var(--primary-cyan);
+            border: 1px solid var(--border-glow);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Main Workspace */
+        .workspace {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Player Center */
+        .player-stage {
+            display: flex;
+            flex-direction: column;
+            background: #000000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #0a1128 0%, #030611 100%);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Overlay UI controls */
+        .player-controls {
+            padding: 12px 24px;
+            background: rgba(10, 15, 29, 0.95);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 20;
+        }
+
+        .progress-bar-wrap {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary-cyan), var(--accent-purple));
+            border-radius: 3px;
+            box-shadow: 0 0 8px var(--primary-cyan);
+            position: relative;
+        }
+
+        .control-buttons-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-play-pause {
+            background: linear-gradient(135deg, var(--primary-cyan), var(--secondary-cyan));
+            color: #000;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-display {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Sidebar Playlist / Chapters */
+        .sidebar {
+            background: var(--bg-card);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--primary-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chapter-list {
+            list-style: none;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .chapter-item {
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chapter-item:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-color);
+        }
+
+        .chapter-item.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: var(--primary-cyan);
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.15);
+        }
+
+        .chapter-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chapter-desc {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.3;
+        }
+
+        .chapter-time {
+            font-size: 0.7rem;
+            color: var(--primary-cyan);
+            font-family: monospace;
+            margin-top: 4px;
+        }
+
+        .subagent-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(168, 85, 247, 0.2);
+            color: var(--accent-purple);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header class="header-bar">
+        <div class="brand-section">
+            <div class="brand-icon-box">🎛️</div>
+            <div>
+                <h1 class="brand-title">
+                    AI EQUALIZER PRO v2.2.0
+                    <span style="font-size: 0.75rem; color: var(--primary-cyan); font-weight: 500;">(Official 4K Guide)</span>
+                </h1>
+                <div class="brand-subtitle">Bộ Xử Lý Âm Thanh Chuyên Nghiệp 10 Băng Tần & 3D Spatial Audio | SupportFlast Hub</div>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="badge-4k">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary-cyan); box-shadow: 0 0 6px var(--primary-cyan);"></span>
+                API: sf_live_db1ead7...
+            </div>
+            <a href="/api/apps/download/APP-7290" style="text-decoration: none;">
+                <button class="btn-play-pause" style="padding: 6px 16px; font-size: 0.8rem;">
+                    📥 Tải Gói Cài Đặt (10.9 MB)
+                </button>
+            </a>
+        </div>
+    </header>
+
+    <!-- Workspace -->
+    <div class="workspace">
+        <!-- Player -->
+        <div class="player-stage">
+            <div class="canvas-container" id="container">
+                <canvas id="videoCanvas"></canvas>
+            </div>
+
+            <!-- Controls -->
+            <div class="player-controls">
+                <div class="progress-bar-wrap" id="progressWrap">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div class="control-buttons-row">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="btn-play-pause" id="btnPlayPause">
+                            <span id="playIcon">▶</span> <span id="playText">Phát Video</span>
+                        </button>
+                        <span class="time-display" id="timeDisplay">00:00 / 03:30</span>
+                    </div>
+
+                    <div style="font-size: 0.8rem; color: var(--primary-cyan); font-weight: 600;" id="sceneTitle">
+                        Cảnh 1: Giới Thiệu AI Equalizer Pro v2.2.0
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-play-pause" id="btnPrev" style="padding: 4px 10px; font-size: 0.75rem;">⏮</button>
+                        <button class="btn-play-pause" id="btnNext" style="padding: 4px 10px; font-size: 0.75rem;">⏭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Chapters -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>📑 DANH MỤC PHÂN CẢNH</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">7 Phân Cảnh</span>
+            </div>
+
+            <ul class="chapter-list" id="chapterList">
+                <li class="chapter-item active" data-scene="0">
+                    <div class="chapter-title">1. Giới Thiệu AI Equalizer Pro v2.2.0</div>
+                    <div class="chapter-desc">Tổng quan kiến trúc 10 băng tần, 3D Spatial Audio và chứng chỉ phân phối SupportFlast.</div>
+                    <div class="chapter-time">⏱ 00:00 - 00:30</div>
+                    <span class="subagent-badge">Subagent Triage Verified</span>
+                </li>
+
+                <li class="chapter-item" data-scene="1">
+                    <div class="chapter-title">2. Cài Đặt Android APK & Quyền Chạy Ngầm</div>
+                    <div class="chapter-desc">Hướng dẫn cài file APK, cấp quyền Micro và cấu hình chống ngắt nhạc Doze Mode.</div>
+                    <div class="chapter-time">⏱ 00:30 - 01:00</div>
+                    <span class="subagent-badge">Subagent Tech Verified</span>
+                </li>
+
+                <li class="chapter-item" data-scene="2">
+                    <div class="chapter-title">3. Giao Diện Web HUD & 10 Băng Tần EQ</div>
+                    <div class="chapter-desc">Trải nghiệm trực quan các dải tần số 32Hz, 64Hz, 125Hz đến 16kHz chuẩn phòng thu.</div>
+                    <div class="chapter-time">⏱ 01:00 - 01:35</div>
+                    <span class="subagent-badge">Subagent Tech Verified</span>
+                </li>
+
+                <li class="chapter-item" data-scene="3">
+                    <div class="chapter-title">4. Bộ 4 Hiệu Ứng DSP & Visualizer</div>
+                    <div class="chapter-desc">Preamp, Bass Boost siêu trầm, 3D Spatial và Reverb kết hợp 5 chế độ hiển thị sóng nhạc.</div>
+                    <div class="chapter-time">⏱ 01:35 - 02:15</div>
+                    <span class="subagent-badge">DSP Audio Graph Engine</span>
+                </li>
+
+                <li class="chapter-item" data-scene="4">
+                    <div class="chapter-title">5. Lọc Âm Hệ Thống & Thu Âm Trực Tiếp</div>
+                    <div class="chapter-desc">Cách chọn Tab trình duyệt và tích 'Chia sẻ âm thanh' cho YouTube, Spotify, Phim, Game.</div>
+                    <div class="chapter-time">⏱ 02:15 - 02:45</div>
+                    <span class="subagent-badge">WebAudio Live Capture</span>
+                </li>
+
+                <li class="chapter-item" data-scene="5">
+                    <div class="chapter-title">6. Đồng Bộ Presets Qua Mã API sf_live_...</div>
+                    <div class="chapter-desc">Cách gắn mã API bản quyền sf_live_db1ead7... để đồng bộ Preset lên CloudPool.</div>
+                    <div class="chapter-time">⏱ 02:45 - 03:10</div>
+                    <span class="subagent-badge">Subagent Security Verified</span>
+                </li>
+
+                <li class="chapter-item" data-scene="6">
+                    <div class="chapter-title">7. Tổng Kết & Tải Về Trực Tiếp</div>
+                    <div class="chapter-desc">Link tải gói cài đặt chính thức, đối soát SHA-256 hash và kích hoạt bản quyền.</div>
+                    <div class="chapter-time">⏱ 03:10 - 03:30</div>
+                    <span class="subagent-badge">Subagent Billing Certified</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Video Animation Script -->
+    <script>
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        const progressFill = document.getElementById('progressFill');
+        const progressWrap = document.getElementById('progressWrap');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const sceneTitle = document.getElementById('sceneTitle');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const playText = document.getElementById('playText');
+        const chapterItems = document.querySelectorAll('.chapter-item');
+
+        const TOTAL_DURATION = 210; // 3 phút 30 giây (210s)
+        let currentTime = 0;
+        let isPlaying = true;
+        let lastTimestamp = performance.now();
+
+        const SCENES = [
+            { id: 0, start: 0, end: 30, title: "Cảnh 1: Giới Thiệu AI Equalizer Pro v2.2.0" },
+            { id: 1, start: 30, end: 60, title: "Cảnh 2: Cài Đặt Android APK & Quyền Chạy Ngầm" },
+            { id: 2, start: 60, end: 95, title: "Cảnh 3: Giao Diện Web HUD & 10 Băng Tần EQ" },
+            { id: 3, start: 95, end: 135, title: "Cảnh 4: Bộ 4 Hiệu Ứng DSP & Visualizer" },
+            { id: 4, start: 135, end: 165, title: "Cảnh 5: Lọc Âm Hệ Thống & Thu Âm Trực Tiếp" },
+            { id: 5, start: 165, end: 190, title: "Cảnh 6: Đồng Bộ Presets Qua Mã API sf_live_..." },
+            { id: 6, start: 190, end: 210, title: "Cảnh 7: Tổng Kết & Tải Về Trực Tiếp" }
+        ];
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        // Draw animated sound visualizer
+        function drawVisualizer(w, h, t) {
+            const bands = 32;
+            const barW = (w * 0.7) / bands;
+            const startX = (w - (bands * barW)) / 2;
+            const baseY = h * 0.75;
+
+            for (let i = 0; i < bands; i++) {
+                const freq = Math.sin(t * 3 + i * 0.3) * 0.5 + 0.5;
+                const barH = freq * (h * 0.3) + 10;
+                const x = startX + i * barW;
+                const y = baseY - barH;
+
+                const grad = ctx.createLinearGradient(0, y, 0, baseY);
+                grad.addColorStop(0, '#00f0ff');
+                grad.addColorStop(0.5, '#a855f7');
+                grad.addColorStop(1, '#ec4899');
+
+                ctx.fillStyle = grad;
+                ctx.fillRect(x + 2, y, barW - 4, barH);
+
+                // Reflection
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+                ctx.fillRect(x + 2, baseY + 2, barW - 4, barH * 0.3);
+            }
+        }
+
+        function renderScene(time) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Clear
+            ctx.fillStyle = '#050814';
+            ctx.fillRect(0, 0, w, h);
+
+            // Background Grid
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < w; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            // Current Scene Detection
+            const curScene = SCENES.find(s => time >= s.start && time < s.end) || SCENES[0];
+            sceneTitle.textContent = curScene.title;
+
+            // Highlight Active Chapter in sidebar
+            chapterItems.forEach(ci => {
+                const sceneIdx = parseInt(ci.getAttribute('data-scene'));
+                if (sceneIdx === curScene.id) {
+                    ci.classList.add('active');
+                } else {
+                    ci.classList.remove('active');
+                }
+            });
+
+            // Draw Dynamic Visuals based on Scene
+            ctx.save();
+            if (curScene.id === 0) {
+                // Scene 1: Intro
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 32px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("AI EQUALIZER PRO & AUDIO PROCESSOR", w / 2, h * 0.28);
+
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = '18px monospace';
+                ctx.fillText("PHIÊN BẢN v2.2.0 • PHÂN PHỐI CHÍNH THỨC SUPPORTFLAST HUB", w / 2, h * 0.36);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '15px sans-serif';
+                ctx.fillText("Kiến trúc âm thanh 10 Băng tần • 3D Spatial Audio • Bass Boost • Siêu nhẹ < 12ms", w / 2, h * 0.43);
+
+                drawVisualizer(w, h, time);
+
+            } else if (curScene.id === 1) {
+                // Scene 2: Android APK Install
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("HƯỚNG DẪN CÀI ĐẶT APK TRÊN ANDROID", w / 2, h * 0.22);
+
+                // Phone Frame Mockup
+                const pw = 220; const ph = 360; const px = w / 2 - pw / 2; const py = h * 0.3;
+                ctx.fillStyle = '#111827';
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.roundRect(px, py, pw, ph, 20);
+                ctx.fill(); ctx.stroke();
+
+                // Screen inside
+                ctx.fillStyle = '#1f2937';
+                ctx.fillRect(px + 10, py + 30, pw - 20, ph - 60);
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText("AI Equalizer Pro v2.2.0", px + pw / 2, py + 80);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px sans-serif';
+                ctx.fillText("✓ Cho phép nguồn không xác định", px + pw / 2, py + 120);
+                ctx.fillText("✓ Cấp quyền Microphone", px + pw / 2, py + 150);
+                ctx.fillText("✓ Tắt tối ưu hóa pin Doze Mode", px + pw / 2, py + 180);
+
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillRect(px + 30, py + 220, pw - 60, 36);
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.fillText("HOÀN TẤT CÀI ĐẶT", px + pw / 2, py + 242);
+
+            } else if (curScene.id === 2) {
+                // Scene 3: 10-band sliders
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("BỘ LỌC TẦN SỐ 10 BĂNG CHUẨN PHÒNG THU", w / 2, h * 0.2);
+
+                const bandLabels = ['32Hz', '64Hz', '125Hz', '250Hz', '500Hz', '1kHz', '2kHz', '4kHz', '8kHz', '16kHz'];
+                const bCount = 10;
+                const bW = w * 0.6 / bCount;
+                const bStartX = (w - (bCount * bW)) / 2;
+
+                bandLabels.forEach((label, i) => {
+                    const bx = bStartX + i * bW + bW / 2;
+                    const val = Math.sin(time * 2 + i * 0.6) * 6; // dB
+                    const sy = h * 0.5 - (val * 10);
+
+                    // Track
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(bx, h * 0.35);
+                    ctx.lineTo(bx, h * 0.65);
+                    ctx.stroke();
+
+                    // Slider thumb
+                    ctx.fillStyle = '#00f0ff';
+                    ctx.beginPath();
+                    ctx.arc(bx, sy, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Label
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '11px monospace';
+                    ctx.fillText(label, bx, h * 0.7);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText((val > 0 ? '+' : '') + val.toFixed(1) + 'dB', bx, h * 0.32);
+                });
+
+            } else if (curScene.id === 3) {
+                // Scene 4: 4 DSP Effects
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("BỘ 4 HIỆU ỨNG DSP: PREAMP • BASS • 3D • REVERB", w / 2, h * 0.2);
+
+                const effects = [
+                    { name: "PREAMP", val: "+3.5 dB", color: "#00f0ff" },
+                    { name: "SIÊU TRẦM", val: "BASS BOOST 70%", color: "#ec4899" },
+                    { name: "3D SPATIAL", val: "WIDENER 85%", color: "#a855f7" },
+                    { name: "REVERB", val: "HALL ECHO 45%", color: "#f59e0b" }
+                ];
+
+                const cardW = 160; const cardH = 140; const gap = 20;
+                const startX = (w - (4 * cardW + 3 * gap)) / 2;
+
+                effects.forEach((eff, i) => {
+                    const cx = startX + i * (cardW + gap);
+                    const cy = h * 0.38;
+
+                    ctx.fillStyle = '#0e172a';
+                    ctx.strokeStyle = eff.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(cx, cy, cardW, cardH, 12);
+                    ctx.fill(); ctx.stroke();
+
+                    ctx.fillStyle = eff.color;
+                    ctx.font = 'bold 14px sans-serif';
+                    ctx.fillText(eff.name, cx + cardW / 2, cy + 40);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 12px monospace';
+                    ctx.fillText(eff.val, cx + cardW / 2, cy + 85);
+                });
+
+                drawVisualizer(w, h, time);
+
+            } else if (curScene.id === 4) {
+                // Scene 5: System Audio capture
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("LỌC ÂM HỆ THỐNG TRỰC TIẾP (SYSTEM AUDIO)", w / 2, h * 0.22);
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = '16px sans-serif';
+                ctx.fillText("Áp dụng tức thì cho YouTube, Spotify, Xem Phim, Chơi Game", w / 2, h * 0.3);
+
+                ctx.fillStyle = '#0d1933';
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 2;
+                const bx = w / 2 - 250; const by = h * 0.38;
+                ctx.beginPath(); ctx.roundRect(bx, by, 500, 160, 14); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText("Bước 1: Chuyển sang Tab 'Thu Hệ Thống' trên HUD", bx + 30, by + 40);
+                ctx.fillText("Bước 2: Click 'BẬT LỌC ÂM HỆ THỐNG'", bx + 30, by + 75);
+                ctx.fillText("Bước 3: Chọn 'Trình duyệt Tab' và TÍCH 'Chia sẻ âm thanh'", bx + 30, by + 110);
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillText("➔ Âm thanh YouTube/Spotify sẽ tự động đi qua 10 băng tần EQ!", bx + 30, by + 140);
+
+            } else if (curScene.id === 5) {
+                // Scene 6: API Key
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("ĐỒNG BỘ ĐÁM MÂY QUA MÃ API SUPPORTFLAST", w / 2, h * 0.22);
+
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = '15px monospace';
+                ctx.fillText("Xác thực bản quyền & Đồng bộ cấu hình Preset lên CloudPool", w / 2, h * 0.3);
+
+                const kBoxW = 600; const kBoxH = 130;
+                const kx = w / 2 - kBoxW / 2; const ky = h * 0.38;
+
+                ctx.fillStyle = '#091024';
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.roundRect(kx, ky, kBoxW, kBoxH, 12); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#a855f7';
+                ctx.font = 'bold 12px monospace';
+                ctx.fillText("BEARER API KEY TOKEN:", w / 2, ky + 35);
+
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText("sf_live_db1ead71775e5129ed0533574b8ca7ae317791b7e77d9290", w / 2, ky + 65);
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = '13px sans-serif';
+                ctx.fillText("✓ Trạng thái: ACTIVE • Phân quyền: apps:publish, apps:read, cloudpool:sync", w / 2, ky + 100);
+
+            } else if (curScene.id === 6) {
+                // Scene 7: Outro & Download
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 28px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText("TẢI VỀ VÀ TRẢI NGHIỆM NGAY HÔM NAY", w / 2, h * 0.25);
+
+                ctx.fillStyle = '#00f0ff';
+                ctx.font = '18px sans-serif';
+                ctx.fillText("supportflastdev.io.vn/api/apps/download/APP-7290", w / 2, h * 0.35);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '14px monospace';
+                ctx.fillText("Gói APK Android: 10.8 MB | Gói Đầy Đủ Web & Desktop: 10.9 MB", w / 2, h * 0.43);
+                ctx.fillText("SHA256: 027c9401cd5575871ee7c1ece73238cf4a0c2e960583795181f324651c75f256", w / 2, h * 0.49);
+
+                drawVisualizer(w, h, time);
+            }
+            ctx.restore();
+        }
+
+        function animate(timestamp) {
+            const delta = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            if (isPlaying) {
+                currentTime += delta;
+                if (currentTime >= TOTAL_DURATION) {
+                    currentTime = 0;
+                }
+            }
+
+            // Update Progress
+            const pct = (currentTime / TOTAL_DURATION) * 100;
+            progressFill.style.width = pct + '%';
+            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(TOTAL_DURATION)}`;
+
+            renderScene(currentTime);
+            requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+
+        // Click to seek progress
+        progressWrap.addEventListener('click', (e) => {
+            const rect = progressWrap.getBoundingClientRect();
+            const clickPos = (e.clientX - rect.left) / rect.width;
+            currentTime = clickPos * TOTAL_DURATION;
+        });
+
+        // Play/Pause button
+        btnPlayPause.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playIcon.textContent = '⏸';
+                playText.textContent = 'Tạm Dừng';
+            } else {
+                playIcon.textContent = '▶';
+                playText.textContent = 'Phát Video';
+            }
+        });
+
+        // Click Chapters
+        chapterItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const sIdx = parseInt(item.getAttribute('data-scene'));
+                currentTime = SCENES[sIdx].start;
+            });
+        });
+
+        // Next / Prev buttons
+        document.getElementById('btnNext').addEventListener('click', () => {
+            const curScene = SCENES.find(s => currentTime >= s.start && currentTime < s.end);
+            if (curScene && curScene.id < SCENES.length - 1) {
+                currentTime = SCENES[curScene.id + 1].start;
+            }
+        });
+        document.getElementById('btnPrev').addEventListener('click', () => {
+            const curScene = SCENES.find(s => currentTime >= s.start && currentTime < s.end);
+            if (curScene && curScene.id > 0) {
+                currentTime = SCENES[curScene.id - 1].start;
+            }
+        });
+    </script>
+</body>
+</html>

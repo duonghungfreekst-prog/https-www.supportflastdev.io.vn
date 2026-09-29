@@ -1,0 +1,8 @@
+# ==============================================================================
+# SUPPORTFLAST.DEV - RELEASE CHECKSUMS (SHA-256)
+# Ngay tao: 2026-09-26 08:21:49
+# ==============================================================================
+096d7409479a2bdca9894c66140980ed6688361cb1987e5ea8d1f98633a2ca23  supportflast-hosting-package.zip
+4568679278335cc26de49910acaac8740ca8fdbcef9a9d9c22aaf9521c4bd0e7  supportflast.exe
+d1e7a2257c11c83ea0455f4d1f43a001014c5d67e794950a845ed7e2ae85654b  supportflast_linux_amd64
+41ab251123898615dafed8427ff5bd6837d407dead8b57d0d080606362ffe4c0  supportflast_core.dll

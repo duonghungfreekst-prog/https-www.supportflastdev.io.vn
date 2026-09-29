@@ -1,0 +1,42 @@
+name: Publish to SupportFlast App Hub
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Build & Upload to SupportFlast
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Vi du buoc build cho C# / Go / Rust / Nodejs
+      # - name: Build Application
+      #   run: |
+      #     dotnet publish -c Release -o dist/
+      #     # hoac: go build -o dist/myapp.exe .
+      #     # hoac: cargo build --release
+
+      - name: Publish to SupportFlast App Hub
+        env:
+          SUPPORTFLAST_API_KEY: ${{ secrets.SUPPORTFLAST_API_KEY }}
+          SUPPORTFLAST_SERVER_URL: "https://supportflastdev.io.vn"
+        run: |
+          python tools/supportflast_uploader.py \
+            --file "dist/my-app-setup.exe" \
+            --name "My Awesome App" \
+            --version "${{ github.ref_name }}" \
+            --platform "Windows 11 / 10" \
+            --category "Công cụ Lập trình & IDE" \
+            --author "Development Team" \
+            --desc "Phát hành tự động qua GitHub Actions CI/CD"

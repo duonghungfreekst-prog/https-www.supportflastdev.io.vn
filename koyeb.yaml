@@ -1,0 +1,55 @@
+# ==============================================================================
+# Koyeb Cloud Deployment Specification (koyeb.yaml)
+# Hỗ trợ triển khai 1-Click trên nền tảng Serverless Koyeb Cloud
+# Domain: supportflastdev.io.vn | Cổng phục vụ duy nhất: 8080
+# ==============================================================================
+
+app: supportflast
+services:
+  - name: supportflast-engine
+    type: web
+    git:
+      docker:
+        dockerfile: Dockerfile
+    regions:
+      - sin
+    instance_types:
+      - type: nano
+    ports:
+      - port: 8080
+        protocol: http
+    routes:
+      - port: 8080
+        path: /
+    health_checks:
+      - http:
+          port: 8080
+          path: /api/health
+          method: GET
+        grace_period: 15
+        interval: 30
+        restart_limit: 3
+        timeout: 5
+    volumes:
+      - id: supportflast-data
+        path: /app/data
+    env:
+      - key: PORT
+        value: "8080"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: DATA_DIR
+        value: "/app/data"
+      - key: STORAGE_DIR
+        value: "/app/data/storage"
+      - key: UI_DIR
+        value: "/app/supportflast_ui"
+      - key: STATIC_DIR
+        value: "/app/supportflast_ui"
+      - key: DOMAIN
+        value: "supportflastdev.io.vn"
+    scalings:
+      - min: 1
+        max: 1
+    strategy:
+      type: rolling

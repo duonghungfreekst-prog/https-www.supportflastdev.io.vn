@@ -1,0 +1,58 @@
+#!/bin/sh
+set -e
+
+# ==============================================================================
+# SupportFlast Go Monolith Engine - Universal Multi-Arch Entrypoint Wrapper
+# Tự động nhận diện và thích ứng biến $PORT động (Cloud Run, Render, Railway, Fly.io, VPS)
+# Kiến trúc: Static Pure-Go Binary (modernc.org/sqlite, CGO_ENABLED=0, Non-Root UID 10001)
+# ==============================================================================
+
+# 1. Nhận diện cổng PORT động từ môi trường hoặc fallback về 8080
+if [ -n "$PORT" ]; then
+    echo "[ENTRYPOINT] Detected dynamic environment PORT=${PORT}"
+else
+    export PORT="8080"
+    echo "[ENTRYPOINT] PORT not set, defaulting to 8080"
+fi
+
+# 2. Đảm bảo HOST luôn lắng nghe 0.0.0.0 trong container
+export HOST="${HOST:-0.0.0.0}"
+
+# 3. Đảm bảo cấu trúc thư mục dữ liệu và phân quyền khả dụng
+DATA_DIR="${DATA_DIR:-/app/data}"
+STORAGE_DIR="${STORAGE_DIR:-/app/storage}"
+JWT_KEYS_DIR="${JWT_KEYS_DIR:-${DATA_DIR}/keys}"
+
+mkdir -p "$DATA_DIR" "$STORAGE_DIR" "$JWT_KEYS_DIR" 2>/dev/null || true
+
+echo "[ENTRYPOINT] System parameters: PORT=${PORT} | HOST=${HOST} | USER=$(id -un 2>/dev/null || echo appuser):$(id -gn 2>/dev/null || echo appgroup) (UID:$(id -u 2>/dev/null || echo 10001))"
+echo "[ENTRYPOINT] Directories: DATA_DIR=${DATA_DIR} | STORAGE_DIR=${STORAGE_DIR}"
+
+# 4. Kiểm tra sự tồn tại và quyền thực thi của binary
+APP_BIN="/app/supportflast"
+if [ ! -x "$APP_BIN" ] && [ -x "./supportflast" ]; then
+    APP_BIN="./supportflast"
+fi
+
+# 5. Khởi chạy binary với signal trapping và truyền cờ linh hoạt
+# Nếu không truyền tham số, hoặc tham số đầu tiên là binary chính
+if [ $# -eq 0 ] || [ "$1" = "./supportflast" ] || [ "$1" = "supportflast" ] || [ "$1" = "/app/supportflast" ]; then
+    if [ $# -gt 1 ]; then
+        shift
+        echo "[ENTRYPOINT] Executing ${APP_BIN} with arguments: $*"
+        exec "$APP_BIN" "$@"
+    else
+        echo "[ENTRYPOINT] Executing ${APP_BIN} on port ${PORT}..."
+        exec "$APP_BIN"
+    fi
+fi
+
+# Nếu tham số bắt đầu bằng dấu gạch ngang (flags ví dụ -h, -v)
+if [ "${1#-}" != "$1" ]; then
+    echo "[ENTRYPOINT] Executing ${APP_BIN} with flags: $*"
+    exec "$APP_BIN" "$@"
+fi
+
+# Nếu người dùng truyền lệnh tùy biến (ví dụ: sh, /bin/sh, wget, ...)
+echo "[ENTRYPOINT] Executing custom command: $*"
+exec "$@"

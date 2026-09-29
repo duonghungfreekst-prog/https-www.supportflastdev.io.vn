@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="vi" class="notranslate" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="googlebot" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudPool - Kho Lưu Trữ Đa Google Drive Hợp Nhất</title>
+  <link rel="stylesheet" href="css/style.css?v=2.7.11">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+</head>
+<body class="notranslate" translate="no">
+
+<div id="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">CP</div>
+      <div class="logo-text">
+        <h1>CloudPool</h1>
+        <span>Multi-GDrive Storage</span>
+      </div>
+      <button id="btn-sidebar-close" class="btn-sidebar-close" title="Đóng menu">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-tab="files">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <span>Quản lý Tệp tin</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="dashboard" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Tổng quan Quản trị</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="accounts" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Tài khoản Drive</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="remote" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+        <span>Truy cập Từ xa</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="users" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Quản lý Người Dùng</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="sql" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+        <span>SQL Studio (CSDL)</span>
+      </div>
+      <div class="nav-item admin-only" data-tab="settings" data-admin="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Cài đặt &amp; Nâng cấp Hệ thống</span>
+      </div>
+    </nav>
+
+    <!-- Sidebar Storage Widget -->
+    <div class="sidebar-storage">
+      <div class="storage-header">
+        <span id="side-storage-title">Tổng kho dung lượng</span>
+        <span id="side-percent">0%</span>
+      </div>
+      <div class="storage-bar-bg">
+        <div id="side-storage-fill" class="storage-bar-fill" style="width: 0.1%;"></div>
+      </div>
+      <div class="storage-detail">
+        <span id="side-used">30.58 GB</span>
+        <span id="side-total">55.01 TB</span>
+      </div>
+    </div>
+
+    <!-- Core Status -->
+    <div class="core-status">
+      <div class="status-dot"></div>
+      <span id="core-badge-text">Rust AES-256-Core Active</span>
+    </div>
+  </aside>
+
+  <!-- Mobile Sidebar Overlay Backdrop -->
+  <div id="mobile-sidebar-backdrop" class="mobile-sidebar-backdrop"></div>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-mobile-menu-toggle" class="btn-mobile-menu" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="global-search" placeholder="Tìm kiếm tệp tin...">
+        </div>
+      </div>
+
+      <div class="top-actions" style="display: flex; align-items: center; gap: 8px;">
+        <!-- Chế độ bảo mật cấp cao -->
+        <div id="high-security-badge" class="high-sec-pill" style="display: flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; border-radius: 999px; padding: 5px 12px; font-size: 11px; font-weight: 600;" title="🛡️ Chế Độ Bảo Mật Cấp Cao: Đang Kích Hoạt">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block;"></span>
+          <span>Chế Độ Bảo Mật Cấp Cao: Đang Kích Hoạt</span>
+        </div>
+
+        <!-- Quay về Trang Chủ SupportFlast -->
+        <a href="/" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px; text-decoration: none; font-size: 11px; padding: 6px 12px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-weight: 600;" title="Quay về Kho Ứng Dụng SupportFlast">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; display: inline-block;"></span>
+          <span>Trang Chủ SupportFlast</span>
+        </a>
+
+        <button id="btn-quick-upload" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span class="btn-text-responsive">Tải tệp lên</span>
+        </button>
+
+        <!-- User Profile & Auth Dropdown Widget -->
+        <div id="user-profile-widget" style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border-subtle); padding-left: 10px; margin-left: 4px;">
+          <div id="user-avatar-badge" style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; cursor: pointer; flex-shrink: 0;" title="Quản trị viên">
+            Q
+          </div>
+          <div style="display: flex; flex-direction: column; line-height: 1.15;">
+            <span id="user-display-name" style="font-size: 12px; font-weight: 700; color: var(--text-primary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Quản Trị Viên H...</span>
+            <span id="user-role-badge" style="font-size: 10px; color: var(--text-muted);">Quản trị viên</span>
+          </div>
+          <button id="btn-open-auth-modal" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 8px; gap: 4px;">
+            <span id="auth-btn-label">Đăng xuất</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hidden file input for uploads (Optimized for iOS WebKit & Android) -->
+    <input type="file" id="file-input-hidden" multiple accept="*/*" style="position: absolute; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+
+    <!-- TAB 1: Dashboard View -->
+    <section id="view-dashboard" class="view-container">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-icon blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Tổng dung lượng gộp</h3>
+            <p id="dash-total-cap">0.00 GB</p>
+            <span id="dash-used-cap">Đã dùng: 0.00 GB</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Dung lượng khả dụng</h3>
+            <p id="dash-free-cap">0.00 GB</p>
+            <span id="dash-percent-free">100% trống</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon amber">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Tài khoản Google</h3>
+            <p id="dash-accounts-count">0 Acc</p>
+            <span id="dash-active-accs">0 đang hoạt động</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon red">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+          </div>
+          <div class="metric-info">
+            <h3>Tệp & Chunk đã lưu</h3>
+            <p id="dash-files-count">0 tệp</p>
+            <span id="dash-chunks-count">0 chunks mã hóa</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storage Breakdown & Insights -->
+      <div class="storage-insights-panel" style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>📊 Cơ cấu Phân bổ Dung lượng & Định dạng Tệp</span>
+          </h3>
+          <span id="storage-breakdown-summary" style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">Đang tính toán...</span>
+        </div>
+        <div id="storage-breakdown-bar" class="breakdown-bar-container" style="height: 12px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; display: flex; margin-bottom: 14px;">
+          <!-- Colored dynamic segments -->
+        </div>
+        <div id="storage-breakdown-chips" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+          <!-- Dynamic Category Legend Chips -->
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>Cụm Tài khoản Google Drive</span>
+        <button id="btn-refresh-all-quotas" class="btn btn-secondary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          <span>Quét lại dung lượng</span>
+        </button>
+      </div>
+
+      <div id="dashboard-accounts-grid" class="accounts-grid">
+        <!-- Dynamically rendered accounts -->
+      </div>
+    </section>
+
+    <!-- Hidden folder input for directory uploads (Optimized for WebKit) -->
+    <input type="file" id="folder-input-hidden" webkitdirectory directory multiple style="position: absolute; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+
+    <!-- TAB 2: File Explorer View -->
+    <section id="view-files" class="view-container active">
+      <div class="explorer-toolbar">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+          <button id="btn-nav-back" class="btn btn-secondary btn-sm" onclick="FilesManager.navigateUp()" style="gap: 5px; padding: 5px 10px; font-weight: 500;" title="Quay lại thư mục cha">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>Quay lại</span>
+          </button>
+          <div id="breadcrumbs-container" class="breadcrumbs">
+            <span class="crumb-item active" data-id="root">🏠 Gốc /</span>
+          </div>
+        </div>
+
+        <div class="explorer-actions">
+          <!-- User Partition Filter Selector (Admin Only) -->
+          <select id="filter-user-select" class="form-control admin-only" data-admin="true" style="padding: 4px 8px; font-size: 12px; height: 32px; max-width: 170px;" title="Lọc xem phân vùng theo từng tài khoản người dùng">
+            <option value="">👥 Tất cả phân vùng</option>
+          </select>
+
+          <!-- Account Filter Selector (Admin Only) -->
+          <select id="filter-account-select" class="form-control admin-only" data-admin="true" style="padding: 4px 8px; font-size: 12px; height: 32px; max-width: 170px;" title="Lọc xem dữ liệu theo từng tài khoản Google Drive">
+            <option value="">☁️ Tất cả Drive</option>
+          </select>
+
+          <div class="view-modes-bar">
+            <button id="btn-view-list" class="view-toggle-btn active" title="Dạng danh sách">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+            <button id="btn-view-grid" class="view-toggle-btn" title="Dạng lưới thẻ">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+          </div>
+
+          <div style="position: relative; display: inline-flex;">
+            <button id="btn-open-otp-mgr" class="btn btn-secondary btn-sm admin-only" data-admin="true" onclick="FilesManager.openAdminOTPManagerModal()" title="Quản lý mã OTP và phê duyệt yêu cầu truy cập từ thành viên">
+              <span style="color: #60a5fa;">🔑</span>
+              <span>Quản lý OTP</span>
+            </button>
+            <!-- Badge thông báo số yêu cầu đang chờ -->
+            <span id="otp-pending-badge" style="display: none; position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; background: #ef4444; color: white; font-size: 10px; font-weight: 800; border-radius: 9px; display: none; align-items: center; justify-content: center; padding: 0 4px; box-shadow: 0 2px 4px rgba(239,68,68,0.5); z-index: 10; pointer-events: none; line-height: 1;">0</span>
+          </div>
+          <button id="btn-import-drive" class="btn btn-secondary btn-sm admin-only" data-admin="true" onclick="FilesManager.importDriveFiles()" title="Quét và tự động nạp tất cả các file có sẵn từ các tài khoản Google Drive vào kho CloudPool">
+            <span style="color: #38bdf8;">⚡</span>
+            <span>Nạp Tệp từ Drive</span>
+          </button>
+          <button id="btn-new-folder" class="btn btn-secondary btn-sm" title="Tạo thư mục mới">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+            <span class="btn-text-responsive">Thư mục mới</span>
+          </button>
+          <button id="btn-upload-folder-explorer" class="btn btn-secondary btn-sm" title="Tải lên toàn bộ thư mục cùng tất cả tệp tin bên trong">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><polyline points="12 11 12 17 12 11"></polyline><polyline points="9 14 12 11 15 14"></polyline></svg>
+            <span class="btn-text-responsive">Tải thư mục</span>
+          </button>
+          <button id="btn-upload-file-explorer" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span class="btn-text-responsive">Tải tệp</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Filter & Sorting Toolbar -->
+      <div class="explorer-filter-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 8px;">
+        <div class="filter-chips" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <button class="filter-chip active" data-cat="all">📂 Tất cả</button>
+          <button class="filter-chip" data-cat="video">🎬 Video</button>
+          <button class="filter-chip" data-cat="image">🖼️ Hình ảnh</button>
+          <button class="filter-chip" data-cat="audio">🎵 Âm thanh</button>
+          <button class="filter-chip" data-cat="document">📄 Tài liệu & PDF</button>
+          <button class="filter-chip" data-cat="spreadsheet">📊 Bảng tính & Excel</button>
+          <button class="filter-chip" data-cat="presentation">📽️ Trình chiếu Slide</button>
+          <button class="filter-chip" data-cat="archive">📦 Tệp nén & ISO</button>
+          <button class="filter-chip" data-cat="code">💻 Mã nguồn & CSDL</button>
+          <button class="filter-chip" data-cat="design">🎨 Thiết kế & 3D</button>
+          <button class="filter-chip" data-cat="app">⚙️ Ứng dụng & Cài đặt</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-open-shares-mgr" class="btn btn-secondary btn-sm" onclick="FilesManager.openSharesManagerModal()" title="Quản lý các đường link chia sẻ công khai" style="gap: 5px;">
+            <span>🔗 Link chia sẻ</span>
+          </button>
+          <button id="btn-open-trash" class="btn btn-secondary btn-sm" onclick="FilesManager.openTrashModal()" title="Thùng rác - Khôi phục tệp bị xóa" style="gap: 5px;">
+            <span>🗑️ Thùng rác</span>
+          </button>
+          <select id="sort-files-select" class="form-control" style="padding: 4px 8px; font-size: 12px; height: 30px; width: 145px;" title="Sắp xếp danh sách tệp">
+            <option value="name_asc">Tên (A → Z)</option>
+            <option value="name_desc">Tên (Z → A)</option>
+            <option value="size_desc">Kích thước (Lớn → Nhỏ)</option>
+            <option value="size_asc">Kích thước (Nhỏ → Lớn)</option>
+            <option value="date_desc" selected>Mới nhất</option>
+            <option value="date_asc">Cũ nhất</option>
+          </select>
+        </div>
+      </div>
+
+
+      <!-- Drag & Drop Zone -->
+      <div id="file-drop-zone" class="drop-zone" role="button" tabindex="0" title="Bấm để chọn tệp hoặc kéo thả tệp tin vào đây">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <h4>Chạm hoặc Kéo &amp; Thả tệp tin vào đây để tải lên</h4>
+        <p>Hỗ trợ mọi định dạng tệp, tự động băm nhỏ chunk 5MB và mã hóa AES-256 phân tán song song</p>
+      </div>
+
+      <!-- Files Table (List View) -->
+      <div id="files-table-container" class="files-table-container">
+        <table class="files-table">
+          <thead>
+            <tr>
+              <th style="width: 32px;"><input type="checkbox" id="check-all-files" style="cursor: pointer;"></th>
+              <th style="cursor: pointer; user-select: none;" onclick="FilesManager.toggleSort('name')" title="Bấm để sắp xếp theo tên">Tên tệp / Thư mục <span style="font-size: 10px; color: var(--text-muted);">↕</span></th>
+              <th style="cursor: pointer; user-select: none; width: 120px;" onclick="FilesManager.toggleSort('size')" title="Bấm để sắp xếp theo dung lượng">Kích thước <span style="font-size: 10px; color: var(--text-muted);">↕</span></th>
+              <th style="cursor: pointer; user-select: none; width: 100px;" onclick="FilesManager.toggleSort('chunks')" title="Bấm để sắp xếp theo số khối">Số Khối <span style="font-size: 10px; color: var(--text-muted);">↕</span></th>
+              <th style="cursor: pointer; user-select: none; width: 160px;" onclick="FilesManager.toggleSort('date')" title="Bấm để sắp xếp theo thời gian cập nhật">Ngày cập nhật <span style="font-size: 10px; color: var(--text-muted);">↕</span></th>
+              <th style="text-align: right; width: 160px;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="files-table-body">
+            <!-- Dynamically populated files -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Files Grid View (Card View) -->
+      <div id="files-grid-container" class="files-grid-container" style="display: none;">
+        <!-- Dynamically populated cards -->
+      </div>
+    </section>
+
+    <!-- TAB 3: Google Drive Accounts View -->
+    <section id="view-accounts" class="view-container">
+      <div class="section-title">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span>Quản lý Tài khoản Google Drive kết nối</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-import-all-drive" class="btn btn-secondary btn-sm" onclick="AccountsManager.importAllDriveFiles()" title="Tự động quét và nạp tất cả các tệp có sẵn từ 10 tài khoản Google Drive vào CloudPool">
+            <span style="color: #38bdf8;">⚡</span>
+            <span>Nạp Tệp Có Sẵn Từ Drive</span>
+          </button>
+          <button id="btn-add-account-top" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Thêm Tài khoản Mới</span>
+          </button>
+          <button id="btn-add-account-main" style="display:none;"></button>
+        </div>
+      </div>
+
+      <div id="accounts-management-grid" class="accounts-grid">
+        <!-- Dynamically rendered accounts -->
+      </div>
+    </section>
+
+    <!-- TAB 4: Remote Access View -->
+    <section id="view-remote" class="view-container">
+      <div class="section-title">
+        <span>Kết nối Truy cập Từ xa (Remote Access & WebDAV)</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 20px; max-width: 800px;">
+        <div class="account-card">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--accent-blue);">1. Mount thành Ổ đĩa mạng trên Máy tính (Windows Explorer / macOS)</h3>
+          <p style="font-size: 13px; color: var(--text-secondary);">Bạn có thể kết nối kho lưu trữ này như một ổ cứng thật trên máy tính thông qua giao thức WebDAV:</p>
+          <div class="code-block" id="windows-mount-code">net use Z: http://localhost:8080/webdav /user:admin [PASSWORD]</div>
+          <p style="font-size: 12px; color: var(--text-muted);">Hoặc trên Windows Explorer: Chuột phải vào "This PC" -> Chọn <b>"Map network drive..."</b> -> Nhập địa chỉ <code>http://localhost:8080/webdav</code>.</p>
+        </div>
+
+        <div class="account-card">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--accent-blue);">2. Truy cập trong Mạng LAN (Local Network)</h3>
+          <p style="font-size: 13px; color: var(--text-secondary);">Các địa chỉ IP có thể truy cập CloudPool từ thiết bị khác trong mạng nội bộ:</p>
+          <div id="lan-access-url" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <span style="font-size: 12px; color: var(--text-muted);">Đang tải thông tin mạng LAN...</span>
+          </div>
+        </div>
+
+        <div class="account-card" style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h3 style="font-size: 15px; font-weight: 700; color: var(--accent-amber); margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <span>3. Truy cập Từ Xa Toàn Cầu (Cloudflare Zero Trust 24/7)</span>
+                <span style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                  <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 5px #22c55e;"></span> 24/7 Online
+                </span>
+              </h3>
+              <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">Truy cập an toàn hệ thống SupportFlast từ điện thoại hoặc mạng ngoài qua tên miền chính thức, bảo mật cao không cần mở port.</p>
+            </div>
+          </div>
+          <div id="tunnel-url-container" style="display: block;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Settings View -->
+    <section id="view-settings" class="view-container">
+      <div class="section-title">
+        <span>Cài đặt Hệ thống & Bảo mật</span>
+      </div>
+
+      <div class="settings-responsive-grid">
+        <!-- Column 1: Core System & Cloud Storage Config -->
+        <div class="settings-card-panel">
+          <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>☁️ Cấu hình Cụm Google Drive & Mã hóa</span>
+          </h4>
+          <form id="settings-form" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="form-group">
+              <label>Mật khẩu Mã hóa Master (Zero-Knowledge AES-256)</label>
+              <input type="password" id="set-passphrase" class="form-control" placeholder="Nhập mật khẩu mã hóa cho toàn bộ cụm file...">
+              <span class="form-help">Mật khẩu này dùng để mã hóa tất cả các chunk dữ liệu trước khi đẩy lên Google Drive.</span>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>Kích thước Chunk (MB)</label>
+                <input type="number" id="set-chunk-size" class="form-control" value="20" min="5" max="100">
+                <span class="form-help">Mặc định: 20MB.</span>
+              </div>
+              <div class="form-group">
+                <label>Chiến lược Điều phối</label>
+                <select id="set-strategy" class="form-control">
+                  <option value="least_used">Least-Used (Ưu tiên trống nhiều nhất)</option>
+                  <option value="waterfill">Waterfill (Ghi đầy từng tài khoản)</option>
+                  <option value="round_robin">Round-Robin (Luân phiên đều)</option>
+                </select>
+              </div>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--border-subtle); margin: 4px 0;">
+
+            <!-- Guest Permissions (RBAC) -->
+            <div class="form-group">
+              <label>🛡️ Chế độ Phân Quyền Khách (Guest Access Mode)</label>
+              <select id="set-guest-mode" class="form-control">
+                <option value="view_only">Khách chỉ Xem & Tải xuống (Chặn Tải lên / Xóa / Đổi tên) [Khuyên dùng]</option>
+                <option value="strict">Khóa nghiêm ngặt (Bắt buộc Đăng nhập mới được xem tệp)</option>
+                <option value="full_upload">Cho phép Khách tải lên tệp tin dùng thử</option>
+              </select>
+            </div>
+
+
+            <hr style="border: none; border-top: 1px solid var(--border-subtle); margin: 4px 0;">
+
+            <div class="form-group">
+              <label>Google OAuth Client ID</label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="set-google-client-id" class="form-control" placeholder="••••••••.apps.googleusercontent.com" style="padding-right: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.05em;">
+                <button type="button" onclick="(function(btn){var inp=document.getElementById('set-google-client-id');inp.type=inp.type==='password'?'text':'password';btn.textContent=inp.type==='password'?'👁':'🔒';})(this)" title="Hiện / Ẩn Client ID" style="position:absolute; right:10px; background:none; border:none; cursor:pointer; font-size:14px; color:var(--text-muted); padding:0; line-height:1;">👁</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Google OAuth Client Secret</label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="set-google-client-secret" class="form-control" placeholder="GOCSPX-••••" style="padding-right: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.05em;">
+                <button type="button" onclick="(function(btn){var inp=document.getElementById('set-google-client-secret');inp.type=inp.type==='password'?'text':'password';btn.textContent=inp.type==='password'?'👁':'🔒';})(this)" title="Hiện / Ẩn Client Secret" style="position:absolute; right:10px; background:none; border:none; cursor:pointer; font-size:14px; color:var(--text-muted); padding:0; line-height:1;">👁</button>
+              </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 15px;">
+              <label>OAuth Redirect URL (Để trống máy chủ sẽ tự dùng localhost)</label>
+              <input type="text" id="set-redirect-url" class="form-control" placeholder="VD: https://abc.ngrok-free.dev/api/accounts/oauth/callback">
+              <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">Link nhận phản hồi từ Google. Rất cần thiết nếu bạn quản lý từ xa qua Ngrok.</small>
+            </div>
+
+            <div class="form-group">
+              <label>Tài khoản WebDAV (Mount ổ đĩa)</label>
+              <div class="form-row-2">
+                <input type="text" id="set-webdav-user" class="form-control" placeholder="Username">
+                <input type="password" id="set-webdav-pass" class="form-control" placeholder="Password">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+              <button type="submit" class="btn btn-primary" style="padding: 9px 24px;">Lưu Cài đặt</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Column 2: Security, PIN & Password -->
+        <div class="settings-card-panel">
+          <!-- Multi-Tier Security Center Card -->
+          <div class="settings-subcard">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+              <span>🛡️ Trung Tâm Bảo Mật Nhiều Cấp (Multi-Tier Defense)</span>
+            </h4>
+            
+            <!-- 4 Security Tiers Badges -->
+            <div class="security-tiers-grid">
+              <div class="security-tier-box">
+                <div class="tier-tag color-green">✓ CẤP 1: XÁC THỰC</div>
+                <div class="tier-desc">SHA-256 + Khóa Brute-Force 5 lần.</div>
+              </div>
+              <div class="security-tier-box">
+                <div class="tier-tag color-blue">✓ CẤP 2: MÃ PIN 2FA</div>
+                <div class="tier-desc">PIN 6 số bảo vệ thao tác quan trọng.</div>
+              </div>
+              <div class="security-tier-box">
+                <div class="tier-tag color-amber">✓ CẤP 3: RUST AES-256</div>
+                <div class="tier-desc">Mã hóa phân mảnh Chunks Zero-Knowledge.</div>
+              </div>
+              <div class="security-tier-box">
+                <div class="tier-tag color-purple">✓ CẤP 4: KIỂM TOÁN</div>
+                <div class="tier-desc">Nhật ký hoạt động WAF & Audit Logs.</div>
+              </div>
+            </div>
+
+            <!-- Setup Security PIN 6 digits -->
+            <form id="form-security-pin" style="background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 14px;">
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">🔑 Cài đặt / Đổi Mã PIN Bảo Mật Cấp 2 (6 Chữ Số)</div>
+              <div class="security-pin-grid">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px;">Mã PIN cũ (nếu có)</label>
+                  <input type="password" id="pin-old" maxlength="6" class="form-control" placeholder="6 số cũ" style="text-align: center; letter-spacing: 2px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px;">Mã PIN 6 số mới</label>
+                  <input type="password" id="pin-new" maxlength="6" class="form-control" placeholder="6 số mới" required style="text-align: center; letter-spacing: 2px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label style="font-size: 11px;">Cấp độ bảo mật</label>
+                  <select id="pin-tier" class="form-control">
+                    <option value="2">Cấp 2: PIN Nâng cao</option>
+                    <option value="3">Cấp 3: Tối mật (Military)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <button type="submit" class="btn btn-primary btn-sm">Lưu Mã PIN Cấp 2</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Account Password Change Card -->
+          <div class="settings-subcard" style="margin-top: 16px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+              <span>🔒 Đổi Mật Khẩu Tài Khoản Đang Đăng Nhập</span>
+            </h4>
+            <form id="form-change-password">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Mật khẩu hiện tại</label>
+                  <input type="password" id="cp-old-pass" class="form-control" placeholder="Nhập mật khẩu hiện tại" required>
+                </div>
+                <div class="form-group">
+                  <label>Mật khẩu mới</label>
+                  <input type="password" id="cp-new-pass" class="form-control" placeholder="Tối thiểu 8 ký tự (gồm chữ và số)" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Xác nhận mật khẩu mới</label>
+                <input type="password" id="cp-confirm-pass" class="form-control" placeholder="Nhập lại mật khẩu mới" required>
+              </div>
+              <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary btn-sm">Cập nhật Mật khẩu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Login Session & IP Geolocation Audit Card -->
+      <div class="settings-card" style="margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 0; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>📜 Lịch Sử Đăng Nhập & Truy Vết IP / Vị Trí Máy (Live Security Audit)</span>
+          </h4>
+          <button id="btn-refresh-sessions" class="btn btn-secondary btn-sm" onclick="Auth.loadLoginSessions()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Làm mới</span>
+          </button>
+        </div>
+        
+        <div id="sessions-table-container" style="overflow-x: auto; max-height: 280px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+          <table class="files-table" style="font-size: 12px; margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th style="padding: 8px 12px;">Thời gian</th>
+                <th style="padding: 8px 12px;">Tài khoản</th>
+                <th style="padding: 8px 12px;">Địa chỉ IP</th>
+                <th style="padding: 8px 12px;">Thiết bị / Trình duyệt</th>
+                <th style="padding: 8px 12px;">Vị trí máy</th>
+                <th style="padding: 8px 12px;">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Đang tải dữ liệu phiên...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: SQL Studio (CSDL) -->
+    <section id="view-sql" class="view-container">
+      <div class="section-title">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>🗄️ SQL Studio - Trình Quản Lý & Truy Vấn Cơ Sở Dữ Liệu SQLite (Mã Hóa AES-256)</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-sql-optimize" class="btn btn-secondary btn-sm" onclick="SQLStudio.optimizeDB()" title="Chống phân mảnh và giải phóng dung lượng CSDL">
+            <span>🧹 Tối ưu (VACUUM)</span>
+          </button>
+          <button id="btn-sql-check" class="btn btn-secondary btn-sm" onclick="SQLStudio.checkIntegrity()" title="Kiểm tra tính toàn vẹn của dữ liệu và bảng">
+            <span>🔍 Kiểm tra Toàn vẹn</span>
+          </button>
+          <button id="btn-sql-backup" class="btn btn-secondary btn-sm" onclick="SQLStudio.backupDB()" title="Tạo bản snapshot sao lưu tức thời an toàn">
+            <span>💾 Sao lưu Snapshot</span>
+          </button>
+          <a href="/api/sql/download" download class="btn btn-secondary btn-sm" style="text-decoration: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Tải file CSDL (.db)</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="sql-studio-grid">
+        <!-- Left: Tables & Snippets & History Sidebar -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+          <!-- Left Nav Tabs -->
+          <div style="display: flex; gap: 4px; background: var(--bg-primary); padding: 3px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <button id="btn-tab-sql-tables" class="btn btn-sm active" style="flex: 1; font-size: 11px; padding: 5px;" onclick="SQLStudio.switchSidebarTab('tables')">📊 Bảng SQL</button>
+            <button id="btn-tab-sql-snippets" class="btn btn-sm" style="flex: 1; font-size: 11px; padding: 5px;" onclick="SQLStudio.switchSidebarTab('snippets')">💡 Mẫu Lệnh</button>
+            <button id="btn-tab-sql-history" class="btn btn-sm" style="flex: 1; font-size: 11px; padding: 5px;" onclick="SQLStudio.switchSidebarTab('history')">🕒 Lịch Sử</button>
+          </div>
+
+          <!-- Tab 1: Tables List -->
+          <div id="sql-sidebar-tables" style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="text" id="sql-table-search" class="form-control" placeholder="🔍 Tìm kiếm bảng..." style="font-size: 11px; padding: 4px 8px; height: 28px;" oninput="SQLStudio.filterTables(this.value)">
+              <button id="btn-refresh-sql-tables" class="action-icon-btn" title="Làm mới bảng">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              </button>
+            </div>
+            <div id="sql-tables-list" style="display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 480px;">
+              <!-- Rendered tables -->
+            </div>
+          </div>
+
+          <!-- Tab 2: Snippet Library -->
+          <div id="sql-sidebar-snippets" style="display: none; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; max-height: 480px;">
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">📁 Quản Lý Tệp Ảo:</div>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT name, ROUND(size_bytes / 1048576.0, 2) || \' MB\' AS size, mime_type, updated_at FROM virtual_files WHERE is_dir = 0 ORDER BY size_bytes DESC LIMIT 50;')">🔥 Top 50 tệp lớn nhất</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT mime_type, COUNT(*) AS count, ROUND(SUM(size_bytes)/1048576.0, 2) || \' MB\' AS total_mb FROM virtual_files WHERE is_dir = 0 GROUP BY mime_type ORDER BY count DESC;')">📊 Thống kê theo định dạng</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT id, name, size_bytes, deleted_at FROM virtual_files WHERE is_deleted = 1 ORDER BY deleted_at DESC;')">🗑️ Danh sách tệp trong Thùng rác</button>
+            
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 6px;">☁️ Cụm Google Drive (Pool):</div>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT a.email, a.name, COUNT(c.chunk_id) AS chunks, ROUND(SUM(c.chunk_size_bytes)/1048576.0, 2) || \' MB\' AS used_mb, a.status FROM accounts a LEFT JOIN file_chunks c ON a.id = c.account_id GROUP BY a.id ORDER BY chunks DESC;')">🧩 Chunks & Dung lượng / Drive</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT sha256, COUNT(*) AS dup_count, ROUND(SUM(chunk_size_bytes)/1048576.0, 2) || \' MB\' AS saved_mb FROM file_chunks GROUP BY sha256 HAVING COUNT(*) > 1 ORDER BY dup_count DESC;')">⚡ Tiết kiệm trùng lặp (Dedup)</button>
+
+            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 6px;">🛡️ Bảo Mật & Nhật Ký:</div>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT id, username, ip_address, device_info, location_info, status, created_at FROM login_sessions ORDER BY created_at DESC LIMIT 50;')">📜 Vết IP Đăng Nhập</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT id, file_name, user_display_name, status, otp_code, created_at, expires_at FROM file_access_otps ORDER BY created_at DESC;')">🔑 Danh sách mã OTP 1 lần</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT id, file_name, file_size, max_downloads, download_count, is_active, expires_at FROM public_shares ORDER BY created_at DESC;')">🔗 Link chia sẻ công khai</button>
+            <button class="btn btn-secondary btn-sm" style="font-size: 11px; justify-content: flex-start; text-align: left;" onclick="SQLStudio.setQuery('SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 50;')">🛡️ Nhật ký kiểm toán WAF</button>
+          </div>
+
+          <!-- Tab 3: Query History -->
+          <div id="sql-sidebar-history" style="display: none; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; max-height: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Lịch sử câu lệnh gần đây:</span>
+              <button class="btn btn-secondary btn-sm" style="font-size: 10px; padding: 2px 6px;" onclick="SQLStudio.clearHistory()">Xóa lịch sử</button>
+            </div>
+            <div id="sql-history-list" style="display: flex; flex-direction: column; gap: 4px;">
+              <!-- History items -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: SQL Editor & Results -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Query Editor Card -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Trình soạn thảo SQL:</span>
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;" onclick="SQLStudio.formatSQL()" title="Tự động căn chỉnh và làm đẹp cú pháp SQL">✨ Làm đẹp SQL</button>
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;" onclick="SQLStudio.copySQL()" title="Sao chép câu truy vấn">📋 Sao chép</button>
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px;" onclick="SQLStudio.setQuery('')" title="Xóa ô nhập">🗑️ Xóa</button>
+              </div>
+              <button id="btn-run-sql" class="btn btn-primary btn-sm" style="gap: 6px; padding: 6px 16px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span style="font-weight: 700;">⚡ Chạy truy vấn (Ctrl + Enter)</span>
+              </button>
+            </div>
+            <textarea id="sql-query-input" class="form-control" style="font-family: var(--font-mono); font-size: 13px; height: 110px; resize: vertical; line-height: 1.45; background: var(--bg-tertiary);" placeholder="Nhập câu lệnh SQL tại đây... (Ví dụ: SELECT * FROM accounts;)">SELECT * FROM accounts;</textarea>
+          </div>
+
+          <!-- Query Result Card -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; flex: 1; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <div id="sql-result-status" style="font-size: 12px; color: var(--text-muted);">Sẵn sàng thực thi truy vấn.</div>
+              
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <!-- Live Search In Table -->
+                <input type="text" id="sql-result-filter" class="form-control" placeholder="🔍 Lọc kết quả..." style="font-size: 11px; padding: 3px 8px; height: 26px; width: 140px;" oninput="SQLStudio.filterResultRows(this.value)">
+                <!-- Toggle Chart View -->
+                <button id="btn-sql-toggle-chart" class="btn btn-secondary btn-sm" style="font-size: 11px;" onclick="SQLStudio.toggleChart()" title="Chuyển đổi chế độ biểu đồ trực quan">📊 Biểu đồ</button>
+                <button id="btn-sql-export-json" class="btn btn-secondary btn-sm" style="font-size: 11px;">Xuất JSON</button>
+                <button id="btn-sql-export-csv" class="btn btn-secondary btn-sm" style="font-size: 11px;">Xuất CSV</button>
+                <button id="btn-sql-export-excel" class="btn btn-secondary btn-sm" style="font-size: 11px;" onclick="SQLStudio.exportExcel()">Xuất Excel</button>
+              </div>
+            </div>
+
+            <!-- Chart Container (Toggled) -->
+            <div id="sql-chart-container" style="display: none; padding: 16px; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-bottom: 10px;">
+              <!-- Visual bar charts -->
+            </div>
+
+            <!-- Result Table Container -->
+            <div id="sql-result-container" class="files-table-container" style="flex: 1; max-height: 380px; overflow: auto;">
+              <div style="text-align: center; padding: 36px; color: var(--text-muted); font-size: 13px;">
+                Bấm "Chạy truy vấn" để xem bảng dữ liệu kết quả.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 7: Quản lý Người Dùng -->
+    <section id="view-users" class="view-container">
+      <div class="section-title">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>👥 Quản lý Tài Khoản Người Dùng (Phân Lập Kho Lưu Trữ)</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-open-register-user" class="btn btn-primary btn-sm" onclick="AuthManager.openAdminAddUserModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Thêm người dùng mới</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-card" style="margin-bottom: 16px;">
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          💡 <b>Cơ chế bảo mật phân lập:</b> Mỗi người dùng sau khi đăng ký sẽ được cấp một kho lưu trữ ảo độc lập. Người dùng chỉ xem và quản lý được tệp tin của chính mình, hoàn toàn không xem được danh sách tài khoản Google Drive nền tảng (35 TB) hay tệp tin của người dùng khác.
+        </p>
+      </div>
+
+      <div class="files-table-container">
+        <table class="files-table" id="users-table">
+          <thead>
+            <tr>
+              <th>Tên đăng nhập</th>
+              <th>Tên hiển thị</th>
+              <th>Vai trò</th>
+              <th>Dung lượng đã dùng</th>
+              <th>Hạn mức Quota</th>
+              <th>Ngày tạo</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            <!-- Dynamically rendered user rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 7: Software Update & Live Hot-Patching (Nâng cấp Phần mềm) -->
+    <section id="view-updater" class="view-container">
+      <div class="section-title">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span>🚀 Trung Tâm Nâng Cấp & Cập Nhật Phần Mềm Từng Mục (Live Hot-Patching Center)</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-updater-refresh" class="btn btn-secondary btn-sm" onclick="UpdaterManager.loadUpdateInfo()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Kiểm tra & Làm mới</span>
+          </button>
+          <button id="btn-updater-reload-ui" class="btn btn-secondary btn-sm" onclick="UpdaterManager.reloadUI()" title="Tải lại toàn bộ giao diện Web tức thời">
+            <span>🔄 Tải lại Giao diện</span>
+          </button>
+          <button id="btn-updater-restart-server" class="btn btn-primary btn-sm" onclick="UpdaterManager.restartServer()" title="Khởi động lại CloudPool Engine">
+            <span>⚡ Khởi động lại Server</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- System Architecture & Version Status Grid -->
+      <div class="settings-responsive-grid" style="margin-bottom: 16px;">
+        <div class="settings-card" style="margin-bottom: 0;">
+          <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>🛡️ Trạng Thái Phiên Bản & Kiến Trúc Hệ Thống</span>
+          </h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+            <div style="background: var(--bg-hover); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Phiên Bản App</div>
+              <div id="updater-app-ver" style="font-size: 15px; font-weight: 700; color: var(--accent); margin-top: 2px;">2.7.2-PRO</div>
+            </div>
+            <div style="background: var(--bg-hover); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Lõi Engine</div>
+              <div id="updater-engine-ver" style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">Go 1.22</div>
+            </div>
+            <div style="background: var(--bg-hover); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Lõi Rust Core</div>
+              <div id="updater-core-status" style="font-size: 13px; margin-top: 2px;">Đang kiểm tra...</div>
+            </div>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">
+            Thư mục Giao diện: <span id="updater-ui-dir" style="font-family: monospace; color: var(--text-primary);">cloudpool_ui</span>
+          </div>
+        </div>
+
+        <!-- Update Upload Form Card -->
+        <div class="settings-card" style="margin-bottom: 0;">
+          <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>📤 Tải Lên Bản Vá / File Nâng Cấp Từng Mục</span>
+          </h4>
+          <form id="form-software-update">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>Mục / Module cần nâng cấp</label>
+                <select id="update-target-module" class="form-control">
+                  <option value="ui_js">🌐 Giao diện Web - File JavaScript (.js)</option>
+                  <option value="ui_css">🎨 Giao diện Web - File CSS Style (style.css)</option>
+                  <option value="ui_html">📄 Giao diện Web - File HTML chính (index.html)</option>
+                  <option value="engine_binary">⚙️ Lõi Backend Engine (cloudpool.exe)</option>
+                  <option value="core_dll">🛡️ Lõi Bảo Mật FFI DLL (cloudpool_core.dll)</option>
+                  <option value="patch_bundle">📦 Gói Nâng Cấp Tổng Hợp Toàn Bộ (.zip)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="group-target-filename">
+                <label>Tệp tin đích cần thay thế</label>
+                <select id="update-target-filename" class="form-control">
+                  <option value="app.js">app.js (Điều phối chính & Khởi tạo)</option>
+                  <option value="files.js">files.js (Quản lý Tệp tin & VFS Explorer)</option>
+                  <option value="auth.js">auth.js (Xác thực & Người dùng)</option>
+                  <option value="responsive.js">responsive.js (Thích ứng đa thiết bị & Màn hình)</option>
+                  <option value="settings.js">settings.js (Cài đặt Hệ thống & Bảo mật)</option>
+                  <option value="sql_studio.js">sql_studio.js (SQL Studio SQLite)</option>
+                  <option value="accounts.js">accounts.js (Quản lý Cụm Drive)</option>
+                  <option value="updater.js">updater.js (Trung tâm Nâng cấp Phần mềm)</option>
+                  <option value="remote.js">remote.js (Truy cập Từ xa)</option>
+                  <option value="preview.js">preview.js (Xem trước Tệp tin)</option>
+                  <option value="api.js">api.js (Giao tiếp Backend API)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Drag & Drop Zone -->
+            <div id="update-dropzone" class="update-dropzone" style="border: 2px dashed var(--border-subtle); border-radius: var(--radius-sm); padding: 18px 14px; text-align: center; cursor: pointer; background: var(--bg-hover); transition: all 0.2s ease; margin-bottom: 12px;">
+              <input type="file" id="update-file-input" style="display: none;">
+              <div style="font-size: 24px; margin-bottom: 6px;">📥</div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">Kéo thả file nâng cấp vào đây hoặc bấm để chọn</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Hỗ trợ từng file: .js, .css, .html, .exe, .dll hoặc gói tổng hợp .zip</div>
+            </div>
+
+            <!-- Selected File Metadata Preview -->
+            <div id="update-selected-file-info" style="display: none; background: var(--bg-body); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                <span>Tệp tin: <b id="update-file-name" style="color: var(--accent);">—</b></span>
+                <span>Dung lượng: <b id="update-file-size" style="color: var(--text-primary);">—</b></span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: monospace; word-break: break-all;">
+                SHA-256: <span id="update-file-sha256" style="color: var(--text-secondary);">—</span>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Mã PIN Bảo mật Cấp 2 (nếu có)</label>
+                <input type="password" id="update-security-pin" class="form-control" placeholder="Nhập PIN 6 số để xác thực">
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <button type="submit" id="btn-submit-update" class="btn btn-primary" style="width: 100%; height: 38px; justify-content: center;">
+                  <span>🚀 Tiến Hành Nâng Cấp Tức Thời</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- File Catalog & Rollback Table — ẨN để bảo mật (logic vẫn hoạt động) -->
+      <div class="settings-card" style="margin-bottom: 16px; display: none;" id="updater-file-catalog-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 0; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+            <span>📁 Danh Mục Tệp Tin Hệ Thống & Bản Sao Lưu Phục Hồi (.bak)</span>
+          </h4>
+        </div>
+        <div style="overflow-x: auto; max-height: 280px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+          <table class="files-table" style="font-size: 12px; margin-bottom: 0;">
+            <thead>
+              <tr>
+                <th style="padding: 8px 12px;">Tên tệp</th>
+                <th style="padding: 8px 12px;">Phân loại Module</th>
+                <th style="padding: 8px 12px;">Dung lượng</th>
+                <th style="padding: 8px 12px;">Lần sửa đổi</th>
+                <th style="padding: 8px 12px;">Bản sao lưu (.bak)</th>
+                <th style="padding: 8px 12px; text-align: right;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="updater-files-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">Đang tải danh mục tệp...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Live Update Log Console -->
+      <div class="settings-card">
+        <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+          <span>📜 Nhật Ký Nâng Cấp & Ghi Đè Bản Vá (Live Update Console)</span>
+        </h4>
+        <div id="updater-live-log" style="background: #090d16; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; color: #38bdf8; height: 130px; overflow-y: auto; line-height: 1.6;">
+          <div>[CLOUDPool Live Updater Engine Ready - Sẵn sàng nhận bản vá nâng cấp từng tệp tin]</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ==========================================================================
+     Modals
+     ========================================================================== -->
+
+<!-- Add Account Modal -->
+<div id="modal-add-account" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Thêm Tài khoản Google Drive</h3>
+      <button class="modal-close-btn" data-close="modal-add-account">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display: flex; gap: 10px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <button id="btn-tab-oauth" class="btn btn-primary btn-sm" style="flex: 1;">Đăng nhập Google (OAuth 2.0)</button>
+        <button id="btn-tab-sa" class="btn btn-secondary btn-sm" style="flex: 1;">Nạp Service Account (.json)</button>
+      </div>
+
+      <!-- OAuth Section -->
+      <div id="section-oauth">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+          Kết nối trực tiếp tài khoản Google cá nhân (15GB miễn phí) hoặc Google Workspace chỉ với 1 cú click.
+        </p>
+        <button id="btn-start-oauth-login" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/></svg>
+          <span>Đăng nhập với Google Drive</span>
+        </button>
+
+        <div style="margin-top: 15px; padding: 10px 12px; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: var(--radius-sm); font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 600; color: #38bdf8;">📌 Redirect URI cho Google Console:</span>
+            <button type="button" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px;" onclick="AccountsManager.copyRedirectURI()">📋 Sao chép</button>
+          </div>
+          <div id="oauth-redirect-preview" style="font-family: var(--font-mono); color: var(--text-primary); word-break: break-all; font-size: 11.5px; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border-subtle);">Đang nạp URI...</div>
+          <small style="color: var(--text-secondary); margin-top: 5px; display: block; line-height: 1.4;">
+            💡 Thêm URI này vào mục <b>"Authorized redirect URIs"</b> trong Google Cloud Console để tránh lỗi <i>redirect_uri_mismatch</i>.
+          </small>
+        </div>
+      </div>
+
+      <!-- Service Account Section -->
+      <div id="section-sa" style="display: none;">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+          Tải lên tệp khóa JSON của Google Service Account để nạp dung lượng không giới hạn mà không cần duyệt web.
+        </p>
+        <input type="file" id="sa-file-input" accept=".json" class="form-control" style="margin-bottom: 10px;">
+        <button id="btn-upload-sa" class="btn btn-primary" style="width: 100%; justify-content: center;">Nạp Service Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Folder Modal -->
+<div id="modal-new-folder" class="modal-overlay">
+  <div class="modal-box" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3>Tạo Thư mục Mới</h3>
+      <button class="modal-close-btn" data-close="modal-new-folder">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Tên thư mục</label>
+        <input type="text" id="new-folder-name" class="form-control" placeholder="Ví dụ: TaiLieu, Video, Backup...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="modal-new-folder">Hủy</button>
+      <button id="btn-confirm-new-folder" class="btn btn-primary">Tạo mới</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div id="modal-rename" class="modal-overlay">
+  <div class="modal-box" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3>Đổi tên Tệp / Thư mục</h3>
+      <button class="modal-close-btn" data-close="modal-rename">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rename-target-id">
+      <div class="form-group">
+        <label>Tên mới</label>
+        <input type="text" id="rename-target-name" class="form-control">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="modal-rename">Hủy</button>
+      <button id="btn-confirm-rename" class="btn btn-primary">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Media Preview Modal -->
+<div id="modal-preview" class="modal-overlay">
+  <div class="modal-box" style="max-width: 1180px; width: 95vw; max-height: 94vh;">
+    <div class="modal-header">
+      <h3 id="preview-file-title" style="font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;">Xem trước Media</h3>
+      <button class="modal-close-btn" data-close="modal-preview">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 12px; overflow: auto; flex: 1;">
+      <div id="preview-content-area" class="preview-container" style="width: 100%; height: 76vh; min-height: 420px; max-height: 84vh; background: transparent;">
+        <!-- Dynamic Player / Image -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Action Bar -->
+<div id="bulk-action-bar" class="bulk-bar">
+  <span id="bulk-selected-count" class="bulk-count">Đã chọn 0 tệp</span>
+  <button id="btn-bulk-zip" class="btn btn-secondary btn-sm">Tải về (.zip)</button>
+  <button id="btn-bulk-delete" class="btn btn-danger btn-sm">Xóa đã chọn</button>
+  <button id="btn-bulk-cancel" class="btn btn-secondary btn-sm">Hủy</button>
+</div>
+
+<!-- Context Menu -->
+<div id="file-context-menu" class="context-menu">
+  <div class="context-menu-item" id="ctx-open">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    <span>Mở / Phát media</span>
+  </div>
+  <div class="context-menu-item" id="ctx-share">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+    <span>Tạo link chia sẻ</span>
+  </div>
+  <div class="context-menu-item" id="ctx-chunks">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+    <span>Xem bản đồ Chunks</span>
+  </div>
+  <div class="context-menu-item" id="ctx-download">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    <span>Tải về máy</span>
+  </div>
+  <div class="context-menu-item" id="ctx-rename">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+    <span>Đổi tên</span>
+  </div>
+  <div class="context-menu-item danger" id="ctx-delete">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+    <span>Chuyển vào thùng rác</span>
+  </div>
+</div>
+
+<!-- Chunk Inspector Modal -->
+<div id="modal-chunk-map" class="modal-overlay">
+  <div class="modal-box" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 id="chunk-map-title">Bản đồ phân bổ Chunks</h3>
+      <button class="modal-close-btn" data-close="modal-chunk-map">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="chunk-map-meta" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;"></div>
+      <div id="chunk-map-grid" class="chunk-map-container">
+        <!-- Dynamically rendered chunk cards -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Progress Drawer -->
+<div id="upload-drawer" class="upload-drawer">
+  <div class="upload-drawer-header">
+    <span id="upload-drawer-title">Tiến trình Tải lên &amp; Phân tán Song song</span>
+    <button id="btn-close-upload-drawer" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">&times;</button>
+  </div>
+  <div id="upload-list" class="upload-drawer-list">
+    <!-- Dynamic upload progress items -->
+  </div>
+</div>
+
+<!-- Toast Messages Container -->
+<div id="toast-container"></div>
+
+<!-- User Auth Modal (Login Only) -->
+<div id="modal-auth" class="modal-overlay">
+  <div class="modal-box" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 id="auth-modal-title">Đăng Nhập Tài Khoản</h3>
+      <button class="modal-close-btn" data-close="modal-auth">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+      <!-- Form Login -->
+      <form id="form-login">
+        <div class="form-group">
+          <label>Tên đăng nhập / Username</label>
+          <input type="text" id="login-username" class="form-control" placeholder="admin hoặc username của bạn" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu / Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="Nhập mật khẩu" required autocomplete="current-password">
+        </div>
+        <!-- Cloudflare Turnstile Anti-Bot Verification -->
+        <div style="margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 10px; border: 1px dashed rgba(0,229,255,0.25);">
+          <div id="cf-turnstile-storage-login" style="min-height: 65px; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+          <button type="submit" id="btn-login-submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 600;">Đăng Nhập</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Add User Modal (Dành riêng cho Quản Trị Viên thêm thành viên trong trang Users) -->
+<div id="modal-admin-add-user" class="modal-overlay">
+  <div class="modal-box" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3>➕ Thêm Tài Khoản Người Dùng Mới</h3>
+      <button class="modal-close-btn" data-close="modal-admin-add-user">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+      <form id="form-admin-add-user">
+        <div class="form-group">
+          <label>Tên đăng nhập / Username</label>
+          <input type="text" id="admin-new-username" class="form-control" placeholder="Tối thiểu 3 ký tự (viết liền, không dấu)" required>
+        </div>
+        <div class="form-group">
+          <label>Họ và tên / Tên hiển thị</label>
+          <input type="text" id="admin-new-displayname" class="form-control" placeholder="Ví dụ: Kỹ thuật viên A">
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu khởi tạo</label>
+          <input type="password" id="admin-new-password" class="form-control" placeholder="Mật khẩu ban đầu (tối thiểu 6 ký tự)" required>
+        </div>
+        <div class="form-group">
+          <label>Hạn mức dung lượng (GB)</label>
+          <input type="number" id="admin-new-quota" class="form-control" placeholder="Ví dụ: 100 (Nhập 0 nếu không giới hạn)" value="100">
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Tạo Tài Khoản Thành Viên</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Change Password Modal -->
+<div id="modal-change-password" class="modal-overlay">
+  <div class="modal-box" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3>Đổi Mật Khẩu Tài Khoản</h3>
+      <button class="modal-close-btn" data-close="modal-change-password">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 16px;">
+      <form id="modal-form-change-password">
+        <div class="form-group">
+          <label>Mật khẩu hiện tại</label>
+          <input type="password" id="mcp-old-pass" class="form-control" placeholder="Nhập mật khẩu hiện tại" required>
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu mới</label>
+          <input type="password" id="mcp-new-pass" class="form-control" placeholder="Tối thiểu 8 ký tự (gồm chữ và số)" required>
+        </div>
+        <div class="form-group">
+          <label>Xác nhận mật khẩu mới</label>
+          <input type="password" id="mcp-confirm-pass" class="form-control" placeholder="Nhập lại mật khẩu mới" required>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Lưu Mật Khẩu Mới</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Single-Use OTP Unlock for Child User -->
+<div id="modal-file-otp" class="modal-overlay">
+  <div class="modal-box" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3 style="display: flex; align-items: center; gap: 8px;">
+        <span>🔒 Mở Khóa Tệp Tin Quản Trị</span>
+      </h3>
+      <button class="modal-close-btn" data-close="modal-file-otp">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 18px;">
+      <div style="background: var(--bg-tertiary); padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--border-subtle);">
+        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;" id="otp-target-file-name">Tệp tin</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Kích thước: <span id="otp-target-file-size">-</span> | Quyền sở hữu: <b style="color: var(--accent-blue);">Quản Trị Viên (Admin)</b></div>
+      </div>
+
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;">
+        Tệp tin này được bảo mật. Bạn cần nhập <b>Mã OTP do Admin duyệt cấp (sử dụng 1 lần)</b> để xem nội dung và tải về.
+      </p>
+
+      <div class="form-group">
+        <label style="font-weight: 600; font-size: 13px;">Nhập Mã OTP (6 chữ số)</label>
+        <input type="text" id="otp-input-code" class="form-control" placeholder="Ví dụ: 849201" maxlength="10" style="font-size: 18px; letter-spacing: 4px; text-align: center; font-weight: 700; font-family: monospace;">
+      </div>
+
+      <div id="otp-status-message" style="margin-top: 8px; min-height: 20px;"></div>
+    </div>
+    <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 8px;">
+      <button class="btn btn-secondary btn-sm" onclick="FilesManager.requestOTPForFile()" title="Gửi yêu cầu tới Admin để xin cấp mã">
+        📩 Gửi yêu cầu xin OTP
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" data-close="modal-file-otp">Đóng</button>
+        <button id="btn-submit-file-otp" class="btn btn-primary btn-sm" onclick="FilesManager.confirmVerifyOTP()">
+          🔓 Xác thực & Mở khóa
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Admin Generate Single-Use OTP -->
+<div id="modal-admin-generate-otp" class="modal-overlay">
+  <div class="modal-box" style="max-width: 460px;">
+    <div class="modal-header">
+      <h3 style="display: flex; align-items: center; gap: 8px;">
+        <span>🔑 Cấp Mã OTP Truy Cập (Dùng 1 Lần)</span>
+      </h3>
+      <button class="modal-close-btn" data-close="modal-admin-generate-otp">&times;</button>
+    </div>
+    <div class="modal-body" style="padding: 18px;">
+      <div style="background: var(--bg-tertiary); padding: 12px 14px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--border-subtle);">
+        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;" id="admin-otp-file-name">Tệp tin</div>
+        <div style="font-size: 12px; color: var(--text-muted);">Kích thước: <span id="admin-otp-file-size">-</span></div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label>Chỉ định Người dùng con</label>
+        <select id="admin-otp-target-user" class="form-control">
+          <option value="all">👥 Tất cả thành viên</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label>Thời hạn hiệu lực của mã (Tự động hủy khi hết giờ)</label>
+        <select id="admin-otp-duration" class="form-control">
+          <option value="1">⚡ 1 Phút (Siêu ngắn / Khẩn cấp)</option>
+          <option value="3">⏱️ 3 Phút</option>
+          <option value="5" selected>⏱️ 5 Phút (Khuyên dùng)</option>
+          <option value="10">⏱️ 10 Phút</option>
+          <option value="15">⏱️ 15 Phút</option>
+          <option value="30">⏱️ 30 Phút</option>
+          <option value="60">🕒 1 Giờ</option>
+          <option value="360">🕒 6 Giờ</option>
+          <option value="1440">📅 24 Giờ (1 Ngày)</option>
+          <option value="10080">📅 7 Ngày</option>
+        </select>
+      </div>
+
+      <!-- Result Box with Live Countdown -->
+      <div id="admin-otp-result-box" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.4); border-radius: var(--radius-md); padding: 16px; text-align: center; margin-bottom: 12px;">
+        <div style="font-size: 12px; color: #10b981; font-weight: 600; margin-bottom: 6px;">MÃ OTP KHẢ DỤNG 1 LẦN:</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+          <div id="admin-otp-generated-code" style="font-size: 30px; font-weight: 800; font-family: monospace; letter-spacing: 6px; color: #34d399; user-select: all; background: rgba(0,0,0,0.25); padding: 4px 14px; border-radius: 6px; border: 1px solid rgba(52, 211, 153, 0.3);">000000</div>
+          <button class="btn btn-secondary btn-sm" onclick="FilesManager.copyGeneratedOTP()" style="font-size: 11.5px; padding: 6px 10px;" title="Sao chép mã">📋 Copy</button>
+        </div>
+        
+        <!-- Live Real-Time Countdown Timer -->
+        <div id="admin-otp-countdown-container" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 5px;">
+            <span style="color: var(--text-secondary);">Thời gian đếm ngược:</span>
+            <span id="admin-otp-countdown-timer" style="font-weight: 700; font-family: monospace; font-size: 15px; color: #38bdf8;">05:00</span>
+          </div>
+          <div class="storage-bar-bg" style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden;">
+            <div id="admin-otp-countdown-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 1s linear;"></div>
+          </div>
+          <div id="admin-otp-expire-text" style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Hết hạn lúc: --:--</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="modal-admin-generate-otp">Đóng</button>
+      <button id="btn-admin-do-generate-otp" class="btn btn-primary" onclick="FilesManager.confirmAdminGenerateOTP()">
+        🚀 Sinh Mã OTP Ngay
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Admin OTP & Request Manager -->
+<div id="modal-admin-otp-manager" class="modal-overlay">
+  <div class="modal-box" style="max-width: 860px; width: 95%;">
+
+    <!-- Header -->
+    <div class="modal-header" style="padding: 18px 24px; background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(16,185,129,0.06) 100%); border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #10b981); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">🔑</div>
+        <div>
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.3;">Trung Tâm Quản Lý OTP & Phê Duyệt</h3>
+          <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">Kiểm soát mã truy cập một lần và phê duyệt yêu cầu từ người dùng</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" data-close="modal-admin-otp-manager" style="width: 28px; height: 28px; border-radius: 50%; background: var(--bg-tertiary, rgba(255,255,255,0.06)); display:flex; align-items:center; justify-content:center; font-size:16px; transition: background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='var(--bg-tertiary, rgba(255,255,255,0.06))'">×</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body" style="padding: 20px 24px; max-height: 72vh; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+
+      <!-- Section 1: Access Requests -->
+      <div>
+        <!-- Section Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 3px; height: 18px; background: #3b82f6; border-radius: 2px;"></div>
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Yêu Cầu Xin Cấp OTP</span>
+            <span id="otp-req-count-badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; display: none;">0</span>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted);">Từ người dùng con</span>
+        </div>
+
+        <!-- Requests List -->
+        <div id="otp-requests-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+          <div style="text-align: center; padding: 28px; color: var(--text-muted); font-size: 12px; background: var(--bg-tertiary, rgba(255,255,255,0.03)); border-radius: 10px; border: 1px dashed var(--border-subtle);">
+            <div style="font-size: 24px; margin-bottom: 6px;">📭</div>
+            Không có yêu cầu xin mã OTP nào
+          </div>
+        </div>
+        <!-- Legacy tbody (ẩn, giữ cho JS cũ tương thích) -->
+        <table style="display:none;"><tbody id="admin-otp-requests-tbody"></tbody></table>
+      </div>
+
+      <!-- Divider -->
+      <div style="height: 1px; background: var(--border-subtle);"></div>
+
+      <!-- Section 2: Active OTPs -->
+      <div>
+        <!-- Section Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 3px; height: 18px; background: #f59e0b; border-radius: 2px;"></div>
+            <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Danh Sách Mã OTP Đã Cấp</span>
+            <span id="otp-list-count-badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 20px; display: none;">0</span>
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted);">Khả dụng 1 lần duy nhất</span>
+        </div>
+
+        <!-- OTPs Table (overflow-x scroll cho màn nhỏ) -->
+        <div style="overflow-x: auto; max-height: 220px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--border-subtle);">
+          <table class="files-table" style="font-size: 12px; margin: 0; min-width: 600px;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.03);">
+                <th style="padding: 9px 14px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Mã OTP</th>
+                <th style="padding: 9px 14px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Tệp tin</th>
+                <th style="padding: 9px 14px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Đối tượng</th>
+                <th style="padding: 9px 14px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Tình trạng</th>
+                <th style="padding: 9px 14px; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Hết hạn</th>
+                <th style="padding: 9px 14px; text-align: right; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="admin-otps-list-tbody">
+              <tr><td colspan="6" style="text-align:center; padding:28px; color:var(--text-muted); font-size:12px;">
+                <div style="font-size: 20px; margin-bottom: 6px;">🔐</div>
+                Chưa có mã OTP nào được tạo
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid var(--border-subtle); background: var(--bg-tertiary, rgba(255,255,255,0.02)); display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 11px; color: var(--text-muted);">Dữ liệu tự động làm mới mỗi 30 giây</span>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="FilesManager.loadAdminOTPsAndRequests()" style="gap: 6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          <span>Làm mới</span>
+        </button>
+        <button class="btn btn-primary btn-sm" data-close="modal-admin-otp-manager">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Modal chọn thời gian phê duyệt OTP -->
+<div id="modal-approve-duration" class="modal-overlay">
+  <div class="modal-box" style="max-width: 440px;">
+    <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #10b981, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">✅</div>
+        <div>
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Phê Duyệt Yêu Cầu OTP</h3>
+          <p id="approve-modal-username" style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">Chọn thời gian hiệu lực của mã OTP</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" data-close="modal-approve-duration" style="font-size: 18px;">×</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px;">
+      <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 14px 0;">Sau khi cấp, người dùng sẽ nhận được thông báo và mã OTP sẽ tự động điền. Chọn thời hạn:</p>
+
+      <!-- Duration options -->
+      <div id="approve-duration-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+
+        <label class="otp-dur-option" data-minutes="5">
+          <input type="radio" name="approve_duration" value="5" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">⚡</span>
+            <span class="otp-dur-label">5 phút</span>
+            <span class="otp-dur-sub">Ngắn hạn</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="15">
+          <input type="radio" name="approve_duration" value="15" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">⏱</span>
+            <span class="otp-dur-label">15 phút</span>
+            <span class="otp-dur-sub">Nhanh</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="60">
+          <input type="radio" name="approve_duration" value="60" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">🕐</span>
+            <span class="otp-dur-label">1 giờ</span>
+            <span class="otp-dur-sub">Tiêu chuẩn</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option selected" data-minutes="480">
+          <input type="radio" name="approve_duration" value="480" checked style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">🌙</span>
+            <span class="otp-dur-label">8 giờ</span>
+            <span class="otp-dur-sub">Mặc định ✓</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="1440">
+          <input type="radio" name="approve_duration" value="1440" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">📅</span>
+            <span class="otp-dur-label">1 ngày</span>
+            <span class="otp-dur-sub">Toàn ngày</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="4320">
+          <input type="radio" name="approve_duration" value="4320" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">📆</span>
+            <span class="otp-dur-label">3 ngày</span>
+            <span class="otp-dur-sub">Dài hạn</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="10080">
+          <input type="radio" name="approve_duration" value="10080" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">📊</span>
+            <span class="otp-dur-label">7 ngày</span>
+            <span class="otp-dur-sub">1 tuần</span>
+          </div>
+        </label>
+
+        <label class="otp-dur-option" data-minutes="43200">
+          <input type="radio" name="approve_duration" value="43200" style="display:none;">
+          <div class="otp-dur-card">
+            <span class="otp-dur-icon">🗓</span>
+            <span class="otp-dur-label">30 ngày</span>
+            <span class="otp-dur-sub">Tháng</span>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 12px 20px; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary btn-sm" data-close="modal-approve-duration">Hủy</button>
+      <button id="btn-confirm-approve" class="btn btn-primary btn-sm" onclick="FilesManager.confirmApproveWithDuration()" style="gap: 6px;">
+        <span>✅ Xác nhận Phê Duyệt</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tạo Link Chia Sẻ Công Khai -->
+<div id="modal-share-link" class="modal-overlay">
+  <div class="modal-box" style="max-width: 480px;">
+    <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">🔗</div>
+        <div>
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Tạo Link Chia Sẻ Tệp Tin & Thư Mục</h3>
+          <p id="share-file-name-label" style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Tên tệp</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" data-close="modal-share-link" style="font-size: 18px;">×</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+      <input type="hidden" id="share-target-file-id">
+      
+      <div class="form-group">
+        <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">🔒 Mật khẩu bảo vệ (Tùy chọn)</label>
+        <input type="text" id="share-password-input" class="form-control" placeholder="Để trống nếu muốn chia sẻ công khai không cần mật khẩu..." style="font-size: 13px;">
+        <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">Người nhận sẽ phải nhập đúng mật khẩu này mới có thể tải hoặc xem tệp/thư mục.</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">⏱ Thời hạn hết hạn</label>
+          <select id="share-expiry-select" class="form-control" style="font-size: 13px;">
+            <option value="0" selected>♾️ Vĩnh viễn (Không bao giờ hết hạn)</option>
+            <option value="1">1 Giờ</option>
+            <option value="6">6 Giờ</option>
+            <option value="12">12 Giờ</option>
+            <option value="24">24 Giờ (1 Ngày)</option>
+            <option value="72">3 Ngày</option>
+            <option value="168">7 Ngày (1 Tuần)</option>
+            <option value="336">14 Ngày (2 Tuần)</option>
+            <option value="720">30 Ngày (1 Tháng)</option>
+            <option value="2160">90 Ngày (3 Tháng)</option>
+            <option value="4320">180 Ngày (6 Tháng)</option>
+            <option value="8760">365 Ngày (1 Năm)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; display: block;">📥 Giới hạn lượt tải</label>
+          <select id="share-max-downloads-select" class="form-control" style="font-size: 13px;">
+            <option value="0" selected>Không giới hạn</option>
+            <option value="1">1 Lượt tải (Tự hủy)</option>
+            <option value="5">5 Lượt tải</option>
+            <option value="10">10 Lượt tải</option>
+            <option value="50">50 Lượt tải</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Generated Link Box (Hidden initially) -->
+      <div id="share-result-box" style="display: none; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.3); border-radius: 12px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 11px; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.05em;">🎬 Link Xem Trực Tiếp / Duyệt & Tải:</span>
+          <span style="font-size: 11px; color: var(--accent-green);">● Hỗ trợ Tệp Tin & Thư Mục Online</span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <input type="text" id="share-result-url" class="form-control" readonly style="font-size: 12px; font-family: var(--font-mono); background: var(--bg-primary); color: #38bdf8;">
+          <button class="btn btn-primary btn-sm" onclick="FilesManager.copyShareLink()" style="flex-shrink: 0; padding: 0 14px;">📋 Sao chép</button>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="FilesManager.openCurrentSharePreview()" style="gap: 6px; font-size: 11px; color: #38bdf8;">
+            <span>▶️ Mở Xem Thử Trang Chia Sẻ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 12px 20px; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary btn-sm" data-close="modal-share-link">Đóng</button>
+      <button id="btn-create-share-confirm" class="btn btn-primary btn-sm" onclick="FilesManager.confirmCreateShareLink()" style="gap: 6px;">
+        <span>✨ Tạo Đường Link Xem Trực Tiếp</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Quản Lý Link Chia Sẻ -->
+<div id="modal-shares-manager" class="modal-overlay">
+  <div class="modal-box" style="max-width: 680px;">
+    <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: #8b5cf6; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">🔗</div>
+        <div>
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Quản Lý Đường Link Chia Sẻ Công Khai</h3>
+          <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">Danh sách tất cả các đường link tải công khai đang hoạt động</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" data-close="modal-shares-manager" style="font-size: 18px;">×</button>
+    </div>
+    <div class="modal-body" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto;">
+      <table class="files-table" style="font-size: 12px; margin: 0; width: 100%;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.03);">
+            <th style="padding: 8px 12px;">Tên tệp</th>
+            <th style="padding: 8px 12px;">Bảo vệ</th>
+            <th style="padding: 8px 12px;">Lượt tải</th>
+            <th style="padding: 8px 12px;">Hết hạn</th>
+            <th style="padding: 8px 12px; text-align: right;">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="shares-manager-tbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer" style="padding: 12px 20px; justify-content: space-between;">
+      <button class="btn btn-secondary btn-sm" onclick="FilesManager.loadSharesList()">🔄 Làm mới</button>
+      <button class="btn btn-primary btn-sm" data-close="modal-shares-manager">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Thùng Rác (Recycle Bin) -->
+<div id="modal-trash" class="modal-overlay">
+  <div class="modal-box" style="max-width: 720px;">
+    <div class="modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; background: #ef4444; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">🗑️</div>
+        <div>
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Thùng Rác (Recycle Bin)</h3>
+          <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">Khôi phục tệp bị xóa hoặc dọn sạch vĩnh viễn</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" data-close="modal-trash" style="font-size: 18px;">×</button>
+    </div>
+    <div class="modal-body" style="padding: 16px 20px; max-height: 60vh; overflow-y: auto;">
+      <table class="files-table" style="font-size: 12px; margin: 0; width: 100%;">
+        <thead>
+          <tr style="background: rgba(255,255,255,0.03);">
+            <th style="padding: 8px 12px;">Tên tệp / Thư mục</th>
+            <th style="padding: 8px 12px;">Kích thước</th>
+            <th style="padding: 8px 12px;">Thời gian xóa</th>
+            <th style="padding: 8px 12px; text-align: right;">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="trash-table-tbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer" style="padding: 12px 20px; justify-content: space-between;">
+      <button id="btn-empty-trash" class="btn btn-danger btn-sm" onclick="FilesManager.emptyTrash()" style="gap: 5px;">
+        <span>🔥 Dọn sạch Thùng rác</span>
+      </button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="FilesManager.loadTrashList()">🔄 Làm mới</button>
+        <button class="btn btn-primary btn-sm" data-close="modal-trash">Đóng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Trình Đọc Mã Nguồn / Văn Bản / PDF (Code & Document Viewer) -->
+<div id="modal-code-viewer" class="modal-overlay">
+  <div class="modal-box" style="max-width: 860px; width: 90vw;">
+    <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div id="code-viewer-icon" style="font-size: 18px;">📄</div>
+        <div>
+          <h3 id="code-viewer-title" style="font-size: 14px; font-weight: 700; margin: 0; color: var(--text-primary);">Xem tệp</h3>
+          <span id="code-viewer-info" style="font-size: 11px; color: var(--text-muted);">0 lines</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-copy-code-content" class="btn btn-secondary btn-sm" onclick="PreviewManager.copyCodeContent()" style="font-size: 11px; padding: 3px 8px;">📋 Sao chép</button>
+        <button class="modal-close-btn" data-close="modal-code-viewer" style="font-size: 18px;">×</button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding: 0; max-height: 70vh; overflow: hidden; background: #0f172a; display: flex; flex-direction: column;">
+      <div id="code-viewer-container" style="flex: 1; overflow: auto; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: #e2e8f0; white-space: pre;">
+        Đang nạp dữ liệu...
+      </div>
+    </div>
+    <div class="modal-footer" style="padding: 10px 20px; justify-content: space-between; background: var(--bg-tertiary);">
+      <span id="code-viewer-footer-meta" style="font-size: 11px; color: var(--text-muted);">UTF-8</span>
+      <button class="btn btn-primary btn-sm" data-close="modal-code-viewer">Đóng</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="js/responsive.js?v=2.7.11"></script>
+<script src="js/jszip.min.js?v=2.7.11"></script>
+<script src="js/xlsx.full.min.js?v=2.7.11"></script>
+<script src="js/docx-preview.min.js?v=2.7.11"></script>
+<script src="js/mammoth.browser.min.js?v=2.7.11"></script>
+<script src="js/api.js?v=2.8.8"></script>
+<script src="js/auth.js?v=2.8.8"></script>
+<script src="js/accounts.js?v=2.8.8"></script>
+<script src="js/files.js?v=2.8.8"></script>
+<script src="js/office_viewer.js?v=2.8.8"></script>
+<script src="js/preview.js?v=2.8.8"></script>
+<script src="js/remote.js?v=2.8.8"></script>
+<script src="js/tunnel.js?v=2.8.8"></script>
+<script src="js/settings.js?v=2.8.8"></script>
+<script src="js/sql_studio.js?v=2.8.8"></script>
+<script src="js/updater.js?v=2.8.8"></script>
+<script src="js/app.js?v=2.8.8"></script>
+
+</body>
+</html>

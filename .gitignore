@@ -1,0 +1,101 @@
+# ==============================================================================
+# SupportFlast Enterprise - Git Ignore
+# Tuân thủ Bảo mật Zero-Trust & Quy tắc Dự án (Phần 1.4 & 3.3)
+# ==============================================================================
+
+# 1. Bảo mật & Thông tin nhạy cảm (Rule PHAN 3.3)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.csr
+*.pfx
+*.p12
+data/certs/
+data/keys/
+data/keys.json
+data/oauth/
+data/service_accounts/
+tools/*_token.txt
+tools/cloudflare_token.txt
+
+# 2. Cơ sở dữ liệu & Runtime Data (Rule PHAN 1.4)
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+cloudpool.db
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/backups/
+data/test_db/
+data/data/
+data/subagents_audit_*.json
+storage/packages/*
+!storage/packages/.gitkeep
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/chunks/*
+storage/temp/*
+
+# 3. Build Artifacts & Large Binaries (Tránh quá giới hạn GitHub 100MB)
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.out
+*.test
+*.zip
+*.tar.gz
+*.7z
+*.apk
+*.msi
+*.iso
+supportflast
+supportflast.exe
+supportflast_linux*
+supportflast-linux*
+supportflast_core.dll
+supportflast_engine.exe
+phone_server/cloudflared*
+tools/cloudflared*
+tools/dist/
+supportflast_core/target/
+
+# 4. Logs & File tạm thời (Rule PHAN 1.2)
+logs/*
+!logs/.gitkeep
+*.log
+*.bak
+scratch/
+brain/
+.gemini/
+.agents/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 5. IDE & Python / Node Caches
+.vscode/
+.idea/
+*.suo
+*.user
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+env/
+venv/
+.venv/
+supportflast_ai/__pycache__/
+supportflast_ai/tmp_scans/
+node_modules/

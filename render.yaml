@@ -1,0 +1,69 @@
+# ==============================================================================
+# Render Blueprint Configuration (render.yaml)
+# Hỗ trợ triển khai 1-Click đồng bộ Go Monolith Engine và Python AI trên Render Cloud
+# Domain: supportflastdev.io.vn | Tương thích chuẩn Render Blueprint Specification
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Python Multi-Agent AI Service (5 Subagents Điều Phối Hỗ Trợ & An Ninh)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: supportflast-ai
+    env: docker
+    dockerfilePath: ./supportflast_ai/Dockerfile
+    dockerContext: ./supportflast_ai
+    plan: starter
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: HOST
+        value: 0.0.0.0
+      - key: PYTHONUNBUFFERED
+        value: 1
+
+  # ----------------------------------------------------------------------------
+  # 2. Go Monolith Engine (Web 3D UI, Hub API Gateway, Virtual Storage, SIEM)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: supportflast-engine
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    plan: starter
+    region: singapore
+    # Persistent Disk bảo lưu toàn vẹn dữ liệu SQLite WAL, Keys và Packages
+    disk:
+      name: supportflast-data
+      mountPath: /app/data
+      sizeGB: 10
+    # Healthcheck HTTP kiểm tra định kỳ sức khỏe engine
+    healthCheckPath: /api/health
+    envVars:
+      # Render tự động gán biến PORT động và định tuyến lưu lượng vào cổng này
+      - key: PORT
+        sync: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: DOMAIN
+        value: supportflastdev.io.vn
+      # Cấu hình lưu trữ dữ liệu bền vững trên Persistent Disk
+      - key: DATA_DIR
+        value: /app/data
+      # Lưu trữ packages trong /app/data/storage để cùng nằm trên Persistent Disk đã mount
+      - key: STORAGE_DIR
+        value: /app/data/storage
+      - key: UI_DIR
+        value: /app/supportflast_ui
+      - key: STATIC_DIR
+        value: /app/supportflast_ui
+      - key: JWT_KEYS_DIR
+        value: /app/data/keys
+      # Kết nối nội bộ tới Python AI Service
+      - key: AI_ENGINE_URL
+        fromService:
+          type: web
+          name: supportflast-ai
+          property: host

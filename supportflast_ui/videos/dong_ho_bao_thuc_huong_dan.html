@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Hướng Dẫn: Đồng Hồ Báo Thức v1.0.1 (Flutter Pro Android)</title>
+    <style>
+        :root {
+            --primary-orange: #ff6b00;
+            --secondary-orange: #f97316;
+            --light-orange: #fb923c;
+            --accent-gold: #f59e0b;
+            --bg-deep: #07080c;
+            --bg-card: #11131c;
+            --bg-card-hover: #171a27;
+            --border-color: rgba(249, 115, 22, 0.3);
+            --border-glow: rgba(249, 115, 22, 0.6);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success-neon: #10b981;
+            --cyan-neon: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 4K Header Bar */
+        .header-bar {
+            padding: 14px 28px;
+            background: linear-gradient(180deg, rgba(17, 19, 28, 0.98) 0%, rgba(9, 10, 15, 0.95) 100%);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 50;
+            backdrop-filter: blur(12px);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon-box {
+            width: 44px;
+            height: 44px;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0.05) 100%);
+            border: 1px solid var(--secondary-orange);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.35);
+        }
+
+        .brand-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-subtitle {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .badge-4k {
+            background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(245, 158, 11, 0.2));
+            color: var(--light-orange);
+            border: 1px solid var(--border-glow);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* 4K Stage / Cinema Container */
+        .stage-viewport {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: radial-gradient(ellipse at 50% 40%, #151825 0%, #07080c 100%);
+            overflow: hidden;
+        }
+
+        .cinema-canvas {
+            width: 100%;
+            max-width: 1080px;
+            background: rgba(17, 19, 28, 0.88);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 32px 40px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(249, 115, 22, 0.12);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 480px;
+            justify-content: space-between;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 14px;
+        }
+
+        .scene-title-text {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scene-desc-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .scene-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Realtime Clock Banner */
+        .live-clock-card {
+            background: rgba(9, 10, 15, 0.9);
+            border: 1px solid rgba(249, 115, 22, 0.4);
+            border-radius: 16px;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            margin-bottom: 16px;
+        }
+
+        .digital-digits {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 2.8rem;
+            font-weight: 900;
+            color: var(--light-orange);
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(249, 115, 22, 0.6);
+        }
+
+        .digital-seconds {
+            font-size: 1.6rem;
+            color: #ffffff;
+            opacity: 0.85;
+        }
+
+        /* Teleprompter Subtitles Box */
+        .subtitles-box {
+            background: rgba(8, 9, 14, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+
+        .subtitles-icon {
+            font-size: 1.25rem;
+            color: var(--secondary-orange);
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        .subtitles-text {
+            font-size: 0.92rem;
+            color: #e2e8f0;
+            line-height: 1.5;
+            font-style: italic;
+            flex: 1;
+        }
+
+        /* 4K Controls Deck */
+        .controls-deck {
+            padding: 14px 28px;
+            background: linear-gradient(0deg, rgba(17, 19, 28, 0.98) 0%, rgba(9, 10, 15, 0.95) 100%);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 50;
+            backdrop-filter: blur(12px);
+        }
+
+        .timeline-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .time-label {
+            font-family: 'Consolas', monospace;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--light-orange);
+            min-width: 95px;
+        }
+
+        .progress-track {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: height 0.15s;
+        }
+
+        .progress-track:hover {
+            height: 12px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary-orange), var(--accent-gold));
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.8);
+            border-radius: 4px;
+            transition: width 0.25s linear;
+        }
+
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ctl-btn {
+            background: rgba(255, 255, 255, 0.07);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ctl-btn:hover {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: var(--secondary-orange);
+            color: var(--light-orange);
+            transform: translateY(-1px);
+        }
+
+        .ctl-btn-primary {
+            background: linear-gradient(135deg, var(--primary-orange), var(--secondary-orange));
+            color: #000000;
+            border: none;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.4);
+        }
+
+        .ctl-btn-primary:hover {
+            background: linear-gradient(135deg, #ff7a1a, #fb923c);
+            color: #000000;
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.6);
+        }
+
+        .scene-tabs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(249, 115, 22, 0.2);
+            border-color: var(--secondary-orange);
+            color: var(--light-orange);
+            font-weight: 700;
+        }
+
+        /* Component Visualizers */
+        .pill-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(249, 115, 22, 0.12);
+            color: var(--light-orange);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .grid-cards-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .info-card {
+            background: rgba(9, 10, 15, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .info-card:hover {
+            border-color: var(--border-glow);
+            background: rgba(17, 19, 28, 0.9);
+            transform: translateY(-2px);
+        }
+
+        /* Sound Wave Animation */
+        .sound-wave {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 24px;
+        }
+
+        .sound-bar {
+            width: 4px;
+            background: var(--secondary-orange);
+            border-radius: 2px;
+            animation: sound-bounce 1s infinite ease-in-out;
+        }
+
+        .sound-bar:nth-child(1) { height: 8px; animation-delay: 0.1s; }
+        .sound-bar:nth-child(2) { height: 16px; animation-delay: 0.2s; }
+        .sound-bar:nth-child(3) { height: 24px; animation-delay: 0.3s; }
+        .sound-bar:nth-child(4) { height: 12px; animation-delay: 0.4s; }
+        .sound-bar:nth-child(5) { height: 20px; animation-delay: 0.15s; }
+        .sound-bar:nth-child(6) { height: 10px; animation-delay: 0.25s; }
+
+        @keyframes sound-bounce {
+            0%, 100% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1.0); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.8)); }
+        }
+
+        /* Responsive 4K Mode */
+        @media (min-width: 2560px) {
+            .cinema-canvas {
+                max-width: 1560px;
+                min-height: 640px;
+                padding: 48px;
+            }
+            .scene-title-text { font-size: 2.1rem; }
+            .scene-desc-text { font-size: 1.2rem; }
+            .digital-digits { font-size: 4rem; }
+            .subtitles-text { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 4K Header -->
+    <header class="header-bar">
+        <div class="brand-section">
+            <div class="brand-icon-box">⏰</div>
+            <div>
+                <h1 class="brand-title">
+                    ĐỒNG HỒ BÁO THỨC v1.0.1
+                    <span style="color:var(--secondary-orange); font-size:0.8rem; border:1px solid var(--secondary-orange); padding:2px 6px; border-radius:4px;">PRO RELEASE</span>
+                </h1>
+                <p class="brand-subtitle">Nền tảng Flutter Material 3 • Báo Thức Chuẩn Giây • Giờ Quốc Tế • Bấm Giờ Mili-giây</p>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div class="badge-4k">✨ 4K 60FPS INTERACTIVE CINEMA</div>
+            <button class="ctl-btn" onclick="toggleFullscreen()" title="Toàn Màn Hình (Phím F)">⛶ 4K Fullscreen</button>
+        </div>
+    </header>
+
+    <!-- Main 4K Stage -->
+    <main class="stage-viewport">
+        <div class="cinema-canvas" id="canvas-container">
+            <!-- Dynamic Content Injected via JavaScript -->
+        </div>
+    </main>
+
+    <!-- 4K Controls Deck -->
+    <footer class="controls-deck">
+        <div class="timeline-row">
+            <span class="time-label" id="time-display">00:00 / 02:30</span>
+            <div class="progress-track" onclick="handleSeek(event)">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="action-row">
+            <div class="btn-group">
+                <button class="ctl-btn ctl-btn-primary" id="play-btn" onclick="togglePlay()">⏸ Tạm Dừng</button>
+                <button class="ctl-btn" onclick="skipTime(-10)" title="Lùi 10 giây">⏪ -10s</button>
+                <button class="ctl-btn" onclick="skipTime(10)" title="Tiến 10 giây">⏩ +10s</button>
+                <button class="ctl-btn" onclick="prevScene()" title="Cảnh trước">⏮ Trước</button>
+                <button class="ctl-btn" onclick="nextSceneManual()" title="Cảnh kế">Kế Tiếp ⏭</button>
+            </div>
+
+            <div class="scene-tabs" id="scene-tabs">
+                <!-- Scene jump tabs injected via JS -->
+            </div>
+
+            <div class="btn-group">
+                <button class="ctl-btn" id="voice-btn" onclick="toggleVoice()">🔊 Thuyết Minh AI: BẬT</button>
+                <button class="ctl-btn" id="speed-btn" onclick="cycleSpeed()">⚡ 1.0x</button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 5 Kịch bản bài bản chuẩn hóa
+        const scenes = [
+            {
+                id: 1,
+                tab: "1. Tổng Quan",
+                title: "1. Giới Thiệu Đồng Hồ Báo Thức v1.0.1 (Flutter Pro)",
+                desc: "Tuyệt phẩm quản lý thời gian trên nền tảng Android, phong cách thiết kế Material 3 Dark OLED sang trọng với tần số quét 120Hz mượt mà.",
+                voice: "Chào mừng quý vị và các bạn đến với video hướng dẫn trải nghiệm ứng dụng Đồng Hồ Báo Thức phiên bản 1.0.1. Được phát triển hoàn toàn trên nền tảng Flutter 3.x với giao diện Dark OLED cam neon sang trọng, ứng dụng giải quyết triệt để vấn đề báo thức bị trễ giờ hoặc tắt ngầm trên Android, đồng thời tích hợp giờ quốc tế, bấm giờ thể thao và đếm ngược chuyên nghiệp.",
+                render: function() {
+                    return `
+                        <div>
+                            <div class="live-clock-card">
+                                <div>
+                                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:4px;">THỜI GIAN THỰC TẾ (HÀ NỘI GMT+7)</div>
+                                    <div class="digital-digits" id="live-clock-display">06:30:<span class="digital-seconds">00</span></div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div class="sound-wave">
+                                        <div class="sound-bar"></div>
+                                        <div class="sound-bar"></div>
+                                        <div class="sound-bar"></div>
+                                        <div class="sound-bar"></div>
+                                        <div class="sound-bar"></div>
+                                        <div class="sound-bar"></div>
+                                    </div>
+                                    <span style="font-size:0.75rem; color:#10b981; font-weight:bold; margin-top:6px; display:inline-block;">● CHUẨN MẬT MÃ SHA-256</span>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:16px;">
+                                <div class="info-card" style="text-align:center;">
+                                    <div style="font-size:1.8rem;">⏰</div>
+                                    <strong style="color:#ffffff; font-size:0.88rem;">Báo Thức Chuẩn Giây</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Exact Alarms & Bypass Doze Mode</span>
+                                </div>
+                                <div class="info-card" style="text-align:center;">
+                                    <div style="font-size:1.8rem;">🎵</div>
+                                    <strong style="color:#ffffff; font-size:0.88rem;">12 Giai Điệu Độc Quyền</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Tần số kích hoạt sóng não 432Hz/528Hz</span>
+                                </div>
+                                <div class="info-card" style="text-align:center;">
+                                    <div style="font-size:1.8rem;">🌍</div>
+                                    <strong style="color:#ffffff; font-size:0.88rem;">Giờ Quốc Tế 100+ Thành Phố</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Tự động tính độ lệch múi giờ</span>
+                                </div>
+                                <div class="info-card" style="text-align:center;">
+                                    <div style="font-size:1.8rem;">🔒</div>
+                                    <strong style="color:#ffffff; font-size:0.88rem;">100% Offline An Toàn</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Zero Telemetry, không thu thập dữ liệu</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                id: 2,
+                tab: "2. Cài Đặt Báo Thức",
+                title: "2. Cài Đặt Báo Thức & Bộ 12 Bản Nhạc Chuông Độc Quyền",
+                desc: "Thao tác thêm lịch báo thức thông minh: tùy chọn giờ phút, lặp lại các ngày làm việc và lựa chọn âm thanh phòng thu.",
+                voice: "Bước thứ nhất: Tại giao diện Báo Thức, bạn nhấn vào nút dấu cộng màu cam để tạo báo thức mới. Bạn dễ dàng cuộn chọn giờ thức dậy, thiết lập lịch lặp lại từ Thứ 2 đến Thứ 6, và thỏa sức lựa chọn 12 giai điệu chuông độc quyền được thiết kế để đánh thức nhẹ nhàng, không gây giật mình hay căng thẳng.",
+                render: function() {
+                    return `
+                        <div>
+                            <div class="info-card" style="border-color:rgba(249,115,22,0.4); margin-bottom:14px; background:#12131d;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+                                    <div style="display:flex; align-items:center; gap:16px;">
+                                        <span style="font-family:'Consolas', monospace; font-size:2.8rem; font-weight:900; color:#ffffff;">06:30</span>
+                                        <div>
+                                            <div style="color:var(--light-orange); font-weight:700; font-size:0.95rem;">Thức Dậy Đi Làm (Workday Morning)</div>
+                                            <div style="color:var(--text-muted); font-size:0.8rem;">Lặp lại: Thứ 2, Thứ 3, Thứ 4, Thứ 5, Thứ 6</div>
+                                        </div>
+                                    </div>
+                                    <div style="background:rgba(16,185,129,0.15); border:1px solid #10b981; color:#10b981; padding:6px 14px; border-radius:20px; font-weight:bold; font-size:0.85rem;">
+                                        ● ĐANG HOẠT ĐỘNG
+                                    </div>
+                                </div>
+
+                                <div class="grid-cards-2" style="margin-top:14px;">
+                                    <div style="background:#090a0f; padding:12px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:4px;">Giai điệu chuông được chọn:</div>
+                                        <div style="color:var(--light-orange); font-weight:bold; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                                            <span>🎵 alarm1.mp3 (Bình Minh Thanh Khiết - 432Hz)</span>
+                                        </div>
+                                    </div>
+                                    <div style="background:#090a0f; padding:12px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+                                        <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:4px;">Chế độ tăng dần âm lượng (Gentle Fade):</div>
+                                        <div style="color:#10b981; font-weight:bold; font-size:0.95rem;">✓ Bật (Tăng từ 10% đến 100% trong 30 giây)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.25); padding:10px 18px; border-radius:10px;">
+                                <span style="font-size:0.85rem; color:#cbd5e1;">Kho âm thanh gồm 12 file: alarm1.mp3 đến alarm12.mp3 được nhúng sẵn nguyên bản trong bộ cài APK</span>
+                                <span class="pill-tag">12 Studio Tracks</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                id: 3,
+                tab: "3. Giờ Quốc Tế",
+                title: "3. Tra Cứu Giờ Quốc Tế Đa Múi Giờ (World Clock)",
+                desc: "Theo dõi thời gian thực tại các thủ đô và trung tâm tài chính lớn trên toàn cầu với tính toán độ lệch giờ tức thì.",
+                voice: "Bước thứ hai: Mở tab Giờ Quốc Tế để theo dõi thời gian thực tại các thành phố lớn trên thế giới như Tokyo, Luân Đôn, Niu Oóc, Pa-ri hay Xơ-un. Ứng dụng tự động tính toán số giờ nhanh hơn hoặc chậm hơn so với giờ Việt Nam, cực kỳ thuận tiện cho các kỹ sư làm việc từ xa và người có thân nhân ở nước ngoài.",
+                render: function() {
+                    return `
+                        <div>
+                            <div class="grid-cards-2">
+                                <div class="info-card" style="border-left:4px solid #38bdf8;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="color:#ffffff; font-weight:bold; font-size:1.05rem;">Tokyo, Nhật Bản</span>
+                                        <span class="pill-tag" style="background:rgba(56,189,248,0.15); color:#38bdf8; border-color:#38bdf8;">GMT+9</span>
+                                    </div>
+                                    <div style="font-family:'Consolas', monospace; font-size:2.2rem; font-weight:800; color:#ffffff; margin:6px 0;">21:30:<span style="color:#38bdf8;">45</span></div>
+                                    <div style="color:#10b981; font-size:0.8rem; font-weight:600;">✓ Nhanh hơn 2 giờ so với Hà Nội (GMT+7)</div>
+                                </div>
+
+                                <div class="info-card" style="border-left:4px solid var(--secondary-orange);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="color:#ffffff; font-weight:bold; font-size:1.05rem;">London, Vương Quốc Anh</span>
+                                        <span class="pill-tag" style="background:rgba(249,115,22,0.15); color:var(--light-orange); border-color:var(--secondary-orange);">GMT+1</span>
+                                    </div>
+                                    <div style="font-family:'Consolas', monospace; font-size:2.2rem; font-weight:800; color:#ffffff; margin:6px 0;">13:30:<span style="color:var(--light-orange);">45</span></div>
+                                    <div style="color:var(--light-orange); font-size:0.8rem; font-weight:600;">⏳ Chậm hơn 6 giờ so với Hà Nội (GMT+7)</div>
+                                </div>
+
+                                <div class="info-card" style="border-left:4px solid #a855f7;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="color:#ffffff; font-weight:bold; font-size:1.05rem;">New York, Hoa Kỳ</span>
+                                        <span class="pill-tag" style="background:rgba(168,85,247,0.15); color:#c084fc; border-color:#a855f7;">GMT-4</span>
+                                    </div>
+                                    <div style="font-family:'Consolas', monospace; font-size:2.2rem; font-weight:800; color:#ffffff; margin:6px 0;">08:30:<span style="color:#c084fc;">45</span></div>
+                                    <div style="color:#c084fc; font-size:0.8rem; font-weight:600;">⏳ Chậm hơn 11 giờ so với Hà Nội (GMT+7)</div>
+                                </div>
+
+                                <div class="info-card" style="border-left:4px solid #10b981;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="color:#ffffff; font-weight:bold; font-size:1.05rem;">Singapore</span>
+                                        <span class="pill-tag" style="background:rgba(16,185,129,0.15); color:#10b981; border-color:#10b981;">GMT+8</span>
+                                    </div>
+                                    <div style="font-family:'Consolas', monospace; font-size:2.2rem; font-weight:800; color:#ffffff; margin:6px 0;">20:30:<span style="color:#10b981;">45</span></div>
+                                    <div style="color:#10b981; font-size:0.8rem; font-weight:600;">✓ Nhanh hơn 1 giờ so với Hà Nội (GMT+7)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                id: 4,
+                tab: "4. Bấm Giờ & Đếm Ngược",
+                title: "4. Đồng Hồ Bấm Giờ Thể Thao 1/100s & Đếm Ngược Pomodoro",
+                desc: "Hệ thống bấm giờ chuyên nghiệp hỗ trợ lưu nhiều vòng chạy (Lap times) và đếm ngược thông minh cho thể thao và học tập.",
+                voice: "Bước thứ ba: Chuyển sang tính năng Bấm Giờ để đo lường thành tích thể thao hoặc công việc với độ chính xác một phần trăm giây. Bạn có thể nhấn Ghi vòng để lưu lại các mốc thời gian và hệ thống sẽ tự động vinh danh vòng chạy nhanh nhất. Ngoài ra, tab Đếm Ngược sẽ giúp bạn hẹn giờ tập gym, nấu ăn hoặc tập trung làm việc Pomodoro.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="background:#090a0f; border:1px solid var(--border-color); border-radius:16px; padding:20px; text-align:center; margin-bottom:14px;">
+                                <div style="color:var(--text-muted); font-size:0.85rem; letter-spacing:1px; margin-bottom:6px;">BẤM GIỜ THỂ THAO CHÍNH XÁC (STOPWATCH)</div>
+                                <div style="font-family:'Consolas', monospace; font-size:3.5rem; font-weight:900; color:#ffffff; letter-spacing:2px;">
+                                    00:04:18.<span style="color:var(--secondary-orange);">72</span>
+                                </div>
+                                <div style="display:flex; justify-content:center; gap:18px; margin-top:10px; font-size:0.88rem;">
+                                    <span style="color:var(--text-muted);">Vòng 1: 01:25.10</span>
+                                    <span style="color:var(--text-muted);">Vòng 2: 01:28.45</span>
+                                    <span style="color:#10b981; font-weight:bold; background:rgba(16,185,129,0.15); padding:2px 10px; border-radius:12px; border:1px solid #10b981;">
+                                        ★ Vòng 3 (Best Lap): 01:20.17
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:#12131d; padding:12px 20px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+                                <div>
+                                    <strong style="color:var(--light-orange); font-size:0.92rem;">⏱ Chế Độ Đếm Ngược (Timer):</strong>
+                                    <span style="color:#cbd5e1; font-size:0.85rem; margin-left:8px;">Hẹn giờ 25 phút Pomodoro, phát âm thanh cảnh báo vang dội khi hết giờ.</span>
+                                </div>
+                                <span class="pill-tag" style="background:rgba(16,185,129,0.1); color:#10b981; border-color:#10b981;">Rung & Chuông 100%</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                id: 5,
+                tab: "5. Cấp Quyền Chạy Ngầm",
+                title: "5. Cấp Quyền Tự Khởi Động & Chạy Ngầm Tuyệt Đối (Bypass Doze Mode)",
+                desc: "Hướng dẫn cài đặt thiết yếu trên Xiaomi, Samsung, Oppo, Vivo để báo thức luôn kích hoạt 100% trong mọi tình huống.",
+                voice: "Bước thứ tư và cũng là bước quan trọng nhất: Để đảm bảo ứng dụng reo chuông đúng giờ một trăm phần trăm kể cả khi tắt màn hình hay khóa máy, bạn hãy vào Cài đặt điện thoại, tìm mục Ứng dụng, cấp quyền Báo thức chính xác, chọn Pin không hạn chế và bật công tắc Tự khởi động. Như vậy bạn sẽ luôn an tâm thức giấc đúng hẹn mỗi ngày.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:#0e1017; border:1px solid rgba(16,185,129,0.3); padding:14px 20px; border-radius:12px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span style="font-size:1.4rem;">🔔</span>
+                                        <div>
+                                            <strong style="color:#ffffff; font-size:0.95rem;">1. Quyền Báo Thức Chính Xác (Exact Alarms)</strong>
+                                            <div style="font-size:0.78rem; color:var(--text-muted);">Cài đặt -> Ứng dụng -> Đồng Hồ Báo Thức -> Báo thức & Lời nhắc</div>
+                                        </div>
+                                    </div>
+                                    <span style="color:#10b981; font-weight:800; font-size:0.9rem;">[ĐÃ BẬT CHO PHÉP ✓]</span>
+                                </div>
+
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:#0e1017; border:1px solid rgba(16,185,129,0.3); padding:14px 20px; border-radius:12px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span style="font-size:1.4rem;">🔋</span>
+                                        <div>
+                                            <strong style="color:#ffffff; font-size:0.95rem;">2. Tối Ưu Hóa Pin (Battery Saver Bypass)</strong>
+                                            <div style="font-size:0.78rem; color:var(--text-muted);">Cài đặt -> Pin -> Tối ưu hóa ứng dụng -> Chọn "Không hạn chế"</div>
+                                        </div>
+                                    </div>
+                                    <span style="color:#10b981; font-weight:800; font-size:0.9rem;">[KHÔNG HẠN CHẾ ✓]</span>
+                                </div>
+
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:#0e1017; border:1px solid rgba(16,185,129,0.3); padding:14px 20px; border-radius:12px;">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span style="font-size:1.4rem;">🚀</span>
+                                        <div>
+                                            <strong style="color:#ffffff; font-size:0.95rem;">3. Tự Khởi Chạy Khi Bật Máy (Autostart Resilient)</strong>
+                                            <div style="font-size:0.78rem; color:var(--text-muted);">Bảo toàn toàn bộ lịch hẹn giờ kể cả khi máy khởi động lại</div>
+                                        </div>
+                                    </div>
+                                    <span style="color:#10b981; font-weight:800; font-size:0.9rem;">[CHO PHÉP TỰ CHẠY ✓]</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        ];
+
+        let currentScene = 0;
+        let isPlaying = true;
+        let voiceEnabled = true;
+        let playbackSpeed = 1.0;
+        let elapsedSeconds = 0;
+        const totalDuration = scenes.length * 30; // 30s mỗi cảnh = 2:30 tổng
+        let mainTimer = null;
+        let clockTimer = null;
+
+        // Khởi tạo tab cảnh
+        function initTabs() {
+            const container = document.getElementById("scene-tabs");
+            container.innerHTML = scenes.map((s, idx) => `
+                <button class="tab-btn ${idx === 0 ? 'active' : ''}" onclick="jumpScene(${idx})" id="tab-btn-${idx}">
+                    ${s.tab}
+                </button>
+            `).join("");
+        }
+
+        // Render cảnh
+        function renderCurrentScene() {
+            const sc = scenes[currentScene];
+            const canvas = document.getElementById("canvas-container");
+            canvas.innerHTML = `
+                <div class="scene-header">
+                    <div>
+                        <div class="scene-title-text">${sc.title}</div>
+                        <div class="scene-desc-text">${sc.desc}</div>
+                    </div>
+                    <span class="pill-tag" style="font-size:0.85rem; padding:6px 14px;">Cảnh ${currentScene + 1}/${scenes.length}</span>
+                </div>
+
+                <div class="scene-content-area">
+                    ${sc.render()}
+                </div>
+
+                <div class="subtitles-box">
+                    <span class="subtitles-icon">💬</span>
+                    <span class="subtitles-text" id="subtitles-content">"${sc.voice}"</span>
+                </div>
+            `;
+
+            // Cập nhật tab active
+            document.querySelectorAll(".tab-btn").forEach((b, idx) => {
+                b.classList.toggle("active", idx === currentScene);
+            });
+
+            // Kích hoạt thuyết minh Tiếng Việt
+            speakVoice(sc.voice);
+        }
+
+        // Thuyết minh AI Tiếng Việt
+        function speakVoice(text) {
+            if (!voiceEnabled || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'vi-VN';
+            utter.rate = playbackSpeed;
+
+            // Tìm giọng Tiếng Việt tốt nhất
+            const voices = window.speechSynthesis.getVoices();
+            const viVoice = voices.find(v => v.lang.includes('vi') || v.lang.includes('VI'));
+            if (viVoice) {
+                utter.voice = viVoice;
+            }
+
+            window.speechSynthesis.speak(utter);
+        }
+
+        // Đồng hồ thời gian thực
+        function updateLiveClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            const el = document.getElementById("live-clock-display");
+            if (el) {
+                el.innerHTML = `${h}:${m}:<span class="digital-seconds">${s}</span>`;
+            }
+        }
+
+        // Timer điều phối vòng đời video
+        function tick() {
+            if (!isPlaying) return;
+            elapsedSeconds++;
+            if (elapsedSeconds >= totalDuration) {
+                elapsedSeconds = 0;
+                currentScene = 0;
+                renderCurrentScene();
+            } else {
+                const targetScene = Math.floor(elapsedSeconds / 30);
+                if (targetScene !== currentScene && targetScene < scenes.length) {
+                    currentScene = targetScene;
+                    renderCurrentScene();
+                }
+            }
+            updateProgressBar();
+        }
+
+        function updateProgressBar() {
+            const pct = (elapsedSeconds / totalDuration) * 100;
+            document.getElementById("progress-fill").style.width = pct + "%";
+            
+            const fmt = (sec) => {
+                const m = String(Math.floor(sec / 60)).padStart(2, '0');
+                const s = String(sec % 60).padStart(2, '0');
+                return `${m}:${s}`;
+            };
+            document.getElementById("time-display").innerText = `${fmt(elapsedSeconds)} / ${fmt(totalDuration)}`;
+        }
+
+        // Các hành động tương tác người dùng
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById("play-btn").innerText = isPlaying ? "⏸ Tạm Dừng" : "▶ Tiếp Tục";
+            if (!isPlaying && 'speechSynthesis' in window) {
+                window.speechSynthesis.pause();
+            } else if (isPlaying && 'speechSynthesis' in window) {
+                window.speechSynthesis.resume();
+            }
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            document.getElementById("voice-btn").innerText = voiceEnabled ? "🔊 Thuyết Minh AI: BẬT" : "🔈 Thuyết Minh AI: TẮT";
+            if (!voiceEnabled && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            } else if (voiceEnabled) {
+                speakVoice(scenes[currentScene].voice);
+            }
+        }
+
+        function cycleSpeed() {
+            const speeds = [1.0, 1.25, 1.5];
+            const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
+            playbackSpeed = speeds[nextIdx];
+            document.getElementById("speed-btn").innerText = `⚡ ${playbackSpeed.toFixed(1)}x`;
+            if (voiceEnabled) {
+                speakVoice(scenes[currentScene].voice);
+            }
+        }
+
+        function skipTime(delta) {
+            elapsedSeconds = Math.max(0, Math.min(totalDuration - 1, elapsedSeconds + delta));
+            currentScene = Math.floor(elapsedSeconds / 30);
+            renderCurrentScene();
+            updateProgressBar();
+        }
+
+        function jumpScene(idx) {
+            currentScene = idx;
+            elapsedSeconds = idx * 30;
+            renderCurrentScene();
+            updateProgressBar();
+        }
+
+        function nextSceneManual() {
+            currentScene = (currentScene + 1) % scenes.length;
+            elapsedSeconds = currentScene * 30;
+            renderCurrentScene();
+            updateProgressBar();
+        }
+
+        function prevScene() {
+            currentScene = (currentScene - 1 + scenes.length) % scenes.length;
+            elapsedSeconds = currentScene * 30;
+            renderCurrentScene();
+            updateProgressBar();
+        }
+
+        function handleSeek(event) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const pos = (event.clientX - rect.left) / rect.width;
+            elapsedSeconds = Math.floor(pos * totalDuration);
+            currentScene = Math.min(Math.floor(elapsedSeconds / 30), scenes.length - 1);
+            renderCurrentScene();
+            updateProgressBar();
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Không thể mở toàn màn hình: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Bắt phím tắt
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space") {
+                e.preventDefault();
+                togglePlay();
+            } else if (e.code === "ArrowRight") {
+                skipTime(10);
+            } else if (e.code === "ArrowLeft") {
+                skipTime(-10);
+            } else if (e.code === "KeyF") {
+                toggleFullscreen();
+            } else if (e.code === "KeyM") {
+                toggleVoice();
+            }
+        });
+
+        // Tải danh sách giọng nói khi trình duyệt sẵn sàng
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                // Sẵn sàng giọng nói
+            };
+        }
+
+        // Khởi động
+        initTabs();
+        renderCurrentScene();
+        mainTimer = setInterval(tick, 1000);
+        clockTimer = setInterval(updateLiveClock, 1000);
+    </script>
+</body>
+</html>

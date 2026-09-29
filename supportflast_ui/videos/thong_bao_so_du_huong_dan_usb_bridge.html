@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Hướng Dẫn: Thông Báo Số Dư & USB Bridge v2.1.0</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #030712;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            padding: 12px 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .badge {
+            background: rgba(0, 229, 255, 0.15);
+            color: #00e5ff;
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .main-layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #0f172a 0%, #030712 100%);
+        }
+        .stage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .scene-box {
+            width: 100%;
+            max-width: 820px;
+            background: rgba(2, 6, 23, 0.92);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(0,229,255,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 380px;
+            justify-content: center;
+        }
+        .sidebar {
+            background: rgba(15, 23, 42, 0.85);
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 10px;
+            overflow-y: auto;
+        }
+        .ch-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ch-card:hover {
+            background: rgba(0, 229, 255, 0.08);
+            border-color: rgba(0, 229, 255, 0.3);
+        }
+        .ch-card.active {
+            background: rgba(0, 229, 255, 0.15);
+            border-color: rgba(0, 229, 255, 0.5);
+        }
+        .controls {
+            padding: 12px 20px;
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00e5ff, #4ade80);
+            transition: width 0.3s;
+        }
+        .btn {
+            background: #00e5ff;
+            color: #000;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.82rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.35);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.3rem;">⚡</span>
+            <div>
+                <strong style="color:#fff; font-size:0.95rem;">Video Hướng Dẫn: Thông Báo Số Dư &amp; USB Bridge v2.1.0</strong>
+                <div style="font-size:0.75rem; color:#94a3b8;">Độ trễ &lt; 1ms • 100% Offline Cáp USB • Giọng đọc Tiếng Việt (TTS)</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <span class="badge">4K 60FPS INTERACTIVE WALKTHROUGH</span>
+            <a href="https://supportflastdev.io.vn" style="color:#00e5ff; font-size:0.8rem; text-decoration:none; font-weight:700;">← Về App Hub</a>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="stage">
+            <div class="scene-box" id="scene-container">
+                <!-- Nội dung hoạt họa từng cảnh được nạp qua JS -->
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div style="color:#facc15; font-weight:800; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                📌 6 Chương Thực Chiến:
+            </div>
+            <div id="chapters-list" style="display:flex; flex-direction:column; gap:8px;">
+                <!-- Nạp danh sách qua JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="play-btn" onclick="togglePlay()">⏸ Tạm Dừng</button>
+        <button class="btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15);" onclick="prevScene()">⏮</button>
+        <button class="btn" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15);" onclick="nextScene()">⏭</button>
+        <span id="time-display" style="font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:#00e5ff;">Cảnh 1/6</span>
+        <div class="progress-bar" onclick="seek(event)">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <button class="btn" style="background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2);" onclick="toggleVoice()" id="voice-btn">🔊 Thuyết Minh AI: BẬT</button>
+        <a href="https://supportflastdev.io.vn/api/apps/download/APP-5036" class="btn" style="background:#4ade80; color:#000; text-decoration:none;">Tải Bản v2.1.0 ↓</a>
+    </div>
+
+    <script>
+        const scenes = [
+            {
+                title: "Chương 1: Kiến Trúc USB Bridge (< 1ms)",
+                desc: "Truyền trực tiếp biến động số dư qua cáp USB bus, không cần Wi-Fi, không cần Internet, vừa truyền vừa sạc 24/7.",
+                voice: "Chào mừng quý khách đến với video hướng dẫn phần mềm Thông Báo Số Dư và USB Bridge phiên bản 2.1.0. Giải pháp độc quyền truyền dữ liệu biến động số dư ngân hàng cực nhanh với độ trễ dưới 1 mili-giây, hoạt động hoàn toàn offline 100 phần trăm qua cáp USB và mạng Wi-Fi nội bộ.",
+                render: function() {
+                    return `
+                        <div style="text-align:center;">
+                            <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,229,255,0.12); border:1px solid #00e5ff; border-radius:20px; padding:4px 14px; color:#00e5ff; font-size:0.75rem; font-weight:700; margin-bottom:12px;">
+                                <span>⚡</span> KIẾN TRÚC PHẦN CỨNG ĐỘC QUYỀN
+                            </div>
+                            <h2 style="color:#00e5ff; font-size:1.6rem; margin-bottom:6px;">THÔNG BÁO SỐ DƯ &amp; USB BRIDGE v2.1.0</h2>
+                            <p style="color:#cbd5e1; font-size:0.88rem; max-width:540px; margin:0 auto 16px auto; line-height:1.6;">
+                                Tốc độ phản hồi tức thì <strong style="color:#4ade80;">&lt; 1ms</strong>. Tích hợp giọng đọc Text-to-Speech đọc to số tiền giao dịch và tự động lưu nhật ký.
+                            </p>
+                            
+                            <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:16px;">
+                                <div style="background:#020617; border:1px solid rgba(0,229,255,0.4); border-radius:10px; padding:12px 18px; text-align:center; box-shadow:0 0 20px rgba(0,229,255,0.1);">
+                                    <div style="font-size:1.6rem; margin-bottom:2px;">📱</div>
+                                    <div style="color:#fff; font-weight:700; font-size:0.8rem;">Android App</div>
+                                    <div style="color:#00e5ff; font-size:0.7rem;">Bắt SMS Ngân Hàng</div>
+                                </div>
+
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <span style="font-size:0.7rem; color:#4ade80; font-weight:700; font-family:'JetBrains Mono',monospace;">&lt; 0.35ms</span>
+                                    <div style="display:flex; align-items:center; gap:4px; color:#00e5ff;">
+                                        <div style="width:24px; height:2px; background:linear-gradient(90deg, #00e5ff, #4ade80);"></div>
+                                        <span style="font-size:1.2rem; animation:pulse 1s infinite;">⚡</span>
+                                        <div style="width:24px; height:2px; background:linear-gradient(90deg, #4ade80, #00e5ff);"></div>
+                                    </div>
+                                    <span style="font-size:0.68rem; color:#94a3b8;">Cáp USB Bridge</span>
+                                </div>
+
+                                <div style="background:#020617; border:1px solid rgba(74,222,128,0.4); border-radius:10px; padding:12px 18px; text-align:center; box-shadow:0 0 20px rgba(74,222,128,0.1);">
+                                    <div style="font-size:1.6rem; margin-bottom:2px;">💻</div>
+                                    <div style="color:#fff; font-weight:700; font-size:0.8rem;">Windows PC</div>
+                                    <div style="color:#4ade80; font-size:0.7rem;">Popup &amp; Loa TTS Đọc</div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                                <span class="tag-pill">✓ 100% Offline Cáp USB</span>
+                                <span class="tag-pill" style="color:#00e5ff; border-color:rgba(0,229,255,0.4); background:rgba(0,229,255,0.1);">✓ Đọc To Số Tiền Bằng Tiếng Việt</span>
+                                <span class="tag-pill" style="color:#facc15; border-color:rgba(250,204,21,0.4); background:rgba(250,204,21,0.1);">✓ Sạc Pin 24/7 Qua Cáp</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: "Chương 2: Cài Đặt Android App & Cấp Quyền Thông Báo",
+                desc: "Cài đặt file ThongBaoSoDu_Android.apk và cấp quyền Notification Access để bắt SMS và app ngân hàng.",
+                voice: "Chương hai: Cài đặt ứng dụng trên điện thoại Android. Bạn mở file ThongBaoSoDu_Android.apk để cài đặt, sau đó bật quyền truy cập thông báo để ứng dụng tự động nhận diện tin nhắn biến động số dư từ mọi ngân hàng Việt Nam.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <span style="font-weight:700; color:#facc15; font-size:1.05rem;">📱 BƯỚC 1: CẤP QUYỀN THÔNG BÁO ANDROID</span>
+                                <span class="tag-pill">Notification Access</span>
+                            </div>
+                            <div style="background:#020617; border:1px solid #1e293b; border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:8px;">
+                                    <span style="color:#fff;">🔔 Quyền Truy Cập Thông Báo</span>
+                                    <span style="color:#4ade80; font-weight:bold;">[ĐÃ BẬT ✓]</span>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:8px;">
+                                    <span style="color:#fff;">🔗 Địa chỉ Server nhận (USB Bridge)</span>
+                                    <code style="color:#00e5ff; font-family:'JetBrains Mono',monospace;">http://127.0.0.1:8765</code>
+                                </div>
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:8px;">
+                                    <span style="color:#fff;">🔋 Tối ưu hóa Pin &amp; Chạy ngầm</span>
+                                    <span style="color:#facc15;">Không hạn chế chạy ngầm ✓</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: "Chương 3: Bật Gỡ Lỗi USB Debugging 1 Lần",
+                desc: "Chạm 7 lần Số bản dựng để mở Tùy chọn nhà phát triển, kích hoạt Gỡ lỗi USB và cắm cáp kết nối máy tính.",
+                voice: "Chương ba: Bật chế độ gỡ lỗi USB trên điện thoại. Vào Cài đặt, Thông tin điện thoại, chạm 7 lần vào Số bản dựng. Sau đó bật Gỡ lỗi USB, cắm cáp nối vào máy tính và chọn Luôn cho phép từ máy tính này.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <span style="font-weight:700; color:#00e5ff; font-size:1.05rem;">⚙️ BƯỚC 2: BẬT USB DEBUGGING &amp; CẮM CÁP</span>
+                                <span class="tag-pill" style="color:#00e5ff; border-color:#00e5ff;">Developer Options</span>
+                            </div>
+                            <div style="background:#010409; border:1px solid rgba(0,229,255,0.3); border-radius:10px; padding:14px; font-size:0.84rem; color:#cbd5e1; line-height:1.7;">
+                                <div>1. Vào <strong>Cài đặt &gt; Thông tin điện thoại</strong>, chạm <strong>7 lần</strong> vào <em>Số bản dựng</em>.</div>
+                                <div>2. Vào <strong>Tùy chọn nhà phát triển</strong> &gt; Bật công tắc <strong>Gỡ lỗi USB (USB Debugging)</strong>.</div>
+                                <div>3. Cắm cáp USB nối điện thoại vào PC, tích chọn: <em>"Luôn cho phép từ máy tính này"</em> &gt; Nhấn <strong>OK</strong>.</div>
+                                <div style="color:#4ade80; font-weight:bold; margin-top:8px;">[OK] THIẾT BỊ ANDROID ĐÃ SẴN SÀNG KẾT NỐI ADB!</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: "Chương 4: Kích Hoạt USB Bridge 1-Click (Port 8765)",
+                desc: "Cắm cáp USB nối điện thoại vào PC và chạy kich_hoat_usb_bridge.bat.",
+                voice: "Chương bốn: Kích hoạt kết nối USB Bridge một nhấp chuột trên máy tính. Bạn chỉ cần chạy file kich_hoat_usb_bridge.bat, hệ thống sẽ tự động thiết lập cổng ADB Reverse 8765 nối thẳng vào ứng dụng Windows với độ trễ siêu tốc 0.35 mili-giây.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <span style="font-weight:700; color:#00e5ff; font-size:1.05rem;">💻 BƯỚC 3: KHỞI CHẠY USB BRIDGE TRÊN WINDOWS</span>
+                                <span class="tag-pill" style="color:#00e5ff; border-color:#00e5ff;">ADB Reverse Bridge</span>
+                            </div>
+                            <div style="background:#010409; border:1px solid rgba(0,229,255,0.3); border-radius:10px; padding:14px; font-family:'JetBrains Mono',monospace; font-size:0.82rem; color:#cbd5e1; line-height:1.7;">
+                                <div style="color:#4ade80;">C:\ThongBaoSoDu&gt; .\kich_hoat_usb_bridge.bat</div>
+                                <div style="color:#94a3b8;">[*] Đang kiểm tra thiết bị Android qua cổng USB...</div>
+                                <div style="color:#00e5ff;">[+] Phát hiện thiết bị: R58M43XYZ (Samsung Galaxy A52) - Quyền Authorized ✓</div>
+                                <div style="color:#facc15;">[*] Thiết lập cổng ADB Reverse: adb reverse tcp:8765 tcp:8765</div>
+                                <div style="color:#4ade80; font-weight:bold; margin-top:6px;">[OK] KẾT NỐI USB BRIDGE THÀNH CÔNG! ĐỘ TRỄ: 0.35ms (100% OFFLINE)</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: "Chương 5: Thực Chiến Nhận Tiền & Giọng Đọc TTS",
+                desc: "Khi có giao dịch chuyển tiền đến, máy tính lập tức hiện Popup và phát âm thanh đọc to rõ ràng.",
+                voice: "Chương năm: Trải nghiệm thực chiến nhận thông báo biến động số dư. Khi có tiền vào tài khoản, màn hình máy tính lập tức hiện popup giao dịch và loa máy tính đọc to: Cộng một triệu năm trăm nghìn đồng từ Nguyễn Văn An.",
+                render: function() {
+                    return `
+                        <div style="text-align:center;">
+                            <div style="background:rgba(74, 222, 128, 0.12); border:2px solid #4ade80; border-radius:14px; padding:20px; box-shadow:0 0 30px rgba(74,222,128,0.25); animation:pulse 2s infinite;">
+                                <div style="font-size:1.8rem; margin-bottom:4px;">💰</div>
+                                <div style="color:#94a3b8; font-size:0.8rem; font-weight:700;">BIẾN ĐỘNG SỐ DƯ TỨC THÌ (VIETCOMBANK)</div>
+                                <div style="color:#4ade80; font-size:2.2rem; font-weight:800; font-family:monospace; margin:6px 0;">+1,500,000 VND</div>
+                                <div style="color:#fff; font-size:0.95rem; font-weight:600;">ND: NGUYEN VAN AN chuyen tien thanh toan hoa don #HD1042</div>
+                                <div style="margin-top:12px; display:inline-flex; align-items:center; gap:8px; background:#020617; padding:6px 16px; border-radius:20px; border:1px solid rgba(74,222,128,0.4); color:#4ade80; font-size:0.8rem;">
+                                    <span>🔊 Giọng đọc TTS:</span> <em>"Cộng một triệu năm trăm nghìn đồng từ Nguyễn Văn An"</em>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            {
+                title: "Chương 6: Kết Nối Wi-Fi LAN & Quản Lý Lịch Sử",
+                desc: "Hỗ trợ kết nối song song qua Wi-Fi LAN nội bộ khi có nhiều máy tính, tự động lưu lịch sử và khởi động cùng Windows.",
+                voice: "Chương sáu: Mở rộng kết nối qua mạng Wi-Fi LAN và quản lý lịch sử. Phần mềm hỗ trợ nhiều máy tính và quầy thu ngân cùng nhận thông báo đồng thời, lưu nhật ký an toàn và hỗ trợ cài tự khởi động cùng Windows.",
+                render: function() {
+                    return `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <span style="font-weight:700; color:#00e5ff; font-size:1.05rem;">🌐 WI-FI LAN ĐA MÁY &amp; NHẬT KÝ HISTORY.JSON</span>
+                                <span class="tag-pill">LAN Mode</span>
+                            </div>
+                            <div style="background:#020617; border:1px solid #1e293b; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px; font-size:0.82rem;">
+                                <div style="display:flex; justify-content:space-between; color:#cbd5e1;">
+                                    <span>IP Máy Tính Trong Mạng LAN:</span>
+                                    <code style="color:#00e5ff;">http://192.168.1.15:8765</code>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; color:#cbd5e1;">
+                                    <span>Tường Lửa Windows (Firewall):</span>
+                                    <span style="color:#4ade80; font-weight:bold;">Đã mở cổng 8765 ✓</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; color:#cbd5e1;">
+                                    <span>Tự Khởi Động Cùng Windows:</span>
+                                    <span style="color:#facc15; font-weight:bold;">Đã kích hoạt Registry Run ✓</span>
+                                </div>
+                                <div style="margin-top:6px; color:#94a3b8; font-size:0.75rem;">
+                                    Nhật ký lưu trữ tại history.json, cho phép tra cứu và xuất báo cáo tài chính bất kỳ lúc nào.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        ];
+
+        let currentIdx = 0;
+        let isPlaying = true;
+        let voiceEnabled = true;
+        let sceneTimer = null;
+
+        function renderChaptersSidebar() {
+            const cont = document.getElementById('chapters-list');
+            if (!cont) return;
+            cont.innerHTML = scenes.map((sc, idx) => `
+                <div class="ch-card ${idx === currentIdx ? 'active' : ''}" onclick="selectScene(${idx})">
+                    <div style="font-weight:700; color:${idx === currentIdx ? '#00e5ff' : '#fff'}; font-size:0.8rem;">
+                        ${sc.title}
+                    </div>
+                    <div style="color:#94a3b8; font-size:0.72rem; margin-top:2px;">
+                        ${sc.desc.substring(0, 65)}...
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderScene() {
+            const sc = scenes[currentIdx];
+            document.getElementById('scene-container').innerHTML = sc.render();
+            document.getElementById('progress-fill').style.width = ((currentIdx + 1) / scenes.length * 100) + '%';
+            document.getElementById('time-display').innerText = `Chương ${currentIdx + 1}/${scenes.length}`;
+            renderChaptersSidebar();
+
+            if (voiceEnabled && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(sc.voice);
+                utter.lang = 'vi-VN';
+                utter.rate = 1.05;
+                window.speechSynthesis.speak(utter);
+            }
+        }
+
+        function selectScene(idx) {
+            currentIdx = idx;
+            renderScene();
+        }
+
+        function nextScene() {
+            currentIdx = (currentIdx + 1) % scenes.length;
+            renderScene();
+        }
+
+        function prevScene() {
+            currentIdx = (currentIdx - 1 + scenes.length) % scenes.length;
+            renderScene();
+        }
+
+        function startAutoPlay() {
+            if (sceneTimer) clearInterval(sceneTimer);
+            sceneTimer = setInterval(() => {
+                if (isPlaying) nextScene();
+            }, 8500);
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-btn').innerText = isPlaying ? '⏸ Tạm Dừng' : '▶ Tiếp Tục';
+            if (!isPlaying && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            if (!voiceEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+            document.getElementById('voice-btn').innerText = voiceEnabled ? '🔊 Thuyết Minh AI: BẬT' : '🔇 Thuyết Minh: TẮT';
+        }
+
+        function seek(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            currentIdx = Math.floor(pct * scenes.length);
+            if (currentIdx >= scenes.length) currentIdx = scenes.length - 1;
+            renderScene();
+        }
+
+        // Khởi động
+        renderScene();
+        startAutoPlay();
+    </script>
+</body>
+</html>

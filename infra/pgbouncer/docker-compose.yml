@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: supportflast_admin
+      POSTGRES_PASSWORD: super_secure_password_123
+      POSTGRES_DB: supportflast_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DATABASE_URL: "postgres://supportflast_admin:super_secure_password_123@postgres:5432/supportflast_db"
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "20"
+      POOL_MODE: "transaction"
+    ports:
+      - "6432:5432"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

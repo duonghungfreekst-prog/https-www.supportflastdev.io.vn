@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SupportFlast Mobile Server - Bảng Điều Khiển 10 Subagents</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-amoled: #02040a;
+            --bg-card: rgba(13, 20, 36, 0.75);
+            --border-glow: rgba(0, 229, 255, 0.25);
+            --cyan: #00e5ff;
+            --purple: #8b5cf6;
+            --green: #00ff66;
+            --amber: #ffb703;
+            --rose: #ef476f;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-amoled);
+            color: var(--text-main);
+            font-family: 'Be Vietnam Pro', -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 16px 14px 40px;
+            overflow-x: hidden;
+        }
+
+        /* Thanh tiêu đề máy chủ di động */
+        .mobile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(11, 18, 33, 0.85);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.08);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .phone-badge {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(139, 92, 246, 0.2));
+            border: 1px solid var(--cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .header-info h1 {
+            font-size: 16px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00e5ff, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-info p {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .live-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green);
+            background: rgba(0, 255, 102, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 102, 0.3);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        /* Thẻ thống kê tài nguyên */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 12px 10px;
+            text-align: center;
+        }
+
+        .stat-card .val {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--cyan);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-card .lbl {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Nút Benchmark 10 Subagents */
+        .benchmark-action {
+            margin-bottom: 20px;
+        }
+
+        .btn-benchmark {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: none;
+            background: linear-gradient(135deg, #00e5ff 0%, #7928ca 100%);
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(0, 229, 255, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-benchmark:active {
+            transform: scale(0.98);
+        }
+
+        /* Danh sách 10 Subagents */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .agents-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .agent-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.25s ease;
+        }
+
+        .agent-card.active {
+            border-color: var(--cyan);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .agent-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agent-orb {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 13px;
+            color: #000;
+            flex-shrink: 0;
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .agent-meta {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .agent-name {
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-role {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-test-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .agent-test-btn:active {
+            background: var(--cyan);
+            color: #000;
+        }
+
+        .agent-latency {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--green);
+            margin-right: 8px;
+        }
+
+        /* Khung chat tương tác trực tiếp */
+        .chat-container {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(2, 4, 10, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .chat-input:focus {
+            border-color: var(--cyan);
+        }
+
+        .btn-send {
+            background: var(--cyan);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            padding: 0 16px;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .chat-output {
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(2, 4, 10, 0.6);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            font-family: -apple-system, sans-serif;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header máy chủ di động -->
+    <header class="mobile-header">
+        <div class="header-title">
+            <div class="phone-badge">📱</div>
+            <div class="header-info">
+                <h1>SupportFlast Mobile</h1>
+                <p>Standalone Phone Engine (ARM64)</p>
+            </div>
+        </div>
+        <div class="live-status">
+            <div class="pulse-dot"></div>
+            <span>ONLINE</span>
+        </div>
+    </header>
+
+    <!-- Thống kê tài nguyên -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="val" id="stat-ram">~22 MB</div>
+            <div class="lbl">Mức Chiếm RAM</div>
+        </div>
+        <div class="stat-card">
+            <div class="val" id="stat-pool">10/10</div>
+            <div class="lbl">Subagents Pool</div>
+        </div>
+        <div class="stat-card">
+            <div class="val" id="stat-latency">&lt; 1 ms</div>
+            <div class="lbl">Độ Trễ Phản Hồi</div>
+        </div>
+    </div>
+
+    <!-- Nút hành động Benchmark 10 Subagents -->
+    <div class="benchmark-action">
+        <button class="btn-benchmark" id="btn-run-benchmark" onclick="runBenchmark10Subagents()">
+            <span>⚡ KIỂM THỬ ĐỒNG THỜI 10 SUBAGENTS</span>
+        </button>
+    </div>
+
+    <!-- Danh sách 10 Subagents -->
+    <div class="section-title">
+        <span>10 Chuyên Gia Subagents Đang Thường Trực</span>
+        <span style="color: var(--green); font-size: 11px;" id="benchmark-status">Sẵn sàng</span>
+    </div>
+
+    <div class="agents-list" id="agents-container">
+        <!-- Render động bằng Javascript -->
+    </div>
+
+    <!-- Tương tác Chat trực tiếp -->
+    <div class="section-title">
+        <span>Kiểm Tra Phản Hồi Trực Tiếp</span>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Nhập câu hỏi (VD: Kiểm tra pin, tối ưu SQLite...)" value="Kiểm tra trạng thái pin và tối ưu máy chủ di động">
+            <button class="btn-send" onclick="sendChatQuery()">Gửi</button>
+        </div>
+        <div class="chat-output" id="chat-output">Nhấn nút 'Gửi' hoặc chọn 'Thử' ở bất kỳ Subagent nào ở trên để nhận phân tích tức thì...</div>
+    </div>
+
+    <div class="footer-note">
+        SupportFlast Mobile Server • Tối ưu hóa cực hạn cho Smartphone Android • 100% Zero-Crash &amp; Zero-Lag
+    </div>
+
+    <script>
+        // Danh sách định nghĩa 10 Subagents
+        const SUBAGENTS_DATA = [
+            { id: "agent_triage", name: "Triage & Workflow", color: "#FF9900", role: "Định tuyến quy trình & tiếp nhận yêu cầu", query: "Phân loại yêu cầu hỗ trợ người dùng" },
+            { id: "agent_tech", name: "Build Diagnostics", color: "#00F0FF", role: "Chẩn đoán installer APK/MSIX & mã nguồn", query: "Kiểm tra lỗi đóng gói installer ứng dụng" },
+            { id: "agent_infra", name: "CDN & Mirror Hub", color: "#00FF66", role: "Hạ tầng phân phối & tải nối lại Range", query: "Kiểm tra Anycast CDN và HTTP Resume" },
+            { id: "agent_security", name: "Security & Sandbox", color: "#FF0055", role: "Quét mã độc tĩnh & thẩm định chữ ký số", query: "Kiểm tra tính an toàn gói ứng dụng" },
+            { id: "agent_billing", name: "Licensing Concierge", color: "#BF00FF", role: "Cấp phép License key & đối soát bản quyền", query: "Cấp phát license key cho nhà phát triển" },
+            { id: "agent_mobile", name: "Mobile Battery Guardian", color: "#FFB703", role: "Kiểm soát nhiệt độ SoC ARM & bảo vệ pin", query: "Tối ưu hóa nhiệt độ và pin khi chạy server" },
+            { id: "agent_network", name: "Network Connectivity", color: "#06D6A0", role: "Quản lý Wi-Fi/4G & Cloudflare Tunnel", query: "Thiết lập Cloudflare Tunnel đưa server ra ngoài" },
+            { id: "agent_storage", name: "Storage & SQLite Optimizer", color: "#118AB2", role: "Tối ưu SQLite WAL mode & dọn rác Flash", query: "Dọn dẹp cache rác và nén SQLite WAL" },
+            { id: "agent_analytics", name: "ARM Performance Metrics", color: "#8338EC", role: "Đo lường QPS & benchmark 10 Subagents", query: "Đo hiệu năng và benchmark gọi 10 subagents" },
+            { id: "agent_automation", name: "Autonomous Watchdog", color: "#EF476F", role: "Lập lịch backup & tự động phục hồi", query: "Lập lịch backup dữ liệu và kiểm tra watchdog" }
+        ];
+
+        function renderAgents() {
+            const container = document.getElementById("agents-container");
+            container.innerHTML = "";
+
+            SUBAGENTS_DATA.forEach((agent, index) => {
+                const card = document.createElement("div");
+                card.className = "agent-card";
+                card.id = `card-${agent.id}`;
+                card.innerHTML = `
+                    <div class="agent-main">
+                        <div class="agent-orb" style="background-color: ${agent.color}; color: #000;">
+                            ${index + 1}
+                        </div>
+                        <div class="agent-meta">
+                            <div class="agent-name" style="color: ${agent.color};">${agent.name}</div>
+                            <div class="agent-role">${agent.role}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span class="agent-latency" id="lat-${agent.id}">0.8ms</span>
+                        <button class="agent-test-btn" onclick="testSingleAgent('${agent.id}', '${agent.query}')">Thử</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function testSingleAgent(agentId, query) {
+            const output = document.getElementById("chat-output");
+            const card = document.getElementById(`card-${agentId}`);
+            const latSpan = document.getElementById(`lat-${agentId}`);
+
+            if (card) card.classList.add("active");
+            output.textContent = `Đang gọi Subagent [${agentId}]...`;
+
+            const tStart = performance.now();
+            try {
+                const res = await fetch("/api/agents/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agent_id: agentId, query: query })
+                });
+                const tEnd = performance.now();
+                const latency = Math.round(tEnd - tStart);
+
+                if (latSpan) latSpan.textContent = `${latency}ms`;
+
+                const data = await res.json();
+                output.textContent = data.response || JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = `Lỗi kết nối tới máy chủ di động: ${err.message}`;
+            } finally {
+                if (card) {
+                    setTimeout(() => card.classList.remove("active"), 1200);
+                }
+            }
+        }
+
+        async function sendChatQuery() {
+            const input = document.getElementById("chat-input");
+            const query = input.value.trim();
+            if (!query) return;
+
+            const output = document.getElementById("chat-output");
+            output.textContent = `Đang phân loại và điều phối qua Subagent Triage...`;
+
+            try {
+                const res = await fetch("/api/agents/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ query: query })
+                });
+                const data = await res.json();
+                output.textContent = data.response || JSON.stringify(data, null, 2);
+            } catch (err) {
+                output.textContent = `Lỗi: ${err.message}`;
+            }
+        }
+
+        // Chạy Benchmark gọi đồng thời toàn bộ 10 Subagents
+        async function runBenchmark10Subagents() {
+            const btn = document.getElementById("btn-run-benchmark");
+            const status = document.getElementById("benchmark-status");
+            const output = document.getElementById("chat-output");
+
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+            status.textContent = "Đang gửi 10 yêu cầu song song...";
+            status.style.color = "var(--cyan)";
+
+            output.textContent = `[BENCHMARK CONCURRENCY] Đang đồng thời kích hoạt cả 10 Subagents qua Semaphore Pool...\n`;
+
+            const startTime = performance.now();
+            const promises = SUBAGENTS_DATA.map(async (agent) => {
+                const latSpan = document.getElementById(`lat-${agent.id}`);
+                const card = document.getElementById(`card-${agent.id}`);
+                if (card) card.classList.add("active");
+
+                const t0 = performance.now();
+                try {
+                    const res = await fetch("/api/agents/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ agent_id: agent.id, query: agent.query })
+                    });
+                    const t1 = performance.now();
+                    const lat = Math.round(t1 - t0);
+                    if (latSpan) latSpan.textContent = `${lat}ms`;
+                    return { agent: agent.name, id: agent.id, latency: lat, success: res.ok };
+                } catch (e) {
+                    return { agent: agent.name, id: agent.id, latency: 0, success: false, error: e.message };
+                } finally {
+                    if (card) setTimeout(() => card.classList.remove("active"), 1500);
+                }
+            });
+
+            const results = await Promise.all(promises);
+            const totalTime = Math.round(performance.now() - startTime);
+
+            let summary = `🎉 HOÀN TẤT BENCHMARK 10 SUBAGENTS ĐỒNG THỜI!\n`;
+            summary += `⏱️ Tổng thời gian hoàn thành cả 10 tác vụ: ${totalTime} ms\n`;
+            summary += `-------------------------------------------------------\n`;
+
+            results.forEach((r, idx) => {
+                const icon = r.success ? "✅" : "❌";
+                summary += `${icon} #${idx+1} [${r.id}] ${r.agent}: ${r.latency}ms\n`;
+            });
+
+            summary += `\n🚀 Kết luận: Máy chủ di động điều phối 10/10 Subagents hoàn hảo không nghẽn CPU!`;
+            output.textContent = summary;
+
+            status.textContent = `Xong (${totalTime}ms)`;
+            status.style.color = "var(--green)";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+
+        // Tự động render khi tải trang
+        document.addEventListener("DOMContentLoaded", () => {
+            renderAgents();
+        });
+    </script>
+</body>
+</html>

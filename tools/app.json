@@ -1,0 +1,11 @@
+{
+  "name": "My Project Tool",
+  "version": "1.0.0",
+  "platform": "Windows / Linux / macOS",
+  "category": "Công cụ Lập trình & IDE",
+  "desc": "Mô tả ngắn gọn về giải pháp, tính năng và giá trị ứng dụng mang lại cho người dùng.",
+  "author": "Your Team / Dev Name",
+  "file_path": "dist/my-tool-setup-v1.0.0.exe",
+  "server_url": "https://supportflastdev.io.vn",
+  "api_key": "sf_live_default_dev_token_2026"
+}

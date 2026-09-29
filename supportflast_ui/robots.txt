@@ -1,0 +1,47 @@
+# ==============================================================================
+# SupportFlast Platform (supportflastdev.io.vn) - Robots.txt Policy
+# Bao ve he thong truoc cac bot cao du lieu va AI scrapers trai phep
+# ==============================================================================
+
+# 1. Chan tat ca cac AI Scrapers va bot cao du lieu gay qua tai
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# 2. Quy dinh chung cho cac cong cu tim kiem hop le (Google, Bing, ...)
+User-agent: *
+Allow: /
+Allow: /tools
+Disallow: /api/
+Disallow: /storage/
+Disallow: /phpmanager/
+Disallow: /phpmyadmin/
+Disallow: /.env
+Disallow: /wp-admin
+Disallow: /.git

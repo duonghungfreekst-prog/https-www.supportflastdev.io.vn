@@ -1,0 +1,125 @@
+# ==============================================================================
+# Docker Compose Orchestration - SupportFlast Production Platform
+# Domain: supportflastdev.io.vn | Port: 8080 (Kiến trúc Monolith Hợp Nhất 100%)
+# ==============================================================================
+# Hệ sinh thái SupportFlast:
+#  - Cổng 8080: Web 3D HUD UI, REST API Gateway, CloudPool Storage, WebDAV, Tools
+#  - SQLite WAL Database + RS256 Asymmetric Key Storage bền vững
+#  - Tùy chọn kèm Nginx Reverse Proxy (80/443) + Certbot Auto SSL với: --profile proxy
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # SupportFlast Unified Monolith Application (Service Cốt Lõi - Cổng 8080)
+  # ----------------------------------------------------------------------------
+  supportflast-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: supportflast-app:latest
+    container_name: supportflast-app
+    restart: always
+    env_file:
+      - .env
+    environment:
+      # Biến môi trường cốt lõi Production (ưu tiên giá trị từ .env nếu có)
+      - PORT=${PORT:-8080}
+      - HOST=${HOST:-0.0.0.0}
+      - DOMAIN=${DOMAIN:-supportflastdev.io.vn}
+      - ENV=${ENV:-production}
+      - GIN_MODE=${GIN_MODE:-release}
+      - DATA_DIR=${DATA_DIR:-/app/data}
+      - STORAGE_DIR=${STORAGE_DIR:-/app/storage}
+      - UI_DIR=${UI_DIR:-/app/supportflast_ui}
+      - STATIC_DIR=${STATIC_DIR:-/app/supportflast_ui}
+      - JWT_KEYS_DIR=${JWT_KEYS_DIR:-/app/data/keys}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
+      - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
+      - TZ=${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Volume persistence 1: Cơ sở dữ liệu SQLite và khóa mã hóa RS256
+      - ./data:/app/data
+      # Volume persistence 2: Kho lưu trữ đám mây ảo và gói phân phối installer
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - supportflast-net
+
+  # ----------------------------------------------------------------------------
+  # Nginx Reverse Proxy Container (Profile: proxy - Tùy chọn kích hoạt)
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: supportflast-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - supportflast-app
+    networks:
+      - supportflast-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    profiles:
+      - proxy
+
+  # ----------------------------------------------------------------------------
+  # Certbot Let's Encrypt SSL Auto-Renewal (Profile: proxy - Tùy chọn kích hoạt)
+  # ----------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: supportflast-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx
+    networks:
+      - supportflast-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    profiles:
+      - proxy
+
+# ------------------------------------------------------------------------------
+# Mạng Nội Bộ Docker Cô Lập (Custom Bridge Network)
+# ------------------------------------------------------------------------------
+networks:
+  supportflast-net:
+    name: supportflast-net
+    driver: bridge

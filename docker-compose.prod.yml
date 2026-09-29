@@ -1,0 +1,148 @@
+# ==============================================================================
+# Docker Compose Production Stack - SupportFlast Production Platform
+# Domain: supportflastdev.io.vn | Port: 8080 / 80 / 443
+# Kiến trúc: Unified Monolith Engine + Nginx WAF Reverse Proxy + Certbot Auto-SSL
+# ==============================================================================
+# Lệnh chạy Production tiêu chuẩn:
+#   docker compose -f docker-compose.prod.yml up -d
+# Lệnh chạy kèm Nginx + SSL Certbot:
+#   docker compose -f docker-compose.prod.yml --profile proxy up -d
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # SupportFlast Unified Monolith Application Service (Cổng 8080)
+  # ----------------------------------------------------------------------------
+  supportflast-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: supportflast-app:prod
+    container_name: supportflast-app
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT:-8080}
+      - HOST=${HOST:-0.0.0.0}
+      - DOMAIN=${DOMAIN:-supportflastdev.io.vn}
+      - ENV=production
+      - GIN_MODE=release
+      - DATA_DIR=/app/data
+      - STORAGE_DIR=/app/storage
+      - UI_DIR=/app/supportflast_ui
+      - STATIC_DIR=/app/supportflast_ui
+      - JWT_KEYS_DIR=/app/data/keys
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
+      - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
+      - TZ=Asia/Ho_Chi_Minh
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Volume 1: Cơ sở dữ liệu SQLite (WAL/SHM) và cặp khóa bảo mật RS256
+      - ./data:/app/data
+      # Volume 2: Kho lưu trữ đám mây ảo Virtual Storage và packages
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - supportflast-net
+    labels:
+      com.supportflast.environment: "production"
+      com.supportflast.service: "monolith-engine"
+      com.supportflast.domain: "supportflastdev.io.vn"
+
+  # ----------------------------------------------------------------------------
+  # Nginx Reverse Proxy Container (Profile: proxy)
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: supportflast-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - supportflast-app
+    networks:
+      - supportflast-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - proxy
+    labels:
+      com.supportflast.environment: "production"
+      com.supportflast.service: "reverse-proxy"
+
+  # ----------------------------------------------------------------------------
+  # Certbot Let's Encrypt SSL Automated Renewal (Profile: proxy)
+  # ----------------------------------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: supportflast-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx
+    networks:
+      - supportflast-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    profiles:
+      - proxy
+    labels:
+      com.supportflast.environment: "production"
+      com.supportflast.service: "ssl-certbot"
+
+# ------------------------------------------------------------------------------
+# Mạng Nội Bộ Docker Cô Lập (Custom Bridge Network)
+# ------------------------------------------------------------------------------
+networks:
+  supportflast-net:
+    name: supportflast-net
+    driver: bridge

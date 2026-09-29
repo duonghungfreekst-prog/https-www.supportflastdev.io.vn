@@ -1,0 +1,62 @@
+{
+  "description": "Cloudflare WAF Custom Ruleset cho domain supportflastdev.io.vn",
+  "rules": [
+    {
+      "id": "rule_block_scanners",
+      "action": "block",
+      "description": "Chặn các công cụ quét lỗ hổng tự động và scanner xấu",
+      "expression": "(http.user_agent contains \"sqlmap\" or http.user_agent contains \"nikto\" or http.user_agent contains \"acunetix\" or http.user_agent contains \"nmap\" or http.user_agent contains \"masscan\" or http.user_agent contains \"dirbuster\" or http.user_agent contains \"gobuster\")",
+      "enabled": true
+    },
+    {
+      "id": "rule_block_bad_bots",
+      "action": "block",
+      "description": "Chặn các hệ thống bot tự động cào dữ liệu, AI scrapers và spam crawler",
+      "expression": "(http.user_agent contains \"Bytespider\" or http.user_agent contains \"CCBot\" or http.user_agent contains \"ClaudeBot\" or http.user_agent contains \"GPTBot\" or http.user_agent contains \"SemrushBot\" or http.user_agent contains \"AhrefsBot\" or http.user_agent contains \"MJ12bot\" or http.user_agent contains \"DotBot\")",
+      "enabled": true
+    },
+    {
+      "id": "rule_challenge_publish_api",
+      "action": "managed_challenge",
+      "description": "Bắt buộc thử thách bảo mật đối với endpoint xuất bản ứng dụng",
+      "expression": "(http.request.uri.path eq \"/api/apps/publish\" and not cf.client.bot)",
+      "enabled": true
+    },
+    {
+      "id": "rule_rate_limit_api",
+      "action": "rate_limit",
+      "description": "Giới hạn 60 requests / 10s cho toàn bộ các endpoint /api/*",
+      "expression": "(http.request.uri.path starts_with \"/api/\")",
+      "ratelimit": {
+        "characteristics": ["cf.unique_visitor_id"],
+        "period": 10,
+        "requests_per_period": 60,
+        "mitigation_timeout": 60
+      },
+      "enabled": true
+    },
+    {
+      "id": "rule_block_traversal_sqli",
+      "action": "block",
+      "description": "Chặn các chuỗi Path Traversal và SQLi thô sơ trong Query String",
+      "expression": "(http.request.uri.query contains \"../\" or http.request.uri.query contains \"..\\\\\" or http.request.uri.query contains \"1=1\" or http.request.uri.query contains \"union select\")",
+      "enabled": true
+    }
+  ],
+  "ssl": {
+    "mode": "strict",
+    "min_tls_version": "1.3",
+    "always_use_https": true,
+    "hsts": {
+      "enabled": true,
+      "max_age": 31536000,
+      "include_subdomains": true,
+      "preload": true
+    },
+    "automatic_https_rewrites": true
+  },
+  "bot_management": {
+    "bot_fight_mode": true,
+    "ai_scrapers_protection": true
+  }
+}

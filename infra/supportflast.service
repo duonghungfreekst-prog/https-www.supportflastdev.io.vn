@@ -1,0 +1,53 @@
+[Unit]
+Description=SupportFlast Unified Monolith Application (supportflastdev.io.vn)
+Documentation=https://supportflastdev.io.vn
+After=network.target network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/supportflast
+ExecStart=/opt/supportflast/supportflast_engine/supportflast
+Restart=always
+RestartSec=5s
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+# Cấu hình biến môi trường hệ thống Monolith 1 Cổng 8080 Duy Nhất
+Environment="PORT=8080"
+Environment="HOST=0.0.0.0"
+Environment="DOMAIN=supportflastdev.io.vn"
+Environment="ENV=production"
+Environment="GIN_MODE=release"
+Environment="DATA_DIR=/opt/supportflast/data"
+Environment="STORAGE_DIR=/opt/supportflast/storage"
+Environment="UI_DIR=/opt/supportflast/supportflast_ui"
+Environment="STATIC_DIR=/opt/supportflast/supportflast_ui"
+Environment="JWT_KEYS_DIR=/opt/supportflast/data/keys"
+Environment="TZ=Asia/Ho_Chi_Minh"
+
+# Giới hạn tài nguyên xử lý cho dịch vụ backend (High Performance Tuning)
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Tính năng bảo mật & cô lập quyền hạn (Linux Sandboxing - Rule 3)
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+# Chỉ cho phép ghi dữ liệu vào các thư mục persistence cần thiết (data và storage)
+ReadWritePaths=/opt/supportflast/data /opt/supportflast/storage
+
+# Nhật ký ghi log qua systemd-journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=supportflast-app
+
+[Install]
+WantedBy=multi-user.target

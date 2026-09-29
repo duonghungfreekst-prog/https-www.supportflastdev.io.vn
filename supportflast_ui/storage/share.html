@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="vi" class="notranslate" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="googlebot" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudPool - Tệp Được Chia Sẻ Công Khai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0b0f17;
+      --bg-card: rgba(18, 26, 43, 0.85);
+      --bg-glass: rgba(25, 36, 61, 0.6);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 0%, #172554 0%, #0b0f17 70%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .logo-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    }
+
+    .logo-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-weight: 500;
+    }
+
+    .card-viewer {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      margin-bottom: 24px;
+    }
+
+    .file-meta-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .file-title-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .file-type-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .file-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 600px;
+    }
+
+    .file-submeta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .file-submeta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .viewer-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 360px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Video Player */
+    .video-container {
+      width: 100%;
+      max-width: 960px;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-color);
+    }
+
+    video {
+      width: 100%;
+      max-height: 540px;
+      display: block;
+      outline: none;
+    }
+
+    /* Audio Player */
+    .audio-container {
+      width: 100%;
+      max-width: 600px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .audio-disc {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      box-shadow: 0 0 30px rgba(236, 72, 153, 0.4);
+      animation: spin 10s linear infinite paused;
+    }
+
+    .audio-disc.playing {
+      animation-play-state: running;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    audio {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    /* Image Viewer */
+    .image-container {
+      max-width: 100%;
+      max-height: 600px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    .image-container img {
+      max-width: 100%;
+      max-height: 580px;
+      border-radius: 12px;
+      object-fit: contain;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* PDF / Document Viewer */
+    .doc-container {
+      width: 100%;
+      height: 600px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .doc-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    /* Code / Text Viewer */
+    .code-container {
+      width: 100%;
+      max-height: 500px;
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      overflow: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #e6edf3;
+      white-space: pre;
+      line-height: 1.6;
+    }
+
+    /* Generic File Box */
+    .generic-file-box {
+      text-align: center;
+      padding: 40px 20px;
+      max-width: 450px;
+    }
+
+    .generic-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .generic-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .generic-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* Password Modal */
+    .password-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 36px 28px;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .password-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #fff;
+      margin: 18px 0;
+      outline: none;
+      transition: all 0.2s ease;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+
+    .password-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    .footer-note a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    /* Folder Explorer View Styles */
+    .folder-explorer {
+      width: 100%;
+      text-align: left;
+    }
+    .folder-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .folder-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+      overflow-x: auto;
+    }
+    .breadcrumb-item {
+      cursor: pointer;
+      color: var(--accent-cyan);
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .breadcrumb-item:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: #fff;
+    }
+    .breadcrumb-active {
+      color: var(--text-primary);
+      font-weight: 700;
+      cursor: default;
+    }
+    .folder-search-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+      min-width: 220px;
+      transition: all 0.2s ease;
+    }
+    .folder-search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+    .folder-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .folder-table th {
+      text-align: left;
+      padding: 10px 14px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .folder-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    .folder-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .folder-row {
+      cursor: pointer;
+    }
+    .folder-row:hover td {
+      color: var(--accent-cyan);
+    }
+    .file-item-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+    .file-item-icon {
+      font-size: 20px;
+      width: 26px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .item-actions-cell {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn-table-action {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: #e2e8f0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn-table-action:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    /* Modal File Preview */
+    .preview-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .preview-modal.active {
+      display: flex;
+    }
+    .preview-modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 1180px;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+    .preview-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .preview-modal-body {
+      padding: 16px;
+      overflow: auto;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #090d16;
+    }
+
+    /* ── Mobile Responsive Rules for Share View ── */
+    @media (max-width: 768px) {
+      body {
+        padding: 8px 6px;
+      }
+
+      .header-bar {
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+      }
+
+      .logo-title {
+        font-size: 15px;
+      }
+
+      .logo-sub {
+        font-size: 10px;
+      }
+
+      .card-viewer {
+        border-radius: 14px;
+        margin-bottom: 14px;
+      }
+
+      .file-meta-header {
+        padding: 12px 14px;
+        gap: 12px;
+      }
+
+      .file-name {
+        font-size: 14px;
+        max-width: 100%;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.4;
+      }
+
+      .file-type-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 20px;
+      }
+
+      .btn-group {
+        width: 100%;
+        gap: 6px;
+      }
+
+      .btn-group .btn {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .viewer-body {
+        padding: 10px 6px;
+        min-height: auto;
+      }
+
+      .preview-modal {
+        padding: 6px;
+      }
+
+      .preview-modal-card {
+        max-width: 100%;
+        width: 100%;
+        max-height: 96vh;
+        border-radius: 12px;
+      }
+
+      .preview-modal-header {
+        padding: 10px 14px;
+      }
+
+      .preview-modal-body {
+        padding: 8px;
+      }
+
+      .folder-search-input {
+        min-width: 100%;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="notranslate" translate="no">
+
+  <div class="container">
+    <!-- Header -->
+    <header class="header-bar">
+      <div class="logo-brand">
+        <div class="logo-badge">CP</div>
+        <div>
+          <div class="logo-title">CloudPool Storage</div>
+          <div class="logo-sub">Hệ Thống Chia Sẻ Tệp Tin & Thư Mục Trực Tuyến 24/7</div>
+        </div>
+      </div>
+      <div>
+        <span class="badge-status">● Đang Hoạt Động</span>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div id="loading-state" style="text-align: center; padding: 60px 0;">
+      <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+      <div style="font-size: 15px; font-weight: 600; color: var(--text-primary);">Đang tải thông tin chia sẻ...</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Vui lòng chờ trong giây lát</div>
+    </div>
+
+    <!-- Password Required Screen -->
+    <div id="password-state" style="display: none; width: 100%; justify-content: center;">
+      <div class="password-card">
+        <div style="font-size: 40px; margin-bottom: 12px;">🔒</div>
+        <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Liên Kết Được Bảo Vệ</h2>
+        <p style="font-size: 13px; color: var(--text-muted);">Người chia sẻ đã đặt mật khẩu bảo vệ. Vui lòng nhập mật khẩu để mở khóa:</p>
+        <input type="password" id="share-pass-input" class="password-input" placeholder="Nhập mật khẩu..." autofocus />
+        <button id="btn-unlock-share" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          <span>Mở Khóa Ngay</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Viewer Screen -->
+    <div id="viewer-state" class="card-viewer" style="display: none;">
+      <div class="file-meta-header">
+        <div class="file-title-group">
+          <div id="file-icon-box" class="file-type-icon">📄</div>
+          <div style="min-width: 0;">
+            <div id="file-name-display" class="file-name">Tên tệp tin</div>
+            <div class="file-submeta">
+              <span id="file-size-display">0 KB</span>
+              <span>•</span>
+              <span id="file-created-by">Người chia sẻ: admin</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button id="btn-copy-link" class="btn btn-secondary" onclick="copyCurrentLink()">
+            <span>📋 Sao Chép Link</span>
+          </button>
+          <a id="btn-direct-download" href="#" class="btn btn-primary">
+            <span>⬇️ Tải Về Máy</span>
+          </a>
+        </div>
+      </div>
+
+      <div id="viewer-body" class="viewer-body">
+        <!-- Rendered dynamically depending on file or folder -->
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Chia sẻ an toàn & phát trực tiếp qua <a href="/">CloudPool Unified Multi-Drive Engine</a>
+    </div>
+  </div>
+
+  <!-- In-folder File Preview Modal -->
+  <div id="preview-modal" class="preview-modal">
+    <div class="preview-modal-card">
+      <div class="preview-modal-header">
+        <div style="font-weight: 600; font-size: 15px;" id="preview-modal-title">Xem trước tệp</div>
+        <button class="btn btn-secondary btn-sm" onclick="closePreviewModal()">✕ Đóng</button>
+      </div>
+      <div id="preview-modal-body" class="preview-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <span id="toast-msg">Thông báo</span>
+  </div>
+
+  <script src="/storage/js/jszip.min.js?v=2.7.2"></script>
+  <script src="/storage/js/xlsx.full.min.js?v=2.7.2"></script>
+  <script src="/storage/js/docx-preview.min.js?v=2.7.2"></script>
+  <script src="/storage/js/mammoth.browser.min.js?v=2.7.2"></script>
+  <script src="/storage/js/office_viewer.js?v=2.7.2"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    let shareData = null;
+    let verifiedPassword = '';
+    let currentFolderId = '';
+    let breadcrumbHistory = [];
+    let currentFolderItems = [];
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function copyCurrentLink() {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        showToast('✅ Đã sao chép liên kết chia sẻ!');
+      }).catch(() => {
+        showToast('Đã sao chép liên kết!');
+      });
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function getFileEmoji(fileName, isDir, mime) {
+      if (isDir) return '📁';
+      const name = (fileName || '').toLowerCase();
+      const m = (mime || '').toLowerCase();
+      if (m.startsWith('video/') || /\.(mp4|webm|mkv|mov|avi|flv|wmv|ts)$/.test(name)) return '🎬';
+      if (m.startsWith('audio/') || /\.(mp3|wav|flac|aac|ogg|m4a|wma)$/.test(name)) return '🎵';
+      if (m.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|bmp|ico)$/.test(name)) return '🖼️';
+      if (m.includes('pdf') || /\.pdf$/.test(name)) return '📑';
+      if (/\.(xls|xlsx|csv|tsv|ods|numbers)$/.test(name)) return '📊';
+      if (/\.(doc|docx|odt|rtf|epub|mobi)$/.test(name)) return '📄';
+      if (/\.(ppt|pptx|ppsx|key|odp)$/.test(name)) return '📽️';
+      if (/\.(zip|rar|7z|tar|gz|iso|dmg|vhd)$/.test(name)) return '📦';
+      if (/\.(psd|ai|eps|fig|xd|blend|obj|dwg|dxf)$/.test(name)) return '🎨';
+      if (/\.(exe|msi|apk|ipa|deb|rpm|appimage)$/.test(name)) return '⚙️';
+      if (/\.(sql|json|txt|md|go|rs|py|js|ts|html|css|xml|c|cpp|cs|java|php)$/.test(name)) return '📜';
+      return '📄';
+    }
+
+    async function loadShareInfo() {
+      if (!token) {
+        document.getElementById('loading-state').innerHTML = `
+          <div style="font-size: 40px; margin-bottom: 12px;">❌</div>
+          <div style="font-size: 16px; font-weight: 700; color: var(--accent-red);">Không tìm thấy mã chia sẻ!</div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Đường link chia sẻ không hợp lệ hoặc bị thiếu thông tin.</div>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/public/share/info?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById('loading-state').innerHTML = `
+            <div style="font-size: 40px; margin-bottom: 12px;">🚫</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--accent-red);">${data.error || 'Link chia sẻ đã hết hạn hoặc không tồn tại'}</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Vui lòng liên hệ người gửi để nhận đường link mới.</div>
+          `;
+          return;
+        }
+
+        shareData = data;
+        document.getElementById('loading-state').style.display = 'none';
+
+        if (shareData.has_password) {
+          document.getElementById('password-state').style.display = 'flex';
+          const passInput = document.getElementById('share-pass-input');
+          setTimeout(() => passInput?.focus(), 100);
+
+          document.getElementById('btn-unlock-share').onclick = async () => {
+            const pass = passInput.value.trim();
+            if (!pass) {
+              showToast('Vui lòng nhập mật khẩu!');
+              return;
+            }
+            const btn = document.getElementById('btn-unlock-share');
+            const oldText = btn.innerHTML;
+            btn.innerHTML = '<span>⏳ Đang kiểm tra...</span>';
+            btn.disabled = true;
+
+            try {
+              if (shareData.is_dir) {
+                // Fetch folder items with the entered password
+                let browseUrl = `/api/public/share/folder/browse?token=${encodeURIComponent(token)}&pass=${encodeURIComponent(pass)}`;
+                const res = await fetch(browseUrl);
+                const data = await res.json();
+                if (!res.ok) {
+                  showToast('❌ ' + (data.error || 'Mật khẩu không chính xác!'));
+                  btn.innerHTML = oldText;
+                  btn.disabled = false;
+                  passInput.select();
+                  return;
+                }
+                verifiedPassword = pass;
+                shareData.items = data.items || [];
+                renderViewer();
+              } else {
+                verifiedPassword = pass;
+                renderViewer();
+              }
+            } catch (err) {
+              showToast('Lỗi kiểm tra mật khẩu: ' + err.message);
+              btn.innerHTML = oldText;
+              btn.disabled = false;
+            }
+          };
+
+          passInput.onkeydown = (e) => {
+            if (e.key === 'Enter') document.getElementById('btn-unlock-share').click();
+          };
+        } else {
+          renderViewer();
+        }
+      } catch (err) {
+        document.getElementById('loading-state').innerHTML = `
+          <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
+          <div style="font-size: 16px; font-weight: 700; color: var(--accent-amber);">Lỗi kết nối máy chủ</div>
+          <div style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">${err.message}</div>
+        `;
+      }
+    }
+
+    function renderViewer() {
+      document.getElementById('password-state').style.display = 'none';
+      document.getElementById('viewer-state').style.display = 'block';
+
+      const fileName = shareData.file_name || 'Tệp Tin';
+      const isDir = shareData.is_dir || false;
+      const fileSize = shareData.file_size || 0;
+      const fileCount = shareData.file_count || 0;
+
+      const iconBox = document.getElementById('file-icon-box');
+      const downloadBtn = document.getElementById('btn-direct-download');
+
+      let downloadUrl = `/api/public/share/download?token=${encodeURIComponent(token)}`;
+      if (verifiedPassword) {
+        downloadUrl += `&pass=${encodeURIComponent(verifiedPassword)}`;
+      }
+
+      if (isDir) {
+        iconBox.textContent = '📁';
+        document.getElementById('file-name-display').textContent = `Thư mục: ${fileName}`;
+        document.getElementById('file-size-display').textContent = `${formatBytes(fileSize)} (${fileCount} tệp)`;
+        document.getElementById('file-created-by').textContent = `Chia sẻ bởi: ${shareData.created_by || 'Admin'}`;
+        downloadBtn.href = downloadUrl;
+        downloadBtn.innerHTML = '<span>📦 Tải Toàn Bộ Thư Mục Dạng ZIP (.zip)</span>';
+
+        breadcrumbHistory = [{ id: '', name: fileName }];
+        if (shareData.items && shareData.items.length > 0) {
+          initFolderViewer(shareData.items);
+        } else {
+          navigateToFolder('', fileName);
+        }
+        return;
+      }
+
+      // Single File Display
+      document.getElementById('file-name-display').textContent = fileName;
+      document.getElementById('file-size-display').textContent = formatBytes(fileSize);
+      document.getElementById('file-created-by').textContent = `Chia sẻ bởi: ${shareData.created_by || 'Admin'}`;
+      downloadBtn.href = downloadUrl;
+      downloadBtn.innerHTML = '<span>⬇️ Tải Về Máy</span>';
+
+      renderSingleFileViewer(fileName, shareData.mime_type, fileSize, token, '', verifiedPassword);
+    }
+
+    function renderSingleFileViewer(fileName, mimeType, fileSize, shareToken, fileId, pass) {
+      const viewerBody = document.getElementById('viewer-body');
+      const iconBox = document.getElementById('file-icon-box');
+
+      let streamUrl = `/api/public/share/stream?token=${encodeURIComponent(shareToken)}`;
+      let downloadUrl = `/api/public/share/download?token=${encodeURIComponent(shareToken)}`;
+      if (fileId) {
+        streamUrl += `&file_id=${encodeURIComponent(fileId)}`;
+        downloadUrl += `&file_id=${encodeURIComponent(fileId)}`;
+      }
+      if (pass) {
+        streamUrl += `&pass=${encodeURIComponent(pass)}`;
+        downloadUrl += `&pass=${encodeURIComponent(pass)}`;
+      }
+
+      const mime = (mimeType || '').toLowerCase();
+      const ext = fileName.toLowerCase();
+
+      // Video Files
+      if (mime.startsWith('video/') || /\.(mp4|webm|mkv|mov|avi|ts)$/.test(ext)) {
+        iconBox.textContent = '🎬';
+        viewerBody.innerHTML = `
+          <div class="video-container">
+            <video controls autoplay playsinline preload="metadata">
+              <source src="${streamUrl}" type="${mime || 'video/webm'}">
+              Trình duyệt của bạn không hỗ trợ phát video này trực tiếp.
+            </video>
+          </div>
+        `;
+      } 
+      // Audio Files
+      else if (mime.startsWith('audio/') || /\.(mp3|wav|flac|aac|ogg|m4a)$/.test(ext)) {
+        iconBox.textContent = '🎵';
+        viewerBody.innerHTML = `
+          <div class="audio-container">
+            <div class="audio-disc" id="audio-disc">🎧</div>
+            <div style="text-align: center;">
+              <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">${fileName}</div>
+              <div style="font-size: 12px; color: var(--text-muted);">${formatBytes(fileSize)} • Trình phát âm thanh chất lượng cao</div>
+            </div>
+            <audio id="audio-player" controls preload="metadata">
+              <source src="${streamUrl}" type="${mime || 'audio/mpeg'}">
+              Trình duyệt không hỗ trợ phát âm thanh.
+            </audio>
+          </div>
+        `;
+        const aud = document.getElementById('audio-player');
+        const disc = document.getElementById('audio-disc');
+        if (aud && disc) {
+          aud.onplay = () => disc.classList.add('playing');
+          aud.onpause = () => disc.classList.remove('playing');
+          aud.onended = () => disc.classList.remove('playing');
+        }
+      } 
+      // Image Files
+      else if (mime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|bmp)$/.test(ext)) {
+        iconBox.textContent = '🖼️';
+        viewerBody.innerHTML = `
+          <div class="image-container">
+            <img src="${streamUrl}" alt="${fileName}" loading="lazy" />
+          </div>
+        `;
+      } 
+      // PDF Documents
+      else if (mime.includes('pdf') || /\.pdf$/.test(ext)) {
+        iconBox.textContent = '📑';
+        viewerBody.innerHTML = `
+          <div class="doc-container" style="width: 100%; height: 75vh; border-radius: 12px; overflow: hidden; background: #fff; position: relative;">
+            <object data="${streamUrl}" type="application/pdf" width="100%" height="100%">
+              <embed src="${streamUrl}" type="application/pdf" width="100%" height="100%" />
+              <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
+            </object>
+          </div>
+        `;
+      } 
+      // PowerPoint Presentations
+      else if (/\.(pptx|ppt|ppsx|key|odp)$/i.test(ext)) {
+        iconBox.textContent = '📽️';
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderPPTX(viewerBody, streamUrl, fileName, downloadUrl);
+        } else {
+          viewerBody.innerHTML = `
+            <div class="generic-file-box">
+              <div class="generic-icon">📽️</div>
+              <div class="generic-title">${fileName}</div>
+              <div class="generic-desc">Bản trình chiếu PowerPoint (${formatBytes(fileSize)})</div>
+              <a href="${downloadUrl}" class="btn btn-primary" style="margin-top:14px;">⬇️ Tải File Về Máy</a>
+            </div>
+          `;
+        }
+      }
+      // Excel Spreadsheets
+      else if (/\.(xlsx|xls|ods|numbers)$/i.test(ext)) {
+        iconBox.textContent = '📊';
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderExcel(viewerBody, streamUrl, fileName, downloadUrl);
+        } else {
+          viewerBody.innerHTML = `
+            <div class="generic-file-box">
+              <div class="generic-icon">📊</div>
+              <div class="generic-title">${fileName}</div>
+              <div class="generic-desc">Bảng tính Excel (${formatBytes(fileSize)})</div>
+              <a href="${downloadUrl}" class="btn btn-primary" style="margin-top:14px;">⬇️ Tải File Về Máy</a>
+            </div>
+          `;
+        }
+      }
+      // Word Documents
+      else if (/\.(docx|doc|odt|rtf)$/i.test(ext)) {
+        iconBox.textContent = '📄';
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderDocx(viewerBody, streamUrl, fileName, downloadUrl);
+        } else {
+          viewerBody.innerHTML = `
+            <div class="generic-file-box">
+              <div class="generic-icon">📄</div>
+              <div class="generic-title">${fileName}</div>
+              <div class="generic-desc">Tài liệu văn bản Word (${formatBytes(fileSize)})</div>
+              <a href="${downloadUrl}" class="btn btn-primary" style="margin-top:14px;">⬇️ Tải File Về Máy</a>
+            </div>
+          `;
+        }
+      }
+      else if (/\.(txt|md|json|sql|go|rs|py|js|ts|html|css|xml|c|cpp|cs|java|php)$/.test(ext)) {
+        iconBox.textContent = '📜';
+        viewerBody.innerHTML = `
+          <div style="width: 100%; text-align: left; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 12px; color: var(--text-muted);">Xem trước nội dung văn bản</span>
+          </div>
+          <div id="code-content" class="code-container">Đang tải nội dung văn bản...</div>
+        `;
+        fetch(streamUrl)
+          .then(r => r.text())
+          .then(t => {
+            const el = document.getElementById('code-content');
+            if (el) el.textContent = t.length > 50000 ? t.substring(0, 50000) + '\n\n... [Nội dung quá dài đã được rút gọn]' : t;
+          })
+          .catch(() => {
+            const el = document.getElementById('code-content');
+            if (el) el.textContent = 'Không thể tải nội dung văn bản trực tiếp.';
+          });
+      } 
+      // Other generic file types
+      else {
+        const fIcon = getFileEmoji(fileName, false, mime);
+        iconBox.textContent = fIcon;
+        viewerBody.innerHTML = `
+          <div class="generic-file-box">
+            <div class="generic-icon">${fIcon}</div>
+            <div class="generic-title">${fileName}</div>
+            <div class="generic-desc">
+              Tệp tin định dạng <b>${fileName.split('.').pop().toUpperCase()}</b> (${formatBytes(fileSize)}).<br>
+              Bạn có thể tải tệp tin này trực tiếp về thiết bị để mở bằng ứng dụng chuyên dụng.
+            </div>
+            <a href="${downloadUrl}" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px; margin-top: 14px;">
+              <span>⬇️ Tải Tệp Tin Về Máy Ngay</span>
+            </a>
+          </div>
+        `;
+      }
+    }
+
+    // ────────────────────────────────────────────────────────
+    // Folder Explorer Engine
+    // ────────────────────────────────────────────────────────
+    function initFolderViewer(initialItems) {
+      currentFolderItems = initialItems || [];
+      renderFolderExplorerUI();
+    }
+
+    async function navigateToFolder(folderId, folderName) {
+      try {
+        let browseUrl = `/api/public/share/folder/browse?token=${encodeURIComponent(token)}`;
+        if (folderId) browseUrl += `&folder_id=${encodeURIComponent(folderId)}`;
+        if (verifiedPassword) browseUrl += `&pass=${encodeURIComponent(verifiedPassword)}`;
+
+        const res = await fetch(browseUrl);
+        const data = await res.json();
+        if (!res.ok) {
+          showToast('Lỗi: ' + (data.error || 'Không thể nạp thư mục'));
+          return;
+        }
+
+        currentFolderId = folderId;
+        currentFolderItems = data.items || [];
+
+        // Update breadcrumb
+        const existingIdx = breadcrumbHistory.findIndex(b => b.id === folderId);
+        if (existingIdx >= 0) {
+          breadcrumbHistory = breadcrumbHistory.slice(0, existingIdx + 1);
+        } else {
+          breadcrumbHistory.push({ id: folderId, name: folderName });
+        }
+
+        renderFolderExplorerUI();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message);
+      }
+    }
+
+    function renderFolderExplorerUI() {
+      const viewerBody = document.getElementById('viewer-body');
+      
+      let breadcrumbsHtml = '';
+      breadcrumbHistory.forEach((b, idx) => {
+        const isLast = (idx === breadcrumbHistory.length - 1);
+        if (isLast) {
+          breadcrumbsHtml += `<span class="breadcrumb-active">📁 ${b.name}</span>`;
+        } else {
+          breadcrumbsHtml += `<span class="breadcrumb-item" onclick="navigateToFolder('${b.id}', '${b.name.replace(/'/g, "\\'")}')">📁 ${b.name}</span> <span style="color:var(--border-color)">/</span> `;
+        }
+      });
+
+      viewerBody.innerHTML = `
+        <div class="folder-explorer">
+          <div class="folder-toolbar">
+            <div class="folder-breadcrumbs">
+              ${breadcrumbsHtml}
+            </div>
+            <div>
+              <input type="text" id="share-folder-search" class="folder-search-input" placeholder="🔍 Tìm tệp trong thư mục..." oninput="filterFolderItems(this.value)" />
+            </div>
+          </div>
+          <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 12px;">
+            <table class="folder-table">
+              <thead>
+                <tr>
+                  <th style="width: 50%;">Tên Tệp / Thư Mục</th>
+                  <th style="width: 18%;">Kích Thước</th>
+                  <th style="width: 32%; text-align: right;">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody id="folder-table-body">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      renderFolderTableRows(currentFolderItems);
+    }
+
+    function filterFolderItems(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
+        renderFolderTableRows(currentFolderItems);
+        return;
+      }
+      const filtered = currentFolderItems.filter(item => item.name.toLowerCase().includes(q));
+      renderFolderTableRows(filtered);
+    }
+
+    function renderFolderTableRows(items) {
+      const tbody = document.getElementById('folder-table-body');
+      if (!tbody) return;
+
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" style="text-align: center; padding: 36px; color: var(--text-muted);">
+              Thư mục này hiện đang trống hoặc không tìm thấy tệp phù hợp.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = '';
+
+      // If inside a subfolder, add back row
+      if (breadcrumbHistory.length > 1) {
+        const parent = breadcrumbHistory[breadcrumbHistory.length - 2];
+        html += `
+          <tr class="folder-row" onclick="navigateToFolder('${parent.id}', '${parent.name.replace(/'/g, "\\'")}')" style="background: rgba(56, 189, 248, 0.03);">
+            <td colspan="3" style="color: var(--accent-cyan); font-weight: 600;">
+              <span style="font-size: 16px; margin-right: 8px;">↩️</span> .. (Quay lại thư mục cha)
+            </td>
+          </tr>
+        `;
+      }
+
+      items.forEach(item => {
+        const icon = getFileEmoji(item.name, item.is_dir, item.mime_type);
+        const sizeStr = item.is_dir ? 'Thư mục' : formatBytes(item.size_bytes);
+
+        let dlUrl = `/api/public/share/download?token=${encodeURIComponent(token)}&file_id=${encodeURIComponent(item.id)}`;
+        if (verifiedPassword) dlUrl += `&pass=${encodeURIComponent(verifiedPassword)}`;
+
+        if (item.is_dir) {
+          html += `
+            <tr class="folder-row" onclick="navigateToFolder('${item.id}', '${item.name.replace(/'/g, "\\'")}')">
+              <td>
+                <div class="file-item-name">
+                  <span class="file-item-icon">${icon}</span>
+                  <span style="color: #60a5fa; font-weight: 600;">${item.name}</span>
+                </div>
+              </td>
+              <td style="color: var(--text-muted);">${sizeStr}</td>
+              <td style="text-align: right;">
+                <button class="btn-table-action" onclick="event.stopPropagation(); navigateToFolder('${item.id}', '${item.name.replace(/'/g, "\\'")}')">
+                  Mở Thư Mục ➔
+                </button>
+              </td>
+            </tr>
+          `;
+        } else {
+          html += `
+            <tr>
+              <td>
+                <div class="file-item-name">
+                  <span class="file-item-icon">${icon}</span>
+                  <span style="word-break: break-word;">${item.name}</span>
+                </div>
+              </td>
+              <td style="color: var(--text-muted); font-size: 12px;">${sizeStr}</td>
+              <td>
+                <div class="item-actions-cell">
+                  <button class="btn-table-action" onclick="openFilePreviewModal('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.mime_type || ''}', ${item.size_bytes})">
+                    👁️ Xem nhanh
+                  </button>
+                  <a href="${dlUrl}" class="btn-table-action" style="color: var(--accent-cyan);">
+                    ⬇️ Tải về
+                  </a>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function openFilePreviewModal(fileId, fileName, mimeType, fileSize) {
+      document.getElementById('preview-modal-title').textContent = `📄 ${fileName} (${formatBytes(fileSize)})`;
+      const modalBody = document.getElementById('preview-modal-body');
+      
+      let streamUrl = `/api/public/share/stream?token=${encodeURIComponent(token)}&file_id=${encodeURIComponent(fileId)}`;
+      if (verifiedPassword) streamUrl += `&pass=${encodeURIComponent(verifiedPassword)}`;
+
+      const mime = (mimeType || '').toLowerCase();
+      const ext = fileName.toLowerCase();
+
+      if (mime.startsWith('video/') || /\.(mp4|webm|mkv|mov|avi)$/.test(ext)) {
+        modalBody.innerHTML = `
+          <div style="width:100%; max-height:75vh; display:flex; justify-content:center;">
+            <video controls autoplay playsinline style="max-width:100%; max-height:70vh; border-radius:8px;">
+              <source src="${streamUrl}" type="${mime || 'video/mp4'}">
+            </video>
+          </div>
+        `;
+      } else if (mime.startsWith('audio/') || /\.(mp3|wav|flac|aac|ogg|m4a)$/.test(ext)) {
+        modalBody.innerHTML = `
+          <div style="text-align:center; padding:30px;">
+            <div style="font-size:48px; margin-bottom:12px;">🎵</div>
+            <audio controls autoplay style="width:300px;"><source src="${streamUrl}"></audio>
+          </div>
+        `;
+      } else if (mime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/.test(ext)) {
+        modalBody.innerHTML = `
+          <div style="display:flex; justify-content:center; align-items:center; width:100%; max-height:70vh;">
+            <img src="${streamUrl}" style="max-width:100%; max-height:70vh; border-radius:8px; object-fit:contain;" />
+          </div>
+        `;
+      } else if (mime.includes('pdf') || /\.pdf$/.test(ext)) {
+        modalBody.innerHTML = `
+          <div style="width:100%; height:75vh; border-radius:8px; overflow:hidden; background:#fff;">
+            <iframe src="${streamUrl}" width="100%" height="100%" style="border:none;"></iframe>
+          </div>
+        `;
+      } else if (/\.(pptx|ppt|ppsx|key|odp)$/i.test(ext)) {
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderPPTX(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
+        } else {
+          modalBody.innerHTML = `
+            <div style="text-align:center; padding:30px;">
+              <div style="font-size:48px; margin-bottom:12px;">📽️</div>
+              <div style="font-size:15px; font-weight:700; color:var(--accent-amber);">${fileName}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin:10px 0 20px 0;">Bản trình chiếu PowerPoint</div>
+              <a href="${streamUrl.replace('/stream', '/download')}" class="btn btn-primary">⬇️ Tải File PPTX Về Máy</a>
+            </div>
+          `;
+        }
+      } else if (/\.(xlsx|xls|ods|numbers)$/i.test(ext)) {
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderExcel(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
+        } else {
+          modalBody.innerHTML = `
+            <div style="text-align:center; padding:30px;">
+              <div style="font-size:48px; margin-bottom:12px;">📊</div>
+              <div style="font-size:15px; font-weight:700; color:#10b981;">${fileName}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin:10px 0 20px 0;">Bảng tính Excel</div>
+              <a href="${streamUrl.replace('/stream', '/download')}" class="btn btn-primary">⬇️ Tải File Excel Về Máy</a>
+            </div>
+          `;
+        }
+      } else if (/\.(docx|doc|odt|rtf)$/i.test(ext)) {
+        if (typeof OfficeViewer !== 'undefined') {
+          OfficeViewer.renderDocx(modalBody, streamUrl, fileName, streamUrl.replace('/stream', '/download'));
+        } else {
+          modalBody.innerHTML = `
+            <div style="text-align:center; padding:30px;">
+              <div style="font-size:48px; margin-bottom:12px;">📄</div>
+              <div style="font-size:15px; font-weight:700; color:#38bdf8;">${fileName}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin:10px 0 20px 0;">Tài liệu văn bản Word</div>
+              <a href="${streamUrl.replace('/stream', '/download')}" class="btn btn-primary">⬇️ Tải File Word Về Máy</a>
+            </div>
+          `;
+        }
+      } else if (/\.(csv|tsv)$/i.test(ext)) {
+        modalBody.innerHTML = `
+          <div style="width:100%; max-height:70vh; overflow:auto; background:#0d1117; border-radius:8px; padding:12px;" id="modal-csv-wrapper">
+            Đang phân tích bảng CSV...
+          </div>
+        `;
+        fetch(streamUrl)
+          .then(r => r.text())
+          .then(csv => {
+            const rows = csv.split('\n').filter(r => r.trim().length > 0);
+            let tbl = '<table class="folder-table" style="font-size:12px;"><tbody>';
+            rows.slice(0, 300).forEach((r, idx) => {
+              const cols = r.split(',').map(c => c.replace(/^"|"$/g, '').trim());
+              tbl += `<tr style="${idx === 0 ? 'background:rgba(255,255,255,0.06); font-weight:700;' : ''}">` + cols.map(c => `<td style="padding:6px 10px;">${c}</td>`).join('') + '</tr>';
+            });
+            tbl += '</tbody></table>';
+            document.getElementById('modal-csv-wrapper').innerHTML = tbl;
+          })
+          .catch(() => {
+            document.getElementById('modal-csv-wrapper').textContent = 'Lỗi nạp bảng CSV.';
+          });
+      } else if (/\.(txt|md|json|sql|go|rs|py|js|ts|html|css|xml|c|cpp|cs|java|php)$/.test(ext)) {
+        modalBody.innerHTML = `<div id="modal-code-view" class="code-container" style="width:100%; height:65vh;">Đang nạp văn bản...</div>`;
+        fetch(streamUrl)
+          .then(r => r.text())
+          .then(t => {
+            const el = document.getElementById('modal-code-view');
+            if (el) el.textContent = t.length > 50000 ? t.substring(0, 50000) + '\n\n... [Đã rút gọn]' : t;
+          })
+          .catch(() => {
+            const el = document.getElementById('modal-code-view');
+            if (el) el.textContent = 'Không thể tải văn bản.';
+          });
+      } else {
+        modalBody.innerHTML = `
+          <div style="text-align:center; padding:40px 20px;">
+            <div style="font-size:54px; margin-bottom:14px;">${getFileEmoji(fileName, false, mime)}</div>
+            <div style="font-size:16px; font-weight:700; margin-bottom:8px;">${fileName}</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Tệp tin không hỗ trợ xem trước trực tiếp.</div>
+            <a href="${streamUrl.replace('/stream', '/download')}" class="btn btn-primary"><span>⬇️ Tải Tệp Về Máy</span></a>
+          </div>
+        `;
+      }
+
+      document.getElementById('preview-modal')?.classList.add('active');
+    }
+
+    function closePreviewModal() {
+      const modal = document.getElementById('preview-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.getElementById('preview-modal-body').innerHTML = '';
+      }
+    }
+
+    // Run on load
+    loadShareInfo();
+  </script>
+</body>
+</html>

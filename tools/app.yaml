@@ -1,0 +1,20 @@
+# ==============================================================================
+# SUPPORTFLAST APP HUB - MANIFEST CONFIGURATION (app.yaml)
+# File cau hinh de tu dong day ung dung len https://supportflastdev.io.vn
+# ==============================================================================
+
+# Thong tin co ban cua ung dung
+name: "My Project Tool"
+version: "1.0.0"
+platform: "Windows / Linux / macOS"
+category: "Công cụ Lập trình & IDE" # Tùy chọn: Bảo mật, Mạng & Hạ tầng, Đồ họa, Tiện ích
+desc: "Mô tả ngắn gọn về giải pháp, tính năng và giá trị ứng dụng mang lại cho người dùng."
+author: "Your Team / Dev Name"
+
+# Duong dan den file build thanh pham (tuong doi so voi thu muc du an)
+# Ho tro cac dinh dang: .exe, .msix, .zip, .dmg, .deb, .tar.gz, .pkg
+file_path: "dist/my-tool-setup-v1.0.0.exe"
+
+# Cau hinh ket noi SupportFlast Hub
+server_url: "https://supportflastdev.io.vn"  # Hoac "http://127.0.0.1:8080" khi phat trien local
+api_key: "sf_live_default_dev_token_2026"     # Thay bang API Key duoc cap tu SupportFlast Studio

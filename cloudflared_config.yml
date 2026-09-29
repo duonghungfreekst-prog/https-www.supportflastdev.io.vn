@@ -1,0 +1,40 @@
+# ==============================================================================
+# Cloudflare Tunnel Configuration cho domain: supportflastdev.io.vn
+# ==============================================================================
+# Sử dụng khi chạy máy chủ tại nhà hoặc máy tính Windows không có IP Tĩnh.
+# Cloudflare sẽ tự động cấp chứng chỉ SSL và bảo vệ chống tấn công DDoS.
+#
+# Các bước thiết lập nhanh:
+# 1. Tải cloudflared: Đã có sẵn tại f:\supportflast.dev\tools\cloudflared.exe (đã add PATH)
+# 2. Đăng nhập: cloudflared tunnel login
+# 3. Tạo tunnel: cloudflared tunnel create supportflast-tunnel
+# 4. Trỏ DNS: cloudflared tunnel route dns supportflast-tunnel supportflastdev.io.vn
+# 5. Khởi chạy: cloudflared tunnel run supportflast-tunnel
+# ==============================================================================
+
+tunnel: 9ec29b1f-0de7-420e-acd1-ed6ca8c745e5
+credentials-file: C:\Users\Administrator\.cloudflared\9ec29b1f-0de7-420e-acd1-ed6ca8c745e5.json
+
+ingress:
+  # 1. Trỏ domain chính về cổng 8080 (Go Gateway Engine + UI)
+  - hostname: supportflastdev.io.vn
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: true
+      tcpKeepAlive: 60s
+
+  # 2. Trỏ subdomain www về cổng 8080
+  - hostname: www.supportflastdev.io.vn
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 30s
+      noTLSVerify: true
+      tcpKeepAlive: 60s
+
+  # 3. Trỏ subdomain api (tùy chọn) về Go Engine trực tiếp
+  - hostname: api.supportflastdev.io.vn
+    service: http://127.0.0.1:8080
+
+  # 4. Fallback mặc định
+  - service: http_status:404
