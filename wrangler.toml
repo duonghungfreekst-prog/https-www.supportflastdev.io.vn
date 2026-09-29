@@ -4,5 +4,4 @@ main = "worker.js"
 
 [assets]
 directory = "./supportflast_ui"
-
-pages_build_output_dir = "supportflast_ui"
+binding = "ASSETS"
