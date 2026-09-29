@@ -1,6 +1,6 @@
-# SUPPORTFLASTDEV.IO.VN - CỔNG ĐĂNG TẢI ỨNG DỤNG & ĐIỀU PHỐI 5 SUBAGENTS
+# SUPPORTFLASTDEV.IO.VN - CỔNG ĐĂNG TẢI ỨNG DỤNG
 
-Hệ thống cổng thông tin và phân phối ứng dụng thế hệ mới dành riêng cho tên miền **supportflastdev.io.vn**, kết hợp giao diện Web 3D không gian tương tác cao (Three.js WebGL) và kiến trúc đa tác tử (Multi-Agent System) gồm 5 Subagents chuyên trách.
+Hệ thống cổng thông tin và phân phối ứng dụng thế hệ mới dành riêng cho tên miền **supportflastdev.io.vn**, kết hợp giao diện Web 3D không gian tương tác cao (Three.js WebGL) và kiến trúc bảo mật đa lớp chuyên biệt.
 
 ---
 
@@ -26,7 +26,7 @@ Hệ thống cổng thông tin và phân phối ứng dụng thế hệ mới d�
 
 ---
 
-## 🏛️ KIẾN TRÚC HỆ THỐNG (Antigravity Polyglot)
+## 🏛️ KIẾN TRÚC HỆ THỐNG
 
 Toàn bộ hệ thống được phân rã thành 4 module độc lập, chuyên biệt:
 
