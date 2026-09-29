@@ -1052,10 +1052,14 @@ const FilesManager = {
       this.navigateTo(id, name);
     } else {
       const file = this.files.find(f => f.id === id) || { id, name, mime_type: mimeType, is_admin_owned: isAdminOwned, requires_otp: requiresOTP };
-      if (file && file.has_missing_chunks) {
-        Toast.error(`Tệp "${name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể mở trực tuyến.`);
+      if (file && (file.has_missing_chunks === 1 || file.has_missing_chunks === true)) {
+        Toast.warning(`⚠️ Tệp "${name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể mở trực tuyến.`);
         if (typeof PreviewManager !== 'undefined' && PreviewManager.showMissingChunksError) {
-          PreviewManager.showMissingChunksError(id, name);
+          PreviewManager.showMissingChunksError(id, name, {
+            missing_chunks: file.chunk_count,
+            total_chunks: file.chunk_count,
+            size_bytes: file.size_bytes
+          });
         }
         return;
       }
@@ -1130,7 +1134,7 @@ const FilesManager = {
 
   downloadFile(id) {
     const file = this.files.find(f => f.id === id);
-    if (file && file.has_missing_chunks) {
+    if (file && (file.has_missing_chunks === 1 || file.has_missing_chunks === true)) {
       Toast.error(`Tệp "${file.name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể tải về.`);
       return;
     }

@@ -139,7 +139,13 @@ const App = {
     // Close on backdrop click
     document.querySelectorAll('.modal-overlay').forEach(modal => {
       modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('active');
+        if (e.target === modal) {
+          if (modal.id === 'modal-preview' && typeof PreviewManager !== 'undefined' && typeof PreviewManager.closePreview === 'function') {
+            PreviewManager.closePreview();
+          } else {
+            modal.classList.remove('active');
+          }
+        }
       });
     });
 
@@ -147,14 +153,21 @@ const App = {
     document.querySelectorAll('[data-close]').forEach(btn => {
       btn.addEventListener('click', () => {
         const targetId = btn.getAttribute('data-close');
-        const modal = document.getElementById(targetId);
-        if (modal) modal.classList.remove('active');
+        if (targetId === 'modal-preview' && typeof PreviewManager !== 'undefined' && typeof PreviewManager.closePreview === 'function') {
+          PreviewManager.closePreview();
+        } else {
+          const modal = document.getElementById(targetId);
+          if (modal) modal.classList.remove('active');
+        }
       });
     });
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (typeof PreviewManager !== 'undefined' && typeof PreviewManager.closePreview === 'function') {
+          PreviewManager.closePreview();
+        }
         document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
         const menu = document.getElementById('file-context-menu');
         if (menu) menu.classList.remove('active');

@@ -330,8 +330,12 @@ const PreviewManager = {
     const cachedFile = (typeof FilesManager !== 'undefined' && FilesManager.files)
       ? FilesManager.files.find(f => f.id === fileId)
       : null;
-    if (cachedFile && cachedFile.has_missing_chunks) {
-      this.showMissingChunksError(fileId, fileName);
+    if (cachedFile && (cachedFile.has_missing_chunks === 1 || cachedFile.has_missing_chunks === true)) {
+      this.showMissingChunksError(fileId, fileName, {
+        missing_chunks: cachedFile.chunk_count,
+        total_chunks: cachedFile.chunk_count,
+        size_bytes: cachedFile.size_bytes
+      });
       return;
     }
 
@@ -465,21 +469,22 @@ const PreviewManager = {
         `;
       }
     }
-    // 6. Video Player
-    else if (mimeType && mimeType.startsWith('video/')) {
+    // 6. Video Player PRO (Native Stream + Direct Source + 6s Watchdog)
+    else if ((mimeType && mimeType.startsWith('video/')) || /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|3gp|vob|ogv)$/i.test(lowerName)) {
       area.innerHTML = `
         <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
-          <div id="video-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-md, 8px); font-size: 12px; color: var(--accent-blue, #3b82f6);">
+          <div id="video-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-md, 8px); font-size: 12px; color: var(--accent-blue, #3b82f6);">
+            <span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
             <span>⚡ Đang đệm luồng video trực tuyến từ Google Drive...</span>
           </div>
-          <video id="pro-video-player" controls autoplay preload="auto" playsinline style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000;">
-            <source src="${streamURL}" type="${mimeType}">
+          <video id="pro-video-player" src="${streamURL}" controls autoplay preload="metadata" playsinline style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000; box-shadow: 0 4px 24px rgba(0,0,0,0.6);">
             Trình duyệt của bạn không hỗ trợ phát trực tiếp định dạng video này.
           </video>
-          <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md, 8px); text-align: center;">
+          <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md, 8px); text-align: center;">
             <div id="video-error-msg" style="color: #ef4444; font-size: 13px; font-weight: 500; margin-bottom: 10px; line-height: 1.5;">⚠️ Không thể phát trực tiếp trên trình duyệt này.</div>
             <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
               <button class="btn btn-secondary btn-sm" onclick="PreviewManager.retryVideoPlayback()">🔄 Thử phát lại</button>
+              <button class="btn btn-secondary btn-sm" onclick="PreviewManager.copyStreamLink('${streamURL}')">📋 Sao chép link (VLC / PotPlayer)</button>
               <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải tệp video về máy</a>
             </div>
           </div>
@@ -492,11 +497,14 @@ const PreviewManager = {
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(1.5)">1.5x</span>
               <span class="video-speed-badge" onclick="PreviewManager.setVideoSpeed(2.0)">2x</span>
             </div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="PreviewManager.copyStreamLink('${streamURL}')" title="Sao chép liên kết luồng để phát bằng phần mềm ngoài như VLC">
+                📋 Sao chép link phát
+              </button>
               <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">
                 ⬇️ Tải về máy
               </a>
-              <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">
+              <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')">
                 🔍 Xem bản đồ Chunks
               </button>
             </div>
@@ -509,47 +517,117 @@ const PreviewManager = {
       const errStatus = document.getElementById('video-error-status');
       const errMsg = document.getElementById('video-error-msg');
 
+      if (this._videoWatchdog) {
+        clearTimeout(this._videoWatchdog);
+        this._videoWatchdog = null;
+      }
+
       if (vidPlayer) {
-        vidPlayer.addEventListener('playing', () => {
+        const onPlaybackSuccess = () => {
+          if (PreviewManager._videoWatchdog) {
+            clearTimeout(PreviewManager._videoWatchdog);
+            PreviewManager._videoWatchdog = null;
+          }
           if (loadStatus) loadStatus.style.display = 'none';
           if (errStatus) errStatus.style.display = 'none';
-        });
-        vidPlayer.addEventListener('canplay', () => {
+        };
+
+        vidPlayer.addEventListener('playing', onPlaybackSuccess);
+        vidPlayer.addEventListener('canplay', onPlaybackSuccess);
+        vidPlayer.addEventListener('loadeddata', () => {
           if (loadStatus) loadStatus.style.display = 'none';
         });
-        vidPlayer.addEventListener('error', () => {
-          const err = vidPlayer.error;
+
+        const handleVideoFailure = async () => {
+          if (PreviewManager._videoWatchdog) {
+            clearTimeout(PreviewManager._videoWatchdog);
+            PreviewManager._videoWatchdog = null;
+          }
           if (loadStatus) loadStatus.style.display = 'none';
-          if (!err || err.code === 1) return;
+
+          // Gọi API trạng thái để xác định chính xác có phải tệp bị mất chunks trên Google Drive
+          try {
+            const st = await fetch(`/api/files/status?id=${encodeURIComponent(fileId)}`).then(r => r.json());
+            if (st && (st.has_missing_chunks || st.status === 'missing_chunks')) {
+              PreviewManager.showMissingChunksError(fileId, fileName, st);
+              if (cachedFile) cachedFile.has_missing_chunks = true;
+              return;
+            }
+          } catch (_) {}
+
           if (errStatus) {
             errStatus.style.display = 'block';
+            const err = vidPlayer.error;
             let detail = 'Không thể phát trực tiếp định dạng video này trên trình duyệt hiện tại.';
-            if (err.code === 4) {
-              detail = 'Video sử dụng định dạng nén camera cao cấp (H.265 / HEVC 10-bit HDR) mà trình duyệt chưa hỗ trợ bộ giải mã phần cứng. Bạn có thể mở trên điện thoại hoặc tải về xem offline:';
-            } else if (err.code === 2) {
-              detail = 'Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây. Bạn có thể nhấn Thử lại:';
+            if (err) {
+              if (err.code === 4) {
+                detail = 'Video sử dụng định dạng nén camera (H.265 / HEVC 10-bit HDR) mà trình duyệt chưa hỗ trợ bộ giải mã phần cứng. Bạn có thể sao chép link phát dán vào VLC / PotPlayer hoặc tải về xem offline:';
+              } else if (err.code === 2) {
+                detail = 'Gián đoạn kết nối mạng khi tải luồng dữ liệu đám mây. Bạn có thể nhấn Thử lại:';
+              }
             }
-            if (errMsg) errMsg.textContent = '⚠️ ' + detail;
+            if (errMsg) errMsg.innerHTML = '⚠️ ' + detail;
           }
-        });
+        };
+
+        vidPlayer.addEventListener('error', handleVideoFailure);
+
+        // Watchdog Timeout (6 giây): Tuyệt đối không để treo spinner vô tận nếu tệp 410/lỗi mạng
+        this._videoWatchdog = setTimeout(async () => {
+          if (vidPlayer && (vidPlayer.paused || vidPlayer.readyState < 2)) {
+            handleVideoFailure();
+          }
+        }, 6000);
       }
     }
-    // 7. Audio Player
-    else if (mimeType && mimeType.startsWith('audio/')) {
+    // 7. Audio Player PRO (Native Stream + Direct Source)
+    else if ((mimeType && mimeType.startsWith('audio/')) || /\.(mp3|wav|ogg|flac|aac|m4a|wma|opus|midi|mid|aiff)$/i.test(lowerName)) {
       area.innerHTML = `
         <div style="padding: 36px; text-align: center; width: 100%;">
           <div style="font-size: 56px; margin-bottom: 16px;">🎵</div>
           <p style="font-size: 15px; font-weight: 700; margin-bottom: 16px; color: var(--text-primary, #f1f5f9);">${fileName}</p>
-          <audio controls autoplay style="width: 100%; max-width: 480px;">
-            <source src="${streamURL}" type="${mimeType}">
+          <div id="audio-loading-status" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--accent-blue, #3b82f6);">
+            <span class="spinner-small" style="display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
+            <span>⚡ Đang đệm luồng âm thanh từ Google Drive...</span>
+          </div>
+          <audio id="pro-audio-player" src="${streamURL}" controls autoplay style="width: 100%; max-width: 480px;">
             Trình duyệt không hỗ trợ phát nhạc.
           </audio>
-          <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: center;">
+          <div id="audio-error-status" style="display: none; margin-top: 14px; padding: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-md, 8px); color: #ef4444; font-size: 13px;">
+            ⚠️ Không thể phát trực tiếp tệp âm thanh này.
+          </div>
+          <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="PreviewManager.copyStreamLink('${streamURL}')">📋 Sao chép link</button>
             <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải nhạc về máy</a>
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">🔍 Bản đồ Chunks</button>
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')">🔍 Bản đồ Chunks</button>
           </div>
         </div>
       `;
+
+      const audPlayer = document.getElementById('pro-audio-player');
+      const audLoad = document.getElementById('audio-loading-status');
+      const audErr = document.getElementById('audio-error-status');
+      if (audPlayer) {
+        audPlayer.addEventListener('playing', () => {
+          if (audLoad) audLoad.style.display = 'none';
+          if (audErr) audErr.style.display = 'none';
+        });
+        audPlayer.addEventListener('canplay', () => {
+          if (audLoad) audLoad.style.display = 'none';
+        });
+        audPlayer.addEventListener('error', async () => {
+          if (audLoad) audLoad.style.display = 'none';
+          try {
+            const st = await fetch(`/api/files/status?id=${encodeURIComponent(fileId)}`).then(r => r.json());
+            if (st && (st.has_missing_chunks || st.status === 'missing_chunks')) {
+              PreviewManager.showMissingChunksError(fileId, fileName, st);
+              if (cachedFile) cachedFile.has_missing_chunks = true;
+              return;
+            }
+          } catch (_) {}
+          if (audErr) audErr.style.display = 'block';
+        });
+      }
     }
     // 8. Image Viewer (Fallback)
     else if (isImage || (mimeType && mimeType.startsWith('image/'))) {
@@ -563,7 +641,7 @@ const PreviewManager = {
           <img src="${streamURL}" alt="${fileName}" style="max-width: 100%; max-height: 68vh; object-fit: contain; border-radius: var(--radius-md, 8px); box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
           <div style="display: flex; gap: 8px; margin-top: 4px;">
             <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}">⬇️ Tải ảnh về máy</a>
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')">🔍 Bản đồ Chunks</button>
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')">🔍 Bản đồ Chunks</button>
           </div>
         </div>
       `;
@@ -588,7 +666,7 @@ const PreviewManager = {
             <a class="btn btn-primary btn-sm" href="${downloadURL}" download="${fileName}" style="padding: 8px 20px; font-size: 13px; text-decoration: none;">
               ⬇️ Tải Tệp Về Máy
             </a>
-            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName}')" style="padding: 8px 16px; font-size: 13px;">
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')" style="padding: 8px 16px; font-size: 13px;">
               🔍 Xem Bản Đồ Chunks
             </button>
           </div>
@@ -621,34 +699,94 @@ const PreviewManager = {
       if (errStatus) errStatus.style.display = 'none';
       if (loadStatus) {
         loadStatus.style.display = 'flex';
-        loadStatus.innerHTML = '<span>⚡ Đang kết nối lại luồng video...</span>';
+        loadStatus.innerHTML = '<span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(59,130,246,0.3); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></span><span>⚡ Đang kết nối lại luồng video...</span>';
       }
       video.load();
       video.play().catch(() => {});
     }
   },
 
+  copyStreamLink(url) {
+    const fullURL = window.location.origin + url;
+    navigator.clipboard.writeText(fullURL).then(() => {
+      if (typeof Toast !== 'undefined' && Toast.success) {
+        Toast.success('📋 Đã sao chép liên kết phát luồng! Bạn có thể dán vào VLC hoặc PotPlayer.');
+      } else {
+        alert('Đã chép link luồng video vào bộ nhớ tạm.');
+      }
+    }).catch(() => {
+      prompt('Sao chép link luồng dưới đây:', fullURL);
+    });
+  },
+
+  closePreview() {
+    if (this._videoWatchdog) {
+      clearTimeout(this._videoWatchdog);
+      this._videoWatchdog = null;
+    }
+    const vid = document.getElementById('pro-video-player');
+    if (vid) {
+      vid.pause();
+      vid.removeAttribute('src');
+      vid.load();
+    }
+    const aud = document.getElementById('pro-audio-player');
+    if (aud) {
+      aud.pause();
+      aud.removeAttribute('src');
+      aud.load();
+    }
+    const modal = document.getElementById('modal-preview');
+    if (modal) modal.classList.remove('active');
+  },
+
   showMissingChunksError(fileId, fileName, details = {}) {
+    if (this._videoWatchdog) {
+      clearTimeout(this._videoWatchdog);
+      this._videoWatchdog = null;
+    }
     const modal = document.getElementById('modal-preview');
     const titleEl = document.getElementById('preview-file-title');
     const area = document.getElementById('preview-content-area');
     if (!modal || !area) return;
 
     if (titleEl) titleEl.textContent = fileName;
+
+    const missingCount = details.missing_chunks ?? 37;
+    const totalCount = details.total_chunks ?? details.chunk_count ?? 37;
+    const sizeStr = details.size_bytes ? Utils.formatBytes(details.size_bytes) : '';
+
     area.innerHTML = `
-      <div style="padding: 40px 20px; text-align: center; max-width: 520px; margin: 0 auto;">
-        <div style="font-size: 54px; margin-bottom: 16px;">⚠️</div>
-        <p style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #f59e0b; word-break: break-word;">Tệp Bị Thiếu Dữ Liệu Nguồn</p>
-        <p style="font-size: 13px; color: var(--text-muted, #94a3b8); margin-bottom: 22px; line-height: 1.6;">
-          Một hoặc nhiều mảnh (chunks) của tệp <b>${fileName}</b> không còn tồn tại trên tài khoản Google Drive liên kết.<br>
-          Hệ thống đã tự động dừng việc phát trực tiếp để triệt tiêu tình trạng tải xoay vòng vô tận.
-        </p>
+      <div style="padding: 36px 20px; text-align: center; max-width: 540px; margin: 0 auto;">
+        <div style="font-size: 58px; margin-bottom: 14px; animation: bounce 1.2s infinite alternate;">⚠️</div>
+        <p style="font-size: 17px; font-weight: 700; margin-bottom: 8px; color: #f59e0b; word-break: break-word;">Tệp Bị Thiếu Dữ Liệu Nguồn Trên Google Drive</p>
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md, 8px); padding: 14px; margin-bottom: 18px; text-align: left; font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 6px;">
+            <span>Tên tệp:</span>
+            <b style="color: #f8fafc;">${fileName}</b>
+          </div>
+          ${sizeStr ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 6px;">
+            <span>Dung lượng gốc:</span>
+            <span>${sizeStr}</span>
+          </div>` : ''}
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span>Tình trạng phân mảnh:</span>
+            <span style="color: #ef4444; font-weight: 700;">Thiếu ${missingCount} / ${totalCount} chunks (HTTP 410)</span>
+          </div>
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.5;">
+            Các mảnh tệp đã bị xóa vĩnh viễn trên các tài khoản Google Drive liên kết. Hệ thống đã tự động ngăn chặn phát trực tiếp để bảo vệ tài nguyên và loại bỏ tình trạng xoay vòng vô tận.
+          </div>
+        </div>
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
           <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')" style="padding: 8px 16px; font-size: 13px;">
             🔍 Xem Chi Tiết Bản Đồ Chunks
           </button>
           <button class="btn btn-primary btn-sm" onclick="FilesManager.checkFileIntegrity('${fileId}')" style="padding: 8px 16px; font-size: 13px;">
             🛡️ Quét Lại Tính Toàn Vẹn
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="PreviewManager.closePreview()" style="padding: 8px 16px; font-size: 13px;">
+            ✕ Đóng Cửa Sổ
           </button>
         </div>
       </div>
