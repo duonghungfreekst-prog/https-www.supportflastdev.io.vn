@@ -537,7 +537,11 @@ func main() {
 			"timestamp":          time.Now().Format(time.RFC3339),
 		})
 	})
-	log.Printf("[ENGINE] [DATABASE] SQLite ready at '%s' (WAL=ON, ForeignKeys=ON)", dbPath)
+	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+		log.Printf("[ENGINE] [DATABASE] TiDB Cloud ready at '%s:%s/%s' (TLS=1.2+, Engine=TiKV)", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"), os.Getenv("TIDB_DATABASE"))
+	} else {
+		log.Printf("[ENGINE] [DATABASE] SQLite ready at '%s' (WAL=ON, ForeignKeys=ON)", dbPath)
+	}
 	log.Printf("[ENGINE] [STORAGE] CloudPool Metadata DB ready at: '%s'", bootstrapResult.CloudPoolDBPath)
 
 	// Kiểm tra Hardware-accelerated Cryptographic Core (Rust FFI DLL hoặc Native Go)

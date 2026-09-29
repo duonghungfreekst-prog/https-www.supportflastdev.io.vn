@@ -278,6 +278,8 @@ Hoặc đặt biến môi trường: $env:TIDB_PASSWORD="<mật_khẩu>"`)
 			tlsParam,
 		)
 	}
+	// Đảm bảo CSDL mục tiêu đã tồn tại trên TiDB Cloud
+	ensureDatabaseExistsOnTiDB(cfg, cfg.TiDBTLS)
 
 	maskedHost := cfg.TiDBHost
 	fmt.Printf("☁️ [TIDB CLOUD] Đang kết nối tới %s:%s (CSDL: %s, User: %s)...\n",
@@ -694,3 +696,37 @@ func printBanner() {
 `
 	fmt.Println(banner)
 }
+
+// ensureDatabaseExistsOnTiDB tự động kết nối qua CSDL mặc định ('test' hoặc 'sys') để tạo CSDL mục tiêu nếu chưa có
+func ensureDatabaseExistsOnTiDB(cfg Config, tlsParam string) {
+	if cfg.TiDBDatabase == "" || cfg.TiDBDatabase == "test" || cfg.TiDBDatabase == "sys" {
+		return
+	}
+	defaultDBs := []string{"test", "sys", ""}
+	for _, defaultDB := range defaultDBs {
+		rootDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?tls=%s&charset=utf8mb4&timeout=15s",
+			cfg.TiDBUser,
+			cfg.TiDBPassword,
+			cfg.TiDBHost,
+			cfg.TiDBPort,
+			defaultDB,
+			tlsParam,
+		)
+		db, err := sql.Open("mysql", rootDSN)
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		err = db.PingContext(ctx)
+		if err == nil {
+			query := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", cfg.TiDBDatabase)
+			_, _ = db.ExecContext(ctx, query)
+			cancel()
+			db.Close()
+			return
+		}
+		cancel()
+		db.Close()
+	}
+}
+

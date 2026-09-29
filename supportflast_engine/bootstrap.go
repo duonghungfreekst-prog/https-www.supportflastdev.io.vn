@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -191,18 +192,32 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	}
 	log.Printf("[BOOTSTRAP] [RSA] Cặp khóa RSA 2048-bit sẵn sàng tại: '%s'", keysDir)
 
-	// 5. Tự động khởi tạo CSDL SQLite 'data/supportflast.db' & seed tài khoản Admin
+	// 5. Tự động khởi tạo CSDL (TiDB Cloud hoặc SQLite) & seed tài khoản Admin
+	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 	dbPath := filepath.Join(dataDir, "supportflast.db")
 	res.MainDBPath = dbPath
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		log.Printf("[BOOTSTRAP] [DATABASE] Chưa có CSDL '%s'. Đang tự động khởi tạo bảng và chỉ mục...", dbPath)
-	}
 
-	db, err := database.InitDB(dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu SQLite 'supportflast.db' thất bại: %w", err)
+	var db *sql.DB
+	var err error
+
+	if driver == "tidb" || driver == "mysql" {
+		log.Printf("[BOOTSTRAP] [DATABASE] Đang khởi tạo CSDL TiDB Cloud (%s:%s)...", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"))
+		db, err = database.InitDB()
+		if err != nil {
+			log.Printf("[BOOTSTRAP] [DATABASE] [WARN] Kết nối TiDB Cloud thất bại: %v. Tự động fallback sang SQLite...", err)
+			db, err = database.InitSQLite(dbPath)
+		} else {
+			log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu TiDB Cloud Serverless đã kết nối và sẵn sàng!")
+		}
+	} else {
+		if _, errStat := os.Stat(dbPath); os.IsNotExist(errStat) {
+			log.Printf("[BOOTSTRAP] [DATABASE] Chưa có CSDL '%s'. Đang tự động khởi tạo bảng và chỉ mục...", dbPath)
+		}
+		db, err = database.InitSQLite(dbPath)
 	}
-	log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu 'supportflast.db' đã khởi tạo và migrate DDL thành công tại '%s'", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu thất bại: %w", err)
+	}
 
 	// 6. Tự động khởi tạo CSDL SQLite CloudPool 'data/cloudpool_metadata.db'
 	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")
