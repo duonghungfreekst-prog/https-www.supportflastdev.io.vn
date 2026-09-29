@@ -37,28 +37,28 @@
             overflow: hidden !important;
         }
 
-        /* Ẩn hoàn toàn dòng cảnh báo test mode của Cloudflare Turnstile */
+        /* Hiển thị chuẩn xác và hoàn chỉnh Cloudflare Turnstile, che phần cảnh báo test bên dưới nếu có */
         .cf-turnstile-clean,
         #cf-turnstile-login.cf-turnstile-clean,
         #cf-turnstile-register.cf-turnstile-clean,
         #cf-turnstile-storage-login.cf-turnstile-clean {
             position: relative !important;
-            height: 38px !important;
-            max-height: 38px !important;
-            min-height: 38px !important;
+            height: 65px !important;
+            max-height: 65px !important;
+            min-height: 65px !important;
             overflow: hidden !important;
             display: flex !important;
-            align-items: flex-start !important;
+            align-items: center !important;
             justify-content: center !important;
-            border-radius: 4px !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.25) !important;
+            border-radius: 8px !important;
             box-sizing: border-box !important;
         }
 
         .cf-turnstile-clean iframe,
         .cf-turnstile-clean > div,
         .cf-turnstile-clean > div > div {
-            max-height: 38px !important;
+            height: 65px !important;
+            max-height: 65px !important;
             overflow: hidden !important;
         }
 
@@ -7010,8 +7010,8 @@
                                 <input type="password" id="admin-login-pass" placeholder="Nhập mật khẩu..." required style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.9rem;outline:none;" onfocus="this.style.borderColor='#00e5ff'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Nhập -->
-                            <div style="margin-bottom:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;border:1px dashed rgba(0,229,255,0.25);">
-                                <div id="cf-turnstile-login" class="cf-turnstile-clean" style="display:flex;align-items:flex-start;justify-content:center;"></div>
+                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;">
+                                <div id="cf-turnstile-login" class="cf-turnstile-clean" style="display:flex;align-items:center;justify-content:center;"></div>
                             </div>
                             <div id="admin-login-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <button type="submit" id="admin-login-btn-submit" style="width:100%;background:linear-gradient(135deg, #00e5ff, #3b82f6);color:#010308;padding:12px;border-radius:10px;font-weight:800;font-size:0.92rem;border:none;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 18px rgba(0,229,255,0.35);">
@@ -7047,8 +7047,8 @@
                                 </div>
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Ký -->
-                            <div style="margin-bottom:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.02);padding:10px;border-radius:12px;border:1px dashed rgba(16,185,129,0.3);">
-                                <div id="cf-turnstile-register" class="cf-turnstile-clean" style="display:flex;align-items:flex-start;justify-content:center;"></div>
+                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;">
+                                <div id="cf-turnstile-register" class="cf-turnstile-clean" style="display:flex;align-items:center;justify-content:center;"></div>
                             </div>
                             <div id="admin-reg-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <div id="admin-reg-success" style="display:none;color:#4ade80;font-size:0.82rem;margin-bottom:14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);padding:9px 12px;border-radius:8px;"></div>
