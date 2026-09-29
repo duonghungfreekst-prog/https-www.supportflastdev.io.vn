@@ -679,6 +679,7 @@
             display: inline-flex !important;
         }
 
+        /* Trạng thái đã đăng nhập Admin */
         body.is-admin #nav-user-profile {
             display: flex !important;
         }
@@ -686,6 +687,16 @@
         body.is-admin #btn-admin-login-trigger,
         body.is-admin #btn-admin-register-trigger {
             display: none !important;
+        }
+
+        /* Trạng thái khách / Chưa đăng nhập Admin */
+        body:not(.is-admin) #nav-user-profile {
+            display: none !important;
+        }
+
+        body:not(.is-admin) #btn-admin-login-trigger,
+        body:not(.is-admin) #btn-admin-register-trigger {
+            display: inline-flex !important;
         }
 
         .nav-right { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
@@ -3955,11 +3966,11 @@
                 </button>
 
                 <!-- Cụm Nút Đăng Ký & Đăng Nhập (Hiển thị khi khách chưa đăng nhập) -->
-                <button id="btn-admin-register-trigger" class="btn-nav-register" style="display: none;" onclick="openAdminRegisterModal()" title="Tạo tài khoản Nhà Phát Triển / Thành Viên mới">
+                <button id="btn-admin-register-trigger" class="btn-nav-register" onclick="openAdminRegisterModal()" title="Tạo tài khoản Nhà Phát Triển / Thành Viên mới">
                     <span>📝</span>
                     <span>Đăng Ký</span>
                 </button>
-                <button id="btn-admin-login-trigger" class="btn-nav-login" style="display: none;" onclick="openAdminLoginModal()" title="Đăng nhập tài khoản SupportFlast Dev">
+                <button id="btn-admin-login-trigger" class="btn-nav-login" onclick="openAdminLoginModal()" title="Đăng nhập tài khoản SupportFlast Dev">
                     <span>🔐</span>
                     <span>Đăng Nhập</span>
                 </button>
@@ -6735,12 +6746,12 @@
         }
 
         async function verifyAdminAuth() {
-            // BẮT BUỘC: Luôn verify server (cookie JWT RS256) trước — KHÔNG TIN localStorage
-            // localStorage chỉ dùng làm cache hiển thị tạm trong 300ms đầu để tránh nhấp nháy UI
+            // Kiểm tra cache local trước để cập nhật UI ngay lập tức
             const cachedUser = getStoredUser();
-            if (cachedUser && cachedUser.role === 'admin') {
-                // Hiển thị tạm (flash-prevention) — sẽ bị override bởi kết quả server bên dưới
+            if (cachedUser && (cachedUser.role === 'admin' || cachedUser.username === 'admin')) {
                 updateAdminUI(true, cachedUser);
+            } else {
+                updateAdminUI(false, null);
             }
 
             // Nguồn sự thật DUY NHẤT: Cookie SSO & Bearer Token → /api/auth/me → Server xác thực JWT RS256
@@ -6756,9 +6767,11 @@
                         sessionStorage.setItem('cloudpool_admin_session', 'true');
                         updateAdminUI(true, user);
                         return;
+                    } else {
+                        updateAdminUI(false, user);
+                        return;
                     }
-                } else if (res.status === 401 || res.status === 403) {
-                    // Server xác nhận hết phiên đăng nhập
+                } else {
                     localStorage.removeItem('cloudpool_current_user');
                     localStorage.removeItem('cloudpool_jwt_token');
                     sessionStorage.removeItem('cloudpool_admin_session');
@@ -6766,16 +6779,17 @@
                     return;
                 }
             } catch(e) {
-                console.warn('[AUTH] Không thể kết nối server xác thực, duy trì cache tạm thời');
-                if (cachedUser && cachedUser.role === 'admin') {
+                console.warn('[AUTH] Không thể kết nối server xác thực, duy trì trạng thái an toàn:', e);
+                if (cachedUser && (cachedUser.role === 'admin' || cachedUser.username === 'admin')) {
                     updateAdminUI(true, cachedUser);
-                    return;
+                } else {
+                    updateAdminUI(false, null);
                 }
             }
         }
 
         function updateAdminUI(isAdmin, user) {
-            const hasAdminRole = !!(isAdmin && user && user.role === 'admin');
+            const hasAdminRole = !!(isAdmin && user && (user.role === 'admin' || user.username === 'admin'));
 
             if (document.body) {
                 document.body.classList.toggle('is-admin', hasAdminRole);
@@ -6793,9 +6807,9 @@
             if (hasAdminRole) {
                 // CHỈ HIỆN VỚI TÀI KHOẢN ADMIN:
                 if (navStorage) navStorage.style.display = 'inline-flex';
-                if (userProfile) userProfile.style.display = 'flex';
-                if (loginBtn) loginBtn.style.display = 'none';
-                if (registerBtn) registerBtn.style.display = 'none';
+                if (userProfile) userProfile.style.setProperty('display', 'flex', 'important');
+                if (loginBtn) loginBtn.style.setProperty('display', 'none', 'important');
+                if (registerBtn) registerBtn.style.setProperty('display', 'none', 'important');
                 if (btnHeroApi) btnHeroApi.style.display = 'inline-flex';
 
                 // Hiện nút Đăng Tải App cho Admin
@@ -6816,18 +6830,18 @@
                 const fullnameEl = document.getElementById('dropdown-user-fullname');
                 const emailEl = document.getElementById('dropdown-user-email');
 
-                const name = user.display_name || user.username || 'Quản Trị Viên';
+                const name = (user && (user.display_name || user.username)) || 'Quản Trị Viên';
                 if (nameEl) nameEl.textContent = name;
-                if (roleEl) roleEl.textContent = (user.role || 'ADMIN').toUpperCase();
+                if (roleEl) roleEl.textContent = ((user && user.role) || 'ADMIN').toUpperCase();
                 if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
                 if (fullnameEl) fullnameEl.textContent = name;
-                if (emailEl) emailEl.textContent = user.email || 'admin@supportflastdev.io.vn';
+                if (emailEl) emailEl.textContent = (user && user.email) || 'admin@supportflastdev.io.vn';
             } else {
                 // KHÁCH & TÀI KHOẢN THƯỜNG: ẨN TUYỆT ĐỐI KHO LƯU TRỮ, HIỆN CỤM NÚT ĐĂNG KÝ VÀ ĐĂNG NHẬP
                 if (navStorage) navStorage.style.display = 'none';
-                if (userProfile) userProfile.style.display = 'none';
-                if (loginBtn) loginBtn.style.display = 'inline-flex';
-                if (registerBtn) registerBtn.style.display = 'inline-flex';
+                if (userProfile) userProfile.style.setProperty('display', 'none', 'important');
+                if (loginBtn) loginBtn.style.setProperty('display', 'inline-flex', 'important');
+                if (registerBtn) registerBtn.style.setProperty('display', 'inline-flex', 'important');
                 if (btnHeroApi) btnHeroApi.style.display = 'none';
 
                 // Ẩn nút Đăng Tải App với khách
