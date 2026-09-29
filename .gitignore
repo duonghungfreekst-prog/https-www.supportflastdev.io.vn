@@ -15,7 +15,8 @@
 *.p12
 data/certs/
 data/keys/
-data/keys.json
+**/keys.json
+supportflast_engine/data/
 data/oauth/
 data/service_accounts/
 tools/*_token.txt
