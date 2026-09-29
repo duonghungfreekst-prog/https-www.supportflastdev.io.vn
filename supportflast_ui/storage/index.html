@@ -117,7 +117,7 @@
           <div id="user-avatar-badge" style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; cursor: pointer; flex-shrink: 0;" title="Quản trị viên">
             Q
           </div>
-          <div style="display: flex; flex-direction: column; line-height: 1.15;">
+          <div class="user-text-container" style="line-height: 1.15;">
             <span id="user-display-name" style="font-size: 12px; font-weight: 700; color: var(--text-primary); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Quản Trị Viên H...</span>
             <span id="user-role-badge" style="font-size: 10px; color: var(--text-muted);">Quản trị viên</span>
           </div>
@@ -1200,8 +1200,10 @@
       <span style="font-size: 14px;">☁️</span>
       <span id="upload-minimized-text">Đang tải lên...</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 4px;">
-      <button id="btn-expand-upload-drawer" class="upload-drawer-icon-btn" title="Mở rộng">🗖</button>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button id="btn-expand-upload-drawer" class="upload-drawer-expand-btn" title="Nhấn để mở rộng bảng tải lên">
+        <span>▲ Mở rộng</span>
+      </button>
       <button id="btn-close-minimized-drawer" class="upload-drawer-icon-btn" onclick="UploadManager.closeDrawer()" title="Đóng">&times;</button>
     </div>
     <div class="upload-drawer-minimized-progress">

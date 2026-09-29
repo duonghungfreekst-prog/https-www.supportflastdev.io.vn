@@ -46,6 +46,15 @@ const UploadManager = {
 
   // Cảnh báo người dùng khi đang có tệp tải lên mà vô tình F5 hoặc vuốt kéo tải lại trang
   initBeforeUnloadWarning() {
+    const saveState = () => {
+      const hasActive = this.tasks.some(
+        (t) => t.status === 'uploading' || t.status === 'pending'
+      );
+      if (hasActive) {
+        this.saveToStorage();
+      }
+    };
+
     window.addEventListener('beforeunload', (e) => {
       const hasActive = this.tasks.some(
         (t) => t.status === 'uploading' || t.status === 'pending'
@@ -56,6 +65,14 @@ const UploadManager = {
         e.preventDefault();
         e.returnValue = 'Quá trình tải lên tệp tin đang diễn ra. Nếu tải lại trang hoặc thoát, tiến trình tải có thể bị gián đoạn!';
         return e.returnValue;
+      }
+    });
+
+    // Bổ sung pagehide và visibilitychange cho thiết bị di động (Chrome Android / Safari iOS)
+    window.addEventListener('pagehide', saveState);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        saveState();
       }
     });
   },
@@ -161,6 +178,7 @@ const UploadManager = {
       if (validTasks.length > 0) {
         this.tasks.push(...validTasks);
         this.openDrawer();
+        this.toggleMinimize(false);
         this.renderDrawer();
         this.updateOverallStats();
         this.showRecoveryBanner(validTasks.length);
@@ -451,6 +469,24 @@ const UploadManager = {
       btnExpand.addEventListener('click', (e) => {
         e.stopPropagation();
         this.toggleMinimize(false);
+      });
+    }
+
+    // Cho phép chạm vào bất cứ đâu trên thanh thu nhỏ để mở rộng
+    const minBar = document.getElementById('upload-drawer-minimized');
+    if (minBar) {
+      minBar.addEventListener('click', (e) => {
+        if (e.target.closest('#btn-close-minimized-drawer')) return;
+        this.toggleMinimize(false);
+      });
+    }
+
+    // Cho phép chạm vào tay cầm trên đỉnh để thu nhỏ / mở rộng
+    const dragHandle = document.getElementById('upload-drawer-drag-handle');
+    if (dragHandle) {
+      dragHandle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMinimize(!this.isMinimized);
       });
     }
 

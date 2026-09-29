@@ -75,6 +75,10 @@ html, body {
   box-sizing: border-box;
 }
 
+html, body {
+  overscroll-behavior-y: contain;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
@@ -1042,6 +1046,26 @@ body.is-admin #admin-lock-btn-container {
   color: var(--text-primary);
 }
 
+.upload-drawer-expand-btn {
+  background: rgba(47, 129, 247, 0.15);
+  border: 1px solid rgba(47, 129, 247, 0.35);
+  color: #58a6ff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.upload-drawer-expand-btn:hover {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
 /* Thanh tổng quan (Overall Summary) */
 .upload-drawer-overall {
   padding: 10px 16px;
@@ -1615,49 +1639,103 @@ body.is-admin #admin-lock-btn-container {
 @media (max-width: 650px) {
   .top-bar {
     padding: 0 10px;
-    gap: 6px;
+    gap: 8px;
+    height: 56px;
+    justify-content: space-between;
   }
 
   .top-bar > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex: 1;
     min-width: 0;
   }
 
+  .btn-mobile-menu {
+    display: flex !important;
+    min-width: 38px;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    border-radius: 8px;
+  }
+
   .search-box {
-    width: 100%;
+    flex: 1;
     min-width: 0;
-    padding: 6px 8px;
-    font-size: 13px;
+    max-width: 170px;
+    padding: 5px 8px;
+    height: 34px;
+    font-size: 12px;
   }
 
   .search-box input {
     width: 100%;
     min-width: 0;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .top-actions {
-    gap: 4px;
+    gap: 6px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Ẩn badge bảo mật và link trang chủ trên mobile để không làm tràn/ríu các nút */
+  #high-security-badge {
+    display: none !important;
+  }
+  .top-actions a[href="/"] {
+    display: none !important;
+  }
+
+  #btn-quick-upload {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
   }
 
   .btn-text-responsive {
-    display: none;
-  }
-
-  .btn-primary, .btn-secondary {
-    padding: 6px 10px;
-    font-size: 12px;
+    display: none !important;
   }
 
   #user-profile-widget {
-    padding-left: 6px;
-    margin-left: 2px;
-    gap: 4px;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    border-left: none !important;
+    gap: 6px !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
-  #user-profile-widget > div:nth-child(2) {
-    display: none; /* Hide verbose username/role text on small mobile */
+  #user-avatar-badge {
+    width: 32px !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Ẩn text tên người dùng và vai trò trên mobile để không bị ríu */
+  #user-profile-widget > div:nth-child(2),
+  .user-text-container {
+    display: none !important;
+  }
+
+  #btn-open-auth-modal {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
   }
 
   .view-container {
@@ -1784,18 +1862,12 @@ body.is-admin #admin-lock-btn-container {
     gap: 8px;
   }
 
-  /* Tối ưu Header Top-bar chống phình ngang trên mobile */
-  #high-security-badge span:last-child {
-    display: none;
-  }
+  /* Ẩn hoàn toàn badge bảo mật và link trang chủ trên mobile */
   #high-security-badge {
-    padding: 4px 6px !important;
-  }
-  .top-actions a[href="/"] span:last-child {
-    display: none;
+    display: none !important;
   }
   .top-actions a[href="/"] {
-    padding: 6px 8px !important;
+    display: none !important;
   }
 
   /* Tối ưu Toolbar & Cụm Nút Thao Tác Explorer */
@@ -1833,8 +1905,40 @@ body.is-admin #admin-lock-btn-container {
     flex-shrink: 0;
   }
 
+  #filter-user-select, #filter-account-select {
+    max-width: 135px !important;
+    height: 32px !important;
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+  }
+
+  /* View mode switcher dạng segmented pill gắn liền nhau, rõ ràng là chuyển đổi Danh sách / Lưới */
+  .view-modes-bar {
+    display: inline-flex !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    gap: 0 !important;
+    background: var(--bg-tertiary) !important;
+    height: 32px !important;
+    flex-shrink: 0 !important;
+  }
+
   .view-toggle-btn {
-    padding: 6px 8px;
+    min-width: 34px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 4px 8px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .view-toggle-btn:first-child {
+    border-right: 1px solid var(--border-subtle) !important;
   }
 
   /* Tối ưu Thanh Lọc Tags (Category Chips) cuộn ngang 1 dòng mượt mà */
@@ -1989,8 +2093,34 @@ body.is-admin #admin-lock-btn-container {
   }
 
   .upload-drawer.minimized {
-    max-height: calc(54px + env(safe-area-inset-bottom, 8px)) !important;
-    border-radius: 16px 16px 0 0 !important;
+    max-height: calc(58px + env(safe-area-inset-bottom, 12px)) !important;
+    height: calc(58px + env(safe-area-inset-bottom, 12px)) !important;
+    border-radius: 18px 18px 0 0 !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+    background: rgba(18, 22, 28, 0.98) !important;
+    border-top: 2px solid var(--accent-blue) !important;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.8) !important;
+    z-index: 10000 !important;
+  }
+
+  .upload-drawer.minimized .upload-drawer-drag-handle {
+    display: block !important;
+    width: 38px !important;
+    height: 4px !important;
+    margin: 6px auto 2px auto !important;
+    background: rgba(255, 255, 255, 0.45) !important;
+    border-radius: 2px !important;
+    cursor: pointer !important;
+  }
+
+  .upload-drawer.minimized .upload-drawer-minimized-bar {
+    display: flex !important;
+    height: 44px !important;
+    padding: 0 14px 6px 14px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
   }
 
   /* Chuyển Toast Notification lên Top-Center Floating Pill để không bị che Bottom Sheet */
@@ -2165,21 +2295,28 @@ body.is-admin #admin-lock-btn-container {
   position: fixed;
   bottom: 24px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  transform: translateX(-50%) translateY(120px);
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-full);
   padding: 10px 24px;
-  display: flex;
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
   align-items: center;
   gap: 16px;
   box-shadow: var(--shadow-lg);
   z-index: 1500;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .bulk-bar.active {
-  transform: translateX(-50%) translateY(0);
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) translateY(0) !important;
 }
 
 .bulk-count {
