@@ -16,6 +16,12 @@ const AuthManager = {
         const data = await res.json();
         if (data.site_key) this.turnstileSiteKey = data.site_key;
         this.turnstileEnabled = (data.enabled !== false);
+        const container = document.getElementById('cf-turnstile-storage-login');
+        if (container) {
+          const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
+          if (isTestKey) container.classList.add('cf-turnstile-clean');
+          else container.classList.remove('cf-turnstile-clean');
+        }
       }
     } catch (_) {}
   },
