@@ -78,6 +78,11 @@ const AuthManager = {
     try {
       const res = await API.getMe();
       const me = (res && res.user) ? res.user : res;
+      // Silent Token Renewal: nếu server cấp token mới (token sắp hết hạn), lưu ngay
+      if (res && res.new_token) {
+        API.setToken(res.new_token);
+        console.log('[AUTH] Token đã được gia hạn tự động (Silent Renewal)');
+      }
       if (me && (me.id || me.username) && me.role) {
         this.currentUser = me;
         API.setCurrentUser(me);

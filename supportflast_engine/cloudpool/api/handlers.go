@@ -2941,7 +2941,39 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, user)
+	// Silent Token Renewal: JWT sắp hết hạn (còn dưới 2 ngày) → tự động cấp token mới
+	response := map[string]interface{}{
+		"user": user,
+	}
+
+	tokenString := ""
+	if ah := r.Header.Get("Authorization"); len(ah) > 7 && strings.EqualFold(ah[:7], "Bearer ") {
+		tokenString = strings.TrimSpace(ah[7:])
+	}
+	if tokenString == "" {
+		cookieNames := []string{"cloudpool_token", "sf_auth_token"}
+		for _, name := range cookieNames {
+			if c, err := r.Cookie(name); err == nil && strings.TrimSpace(c.Value) != "" {
+				tokenString = strings.TrimSpace(c.Value)
+				break
+			}
+		}
+	}
+
+	if tokenString != "" {
+		if claims, err := VerifyJWTClaims(tokenString); err == nil && claims != nil {
+			remainingSec := claims.ExpiresAt - time.Now().Unix()
+			if remainingSec > 0 && remainingSec < 2*24*3600 {
+				if newToken, err := GenerateJWTWithRole(user.ID, user.Username, user.Role); err == nil {
+					setAuthCookie(w, r, newToken, 86400*7)
+					response["new_token"] = newToken
+					log.Printf("[ENGINE] [AUTH] Silent Token Renewal cho user '%s' (con %ds het han)", user.Username, remainingSec)
+				}
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
