@@ -451,11 +451,8 @@ func SetSSOCookies(w http.ResponseWriter, r *http.Request, token string, maxAge 
 		strings.Contains(r.Header.Get("Origin"), "https://") ||
 		strings.Contains(r.Host, "supportflastdev.io.vn")
 
-	// SameSite=Strict trên HTTPS, Lax trên HTTP (localhost dev)
+	// SameSite=Lax cho phép giữ cookie phiên khi người dùng mở tab mới, chuyển tab hoặc chuyển giữa các trang
 	sameSite := http.SameSiteLaxMode
-	if isHTTPS {
-		sameSite = http.SameSiteStrictMode
-	}
 	secure := isHTTPS
 
 	cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token"}
@@ -984,14 +981,21 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, ok := GetUserFromToken(token)
-	if !ok {
+	if !ok || user == nil {
 		http.Error(w, `{"error":"Chưa đăng nhập hoặc phiên làm việc đã hết hạn"}`, http.StatusUnauthorized)
 		return
 	}
 
+	safeUser := ToSafeUser(*user)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"user":   ToSafeUser(*user),
+		"status":       "success",
+		"user":         safeUser,
+		"id":           safeUser.ID,
+		"username":     safeUser.Username,
+		"email":        safeUser.Email,
+		"display_name": safeUser.DisplayName,
+		"role":         safeUser.Role,
+		"avatar":       safeUser.Avatar,
 	})
 }
 
