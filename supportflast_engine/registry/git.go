@@ -289,3 +289,58 @@ func GitSyncHandler(w http.ResponseWriter, r *http.Request) {
 		"timestamp":   now.Format(time.RFC3339),
 	})
 }
+
+// TriggerBackgroundGitSync thực thi kiểm tra và đồng bộ ngầm định kỳ từ Background Worker
+func TriggerBackgroundGitSync() {
+	gitSyncMutex.Lock()
+	if gitIsSyncing {
+		gitSyncMutex.Unlock()
+		return
+	}
+	gitIsSyncing = true
+	gitSyncMutex.Unlock()
+
+	defer func() {
+		gitSyncMutex.Lock()
+		gitIsSyncing = false
+		gitSyncMutex.Unlock()
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Chỉ thực hiện nếu có thay đổi
+	statusOut, _ := runGitCommand(ctx, "status", "--porcelain")
+	if strings.TrimSpace(statusOut) == "" {
+		return // Không có thay đổi, bỏ qua
+	}
+
+	log.Println("[ENGINE] [GIT-AUTO] Phát hiện thay đổi, bắt đầu tự động đồng bộ ngầm lên GitHub...")
+	if _, err := runGitCommand(ctx, "add", "."); err != nil {
+		log.Printf("[ENGINE] [GIT-AUTO] Lỗi git add: %v", err)
+		return
+	}
+
+	commitMsg := fmt.Sprintf("auto-update: Tự động đồng bộ ngầm lúc %s", time.Now().Format("2006-01-02 15:04:05"))
+	if _, err := runGitCommand(ctx, "commit", "-m", commitMsg); err != nil {
+		log.Printf("[ENGINE] [GIT-AUTO] Lỗi git commit: %v", err)
+		return
+	}
+
+	_, _ = runGitCommand(ctx, "pull", "--rebase", "origin", "main")
+	pushOut, err := runGitCommand(ctx, "push", "-u", "origin", "main")
+	if err != nil {
+		log.Printf("[ENGINE] [GIT-AUTO] Lỗi git push: %v (output: %s)", err, pushOut)
+		return
+	}
+
+	commitHash := ""
+	if h, err := runGitCommand(ctx, "rev-parse", "--short", "HEAD"); err == nil {
+		commitHash = h
+	}
+
+	now := time.Now()
+	gitLastSyncTime = now
+	gitLastSyncMsg = fmt.Sprintf("Đã tự động đồng bộ ngầm commit %s lên GitHub", commitHash)
+	log.Printf("[ENGINE] [GIT-AUTO] Đồng bộ ngầm thành công! Commit: %s", commitHash)
+}

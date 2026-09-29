@@ -559,6 +559,15 @@ func main() {
 		}
 	}()
 
+	// Background GitHub Auto-Sync Worker (tự động đồng bộ ngầm lên GitHub mỗi 30 phút nếu có thay đổi)
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			registry.TriggerBackgroundGitSync()
+		}
+	}()
+
 	// Khởi tạo hệ thống người dùng & tài khoản Admin mặc định
 	registry.InitAuth()
 
