@@ -102,7 +102,7 @@ func (v *VFS) SelectAccountForChunk(strategy string, requiredBytes int64, exclud
 
 	var activeAccounts []models.Account
 	for _, a := range accounts {
-		if a.Status != "active" || excludeMap[a.ID] {
+		if a.Status != "active" || excludeMap[a.ID] || a.IsUploadExcludedAccount() {
 			continue
 		}
 

@@ -728,6 +728,7 @@ func (s *DB) GetAccount(id string) (*models.Account, error) {
 	a.Email = core.DecryptSecret(masterKey, a.Email)
 	a.Name = core.DecryptSecret(masterKey, a.Name)
 	a.AvatarURL = core.DecryptSecret(masterKey, a.AvatarURL)
+	a.IsUploadExcluded = a.IsUploadExcludedAccount()
 	return &a, nil
 }
 
@@ -759,6 +760,7 @@ func (s *DB) GetAccountByEmail(email string) (*models.Account, error) {
 	a.Email = core.DecryptSecret(masterKey, a.Email)
 	a.Name = core.DecryptSecret(masterKey, a.Name)
 	a.AvatarURL = core.DecryptSecret(masterKey, a.AvatarURL)
+	a.IsUploadExcluded = a.IsUploadExcludedAccount()
 	return &a, nil
 }
 
@@ -791,6 +793,7 @@ func (s *DB) ListAccounts() ([]models.Account, error) {
 		a.Email = core.DecryptSecret(masterKey, a.Email)
 		a.Name = core.DecryptSecret(masterKey, a.Name)
 		a.AvatarURL = core.DecryptSecret(masterKey, a.AvatarURL)
+		a.IsUploadExcluded = a.IsUploadExcludedAccount()
 		list = append(list, a)
 	}
 	return list, nil

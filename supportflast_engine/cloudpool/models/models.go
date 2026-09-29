@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Account represents a connected Google Drive account (Enterprise Level)
 type Account struct {
@@ -17,12 +20,37 @@ type Account struct {
 	FreeQuotaBytes     int64      `json:"free_quota_bytes"`
 	UsagePercent       float64    `json:"usage_percent"`
 	Status             string     `json:"status"` // "active", "disabled", "error", "full"
+	IsUploadExcluded   bool       `json:"is_upload_excluded"` // true: Né lưu trữ khi tải lên (bảo vệ chống đầy)
 	HealthStatus       string     `json:"health_status"` // "healthy", "warning", "dead"
 	LastError          string     `json:"last_error,omitempty"`
 	FailCount          int        `json:"fail_count"`
 	RateLimitResetAt   *time.Time `json:"rate_limit_reset_at,omitempty"`
 	CreatedAt          time.Time  `json:"created_at"`
 	UpdatedAt          time.Time  `json:"updated_at"`
+}
+
+// IsUploadExcludedAccount kiểm tra tài khoản có bị loại trừ (né lưu trữ) khi tải tệp lên hay không
+func (a *Account) IsUploadExcludedAccount() bool {
+	if a == nil {
+		return false
+	}
+	emailClean := strings.ToLower(strings.TrimSpace(a.Email))
+	switch emailClean {
+	case "duongmanhhung9900@gmail.com",
+		"duongmanhhunghospital@gmail.com",
+		"duongmanhhunghospitol@gmail.com",
+		"phephabaylac@gmail.com":
+		return true
+	}
+
+	switch a.ID {
+	case "acc_18cf4b1b8adc5be4", // duongmanhhung9900@gmail.com
+		"acc_18d9741a9a288708", // duongmanhhunghospital@gmail.com
+		"acc_18cf4b57bb6f3d58": // phephabaylac@gmail.com
+		return true
+	}
+
+	return a.IsUploadExcluded
 }
 
 // User represents an application user with private file isolation & multi-tier security profile
