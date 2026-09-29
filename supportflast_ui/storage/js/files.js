@@ -776,7 +776,9 @@ const FilesManager = {
       const displayName = isGDriveFolder ? this.maskFolderName(f.name) : f.name.replace(/^📁\s*/, '');
 
       let badgeHtml = '';
-      if (isLockedAdminFile) {
+      if (f.has_missing_chunks) {
+        badgeHtml = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 10px; margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" title="Tệp bị thiếu dữ liệu nguồn trên Google Drive">⚠️ Tệp bị thiếu dữ liệu nguồn</span>`;
+      } else if (isLockedAdminFile) {
         badgeHtml = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 10px; margin-left: 6px; padding: 1px 6px; border-radius: 4px;">🔒 Cần OTP Admin</span>`;
       } else if (f.user_id === 'user_admin' && !isGDriveFolder) {
         badgeHtml = `<span class="badge" style="background: rgba(59, 130, 246, 0.12); color: #60a5fa; font-size: 10px; margin-left: 6px; padding: 1px 5px; border-radius: 4px;">👑 Quản trị viên</span>`;
@@ -898,6 +900,7 @@ const FilesManager = {
           </div>
           <div class="file-card-title" title="${displayName}">
             ${isGDriveFolder ? `<b style="color:#38bdf8; font-family: var(--font-mono);">${displayName}</b>` : displayName}
+            ${f.has_missing_chunks ? '<span style="color:#f59e0b; font-size:11px; display:block; margin-top:2px; font-weight:600;">⚠️ Thiếu dữ liệu nguồn</span>' : ''}
             ${isLockedAdminFile ? '<span style="color:#f87171; font-size:11px; display:block; margin-top:2px;">🔒 Cần OTP Admin</span>' : ''}
           </div>
           <div class="file-card-meta">
@@ -1012,8 +1015,11 @@ const FilesManager = {
           accLabel = AccountsManager.maskName(c.account_name, c.account_email);
         }
 
+        const isMissing = (c.status === 'missing');
+        const cardStyle = isMissing ? 'border: 1px solid rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.08);' : '';
+
         html += `
-          <div class="chunk-card">
+          <div class="chunk-card" style="${cardStyle}">
             <div class="chunk-card-header">
               <span>Chunk #${c.chunk_index + 1}</span>
               <span>${Utils.formatBytes(c.chunk_size_bytes)}</span>
@@ -1023,6 +1029,12 @@ const FilesManager = {
             </div>
             <div class="chunk-card-hash" title="SHA-256: ${c.sha256}">
               Hash: ${c.sha256 ? c.sha256.substring(0, 12) + '...' : '-'}
+            </div>
+            <div class="chunk-card-status" style="font-size: 11px; margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08); display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Trạng thái:</span>
+              ${isMissing 
+                ? '<span style="color: #ef4444; font-weight: 700;">⚠️ Thất lạc trên Drive (404)</span>' 
+                : '<span style="color: #10b981; font-weight: 600;">✓ Sẵn sàng</span>'}
             </div>
           </div>
         `;
@@ -1040,6 +1052,13 @@ const FilesManager = {
       this.navigateTo(id, name);
     } else {
       const file = this.files.find(f => f.id === id) || { id, name, mime_type: mimeType, is_admin_owned: isAdminOwned, requires_otp: requiresOTP };
+      if (file && file.has_missing_chunks) {
+        Toast.error(`Tệp "${name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể mở trực tuyến.`);
+        if (typeof PreviewManager !== 'undefined' && PreviewManager.showMissingChunksError) {
+          PreviewManager.showMissingChunksError(id, name);
+        }
+        return;
+      }
       const isMember = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'member');
       if (isMember && (file.is_admin_owned || file.requires_otp)) {
         this.openOTPModal(file, 'preview');
@@ -1111,6 +1130,10 @@ const FilesManager = {
 
   downloadFile(id) {
     const file = this.files.find(f => f.id === id);
+    if (file && file.has_missing_chunks) {
+      Toast.error(`Tệp "${file.name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể tải về.`);
+      return;
+    }
     if (typeof DownloadManager !== 'undefined') {
       DownloadManager.downloadFile(file || id);
       return;
@@ -2096,6 +2119,60 @@ const FilesManager = {
       Toast.error('Lỗi thu hồi: ' + err.message);
     }
   },
+
+  // =========================================================================
+  // Chunk Integrity Diagnostic & Health Check
+  // =========================================================================
+
+  async runIntegrityCheck(quick = false) {
+    const isConfirmed = confirm(
+      '🛡️ KIỂM TRA TOÀN VẸN DỮ LIỆU NGUỒN CHUNKS\n\n' +
+      'Hệ thống sẽ quét các chunks lưu trữ trong cơ sở dữ liệu và kiểm tra sự tồn tại thực tế trên từng tài khoản Google Drive.\n' +
+      'Nếu phát hiện chunk bị xóa (404), hệ thống sẽ tự động cập nhật cờ "⚠️ Tệp bị thiếu dữ liệu nguồn" để ngăn ngừa treo vô tận khi mở xem.\n\n' +
+      'Bạn có muốn tiến hành quét ngay không?'
+    );
+    if (!isConfirmed) return;
+
+    Toast.info('Đang quét kiểm tra tính toàn vẹn dữ liệu chunks trên Google Drive...', 5000);
+    try {
+      const report = await API.runIntegrityCheck({ verify_drive: true, quick: quick, concurrency: 5 });
+      if (report) {
+        let msg = `Quét hoàn tất: Kiểm tra ${report.total_chunks_scanned} chunks của ${report.total_files_scanned} tệp.`;
+        if (report.missing_chunks_found > 0) {
+          msg += `\n⚠️ Phát hiện ${report.missing_chunks_found} chunk bị thiếu (${report.corrupted_files_count} tệp bị ảnh hưởng)! Đã cập nhật cờ cảnh báo.`;
+          Toast.warning(msg, 8000);
+        } else {
+          msg += `\n✅ Toàn bộ dữ liệu toàn vẹn 100%! Không có chunk nào bị thất lạc trên Google Drive.`;
+          Toast.success(msg, 6000);
+        }
+        this.loadFiles(this.currentFolderId);
+        if (typeof App !== 'undefined' && App.refreshStats) {
+          App.refreshStats();
+        }
+      }
+    } catch (err) {
+      Toast.error('Lỗi kiểm tra tính toàn vẹn: ' + err.message);
+    }
+  },
+
+  async checkFileIntegrity(fileId) {
+    Toast.info('Đang kiểm tra tính toàn vẹn của tệp trên Google Drive...', 3000);
+    try {
+      const status = await API.getFileStatus(fileId, true);
+      if (status) {
+        if (status.has_missing_chunks) {
+          Toast.warning(`⚠️ Tệp bị thiếu ${status.missing_chunks}/${status.chunk_count} chunk trên Google Drive!`, 6000);
+        } else {
+          Toast.success('✅ Tất cả các chunk của tệp đều tồn tại đầy đủ trên Google Drive!', 5000);
+          const modal = document.getElementById('modal-preview');
+          if (modal) modal.classList.remove('active');
+        }
+        this.loadFiles(this.currentFolderId);
+      }
+    } catch (err) {
+      Toast.error('Không thể kiểm tra tệp: ' + err.message);
+    }
+  }
 
 };
 

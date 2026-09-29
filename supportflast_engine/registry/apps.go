@@ -67,7 +67,7 @@ type KeyItem struct {
 }
 
 // maxAPIKeysPerSystem giới hạn số lượng API Key để ngăn spam tạo key vô hạn
-const maxAPIKeysPerSystem = 20
+const maxAPIKeysPerSystem = 100
 
 // allowedPackageExtensions whitelist phần mở rộng file gói ứng dụng hợp lệ.
 // Chỉ chấp nhận installer thật sự — từ chối PHP, shell script, ELF giả danh.
@@ -159,6 +159,7 @@ func getKeysFilePath() string {
 	}
 	// Fallback: tìm theo đường dẫn tương đối khi không có DATA_DIR (mà không dùng đường dẫn Windows hardcode)
 	candidates := []string{
+		filepath.Join("..", "..", "data", "keys.json"),
 		filepath.Join("..", "data", "keys.json"),
 		filepath.Join("data", "keys.json"),
 	}
@@ -476,12 +477,33 @@ func ExtractToken(r *http.Request) string {
 func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 	// Giới hạn số lượng key tối đa trong hệ thống (chống spam)
 	existingKeys := LoadKeys()
+	now := time.Now()
+	var validKeys []KeyItem
 	activeCount := 0
 	for _, k := range existingKeys {
 		if k.Status == "active" {
+			// Bỏ qua key test tạm thời đã hết hạn
+			if k.ExpiresAt != "" {
+				if exp, err := time.Parse(time.RFC3339, k.ExpiresAt); err == nil && now.After(exp) {
+					continue
+				}
+			}
 			activeCount++
 		}
+		validKeys = append(validKeys, k)
 	}
+
+	// Nếu chạm ngưỡng tối đa, tự động dọn dẹp các key tạm thời của bài test
+	if activeCount >= maxAPIKeysPerSystem {
+		for i := 0; i < len(validKeys) && activeCount >= maxAPIKeysPerSystem; i++ {
+			if strings.HasPrefix(validKeys[i].Name, "Test ") || strings.HasPrefix(validKeys[i].Name, "Admin Test") {
+				validKeys = append(validKeys[:i], validKeys[i+1:]...)
+				activeCount--
+				i--
+			}
+		}
+	}
+
 	if activeCount >= maxAPIKeysPerSystem {
 		return KeyItem{}, fmt.Errorf("đã đạt giới hạn tối đa %d API Key đang hoạt động", maxAPIKeysPerSystem)
 	}
@@ -506,7 +528,7 @@ func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 		item.ExpiresAt = time.Now().AddDate(0, 0, daysValid).Format(time.RFC3339)
 	}
 
-	keys := append(existingKeys, item)
+	keys := append(validKeys, item)
 	SaveKeys(keys)
 	return item, nil
 }

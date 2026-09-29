@@ -135,6 +135,20 @@ func TestVFS_StreamerContextCancellation(t *testing.T) {
 	vfsEngine, db, cleanup := setupTestVFSWithDB(t)
 	defer cleanup()
 
+	testAcc := &models.Account{
+		ID:              "acc_test",
+		Email:           "test@example.com",
+		Name:            "Test Account",
+		Status:          "active",
+		TotalQuotaBytes: 100 * 1024 * 1024,
+		FreeQuotaBytes:  100 * 1024 * 1024,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.SaveAccount(testAcc); err != nil {
+		t.Fatalf("SaveAccount failed: %v", err)
+	}
+
 	// Lưu file video test
 	vf := &models.VirtualFile{
 		ID:          "file_stream_test",
@@ -146,17 +160,10 @@ func TestVFS_StreamerContextCancellation(t *testing.T) {
 		SizeBytes:   2048,
 		MimeType:    models.ResolveMimeType("test_stream.mp4"),
 		ChunkCount:  1,
-	testAcc := &models.Account{
-		ID:              "acc_test",
-		Email:           "test@example.com",
-		Name:            "Test Account",
-		Status:          "active",
-		TotalQuotaBytes: 100 * 1024 * 1024,
-		FreeQuotaBytes:  100 * 1024 * 1024,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		IsEncrypted: false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
-	_ = db.SaveAccount(testAcc)
 
 	_ = db.SaveVirtualFile(vf)
 	_ = db.SaveChunks([]models.FileChunk{{

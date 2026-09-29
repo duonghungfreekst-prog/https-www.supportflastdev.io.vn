@@ -141,6 +141,22 @@ const API = {
     return this.request(`/api/files/chunks?id=${encodeURIComponent(id)}`);
   },
 
+  getFileStatus(id, verifyDrive = false) {
+    let url = `/api/files/status?id=${encodeURIComponent(id)}`;
+    if (verifyDrive) {
+      url += '&verify_drive=true';
+    }
+    return this.request(url);
+  },
+
+  runIntegrityCheck(options = {}) {
+    return this.request('/api/admin/storage/integrity-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options),
+    });
+  },
+
   createFolder(parentId, name) {
     return this.request('/api/files/mkdir', {
       method: 'POST',

@@ -326,6 +326,15 @@ const PreviewManager = {
   // Điều hướng chính xác theo định dạng tệp tin
   // ─────────────────────────────────────────────────────────────
   openPreview(fileId, fileName, mimeType, otpCode = '') {
+    // 0. Pre-flight Check: Kiểm tra xem tệp có bị thiếu chunks không để tránh treo spinner
+    const cachedFile = (typeof FilesManager !== 'undefined' && FilesManager.files)
+      ? FilesManager.files.find(f => f.id === fileId)
+      : null;
+    if (cachedFile && cachedFile.has_missing_chunks) {
+      this.showMissingChunksError(fileId, fileName);
+      return;
+    }
+
     let streamURL = `/api/files/stream?id=${encodeURIComponent(fileId)}`;
     let downloadURL = `/api/files/download?id=${encodeURIComponent(fileId)}`;
 
@@ -617,5 +626,33 @@ const PreviewManager = {
       video.load();
       video.play().catch(() => {});
     }
+  },
+
+  showMissingChunksError(fileId, fileName, details = {}) {
+    const modal = document.getElementById('modal-preview');
+    const titleEl = document.getElementById('preview-file-title');
+    const area = document.getElementById('preview-content-area');
+    if (!modal || !area) return;
+
+    if (titleEl) titleEl.textContent = fileName;
+    area.innerHTML = `
+      <div style="padding: 40px 20px; text-align: center; max-width: 520px; margin: 0 auto;">
+        <div style="font-size: 54px; margin-bottom: 16px;">⚠️</div>
+        <p style="font-size: 16px; font-weight: 700; margin-bottom: 8px; color: #f59e0b; word-break: break-word;">Tệp Bị Thiếu Dữ Liệu Nguồn</p>
+        <p style="font-size: 13px; color: var(--text-muted, #94a3b8); margin-bottom: 22px; line-height: 1.6;">
+          Một hoặc nhiều mảnh (chunks) của tệp <b>${fileName}</b> không còn tồn tại trên tài khoản Google Drive liên kết.<br>
+          Hệ thống đã tự động dừng việc phát trực tiếp để triệt tiêu tình trạng tải xoay vòng vô tận.
+        </p>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="FilesManager.showChunkMap('${fileId}', '${fileName.replace(/'/g, "\\'")}')" style="padding: 8px 16px; font-size: 13px;">
+            🔍 Xem Chi Tiết Bản Đồ Chunks
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="FilesManager.checkFileIntegrity('${fileId}')" style="padding: 8px 16px; font-size: 13px;">
+            🛡️ Quét Lại Tính Toàn Vẹn
+          </button>
+        </div>
+      </div>
+    `;
+    modal.classList.add('active');
   }
 };
