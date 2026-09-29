@@ -216,6 +216,38 @@ const UploadManager = {
           this.updateOverallStats();
           this.saveToStorage();
         }
+      } else if (res.status === 404) {
+        // Phiên tải lên không tồn tại hoặc đã hết hạn trên server
+        // 1. Kiểm tra xem tệp thực chất đã hoàn tất và xuất hiện trên VFS chưa
+        try {
+          const folderId = task.resolvedFolderId || task.targetFolderId || 'root';
+          const files = (await API.listFiles(folderId)) || [];
+          const found = files.find((f) => f.name === task.name && !f.is_dir);
+          if (found) {
+            task.status = 'completed';
+            task.progress = 100;
+            task.uploadedBytes = task.size;
+            task.statusText = 'Hoàn tất ✓ (đã lưu trên hệ thống)';
+            task.needsRebind = false;
+            this.updateTaskUI(task);
+            this.updateOverallStats();
+            this.saveToStorage();
+            this.hideRecoveryBannerIfNone();
+            Toast.success(`Tệp "${task.name}" đã được tải lên thành công!`);
+            return;
+          }
+        } catch (_) {}
+
+        // 2. Nếu tệp chưa có, phiên cũ thực sự đã bị xóa hoặc hết hạn -> Reset để tạo phiên mới
+        task.uploadId = null;
+        task.chunksStatus = new Array(task.totalChunks).fill('pending');
+        task.chunksBytes = new Array(task.totalChunks).fill(0);
+        task.uploadedBytes = 0;
+        task.progress = 0;
+        task.status = 'interrupted';
+        task.statusText = 'Phiên cũ hết hạn - Nhấn Tiếp tục để tải lại mới';
+        this.updateTaskUI(task);
+        this.saveToStorage();
       }
     } catch (e) {
       console.warn(`[UploadManager] Không thể đồng bộ status upload ${task.uploadId}:`, e.message);
@@ -1012,6 +1044,9 @@ const UploadManager = {
           resolve();
         } else if (xhr.status === 429) {
           reject(new Error('Máy chủ đang bận, vui lòng thử lại'));
+        } else if (xhr.status === 404) {
+          task.uploadId = null;
+          reject(new Error('Phiên tải lên không tồn tại hoặc đã hết hạn trên máy chủ'));
         } else {
           let errMsg = `Lỗi mảnh ${chunkIndex + 1} (${xhr.status})`;
           try {
@@ -1067,6 +1102,20 @@ const UploadManager = {
         });
 
         if (!res.ok) {
+          if (res.status === 404) {
+            // Máy chủ có thể đã hoàn tất ghép tệp và dọn dẹp phiên, kiểm tra xem tệp đã có trên VFS chưa
+            try {
+              const folderId = task.resolvedFolderId || task.targetFolderId || 'root';
+              const files = (await API.listFiles(folderId)) || [];
+              const found = files.find((f) => f.name === task.name && !f.is_dir);
+              if (found) {
+                task.progress = 100;
+                task.status = 'completed';
+                task.statusText = 'Hoàn tất ✓ (đã lưu trên hệ thống)';
+                return;
+              }
+            } catch (_) {}
+          }
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Lỗi kiểm tra tiến trình (${res.status})`);
         }
@@ -1242,7 +1291,24 @@ const UploadManager = {
 
     if (task.status !== 'paused' && task.status !== 'error' && task.status !== 'interrupted') return;
 
+    // Nếu phiên trước đó bị hết hạn / 404 trên server, reset để tạo phiên mới
+    const isSessionExpired =
+      task.errorMsg &&
+      (task.errorMsg.includes('không tồn tại') ||
+        task.errorMsg.includes('hết hạn') ||
+        task.errorMsg.includes('404') ||
+        task.errorMsg.includes('Not Found'));
+
+    if (isSessionExpired) {
+      task.uploadId = null;
+      task.chunksStatus = new Array(task.totalChunks).fill('pending');
+      task.chunksBytes = new Array(task.totalChunks).fill(0);
+      task.uploadedBytes = 0;
+      task.progress = 0;
+    }
+
     task.status = 'pending';
+    task.errorMsg = '';
     task.statusText = 'Đang tiếp tục...';
     this.updateTaskUI(task);
     this.updateOverallStats();
@@ -1262,14 +1328,30 @@ const UploadManager = {
       return;
     }
 
+    // Nếu lỗi do phiên không tồn tại, hết hạn, hoặc 404: reset uploadId để tạo phiên mới tinh!
+    const isSessionExpired =
+      task.errorMsg &&
+      (task.errorMsg.includes('không tồn tại') ||
+        task.errorMsg.includes('hết hạn') ||
+        task.errorMsg.includes('404') ||
+        task.errorMsg.includes('Not Found'));
+
+    if (isSessionExpired) {
+      task.uploadId = null;
+      task.chunksStatus = new Array(task.totalChunks).fill('pending');
+      task.chunksBytes = new Array(task.totalChunks).fill(0);
+      task.uploadedBytes = 0;
+      task.progress = 0;
+    }
+
     task.status = 'pending';
     task.errorMsg = '';
     task.retryCount = 0;
     task.statusText = 'Đang thử lại...';
 
-    // Đặt lại các chunk bị lỗi về pending
+    // Đặt lại các chunk bị lỗi hoặc đang dở về pending
     if (task.chunksStatus) {
-      task.chunksStatus = task.chunksStatus.map((st) => (st === 'error' ? 'pending' : st));
+      task.chunksStatus = task.chunksStatus.map((st) => (st === 'error' || st === 'uploading' ? 'pending' : st));
     }
 
     this.updateTaskUI(task);

@@ -1060,12 +1060,16 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 	go func(uID string, sess *ChunkedUploadSession) {
 		bgCtx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 		defer cancel()
+		defer func() {
+			if sess.TempDir != "" {
+				_ = os.RemoveAll(sess.TempDir)
+			}
+		}()
 
 		pr, pw := io.Pipe()
 
 		go func() {
 			defer pw.Close()
-			defer os.RemoveAll(sess.TempDir)
 			for i := 0; i < sess.TotalChunks; i++ {
 				cPath := filepath.Join(sess.TempDir, fmt.Sprintf("chunk_%d", i))
 				cf, err := os.Open(cPath)
@@ -1170,7 +1174,8 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 		if session.TempDir != "" {
 			_ = os.RemoveAll(session.TempDir)
 		}
-		chunkedSessions.Delete(uploadID)
+		// Giữ lại session trong chunkedSessions để các lần kiểm tra tiếp theo không bị 404,
+		// cleanupExpiredSessions() sẽ tự động dọn dẹp sau 2 giờ.
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"status": "completed",
 			"file":   resultFile,
@@ -1182,7 +1187,7 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 		if session.TempDir != "" {
 			_ = os.RemoveAll(session.TempDir)
 		}
-		chunkedSessions.Delete(uploadID)
+		// Giữ lại session để client nhận đúng chi tiết lỗi thay vì bị 404 không tìm thấy phiên
 		writeError(w, http.StatusInternalServerError, errMsg, nil)
 		return
 	}
