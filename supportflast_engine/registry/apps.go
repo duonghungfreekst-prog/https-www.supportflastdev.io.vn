@@ -210,17 +210,7 @@ func LoadApps() []AppItem {
 		return []AppItem{}
 	}
 
-	query := `
-		SELECT 
-			id, name, version, COALESCE(platform, ''), COALESCE(category, ''), 
-			COALESCE(desc, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), 
-			COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), 
-			COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), 
-			COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), 
-			COALESCE(user_id, '')
-		FROM apps
-		ORDER BY published_at DESC, id DESC
-	`
+	query := "SELECT id, name, version, COALESCE(platform, ''), COALESCE(category, ''), COALESCE(`desc`, ''), COALESCE(file_name, ''), COALESCE(size_bytes, 0), COALESCE(size_formatted, ''), COALESCE(sha256, ''), COALESCE(author, ''), COALESCE(downloads, 0), COALESCE(status, 'published'), COALESCE(published_at, ''), COALESCE(download_url, ''), COALESCE(video_url, ''), COALESCE(guide, ''), COALESCE(user_id, '') FROM apps ORDER BY published_at DESC, id DESC"
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		log.Printf("[ENGINE] [REGISTRY] [ERROR] Prepare select apps failed: %v", err)
@@ -284,31 +274,60 @@ func SaveApp(a AppItem) error {
 		userIDParam = a.UserID
 	}
 
-	query := `
-		INSERT INTO apps (
-			id, name, version, platform, category, desc, file_name,
-			size_bytes, size_formatted, sha256, author, downloads,
-			status, published_at, download_url, video_url, guide, user_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			name = excluded.name,
-			version = excluded.version,
-			platform = excluded.platform,
-			category = excluded.category,
-			desc = excluded.desc,
-			file_name = excluded.file_name,
-			size_bytes = excluded.size_bytes,
-			size_formatted = excluded.size_formatted,
-			sha256 = excluded.sha256,
-			author = excluded.author,
-			downloads = excluded.downloads,
-			status = excluded.status,
-			published_at = excluded.published_at,
-			download_url = excluded.download_url,
-			video_url = excluded.video_url,
-			guide = excluded.guide,
-			user_id = excluded.user_id
-	`
+	var query string
+	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+		query = `
+			INSERT INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				name = VALUES(name),
+				version = VALUES(version),
+				platform = VALUES(platform),
+				category = VALUES(category),
+				` + "`desc`" + ` = VALUES(` + "`desc`" + `),
+				file_name = VALUES(file_name),
+				size_bytes = VALUES(size_bytes),
+				size_formatted = VALUES(size_formatted),
+				sha256 = VALUES(sha256),
+				author = VALUES(author),
+				downloads = VALUES(downloads),
+				status = VALUES(status),
+				published_at = VALUES(published_at),
+				download_url = VALUES(download_url),
+				video_url = VALUES(video_url),
+				guide = VALUES(guide),
+				user_id = VALUES(user_id)
+		`
+	} else {
+		query = `
+			INSERT INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				name = excluded.name,
+				version = excluded.version,
+				platform = excluded.platform,
+				category = excluded.category,
+				` + "`desc`" + ` = excluded.` + "`desc`" + `,
+				file_name = excluded.file_name,
+				size_bytes = excluded.size_bytes,
+				size_formatted = excluded.size_formatted,
+				sha256 = excluded.sha256,
+				author = excluded.author,
+				downloads = excluded.downloads,
+				status = excluded.status,
+				published_at = excluded.published_at,
+				download_url = excluded.download_url,
+				video_url = excluded.video_url,
+				guide = excluded.guide,
+				user_id = excluded.user_id
+		`
+	}
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return fmt.Errorf("prepare upsert app failed: %w", err)
@@ -326,7 +345,7 @@ func SaveApp(a AppItem) error {
 	return err
 }
 
-// SaveApps ghi đè hoặc cập nhật danh sách ứng dụng vào bảng apps của SQLite qua Prepared Statement trong Transaction
+// SaveApps ghi đè hoặc cập nhật danh sách ứng dụng vào bảng apps của SQLite hoặc TiDB qua Prepared Statement trong Transaction
 func SaveApps(apps []AppItem) error {
 	db := database.GetDB()
 	if db == nil {
@@ -339,31 +358,60 @@ func SaveApps(apps []AppItem) error {
 	}
 	defer tx.Rollback()
 
-	query := `
-		INSERT INTO apps (
-			id, name, version, platform, category, desc, file_name,
-			size_bytes, size_formatted, sha256, author, downloads,
-			status, published_at, download_url, video_url, guide, user_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			name = excluded.name,
-			version = excluded.version,
-			platform = excluded.platform,
-			category = excluded.category,
-			desc = excluded.desc,
-			file_name = excluded.file_name,
-			size_bytes = excluded.size_bytes,
-			size_formatted = excluded.size_formatted,
-			sha256 = excluded.sha256,
-			author = excluded.author,
-			downloads = excluded.downloads,
-			status = excluded.status,
-			published_at = excluded.published_at,
-			download_url = excluded.download_url,
-			video_url = excluded.video_url,
-			guide = excluded.guide,
-			user_id = excluded.user_id
-	`
+	var query string
+	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+		query = `
+			INSERT INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				name = VALUES(name),
+				version = VALUES(version),
+				platform = VALUES(platform),
+				category = VALUES(category),
+				` + "`desc`" + ` = VALUES(` + "`desc`" + `),
+				file_name = VALUES(file_name),
+				size_bytes = VALUES(size_bytes),
+				size_formatted = VALUES(size_formatted),
+				sha256 = VALUES(sha256),
+				author = VALUES(author),
+				downloads = VALUES(downloads),
+				status = VALUES(status),
+				published_at = VALUES(published_at),
+				download_url = VALUES(download_url),
+				video_url = VALUES(video_url),
+				guide = VALUES(guide),
+				user_id = VALUES(user_id)
+		`
+	} else {
+		query = `
+			INSERT INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				name = excluded.name,
+				version = excluded.version,
+				platform = excluded.platform,
+				category = excluded.category,
+				` + "`desc`" + ` = excluded.` + "`desc`" + `,
+				file_name = excluded.file_name,
+				size_bytes = excluded.size_bytes,
+				size_formatted = excluded.size_formatted,
+				sha256 = excluded.sha256,
+				author = excluded.author,
+				downloads = excluded.downloads,
+				status = excluded.status,
+				published_at = excluded.published_at,
+				download_url = excluded.download_url,
+				video_url = excluded.video_url,
+				guide = excluded.guide,
+				user_id = excluded.user_id
+		`
+	}
 	stmt, err := tx.Prepare(query)
 	if err != nil {
 		return fmt.Errorf("prepare upsert app in tx failed: %w", err)

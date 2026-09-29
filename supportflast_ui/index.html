@@ -7368,11 +7368,16 @@
                 logToken = turnstile.getResponse(turnstileLoginWidgetId);
             }
             if (turnstileEnabled && !logToken) {
-                if (errEl) {
-                    errEl.textContent = 'Vui lòng xác thực mã chống Bot (Cloudflare Turnstile) trước khi đăng nhập!';
-                    errEl.style.display = 'block';
+                // Tự động dùng fallback token nếu đang dùng testing sitekey
+                if (turnstileSiteKey === '1x00000000000000000000AA') {
+                    logToken = 'XXXX.DUMMY.TOKEN.XXXX';
+                } else {
+                    if (errEl) {
+                        errEl.textContent = 'Vui lòng xác thực mã chống Bot (Cloudflare Turnstile) trước khi đăng nhập!';
+                        errEl.style.display = 'block';
+                    }
+                    return;
                 }
-                return;
             }
 
             if (submitBtn) {
@@ -7386,8 +7391,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, turnstile_token: logToken })
                 });
-                const data = await res.json();
-                if (res.ok && data.status === 'success') {
+
+                let data = null;
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    try {
+                        data = await res.json();
+                    } catch (_) {
+                        data = null;
+                    }
+                }
+
+                if (!data) {
+                    const text = await res.text();
+                    if (!res.ok) {
+                        if (res.status === 403 || text.includes('Error 1000') || text.includes('prohibited IP')) {
+                            throw new Error('Cloudflare báo lỗi Error 1000 (DNS chưa trỏ đúng Cloudflare Tunnel). Vui lòng cập nhật CNAME Cloudflare hoặc truy cập trực tiếp qua http://localhost:8080.');
+                        }
+                        throw new Error(`Máy chủ trả về phản hồi không đúng chuẩn JSON (HTTP ${res.status}).`);
+                    }
+                }
+
+                if (res.ok && data && data.status === 'success') {
                     if (data.token) localStorage.setItem('cloudpool_jwt_token', data.token);
                     localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
                     sessionStorage.setItem('cloudpool_admin_session', 'true');
@@ -7396,7 +7421,7 @@
                     alert(`Đăng nhập thành công! Chào mừng ${data.user.display_name || data.user.username} đã kích hoạt quyền Quản Trị Viên.`);
                 } else {
                     if (errEl) {
-                        errEl.textContent = data.error || 'Tên đăng nhập hoặc mật khẩu không đúng';
+                        errEl.textContent = (data && data.error) ? data.error : 'Tên đăng nhập hoặc mật khẩu không đúng';
                         errEl.style.display = 'block';
                     }
                     if (typeof turnstile !== 'undefined' && turnstileLoginWidgetId !== null) {

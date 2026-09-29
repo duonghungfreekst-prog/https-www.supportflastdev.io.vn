@@ -801,6 +801,15 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func sendJSONError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "error",
+		"error":  message,
+	})
+}
+
 // LoginHandler xử lý đăng nhập (POST /api/auth/login)
 // Tích hợp Rate Limiting chống Brute-Force: nếu sai quá 5 lần thì khóa tạm thời 15 phút (Rule 8.2 & Rule 7.1)
 // Truy vấn và xác thực người dùng trực tiếp từ bảng users của SQLite
@@ -808,7 +817,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if r.Method != http.MethodPost {
-		http.Error(w, `{"error":"Method not allowed, use POST"}`, http.StatusMethodNotAllowed)
+		sendJSONError(w, "Method not allowed, use POST", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -822,7 +831,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Dữ liệu đăng nhập không hợp lệ"}`, http.StatusBadRequest)
+		sendJSONError(w, "Dữ liệu đăng nhập không hợp lệ", http.StatusBadRequest)
 		return
 	}
 
@@ -837,7 +846,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	password := req.Password
 
 	if identifier == "" || password == "" {
-		http.Error(w, `{"error":"Vui lòng nhập Tên đăng nhập/Email và Mật khẩu"}`, http.StatusBadRequest)
+		sendJSONError(w, "Vui lòng nhập Tên đăng nhập/Email và Mật khẩu", http.StatusBadRequest)
 		return
 	}
 
@@ -851,11 +860,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			tToken = req.CFTurnstileToken
 		}
 		if tToken == "" {
-			http.Error(w, `{"error":"Vui lòng hoàn thành xác thực chống Bot (Cloudflare Turnstile)"}`, http.StatusBadRequest)
+			sendJSONError(w, "Vui lòng hoàn thành xác thực chống Bot (Cloudflare Turnstile)", http.StatusBadRequest)
 			return
 		}
 		if valid, err := security.VerifyTurnstileToken(secretKey, tToken, clientIP); !valid || err != nil {
-			http.Error(w, `{"error":"Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại."}`, http.StatusBadRequest)
+			sendJSONError(w, "Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại.", http.StatusBadRequest)
 			return
 		}
 	}

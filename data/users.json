@@ -11,18 +11,6 @@
       "created_at": "2026-09-24T08:38:44+07:00",
       "last_login": "2026-09-24T08:57:24+07:00",
       "is_active": true
-    },
-    {
-      "id": "usr-217003020",
-      "username": "quocviet_dev",
-      "email": "quocviet@supportflastdev.io.vn",
-      "display_name": "Quốc Việt Developer",
-      "password_hash": "$2a$12$7T0UHhEfC4GNVrtpcxaOl.mW.ppKczgkjNm24DZPgwKgCEHn1R902",
-      "role": "developer",
-      "avatar": "💻",
-      "created_at": "2026-09-24T08:39:29+07:00",
-      "last_login": "2026-09-24T08:39:29+07:00",
-      "is_active": true
     }
   ]
 }
