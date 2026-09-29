@@ -29,6 +29,9 @@ const UploadManager = {
   // Trạng thái thu nhỏ của Drawer
   isMinimized: false,
 
+  // Key lưu trữ trạng thái tải lên bền vững trong localStorage (chống mất tiến trình khi F5/reload)
+  STORAGE_KEY: 'cloudpool_upload_state_v1',
+
   // ========================================================================
   // 1. KHỞI TẠO VÀ LẮNG NGHE SỰ KIỆN GIAO DIỆN
   // ========================================================================
@@ -36,7 +39,323 @@ const UploadManager = {
     this.bindDrawerEvents();
     this.startSpeedMonitor();
     this.initGlobalDragDrop();
-    console.log('[UploadManager] Module Quản lý tải lên đột phá đã sẵn sàng.');
+    this.initBeforeUnloadWarning();
+    this.loadFromStorage();
+    console.log('[UploadManager] Module Quản lý tải lên đột phá đã sẵn sàng (với Bộ nhớ phục hồi F5).');
+  },
+
+  // Cảnh báo người dùng khi đang có tệp tải lên mà vô tình F5 hoặc vuốt kéo tải lại trang
+  initBeforeUnloadWarning() {
+    window.addEventListener('beforeunload', (e) => {
+      const hasActive = this.tasks.some(
+        (t) => t.status === 'uploading' || t.status === 'pending'
+      );
+      if (hasActive) {
+        // Lưu trạng thái ngay lập tức trước khi trang bị hủy
+        this.saveToStorage();
+        e.preventDefault();
+        e.returnValue = 'Quá trình tải lên tệp tin đang diễn ra. Nếu tải lại trang hoặc thoát, tiến trình tải có thể bị gián đoạn!';
+        return e.returnValue;
+      }
+    });
+  },
+
+  // Lưu trạng thái các tác vụ dở dang vào localStorage
+  saveToStorage() {
+    try {
+      const activeTasks = this.tasks
+        .filter((t) => ['uploading', 'pending', 'paused', 'interrupted', 'error'].includes(t.status))
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          size: t.size,
+          relPath: t.relPath || '',
+          targetFolderId: t.targetFolderId || 'root',
+          resolvedFolderId: t.resolvedFolderId || null,
+          isLargeFile: !!t.isLargeFile,
+          totalChunks: t.totalChunks || 1,
+          chunkSize: t.chunkSize || this.config.CHUNK_SIZE,
+          uploadId: t.uploadId || null,
+          status: t.status === 'uploading' || t.status === 'pending' ? 'interrupted' : t.status,
+          statusText:
+            t.status === 'uploading' || t.status === 'pending'
+              ? 'Gián đoạn do tải lại trang ⏸ - Nhấn Tiếp tục'
+              : t.statusText,
+          progress: t.progress || 0,
+          uploadedBytes: t.uploadedBytes || 0,
+          chunksStatus: t.chunksStatus || [],
+          chunksBytes: t.chunksBytes || [],
+          lastUpdated: Date.now(),
+        }));
+
+      if (activeTasks.length > 0) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(activeTasks));
+      } else {
+        localStorage.removeItem(this.STORAGE_KEY);
+      }
+    } catch (err) {
+      console.warn('[UploadManager] Không thể lưu trạng thái upload vào localStorage:', err);
+    }
+  },
+
+  // Khôi phục các tác vụ dở dang từ localStorage sau khi F5 / mở lại trang
+  async loadFromStorage() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (!saved) return;
+
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed) || parsed.length === 0) return;
+
+      const now = Date.now();
+      const validTasks = [];
+
+      for (const item of parsed) {
+        // Bỏ qua task quá 24h
+        if (now - (item.lastUpdated || 0) > 24 * 3600 * 1000) continue;
+
+        const task = {
+          id: item.id || ('up_' + Date.now() + '_' + Math.random().toString(36).substr(2, 7)),
+          file: null, // Cần người dùng rebind sau khi reload
+          needsRebind: true,
+          name: item.name,
+          size: item.size,
+          relPath: item.relPath || '',
+          targetFolderId: item.targetFolderId || 'root',
+          resolvedFolderId: item.resolvedFolderId || null,
+          isLargeFile: !!item.isLargeFile,
+          totalChunks: item.totalChunks || 1,
+          chunkSize: item.chunkSize || this.config.CHUNK_SIZE,
+          status: 'interrupted',
+          statusText: 'Gián đoạn do tải lại trang ⏸ - Nhấn Tiếp tục để chọn lại tệp',
+          progress: item.progress || 0,
+          uploadedBytes: item.uploadedBytes || 0,
+          speed: 0,
+          eta: 0,
+          lastBytes: item.uploadedBytes || 0,
+          lastSpeedTime: Date.now(),
+          retryCount: 0,
+          errorMsg: '',
+          uploadId: item.uploadId || null,
+          chunksStatus:
+            item.chunksStatus && item.chunksStatus.length === (item.totalChunks || 1)
+              ? item.chunksStatus
+              : new Array(item.totalChunks || 1).fill('pending'),
+          chunksBytes:
+            item.chunksBytes && item.chunksBytes.length === (item.totalChunks || 1)
+              ? item.chunksBytes
+              : new Array(item.totalChunks || 1).fill(0),
+          activeRequests: new Map(),
+          pollController: null,
+          xhr: null,
+        };
+
+        // Nếu task có uploadId, truy vấn server để lấy received_chunks chính xác nhất
+        if (task.uploadId) {
+          this.syncTaskStatusWithServer(task).catch(() => {});
+        }
+
+        validTasks.push(task);
+      }
+
+      if (validTasks.length > 0) {
+        this.tasks.push(...validTasks);
+        this.openDrawer();
+        this.renderDrawer();
+        this.updateOverallStats();
+        this.showRecoveryBanner(validTasks.length);
+        console.log(
+          `[UploadManager] Đã khôi phục ${validTasks.length} tác vụ tải lên dở dang sau khi tải lại trang.`
+        );
+      }
+    } catch (err) {
+      console.warn('[UploadManager] Lỗi đọc trạng thái upload từ localStorage:', err);
+    }
+  },
+
+  // Đồng bộ trạng thái chunk từ server
+  async syncTaskStatusWithServer(task) {
+    if (!task.uploadId) return;
+    try {
+      const authHeaders = this.getAuthHeaders();
+      const res = await fetch(`/api/files/upload-status?upload_id=${encodeURIComponent(task.uploadId)}`, {
+        headers: authHeaders,
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'completed') {
+          task.status = 'completed';
+          task.progress = 100;
+          task.uploadedBytes = task.size;
+          task.statusText = 'Hoàn tất ✓ (đã đồng bộ máy chủ)';
+          task.needsRebind = false;
+          this.updateTaskUI(task);
+          this.updateOverallStats();
+          this.saveToStorage();
+          this.hideRecoveryBannerIfNone();
+          return;
+        }
+
+        if (Array.isArray(data.received_chunks)) {
+          let completedBytes = 0;
+          for (const idx of data.received_chunks) {
+            if (idx >= 0 && idx < task.totalChunks) {
+              task.chunksStatus[idx] = 'completed';
+              const start = idx * task.chunkSize;
+              const end = Math.min(start + task.chunkSize, task.size);
+              const cSize = end - start;
+              task.chunksBytes[idx] = cSize;
+              completedBytes += cSize;
+            }
+          }
+          task.uploadedBytes = completedBytes;
+          task.progress = Math.min(99, Math.round((completedBytes / task.size) * 100));
+          task.statusText = `Đã lưu trên máy chủ ${data.received_chunks.length}/${task.totalChunks} mảnh - Nhấn Tiếp tục`;
+          this.updateTaskUI(task);
+          this.updateOverallStats();
+          this.saveToStorage();
+        }
+      }
+    } catch (e) {
+      console.warn(`[UploadManager] Không thể đồng bộ status upload ${task.uploadId}:`, e.message);
+    }
+  },
+
+  // Mở bộ chọn tệp để người dùng rebind lại đúng tệp bị gián đoạn
+  promptFileRebind(task) {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.style.position = 'fixed';
+      input.style.top = '0';
+      input.style.left = '0';
+      input.style.width = '0';
+      input.style.height = '0';
+      input.style.opacity = '0';
+      input.style.zIndex = '-1';
+      document.body.appendChild(input);
+
+      input.onchange = async () => {
+        const file = input.files && input.files[0];
+        input.remove();
+        if (!file) {
+          resolve(false);
+          return;
+        }
+
+        if (file.name !== task.name || file.size !== task.size) {
+          Toast.error(
+            `Tệp "${file.name}" (${this.formatSize(file.size)}) không khớp với tệp cần tiếp tục "${task.name}" (${this.formatSize(task.size)})!`
+          );
+          resolve(false);
+          return;
+        }
+
+        task.file = file;
+        task.needsRebind = false;
+        task.status = 'pending';
+        task.statusText = 'Đang tiếp tục tải lên...';
+        task.errorMsg = '';
+
+        if (task.uploadId) {
+          await this.syncTaskStatusWithServer(task);
+        }
+
+        this.updateTaskUI(task);
+        this.updateOverallStats();
+        this.saveToStorage();
+        Toast.success(`Đã nhận diện tệp "${task.name}", tiếp tục tải các phần còn lại!`);
+        this.processQueue();
+        this.hideRecoveryBannerIfNone();
+        resolve(true);
+      };
+
+      input.oncancel = () => {
+        input.remove();
+        resolve(false);
+      };
+
+      input.click();
+    });
+  },
+
+  // Khôi phục hàng loạt tất cả các tệp bị gián đoạn
+  resumeAllInterrupted() {
+    const interruptedTasks = this.tasks.filter((t) => t.status === 'interrupted' || t.needsRebind);
+    if (interruptedTasks.length === 0) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.style.position = 'fixed';
+    input.style.top = '0';
+    input.style.left = '0';
+    input.style.width = '0';
+    input.style.height = '0';
+    input.style.opacity = '0';
+    input.style.zIndex = '-1';
+    document.body.appendChild(input);
+
+    input.onchange = async () => {
+      const files = Array.from(input.files || []);
+      input.remove();
+      if (files.length === 0) return;
+
+      let matchedCount = 0;
+      for (const file of files) {
+        const match = this.tasks.find(
+          (t) => (t.status === 'interrupted' || t.needsRebind) && t.name === file.name && t.size === file.size
+        );
+        if (match) {
+          match.file = file;
+          match.needsRebind = false;
+          match.status = 'pending';
+          match.statusText = 'Đang tiếp tục tải lên...';
+          if (match.uploadId) {
+            await this.syncTaskStatusWithServer(match);
+          }
+          this.updateTaskUI(match);
+          matchedCount++;
+        }
+      }
+
+      if (matchedCount > 0) {
+        Toast.success(`Đã nhận diện và khôi phục thành công ${matchedCount} tệp! Bắt đầu tải tiếp.`);
+        this.updateOverallStats();
+        this.saveToStorage();
+        this.processQueue();
+        this.hideRecoveryBannerIfNone();
+      } else {
+        Toast.warning('Không tìm thấy tệp nào khớp tên và dung lượng trong danh sách chờ khôi phục.');
+      }
+    };
+
+    input.oncancel = () => input.remove();
+    input.click();
+  },
+
+  // Hiển thị Banner khôi phục tác vụ dở dang
+  showRecoveryBanner(count) {
+    const banner = document.getElementById('upload-recovery-banner');
+    if (banner) {
+      banner.style.display = 'flex';
+      const textEl = document.getElementById('upload-recovery-banner-text');
+      if (textEl) {
+        textEl.textContent = `⚡ Có ${count} tệp bị gián đoạn do tải lại trang. Nhấn Tiếp tục để chọn lại tệp và tải tiếp mà không mất dữ liệu.`;
+      }
+    }
+  },
+
+  // Ẩn Banner nếu không còn tác vụ nào bị gián đoạn
+  hideRecoveryBannerIfNone() {
+    const hasInterrupted = this.tasks.some((t) => t.status === 'interrupted' || t.needsRebind);
+    if (!hasInterrupted) {
+      const banner = document.getElementById('upload-recovery-banner');
+      if (banner) {
+        banner.style.display = 'none';
+      }
+    }
   },
 
   // Lắng nghe sự kiện kéo thả toàn trang để kích hoạt drop zone tự nhiên
@@ -365,6 +684,25 @@ const UploadManager = {
         continue;
       }
 
+      // Tự động kiểm tra xem có tác vụ nào đang gián đoạn (sau F5) khớp với tệp này không
+      const interruptedMatch = this.tasks.find(
+        (t) => (t.status === 'interrupted' || t.needsRebind) && t.name === file.name && t.size === file.size
+      );
+      if (interruptedMatch) {
+        interruptedMatch.file = file;
+        interruptedMatch.needsRebind = false;
+        interruptedMatch.status = 'pending';
+        interruptedMatch.statusText = 'Đang tiếp tục tải lên...';
+        interruptedMatch.errorMsg = '';
+        if (interruptedMatch.uploadId) {
+          this.syncTaskStatusWithServer(interruptedMatch);
+        }
+        this.updateTaskUI(interruptedMatch);
+        this.hideRecoveryBannerIfNone();
+        addedCount++;
+        continue;
+      }
+
       const isLarge = file.size > this.config.CHUNK_THRESHOLD;
       const totalChunks = isLarge ? Math.ceil(file.size / this.config.CHUNK_SIZE) : 1;
 
@@ -406,6 +744,7 @@ const UploadManager = {
     if (addedCount > 0) {
       this.openDrawer();
       this.renderDrawer();
+      this.saveToStorage();
       this.processQueue();
     }
   },
@@ -469,6 +808,8 @@ const UploadManager = {
 
       // Thông báo và làm mới giao diện
       Toast.success(`Tải lên thành công "${task.name}"`);
+      this.saveToStorage();
+      this.hideRecoveryBannerIfNone();
       if (typeof FilesManager !== 'undefined' && FilesManager.loadFiles) {
         // Nếu người dùng đang đứng ở thư mục tải lên thì làm mới danh sách
         if (FilesManager.currentFolderId === task.targetFolderId || FilesManager.currentFolderId === task.resolvedFolderId) {
@@ -493,6 +834,7 @@ const UploadManager = {
       task.statusText = `Lỗi: ${task.errorMsg}`;
       this.updateTaskUI(task);
       this.updateOverallStats();
+      this.saveToStorage();
       Toast.error(`Lỗi tải lên "${task.name}": ${task.errorMsg}`);
     } finally {
       this.processQueue();
@@ -541,6 +883,10 @@ const UploadManager = {
 
       const initData = await initRes.json();
       task.uploadId = initData.upload_id;
+      this.saveToStorage();
+    } else {
+      // Đã có uploadId từ phiên trước (sau khi F5 khôi phục), đồng bộ danh sách mảnh trên máy chủ
+      await this.syncTaskStatusWithServer(task);
     }
 
     // Bước 4.2: Worker Pool tải song song các chunk
@@ -570,6 +916,7 @@ const UploadManager = {
           // Cập nhật tiến độ tổng hợp của task
           this.recalculateTaskProgress(task);
           this.updateTaskUI(task);
+          this.saveToStorage();
         } catch (err) {
           if (task.status === 'paused' || task.status === 'canceled') break;
 
@@ -876,20 +1223,30 @@ const UploadManager = {
 
     this.updateTaskUI(task);
     this.updateOverallStats();
+    this.saveToStorage();
     this.processQueue();
   },
 
   /**
-   * Tiếp tục tải tệp đang tạm dừng
+   * Tiếp tục tải tệp đang tạm dừng hoặc gián đoạn sau F5
    */
-  resume(taskId) {
+  async resume(taskId) {
     const task = this.tasks.find((t) => t.id === taskId);
-    if (!task || (task.status !== 'paused' && task.status !== 'error')) return;
+    if (!task) return;
+
+    // Nếu task bị gián đoạn sau F5 và chưa có File object trong RAM
+    if (task.needsRebind || !task.file) {
+      await this.promptFileRebind(task);
+      return;
+    }
+
+    if (task.status !== 'paused' && task.status !== 'error' && task.status !== 'interrupted') return;
 
     task.status = 'pending';
     task.statusText = 'Đang tiếp tục...';
     this.updateTaskUI(task);
     this.updateOverallStats();
+    this.saveToStorage();
     this.processQueue();
   },
 
@@ -899,6 +1256,11 @@ const UploadManager = {
   retry(taskId) {
     const task = this.tasks.find((t) => t.id === taskId);
     if (!task) return;
+
+    if (task.needsRebind || !task.file) {
+      this.promptFileRebind(task);
+      return;
+    }
 
     task.status = 'pending';
     task.errorMsg = '';
@@ -912,6 +1274,7 @@ const UploadManager = {
 
     this.updateTaskUI(task);
     this.updateOverallStats();
+    this.saveToStorage();
     this.processQueue();
   },
 
@@ -949,6 +1312,8 @@ const UploadManager = {
     if (el) el.remove();
 
     this.updateOverallStats();
+    this.saveToStorage();
+    this.hideRecoveryBannerIfNone();
     this.processQueue();
 
     if (this.tasks.length === 0) {
@@ -964,10 +1329,17 @@ const UploadManager = {
   },
 
   /**
-   * Tiếp tục tất cả các tệp đang tạm dừng
+   * Tiếp tục tất cả các tệp đang tạm dừng hoặc gián đoạn
    */
-  resumeAll() {
-    this.tasks.filter((t) => t.status === 'paused' || t.status === 'error').forEach((t) => this.resume(t.id));
+  async resumeAll() {
+    const interruptedTasks = this.tasks.filter((t) => t.status === 'interrupted' || t.needsRebind);
+    if (interruptedTasks.length > 0) {
+      this.resumeAllInterrupted();
+      return;
+    }
+    this.tasks
+      .filter((t) => t.status === 'paused' || t.status === 'error')
+      .forEach((t) => this.resume(t.id));
   },
 
   /**
@@ -989,6 +1361,8 @@ const UploadManager = {
     });
     this.tasks = this.tasks.filter((t) => t.status !== 'completed');
     this.updateOverallStats();
+    this.saveToStorage();
+    this.hideRecoveryBannerIfNone();
     if (this.tasks.length === 0) {
       this.closeDrawer();
     }
@@ -1180,22 +1554,23 @@ const UploadManager = {
     const totalStr = this.formatSize(task.size);
 
     // Xác định màu sắc thanh tiến trình theo trạng thái
-    let progressColor = 'var(--accent-blue)';
-    if (task.status === 'completed') progressColor = 'var(--accent-teal)';
-    if (task.status === 'paused') progressColor = 'var(--accent-amber)';
-    if (task.status === 'error') progressColor = 'var(--accent-red)';
-
     const isUploading = task.status === 'uploading';
     const isPaused = task.status === 'paused';
+    const isInterrupted = task.status === 'interrupted' || task.needsRebind;
     const isError = task.status === 'error';
     const isCompleted = task.status === 'completed';
+
+    let progressColor = 'var(--accent-blue)';
+    if (isCompleted) progressColor = 'var(--accent-teal)';
+    if (isPaused || isInterrupted) progressColor = 'var(--accent-amber, #e3b341)';
+    if (isError) progressColor = 'var(--accent-red)';
 
     // Tạo HTML cho nút điều khiển của item
     let actionsHtml = '';
     if (isUploading) {
       actionsHtml += `<button class="upload-btn-action" title="Tạm dừng" onclick="UploadManager.pause('${task.id}')">⏸</button>`;
-    } else if (isPaused) {
-      actionsHtml += `<button class="upload-btn-action" title="Tiếp tục" onclick="UploadManager.resume('${task.id}')">▶</button>`;
+    } else if (isPaused || isInterrupted) {
+      actionsHtml += `<button class="upload-btn-action upload-btn-action-resume" title="Tiếp tục tải lên (Chọn lại tệp nếu F5)" onclick="UploadManager.resume('${task.id}')">▶</button>`;
     } else if (isError) {
       actionsHtml += `<button class="upload-btn-action" title="Thử lại" onclick="UploadManager.retry('${task.id}')">🔄</button>`;
     }
@@ -1211,7 +1586,10 @@ const UploadManager = {
             <span class="upload-item-title" title="${task.relPath ? task.relPath + '/' : ''}${task.name}">
               ${task.name}
             </span>
-            ${task.relPath ? `<span class="upload-item-folder-badge" title="Thư mục: ${task.relPath}">📁 ${task.relPath}</span>` : ''}
+            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+              ${task.relPath ? `<span class="upload-item-folder-badge" title="Thư mục: ${task.relPath}">📁 ${task.relPath}</span>` : ''}
+              ${isInterrupted ? `<span class="upload-item-recovery-badge" title="Tác vụ được khôi phục sau khi tải lại trang">⚡ Cần chọn lại tệp</span>` : ''}
+            </div>
           </div>
         </div>
         <div class="upload-item-actions">

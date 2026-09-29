@@ -129,7 +129,7 @@
     </header>
 
     <!-- Hidden file input for uploads (Optimized for iOS WebKit & Android) -->
-    <input type="file" id="file-input-hidden" multiple accept="*/*" style="position: absolute; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+    <input type="file" id="file-input-hidden" multiple style="position: fixed; top: 0; left: 0; width: 0; height: 0; opacity: 0; z-index: -1;">
 
     <!-- TAB 1: Dashboard View -->
     <section id="view-dashboard" class="view-container">
@@ -209,7 +209,7 @@
     </section>
 
     <!-- Hidden folder input for directory uploads (Optimized for WebKit) -->
-    <input type="file" id="folder-input-hidden" webkitdirectory directory multiple style="position: absolute; top: -9999px; left: -9999px; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+    <input type="file" id="folder-input-hidden" webkitdirectory directory multiple style="position: fixed; top: 0; left: 0; width: 0; height: 0; opacity: 0; z-index: -1;">
 
     <!-- TAB 2: File Explorer View -->
     <section id="view-files" class="view-container active">
@@ -1191,6 +1191,9 @@
 
 <!-- Upload Progress Drawer (Đột Phá: Folder Scan, Parallel Chunk, Speed, ETA, Controls) -->
 <div id="upload-drawer" class="upload-drawer">
+  <!-- Mobile Drag Handle: hiển thị trên di động để kéo vuốt thu nhỏ/mở rộng -->
+  <div class="upload-drawer-drag-handle" id="upload-drawer-drag-handle" title="Vuốt hoặc chạm để thu nhỏ / mở rộng bảng tải lên"></div>
+
   <!-- Minimized Bar: hiển thị khi thu nhỏ -->
   <div id="upload-drawer-minimized" class="upload-drawer-minimized-bar" title="Nhấn để mở rộng bảng tải lên">
     <div class="upload-drawer-minimized-info">
@@ -1218,6 +1221,15 @@
         <button id="btn-minimize-upload-drawer" class="upload-drawer-icon-btn" title="Thu nhỏ">–</button>
         <button id="btn-close-upload-drawer" class="upload-drawer-icon-btn" title="Đóng">&times;</button>
       </div>
+    </div>
+
+    <!-- Banner Khôi Phục Tiến Trình sau khi tải lại trang F5 / Reload -->
+    <div id="upload-recovery-banner" class="upload-recovery-banner" style="display: none;">
+      <div class="upload-recovery-info">
+        <span style="font-size: 14px; flex-shrink: 0;">⚡</span>
+        <span id="upload-recovery-banner-text" style="font-size: 11px; line-height: 1.35;">Có tệp bị gián đoạn do tải lại trang. Nhấn "Tiếp tục" để chọn lại tệp và tải tiếp mà không mất dữ liệu.</span>
+      </div>
+      <button id="btn-upload-recovery-resume" class="upload-recovery-btn" onclick="UploadManager.resumeAllInterrupted()">Khôi phục tất cả</button>
     </div>
 
     <!-- Thanh tổng quan tiến độ (Overall Progress & Quick Controls) -->

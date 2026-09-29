@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -1153,6 +1154,16 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 	status := session.Status
 	resultFile := session.ResultFile
 	errMsg := session.ErrorMsg
+	fileName := session.FileName
+	totalSize := session.TotalSize
+	totalChunks := session.TotalChunks
+	receivedChunks := make([]int, 0, len(session.Received))
+	for idx, ok := range session.Received {
+		if ok {
+			receivedChunks = append(receivedChunks, idx)
+		}
+	}
+	sort.Ints(receivedChunks)
 	session.mu.Unlock()
 
 	if status == "completed" && resultFile != nil {
@@ -1177,8 +1188,13 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":    status, // "uploading" hoặc "assembling"
-		"upload_id": uploadID,
+		"status":          status, // "uploading" hoặc "assembling"
+		"upload_id":       uploadID,
+		"file_name":       fileName,
+		"total_size":      totalSize,
+		"total_chunks":    totalChunks,
+		"received_chunks": receivedChunks,
+		"received_count":  len(receivedChunks),
 	})
 }
 

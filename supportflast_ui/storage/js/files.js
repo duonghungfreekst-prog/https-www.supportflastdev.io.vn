@@ -96,10 +96,27 @@ const FilesManager = {
       btnExp.addEventListener('click', (e) => { e.preventDefault(); triggerFileInput(fileInput); });
     }
     if (btnUploadFolder && folderInput) {
-      btnUploadFolder.addEventListener('click', (e) => { e.preventDefault(); triggerFileInput(folderInput); });
+      btnUploadFolder.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isMobile =
+          /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+          (navigator.maxTouchPoints > 1 && window.innerWidth <= 768);
+        if (isMobile) {
+          Toast.info(
+            '📱 Trình duyệt di động chưa hỗ trợ chọn cả cây thư mục. Đang mở bộ chọn nhiều tệp tin...',
+            4000
+          );
+          triggerFileInput(fileInput);
+          return;
+        }
+        triggerFileInput(folderInput);
+      });
     }
 
     if (fileInput) {
+      fileInput.addEventListener('cancel', () => {
+        fileInput.value = '';
+      });
       fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
           if (typeof UploadManager !== 'undefined') {
@@ -113,6 +130,9 @@ const FilesManager = {
     }
 
     if (folderInput) {
+      folderInput.addEventListener('cancel', () => {
+        folderInput.value = '';
+      });
       folderInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
           if (typeof UploadManager !== 'undefined') {

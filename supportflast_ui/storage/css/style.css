@@ -70,6 +70,8 @@ html, body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden !important;
+  overscroll-behavior-y: none; /* Chống vô tình kéo reload Pull-to-refresh trên trình duyệt di động */
+  -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
 
@@ -81,6 +83,11 @@ body {
   height: 100vh;
   overflow: hidden;
   display: flex;
+}
+
+.main-content, .explorer-content, .upload-drawer-list, .archive-table-wrapper {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ==========================================================================
@@ -869,6 +876,64 @@ body.is-admin #admin-lock-btn-container {
   display: flex;
 }
 
+/* Tay cầm vuốt kéo trên Mobile Bottom Sheet */
+.upload-drawer-drag-handle {
+  display: none;
+}
+
+/* Banner khôi phục sau khi tải lại trang F5 / reload */
+.upload-recovery-banner {
+  background: rgba(210, 153, 34, 0.14);
+  border-bottom: 1px solid rgba(210, 153, 34, 0.3);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.upload-recovery-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f1f5f9;
+}
+
+.upload-recovery-btn {
+  background: var(--accent-amber, #d29922);
+  color: #0d1117;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.upload-recovery-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.upload-item-recovery-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(210, 153, 34, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(210, 153, 34, 0.35);
+}
+
+.upload-btn-action-resume {
+  color: var(--accent-teal, #3fb950) !important;
+  font-weight: bold;
+}
+
 /* Chế độ thu nhỏ Minimized */
 .upload-drawer.minimized {
   max-height: 48px;
@@ -1633,22 +1698,69 @@ body.is-admin #admin-lock-btn-container {
   }
 
   .files-grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 6px 2px !important;
   }
 
   .file-card {
-    padding: 10px 8px;
+    padding: 12px 8px !important;
+    min-height: 125px !important;
+    border-radius: 12px !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    background: rgba(255, 255, 255, 0.035) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
   }
 
   .file-card-icon {
-    width: 40px;
-    height: 40px;
-    margin: 4px 0;
+    width: 44px !important;
+    height: 44px !important;
+    margin: 4px 0 6px 0 !important;
+    flex-shrink: 0 !important;
   }
 
   .file-card-title {
-    font-size: 12px;
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-align: center !important;
+    max-height: 2.7em !important;
+    width: 100% !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Checkbox trên mobile hiển thị rõ ràng, dễ chạm */
+  .file-card-checkbox {
+    opacity: 0.7 !important;
+    width: 22px !important;
+    height: 22px !important;
+    top: 6px !important;
+    left: 6px !important;
+    z-index: 2 !important;
+  }
+
+  .file-card.selected .file-card-checkbox,
+  .file-card:active .file-card-checkbox {
+    opacity: 1 !important;
+  }
+
+  /* Touch target tối thiểu 40-44px cho thao tác ngón tay trên mobile */
+  .action-icon-btn, .view-toggle-btn {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .modal-box {
@@ -1833,6 +1945,97 @@ body.is-admin #admin-lock-btn-container {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+}
+
+/* ==========================================================================
+   MOBILE BOTTOM SHEET & MOBILE TOAST & MOBILE PREVIEW OPTIMIZATIONS (<= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Chuyển Upload Drawer thành Mobile Bottom Sheet sát đáy */
+  .upload-drawer {
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    box-shadow: 0 -8px 36px rgba(0, 0, 0, 0.7) !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.28s ease !important;
+    z-index: 10000 !important;
+    padding-bottom: env(safe-area-inset-bottom, 10px) !important;
+  }
+
+  .upload-drawer-drag-handle {
+    display: block !important;
+    width: 44px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.32);
+    border-radius: 3px;
+    margin: 8px auto 4px auto;
+    cursor: grab;
+  }
+
+  .upload-drawer-drag-handle:active {
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .upload-drawer-list {
+    max-height: 42vh !important;
+  }
+
+  .upload-drawer.minimized {
+    max-height: calc(54px + env(safe-area-inset-bottom, 8px)) !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  /* Chuyển Toast Notification lên Top-Center Floating Pill để không bị che Bottom Sheet */
+  #toast-container {
+    top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: calc(100% - 24px) !important;
+    max-width: 420px !important;
+    z-index: 10005 !important;
+    pointer-events: none;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+
+  .toast {
+    pointer-events: auto;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    border-radius: 24px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55) !important;
+    text-align: center;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Modal Preview xem trước Video/Ảnh/File trên Mobile: 100dvh không bị tràn màn hình */
+  .modal-preview-box {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px calc(8px + env(safe-area-inset-bottom, 0px)) 10px !important;
+  }
+
+  .preview-body {
+    flex: 1 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
   }
 }
 
