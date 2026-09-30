@@ -489,8 +489,8 @@ type chunkFlight struct {
 var (
 	flightMu sync.Mutex
 	inFlight = make(map[string]*chunkFlight)
-	// Semaphore to limit concurrent background prefetches to max 4 (Rule PHAN 7.1)
-	prefetchSem = make(chan struct{}, 4)
+	// Semaphore to limit concurrent background prefetches to max 8 (Rule PHAN 7.1)
+	prefetchSem = make(chan struct{}, 8)
 )
 
 // fetchNativeRangeBlock tải dải byte 2MB của tệp native Google Drive

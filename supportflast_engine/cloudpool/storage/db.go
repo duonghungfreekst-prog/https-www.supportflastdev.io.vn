@@ -554,7 +554,9 @@ func (s *DB) migrateTiDB() error {
 			INDEX idx_vfiles_user (user_id),
 			INDEX idx_vfiles_deleted (is_deleted),
 			INDEX idx_vfiles_missing_chunks (has_missing_chunks),
-			INDEX idx_vfiles_parent_deleted (parent_id, is_deleted)
+			INDEX idx_vfiles_parent_deleted (parent_id, is_deleted),
+			INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name),
+			INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
 
 		`CREATE TABLE IF NOT EXISTS file_chunks (
@@ -759,6 +761,10 @@ func (s *DB) migrateTiDB() error {
 	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
 	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
 
+	// Covering Composite Indexes tối ưu hóa triệt để ListVirtualFiles cho TiDB (Zero FileSort)
+	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name)`)
+	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name)`)
+
 	return nil
 }
 
@@ -826,6 +832,8 @@ func (s *DB) migrateSQLite() error {
 		`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent ON virtual_files(parent_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_path ON virtual_files(path);`,
+		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent_del_dir_name ON virtual_files(parent_id, is_deleted, is_dir, name);`,
+		`CREATE INDEX IF NOT EXISTS idx_vfiles_user_parent_del_dir_name ON virtual_files(user_id, parent_id, is_deleted, is_dir, name);`,
 		`CREATE TABLE IF NOT EXISTS file_chunks (
 			chunk_id TEXT PRIMARY KEY,
 			file_id TEXT NOT NULL,
@@ -956,6 +964,8 @@ func (s *DB) migrateSQLite() error {
 	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash);")
 	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users(username_hash);")
 	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_deleted ON virtual_files(parent_id, is_deleted);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_del_dir_name ON virtual_files(parent_id, is_deleted, is_dir, name);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_user_parent_del_dir_name ON virtual_files(user_id, parent_id, is_deleted, is_dir, name);")
 
 	// Backup history table (also created by Python backup script)
 	_, _ = s.db.Exec(`CREATE TABLE IF NOT EXISTS gdrive_backups (

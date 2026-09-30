@@ -19,6 +19,49 @@ const FilesManager = {
   pendingOTPRequestId: null,   // Request đang chờ admin phê duyệt thời gian
   otpPollingInterval: null,    // ID vòng lặp polling badge thông báo
   lastPendingCount: 0,         // Đếm lần trước để so sánh
+  folderCache: new Map(),      // Client-side RAM Cache (SWR) lưu folderId -> { data, timestamp }
+  cacheTTL: 60000,             // 60 giây TTL cho bộ nhớ đệm trình duyệt
+  revalidatingKeys: new Set(), // Tránh gọi fetch trùng lặp khi đang silent revalidate
+
+  getCacheKey(folderId) {
+    return `${folderId || 'root'}:${this.filterUserId || ''}:${this.filterAccountId || ''}`;
+  },
+
+  invalidateFolderCache(folderId = null) {
+    if (folderId) {
+      for (const key of this.folderCache.keys()) {
+        if (key.startsWith(`${folderId}:`)) {
+          this.folderCache.delete(key);
+        }
+      }
+    } else {
+      this.folderCache.clear();
+    }
+  },
+
+  preloadFolder(folderId) {
+    if (!folderId || folderId === 'root') return;
+    const cacheKey = this.getCacheKey(folderId);
+    if (this.folderCache.has(cacheKey) || this.revalidatingKeys.has(cacheKey)) return;
+
+    this.revalidatingKeys.add(cacheKey);
+    setTimeout(async () => {
+      try {
+        let data;
+        if (this.filterAccountId) {
+          data = await API.listFilesByAccount(this.filterAccountId);
+        } else {
+          data = await API.listFiles(folderId, this.filterUserId);
+        }
+        if (data && Array.isArray(data.files)) {
+          this.folderCache.set(cacheKey, { data, timestamp: Date.now() });
+        }
+      } catch (_) {
+      } finally {
+        this.revalidatingKeys.delete(cacheKey);
+      }
+    }, 40);
+  },
 
   escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -550,16 +593,35 @@ const FilesManager = {
     if (grid) grid.innerHTML = `<div style="grid-column: 1/-1;">${errorHtml}</div>`;
   },
 
-  async loadFiles(folderId = 'root') {
+  async loadFiles(folderId = 'root', forceRefresh = false) {
     this.currentFolderId = folderId || 'root';
+    const cacheKey = this.getCacheKey(this.currentFolderId);
+    const cached = !forceRefresh ? this.folderCache.get(cacheKey) : null;
+    const now = Date.now();
+
+    // 1. Instant Cache Hit: Hiển thị ngay tức thì trong 0ms nếu có cache hợp lệ
+    if (cached && (now - cached.timestamp < this.cacheTTL)) {
+      this.files = (cached.data && Array.isArray(cached.data.files)) ? cached.data.files : [];
+      this.selectedIds.clear();
+      this.updateBulkActionBar();
+      this.renderBreadcrumbs();
+      this.renderFiles();
+
+      // Chạy Silent Revalidation (SWR) ngầm để đồng bộ nếu có file mới mà không giật màn hình
+      this.silentRevalidate(this.currentFolderId, cacheKey);
+      return;
+    }
+
+    // 2. Cache Miss hoặc Force Refresh: Hiển thị loading và fetch từ API
     this.renderLoading();
     try {
       let data;
       if (this.filterAccountId) {
         data = await API.listFilesByAccount(this.filterAccountId);
       } else {
-        data = await API.listFiles(folderId, this.filterUserId);
+        data = await API.listFiles(this.currentFolderId, this.filterUserId);
       }
+      this.folderCache.set(cacheKey, { data, timestamp: Date.now() });
       this.files = (data && Array.isArray(data.files)) ? data.files : [];
       this.selectedIds.clear();
       this.updateBulkActionBar();
@@ -569,6 +631,43 @@ const FilesManager = {
       console.error('[FILES] Lỗi tải tệp tin:', err);
       Toast.error('Không thể tải tệp tin: ' + (err.message || 'Lỗi kết nối'));
       this.renderErrorState(err.message || 'Không thể kết nối đến máy chủ');
+    }
+  },
+
+  async silentRevalidate(folderId, cacheKey) {
+    if (this.revalidatingKeys.has(cacheKey)) return;
+    this.revalidatingKeys.add(cacheKey);
+    try {
+      let data;
+      if (this.filterAccountId) {
+        data = await API.listFilesByAccount(this.filterAccountId);
+      } else {
+        data = await API.listFiles(folderId, this.filterUserId);
+      }
+      if (!data || !Array.isArray(data.files)) return;
+
+      const oldFiles = this.files || [];
+      const newFiles = data.files;
+      this.folderCache.set(cacheKey, { data, timestamp: Date.now() });
+
+      // So sánh nếu có sự thay đổi về danh sách tệp hoặc cập nhật mới
+      let changed = oldFiles.length !== newFiles.length;
+      if (!changed) {
+        for (let i = 0; i < oldFiles.length; i++) {
+          if (oldFiles[i].id !== newFiles[i].id || oldFiles[i].updated_at !== newFiles[i].updated_at || oldFiles[i].name !== newFiles[i].name) {
+            changed = true;
+            break;
+          }
+        }
+      }
+
+      if (changed && this.currentFolderId === folderId) {
+        this.files = newFiles;
+        this.renderFiles();
+      }
+    } catch (_) {
+    } finally {
+      this.revalidatingKeys.delete(cacheKey);
     }
   },
 
@@ -1179,7 +1278,7 @@ const FilesManager = {
     if (this.currentFolderId !== 'root' && !this.filterAccountId) {
       const parentId = (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 1) ? this.breadcrumbs[this.breadcrumbs.length - 2].id : 'root';
       html += `
-        <tr class="folder-back-row" onclick="FilesManager.navigateTo('${parentId}')" style="cursor: pointer;">
+        <tr class="folder-back-row" onmouseenter="FilesManager.preloadFolder('${parentId}')" onclick="FilesManager.navigateTo('${parentId}')" style="cursor: pointer;">
           <td></td>
           <td>
             <div class="file-name-cell" style="color: var(--accent-blue);">
@@ -1229,7 +1328,7 @@ const FilesManager = {
       }
 
       html += `
-        <tr class="${isSelected ? 'selected' : ''}" oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')">
+        <tr class="${isSelected ? 'selected' : ''}" oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')" ${f.is_dir ? `onmouseenter="FilesManager.preloadFolder('${f.id}')"` : ''}>
           <td onclick="event.stopPropagation();">
             <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="FilesManager.toggleSelect('${f.id}')" style="cursor: pointer;">
           </td>
@@ -1311,8 +1410,9 @@ const FilesManager = {
 
     // If inside a subfolder, add standard ".." card in Grid view
     if (this.currentFolderId !== 'root' && !this.filterAccountId) {
+      const parentId = (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 1) ? this.breadcrumbs[this.breadcrumbs.length - 2].id : 'root';
       html += `
-        <div class="file-card up-card" onclick="FilesManager.navigateUp()" style="cursor: pointer; border: 1px dashed rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
+        <div class="file-card up-card" onmouseenter="FilesManager.preloadFolder('${parentId}')" onclick="FilesManager.navigateUp()" style="cursor: pointer; border: 1px dashed rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
           <div class="file-card-icon folder" style="color: #60a5fa; font-size: 26px;">📁 ⬆️</div>
           <div class="file-card-title" style="color: var(--accent-blue); font-weight: 600;">.. (Quay lại)</div>
           <div class="file-card-meta"><span>Thư mục cha</span></div>
@@ -1333,7 +1433,8 @@ const FilesManager = {
       html += `
         <div class="file-card ${isSelected ? 'selected' : ''} ${isLockedAdminFile ? 'locked-card' : ''}" 
              onclick="FilesManager.handleItemClick('${f.id}')"
-             oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')">
+             oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')"
+             ${f.is_dir ? `onmouseenter="FilesManager.preloadFolder('${f.id}')"` : ''}>
           <input type="checkbox" class="file-card-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); FilesManager.toggleSelect('${f.id}')">
           <div class="file-card-icon ${f.is_dir ? 'folder' : ''}">
             ${icon}
@@ -1393,7 +1494,8 @@ const FilesManager = {
       await API.bulkDeleteFiles(ids);
       Toast.success(`Đã xóa ${count} mục`);
       this.selectedIds.clear();
-      this.loadFiles(this.currentFolderId);
+      this.invalidateFolderCache(this.currentFolderId);
+      this.loadFiles(this.currentFolderId, true);
       App.refreshStats();
       AccountsManager.loadAccounts();
     } catch (err) {
@@ -1537,7 +1639,8 @@ const FilesManager = {
       await API.createFolder(this.currentFolderId, name);
       Toast.success(`Đã tạo thư mục "${name}"`);
       document.getElementById('modal-new-folder').classList.remove('active');
-      this.loadFiles(this.currentFolderId);
+      this.invalidateFolderCache(this.currentFolderId);
+      this.loadFiles(this.currentFolderId, true);
       App.refreshStats();
     } catch (err) {
       Toast.error(err.message);
@@ -1570,7 +1673,8 @@ const FilesManager = {
       await API.renameFile(id, newName);
       Toast.success('Đổi tên thành công');
       document.getElementById('modal-rename').classList.remove('active');
-      this.loadFiles(this.currentFolderId);
+      this.invalidateFolderCache(this.currentFolderId);
+      this.loadFiles(this.currentFolderId, true);
     } catch (err) {
       Toast.error(err.message);
     }
@@ -1590,7 +1694,8 @@ const FilesManager = {
     try {
       await API.deleteFile(id);
       Toast.success('Đã chuyển tệp vào Thùng rác');
-      this.loadFiles(this.currentFolderId);
+      this.invalidateFolderCache(this.currentFolderId);
+      this.loadFiles(this.currentFolderId, true);
       App.refreshStats();
       AccountsManager.loadAccounts();
     } catch (err) {
@@ -2450,7 +2555,8 @@ const FilesManager = {
       await API.restoreTrashFile(id);
       Toast.success('Đã khôi phục tệp thành công!');
       this.loadTrashList();
-      this.loadFiles(this.currentFolderId);
+      this.invalidateFolderCache();
+      this.loadFiles(this.currentFolderId, true);
       App.refreshStats();
     } catch (err) {
       Toast.error('Lỗi khôi phục: ' + err.message);
@@ -2463,6 +2569,7 @@ const FilesManager = {
       await API.purgeTrashFile(id);
       Toast.success('Đã xóa vĩnh viễn tệp!');
       this.loadTrashList();
+      this.invalidateFolderCache();
       App.refreshStats();
       AccountsManager.loadAccounts();
     } catch (err) {
@@ -2476,6 +2583,8 @@ const FilesManager = {
       const res = await API.emptyTrash();
       Toast.success(res.message || 'Đã dọn sạch thùng rác!');
       this.loadTrashList();
+      this.invalidateFolderCache();
+      this.loadFiles(this.currentFolderId, true);
       App.refreshStats();
       AccountsManager.loadAccounts();
     } catch (err) {

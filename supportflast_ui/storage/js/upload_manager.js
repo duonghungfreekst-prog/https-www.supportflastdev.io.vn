@@ -879,9 +879,13 @@ const UploadManager = {
       this.saveToStorage();
       this.hideRecoveryBannerIfNone();
       if (typeof FilesManager !== 'undefined' && FilesManager.loadFiles) {
+        if (FilesManager.invalidateFolderCache) {
+          FilesManager.invalidateFolderCache(task.targetFolderId);
+          FilesManager.invalidateFolderCache(task.resolvedFolderId);
+        }
         // Nếu người dùng đang đứng ở thư mục tải lên thì làm mới danh sách
         if (FilesManager.currentFolderId === task.targetFolderId || FilesManager.currentFolderId === task.resolvedFolderId) {
-          FilesManager.loadFiles(FilesManager.currentFolderId);
+          FilesManager.loadFiles(FilesManager.currentFolderId, true);
         }
       }
       if (typeof App !== 'undefined' && App.refreshStats) {
@@ -1430,7 +1434,10 @@ const UploadManager = {
         this.hideRecoveryBannerIfNone();
         Toast.success(`Tải lên thành công "${task.name}"`);
         if (typeof FilesManager !== 'undefined' && FilesManager.loadFiles) {
-          FilesManager.loadFiles(folderId);
+          if (FilesManager.invalidateFolderCache) {
+            FilesManager.invalidateFolderCache(folderId);
+          }
+          FilesManager.loadFiles(folderId, true);
         }
         return;
       }

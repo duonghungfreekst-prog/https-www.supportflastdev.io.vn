@@ -659,6 +659,27 @@ func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 		currentFolder, _ = s.db.GetVirtualFile(parentID)
 	}
 
+	// Tính toán ETag nhanh dựa trên targetUserID, parentID, số lượng tệp và max updated_at
+	var maxUpdated int64
+	for _, f := range files {
+		t := f.UpdatedAt.UnixNano()
+		if t > maxUpdated {
+			maxUpdated = t
+		}
+	}
+	if currentFolder != nil && currentFolder.UpdatedAt.UnixNano() > maxUpdated {
+		maxUpdated = currentFolder.UpdatedAt.UnixNano()
+	}
+
+	etag := fmt.Sprintf(`W/"vfs-%s-%s-%d-%d"`, targetUserID, parentID, len(files), maxUpdated)
+	w.Header().Set("ETag", etag)
+	w.Header().Set("Cache-Control", "private, no-cache, must-revalidate")
+
+	if match := r.Header.Get("If-None-Match"); match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"parent": currentFolder,
 		"files":  files,
