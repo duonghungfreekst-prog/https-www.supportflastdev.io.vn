@@ -1438,6 +1438,84 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 	return err
 }
 
+// parseFlexibleTime chuyển đổi an toàn mọi giá trị ngày tháng từ DB (time.Time, string, []byte) sang time.Time chuẩn
+func parseFlexibleTime(val interface{}) time.Time {
+	if val == nil {
+		return time.Now()
+	}
+	switch v := val.(type) {
+	case time.Time:
+		return v
+	case *time.Time:
+		if v != nil {
+			return *v
+		}
+		return time.Now()
+	case []byte:
+		return parseTimeString(string(v))
+	case string:
+		return parseTimeString(v)
+	default:
+		return time.Now()
+	}
+}
+
+func parseFlexibleTimePtr(val interface{}) *time.Time {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case time.Time:
+		return &v
+	case *time.Time:
+		return v
+	case []byte:
+		str := strings.TrimSpace(string(v))
+		if str == "" || str == "NULL" || str == "null" {
+			return nil
+		}
+		t := parseTimeString(str)
+		return &t
+	case string:
+		str := strings.TrimSpace(v)
+		if str == "" || str == "NULL" || str == "null" {
+			return nil
+		}
+		t := parseTimeString(str)
+		return &t
+	default:
+		return nil
+	}
+}
+
+func parseTimeString(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Now()
+	}
+	if idx := strings.Index(s, " m="); idx != -1 {
+		s = s[:idx]
+	}
+	formats := []string{
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		"2006-01-02 15:04:05.999999999 -0700 -07",
+		"2006-01-02 15:04:05.999999999 +0700 +07",
+		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+	}
+	for _, f := range formats {
+		if t, err := time.Parse(f, s); err == nil {
+			return t
+		}
+	}
+	return time.Now()
+}
+
 func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -1446,8 +1524,8 @@ func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	var f models.VirtualFile
 	var sha, uid sql.NullString
 	var isDel, hasMissing sql.NullBool
-	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
+	var rawDelAt, rawCreated, rawUpdated interface{}
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated)
 	if err != nil {
 		return nil, err
 	}
@@ -1463,7 +1541,9 @@ func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	if hasMissing.Valid {
 		f.HasMissingChunks = hasMissing.Bool
 	}
-	f.DeletedAt = delAt
+	f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+	f.CreatedAt = parseFlexibleTime(rawCreated)
+	f.UpdatedAt = parseFlexibleTime(rawUpdated)
 	return &f, nil
 }
 
@@ -1475,8 +1555,8 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	var f models.VirtualFile
 	var sha, uid sql.NullString
 	var isDel, hasMissing sql.NullBool
-	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
+	var rawDelAt, rawCreated, rawUpdated interface{}
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated)
 	if err != nil {
 		return nil, err
 	}
@@ -1492,7 +1572,9 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	if hasMissing.Valid {
 		f.HasMissingChunks = hasMissing.Bool
 	}
-	f.DeletedAt = delAt
+	f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+	f.CreatedAt = parseFlexibleTime(rawCreated)
+	f.UpdatedAt = parseFlexibleTime(rawUpdated)
 	return &f, nil
 }
 
@@ -1524,8 +1606,8 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		var f models.VirtualFile
 		var sha, uid sql.NullString
 		var isDel, hasMissing sql.NullBool
-		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		var rawDelAt, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1540,7 +1622,9 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		if hasMissing.Valid {
 			f.HasMissingChunks = hasMissing.Bool
 		}
-		f.DeletedAt = delAt
+		f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+		f.CreatedAt = parseFlexibleTime(rawCreated)
+		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 
 		// If a child user is viewing an Admin-owned file, mark it as locked with OTP requirement ONLY IF not shared
 		if userID != "user_admin" && userID != "all" && (f.UserID == "user_admin" || f.UserID == "") {
@@ -1602,8 +1686,8 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 		var f models.VirtualFile
 		var sha sql.NullString
 		var isDel, hasMissing sql.NullBool
-		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		var rawDelAt, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&f.ID, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1615,7 +1699,9 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 		if hasMissing.Valid {
 			f.HasMissingChunks = hasMissing.Bool
 		}
-		f.DeletedAt = delAt
+		f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+		f.CreatedAt = parseFlexibleTime(rawCreated)
+		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 		list = append(list, f)
 	}
 	return list, nil
@@ -1684,8 +1770,8 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 		var f models.VirtualFile
 		var sha, uid sql.NullString
 		var isDel, hasMissing sql.NullBool
-		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		var rawDelAt, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1700,7 +1786,9 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 		if hasMissing.Valid {
 			f.HasMissingChunks = hasMissing.Bool
 		}
-		f.DeletedAt = delAt
+		f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+		f.CreatedAt = parseFlexibleTime(rawCreated)
+		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 		list = append(list, f)
 	}
 	return list, nil
@@ -1737,8 +1825,8 @@ func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
 	var f models.VirtualFile
 	var sha, uid sql.NullString
 	var isDel, hasMissing sql.NullBool
-	var delAt *time.Time
-	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt)
+	var rawDelAt, rawCreated, rawUpdated interface{}
+	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated)
 	if err != nil {
 		return nil, err
 	}
@@ -1754,7 +1842,9 @@ func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
 	if hasMissing.Valid {
 		f.HasMissingChunks = hasMissing.Bool
 	}
-	f.DeletedAt = delAt
+	f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+	f.CreatedAt = parseFlexibleTime(rawCreated)
+	f.UpdatedAt = parseFlexibleTime(rawUpdated)
 	return &f, nil
 }
 
@@ -1814,8 +1904,8 @@ func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.Virtual
 		var f models.VirtualFile
 		var sha, uid sql.NullString
 		var isDel, hasMissing sql.NullBool
-		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &hasMissing, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		var rawDelAt, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &hasMissing, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -1830,7 +1920,9 @@ func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.Virtual
 		if hasMissing.Valid {
 			f.HasMissingChunks = hasMissing.Bool
 		}
-		f.DeletedAt = delAt
+		f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+		f.CreatedAt = parseFlexibleTime(rawCreated)
+		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 		files = append(files, f)
 	}
 	return files, nil
@@ -3242,8 +3334,8 @@ func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]
 		var f models.VirtualFile
 		var sha, uid sql.NullString
 		var isDel sql.NullBool
-		var delAt *time.Time
-		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &delAt, &f.CreatedAt, &f.UpdatedAt); err != nil {
+		var rawDelAt, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir, &f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &isDel, &rawDelAt, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if sha.Valid {
@@ -3252,6 +3344,9 @@ func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]
 		if uid.Valid {
 			f.UserID = uid.String
 		}
+		f.DeletedAt = parseFlexibleTimePtr(rawDelAt)
+		f.CreatedAt = parseFlexibleTime(rawCreated)
+		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 		list = append(list, f)
 	}
 	return list, nil
@@ -3386,11 +3481,12 @@ func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownRespons
 	for rows.Next() {
 		var id, name, mimeType string
 		var size int64
-		var updated time.Time
+		var rawUpdated interface{}
 
-		if err := rows.Scan(&id, &name, &size, &mimeType, &updated); err != nil {
+		if err := rows.Scan(&id, &name, &size, &mimeType, &rawUpdated); err != nil {
 			return nil, err
 		}
+		updated := parseFlexibleTime(rawUpdated)
 
 		totalFiles++
 		allFilesTotalBytes += size

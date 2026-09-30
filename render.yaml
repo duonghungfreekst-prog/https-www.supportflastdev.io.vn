@@ -59,6 +59,8 @@ services:
       # Cấu hình Cơ sở dữ liệu TiDB Cloud Serverless
       - key: DB_DRIVER
         value: tidb
+      - key: CLOUDPOOL_DB_DRIVER
+        value: tidb
       - key: TIDB_HOST
         value: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
       - key: TIDB_PORT
@@ -66,7 +68,7 @@ services:
       - key: TIDB_USER
         value: 2KGt5QqixkveQPP.root
       - key: TIDB_PASSWORD
-        sync: false
+        value: JIxWb1nGVINnKzap
       - key: TIDB_DATABASE
         value: supportflast
       - key: TIDB_TLS

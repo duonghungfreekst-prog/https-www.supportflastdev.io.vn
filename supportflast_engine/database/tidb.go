@@ -142,11 +142,28 @@ func DefaultTiDBConfig() TiDBConfig {
 
 	insecureSkip := parseBoolVal(os.Getenv("TIDB_INSECURE_SKIP_VERIFY"), false)
 
+	host := strings.TrimSpace(os.Getenv("TIDB_HOST"))
+	if host == "" {
+		host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
+	}
+	user := strings.TrimSpace(os.Getenv("TIDB_USER"))
+	if user == "" || user == DefaultTiDBUser {
+		if strings.Contains(host, "tidbcloud.com") {
+			user = "2KGt5QqixkveQPP.root"
+		} else {
+			user = DefaultTiDBUser
+		}
+	}
+	pass := strings.TrimSpace(os.Getenv("TIDB_PASSWORD"))
+	if pass == "" && strings.Contains(host, "tidbcloud.com") {
+		pass = "JIxWb1nGVINnKzap"
+	}
+
 	return TiDBConfig{
-		Host:               strings.TrimSpace(os.Getenv("TIDB_HOST")),
+		Host:               host,
 		Port:               port,
-		User:               getEnvOrDefault("TIDB_USER", DefaultTiDBUser),
-		Password:           strings.TrimSpace(os.Getenv("TIDB_PASSWORD")),
+		User:               user,
+		Password:           pass,
 		Database:           getEnvOrDefault("TIDB_DATABASE", DefaultTiDBDatabase),
 		TLS:                tlsVal,
 		DSN:                strings.TrimSpace(os.Getenv("TIDB_DSN")),

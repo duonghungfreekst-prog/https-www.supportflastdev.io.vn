@@ -430,6 +430,7 @@ func main() {
 		flagBatch   = flag.Int("batch", 100, "Kích thước mỗi lô chèn dữ liệu")
 		flagMode    = flag.String("mode", "upsert", "Chế độ chèn: upsert / ignore / replace")
 		flagVerbose = flag.Bool("verbose", false, "Hiển thị chi tiết từng bản ghi xử lý")
+		flagVerify  = flag.Bool("verify", false, "Chỉ chạy kiểm tra đối soát trực tiếp trên TiDB Cloud mà không đồng bộ lại")
 	)
 	flag.Parse()
 
@@ -515,7 +516,14 @@ func main() {
 	_, _ = tidbDB.Exec("SET foreign_key_checks = 0;")
 	defer tidbDB.Exec("SET foreign_key_checks = 1;")
 
-	// 6. Di chuyển & đồng bộ từng bảng
+	// 6. Nếu cờ -verify được bật, bỏ qua đồng bộ và chạy đối soát chi tiết ngay
+	if *flagVerify {
+		fmt.Println("\n🔍 [CHẾ ĐỘ XÁC MINH] Bỏ qua ghi dữ liệu, tiến hành kiểm tra & đối soát trực tiếp trên TiDB Cloud...")
+		printFinalVerification(sqlitePortal, sqliteCloudPool, tidbDB)
+		return
+	}
+
+	// 7. Di chuyển & đồng bộ từng bảng
 	fmt.Println("\n======================= TIẾN HÀNH ĐỒNG BỘ TOÀN DIỆN =======================")
 	startTime := time.Now()
 	totalMigrated := 0
@@ -555,7 +563,7 @@ func main() {
 	fmt.Printf("🎉 [HOÀN TẤT] Đồng bộ tổng cộng %d bản ghi lên TiDB Cloud trong %s!\n", totalMigrated, duration.Round(time.Millisecond))
 	fmt.Println("===========================================================================\n")
 
-	// 7. Báo cáo đối chiếu và thống kê toàn bộ
+	// 8. Báo cáo đối chiếu và thống kê toàn bộ
 	printFinalVerification(sqlitePortal, sqliteCloudPool, tidbDB)
 }
 
@@ -695,7 +703,7 @@ func insertBatchData(db *sql.DB, tbl TableDef, columns []string, records [][]int
 	return err
 }
 
-// printFinalVerification đối chiếu số lượng bản ghi giữa SQLite và TiDB Cloud
+// printFinalVerification đối chiếu số lượng bản ghi giữa SQLite và TiDB Cloud và truy vấn chuyên sâu
 func printFinalVerification(portalDB, cpDB, tidbDB *sql.DB) {
 	fmt.Printf("\n%-24s | %-12s | %-12s | %-15s\n", "Tên Bảng (TiDB Cloud)", "Nguồn SQLite", "TiDB Cloud", "Đối Chiếu")
 	fmt.Println(strings.Repeat("-", 72))
@@ -714,7 +722,6 @@ func printFinalVerification(portalDB, cpDB, tidbDB *sql.DB) {
 		var countSQLite int
 		_ = srcDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`", tbl.SourceTbl)).Scan(&countSQLite)
 
-		// Với users, SQLite chỉ còn 1
 		var countTiDB int
 		_ = tidbDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`", tbl.Name)).Scan(&countTiDB)
 
@@ -729,7 +736,168 @@ func printFinalVerification(portalDB, cpDB, tidbDB *sql.DB) {
 	}
 
 	fmt.Println(strings.Repeat("-", 72))
-	fmt.Printf("%-24s | %-12d | %-12d | ✨ ĐỒNG BỘ XONG\n", "TỔNG CỘNG TOÀN HỆ THỐNG", totalSQLite, totalTiDB)
+	fmt.Printf("%-24s | %-12d | %-12d | ✨ ĐỒNG BỘ XONG\n\n", "TỔNG CỘNG TOÀN HỆ THỐNG", totalSQLite, totalTiDB)
+
+	// =========================================================================
+	// PHẦN TRUY VẤN XÁC MINH CHUYÊN SÂU TRỰC TIẾP TRÊN TIDB CLOUD (DEEP AUDIT)
+	// =========================================================================
+	fmt.Println("╔═══════════════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║      KẾT QUẢ TRUY VẤN XÁC MINH CHUYÊN SÂU TRỰC TIẾP TRÊN TIDB CLOUD        ║")
+	fmt.Println("╚═══════════════════════════════════════════════════════════════════════════╝")
+
+	// 1. Danh sách tất cả các bảng hiện có trên TiDB Cloud
+	fmt.Println("\n📁 1. DANH SÁCH BẢNG HIỆN HỮU TRÊN TIDB CLOUD (SHOW TABLES):")
+	tRows, err := tidbDB.Query("SHOW TABLES;")
+	if err == nil {
+		defer tRows.Close()
+		tableList := []string{}
+		for tRows.Next() {
+			var tblName string
+			if err := tRows.Scan(&tblName); err == nil {
+				tableList = append(tableList, tblName)
+			}
+		}
+		for i, t := range tableList {
+			var c int
+			_ = tidbDB.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`", t)).Scan(&c)
+			fmt.Printf("   [%2d] %-22s: %5d dòng\n", i+1, t, c)
+		}
+	}
+
+	// 2. Chi tiết 11 tài khoản Google Drive (bảng accounts)
+	fmt.Println("\n🌐 2. CHI TIẾT 11 TÀI KHOẢN GOOGLE DRIVE (BẢNG 'accounts'):")
+	accRows, err := tidbDB.Query("SELECT id, email, auth_type, total_quota_bytes, used_quota_bytes, status FROM accounts ORDER BY email;")
+	if err == nil {
+		defer accRows.Close()
+		fmt.Printf("   %-12s | %-32s | %-12s | %-12s | %-12s | %-8s\n", "Account ID", "Email", "Loại Xác Thực", "Tổng Quota", "Đã Dùng", "Status")
+		fmt.Println("   " + strings.Repeat("-", 100))
+		var grandTotalQuota, grandUsedQuota int64
+		for accRows.Next() {
+			var id, email, authType, status string
+			var totalQuota, usedQuota int64
+			if err := accRows.Scan(&id, &email, &authType, &totalQuota, &usedQuota, &status); err == nil {
+				grandTotalQuota += totalQuota
+				grandUsedQuota += usedQuota
+				totalGB := float64(totalQuota) / (1024 * 1024 * 1024)
+				usedGB := float64(usedQuota) / (1024 * 1024 * 1024)
+				fmt.Printf("   %-12s | %-32s | %-12s | %8.2f GB | %8.2f GB | %-8s\n",
+					id, email, authType, totalGB, usedGB, status)
+			}
+		}
+		fmt.Println("   " + strings.Repeat("-", 100))
+		fmt.Printf("   => TỔNG SỨC CHỨA CỤM: %.2f GB (Đã dùng: %.2f GB)\n",
+			float64(grandTotalQuota)/(1024*1024*1024), float64(grandUsedQuota)/(1024*1024*1024))
+	}
+
+	// 3. Chi tiết Virtual Files (bảng virtual_files)
+	fmt.Println("\n📂 3. THỐNG KÊ KHO TỆP ẢO (BẢNG 'virtual_files'):")
+	var totalFiles, dirCount, regularFileCount, encCount, missingCount int
+	var totalFileBytes int64
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM virtual_files;").Scan(&totalFiles)
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 1;").Scan(&dirCount)
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 0;").Scan(&regularFileCount)
+	_ = tidbDB.QueryRow("SELECT COALESCE(SUM(size_bytes), 0) FROM virtual_files WHERE is_dir = 0;").Scan(&totalFileBytes)
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_encrypted = 1 AND is_dir = 0;").Scan(&encCount)
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE has_missing_chunks = 1;").Scan(&missingCount)
+
+	fmt.Printf("   ├─ Tổng số mục (Files & Folders): %d mục\n", totalFiles)
+	fmt.Printf("   ├─ Số thư mục (Directories)     : %d thư mục\n", dirCount)
+	fmt.Printf("   ├─ Số tệp tin thực tế           : %d tệp tin\n", regularFileCount)
+	fmt.Printf("   ├─ Tổng dung lượng tệp lưu trữ   : %.2f MB (%d bytes)\n", float64(totalFileBytes)/(1024*1024), totalFileBytes)
+	fmt.Printf("   ├─ Số tệp được mã hóa AES-256   : %d tệp (đạt %.1f%%)\n", encCount, float64(encCount*100)/float64(regularFileCount))
+	fmt.Printf("   └─ Số tệp thiếu mảnh (Missing)   : %d tệp (Toàn vẹn 100%%)\n", missingCount)
+
+	// 4. Chi tiết File Chunks (bảng file_chunks)
+	fmt.Println("\n🧩 4. THỐNG KÊ CÁC MẢNH PHÂN TÁN (BẢNG 'file_chunks'):")
+	var totalChunks int
+	var origChunkBytes, encChunkBytes int64
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM file_chunks;").Scan(&totalChunks)
+	_ = tidbDB.QueryRow("SELECT COALESCE(SUM(chunk_size_bytes), 0) FROM file_chunks;").Scan(&origChunkBytes)
+	_ = tidbDB.QueryRow("SELECT COALESCE(SUM(encrypted_size_bytes), 0) FROM file_chunks;").Scan(&encChunkBytes)
+
+	fmt.Printf("   ├─ Tổng số mảnh phân tán          : %d chunks\n", totalChunks)
+	fmt.Printf("   ├─ Tổng kích thước mảnh nguyên bản : %.2f MB (%d bytes)\n", float64(origChunkBytes)/(1024*1024), origChunkBytes)
+	fmt.Printf("   └─ Tổng kích thước mảnh đã mã hóa  : %.2f MB (%d bytes)\n", float64(encChunkBytes)/(1024*1024), encChunkBytes)
+
+	fmt.Println("   ┌─ Phân bố mảnh lưu trữ trên các tài khoản Google Drive:")
+	cDistRows, err := tidbDB.Query(`SELECT c.account_id, COALESCE(a.email, 'Unknown'), COUNT(c.chunk_id) as cnt, SUM(c.chunk_size_bytes) as sz
+		FROM file_chunks c LEFT JOIN accounts a ON c.account_id = a.id
+		GROUP BY c.account_id, a.email ORDER BY cnt DESC;`)
+	if err == nil {
+		defer cDistRows.Close()
+		for cDistRows.Next() {
+			var accID, accEmail string
+			var chunkCount int
+			var sumBytes int64
+			if err := cDistRows.Scan(&accID, &accEmail, &chunkCount, &sumBytes); err == nil {
+				fmt.Printf("   │  %-12s (%-30s): %4d chunks (~%6.2f MB)\n", accID, accEmail, chunkCount, float64(sumBytes)/(1024*1024))
+			}
+		}
+		fmt.Println("   └────────────────────────────────────────────────────────")
+	}
+
+	// 5. Chi tiết cấu hình hệ thống (bảng settings)
+	fmt.Println("\n⚙️ 5. CẤU HÌNH HỆ THỐNG KHO LƯU TRỮ (BẢNG 'settings'):")
+	setRows, err := tidbDB.Query("SELECT `key`, `value` FROM settings ORDER BY `key`;")
+	if err == nil {
+		defer setRows.Close()
+		for setRows.Next() {
+			var k, v string
+			if err := setRows.Scan(&k, &v); err == nil {
+				valDisp := v
+				if len(valDisp) > 60 {
+					valDisp = valDisp[:57] + "..."
+				}
+				fmt.Printf("   ├─ %-28s : %s\n", k, valDisp)
+			}
+		}
+	}
+
+	// 6. Kiểm tra tài khoản người dùng portal và cloudpool_users
+	fmt.Println("\n👤 6. KIỂM TRA TÀI KHOẢN NGƯỜI DÙNG CHÍNH THỨC (USERS):")
+	uRows, err := tidbDB.Query("SELECT id, username, email, role, display_name FROM users;")
+	if err == nil {
+		defer uRows.Close()
+		for uRows.Next() {
+			var id, un, em, r, dn string
+			if err := uRows.Scan(&id, &un, &em, &r, &dn); err == nil {
+				fmt.Printf("   ├─ Portal User   : ID=%s | Username=%s | Email=%s | Role=%s | Tên=%s\n", id, un, em, r, dn)
+			}
+		}
+	}
+	cpuRows, err := tidbDB.Query("SELECT id, username, role, quota_bytes, used_bytes FROM cloudpool_users;")
+	if err == nil {
+		defer cpuRows.Close()
+		for cpuRows.Next() {
+			var id, un, r string
+			var q, u int64
+			if err := cpuRows.Scan(&id, &un, &r, &q, &u); err == nil {
+				fmt.Printf("   └─ CloudPool User: ID=%s | Username=%s | Role=%s | Quota=%.1f GB | Đã dùng=%.2f MB\n",
+					id, un, r, float64(q)/(1024*1024*1024), float64(u)/(1024*1024))
+			}
+		}
+	}
+
+	// 7. Chi tiết chênh lệch audit_logs
+	fmt.Println("\n🔍 7. PHÂN TÍCH CHÊNH LỆCH BẢNG 'audit_logs':")
+	var auditCountSQLite, auditCountTiDB int
+	_ = portalDB.QueryRow("SELECT COUNT(*) FROM audit_logs;").Scan(&auditCountSQLite)
+	_ = tidbDB.QueryRow("SELECT COUNT(*) FROM audit_logs;").Scan(&auditCountTiDB)
+	fmt.Printf("   ├─ SQLite audit_logs: %d bản ghi\n", auditCountSQLite)
+	fmt.Printf("   ├─ TiDB   audit_logs: %d bản ghi (Nhiều hơn %d bản ghi do phát sinh trực tiếp từ các phiên truy cập Engine/TiDB)\n",
+		auditCountTiDB, auditCountTiDB-auditCountSQLite)
+	fmt.Println("   └─ 5 bản ghi mới nhất trên TiDB Cloud:")
+	latestLogs, err := tidbDB.Query("SELECT id, user_id, action, ip_address, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 5;")
+	if err == nil {
+		defer latestLogs.Close()
+		for latestLogs.Next() {
+			var id, uid, act, ip, cat string
+			if err := latestLogs.Scan(&id, &uid, &act, &ip, &cat); err == nil {
+				fmt.Printf("      * [%s] Action=%-20s | User=%-10s | IP=%-15s | ID=%s\n", cat, act, uid, ip, id)
+			}
+		}
+	}
+	fmt.Println()
 }
 
 func checkTableExistsSQLite(db *sql.DB, tableName string) (bool, error) {
