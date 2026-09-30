@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"supportflast_engine/registry"
 	"supportflast_engine/security"
 )
 
@@ -49,7 +50,7 @@ func GenerateJWTWithRole(userID, username, role string) (string, error) {
 		Username:  username,
 		Role:      role,
 		IssuedAt:  time.Now().Unix(),
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour).Unix(),
+		ExpiresAt: time.Now().Add(registry.GetSessionDuration()).Unix(),
 		Issuer:    "supportflast-auth",
 		Subject:   cleanID,
 	}
@@ -77,6 +78,10 @@ func VerifyJWTClaims(tokenString string) (*security.UserClaims, error) {
 	cleanToken := strings.TrimSpace(tokenString)
 	if cleanToken == "" {
 		return nil, security.ErrInvalidToken
+	}
+	// Kiểm tra xem token đã bị thu hồi/đăng xuất chưa (Bảo mật thu hồi phiên)
+	if registry.IsTokenRevoked(cleanToken) {
+		return nil, errors.New("token đã bị thu hồi hoặc đã đăng xuất")
 	}
 	return security.ValidateRS256Token(cleanToken)
 }

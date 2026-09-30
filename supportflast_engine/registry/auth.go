@@ -353,9 +353,9 @@ func GenerateSessionToken() string {
 	return "sf_sess_" + hex.EncodeToString(b)
 }
 
-// getSessionDuration đọc thời hạn phiên từ biến môi trường JWT_EXPIRY_MINUTES.
+// GetSessionDuration đọc thời hạn phiên từ biến môi trường JWT_EXPIRY_MINUTES.
 // Mặc định: 1440 phút (24 giờ). Tối thiểu: 15 phút. Tối đa: 10080 phút (7 ngày).
-func getSessionDuration() time.Duration {
+func GetSessionDuration() time.Duration {
 	if raw := strings.TrimSpace(os.Getenv("JWT_EXPIRY_MINUTES")); raw != "" {
 		if mins, err := strconv.Atoi(raw); err == nil {
 			if mins < 15 {
@@ -374,7 +374,7 @@ func getSessionDuration() time.Duration {
 // TTL được đọc từ biến JWT_EXPIRY_MINUTES (không hardcode)
 func IssueRS256Token(u User, duration time.Duration) (string, error) {
 	if duration <= 0 {
-		duration = getSessionDuration()
+		duration = GetSessionDuration()
 	}
 	claims := &security.UserClaims{
 		UserID:    u.ID,
@@ -421,7 +421,7 @@ func IsTokenRevoked(token string) bool {
 // CreateSession tạo phiên làm việc cho user và cấp phát token Asymmetric JWT (RS256) theo Rule 3.2
 // TTL được đọc từ JWT_EXPIRY_MINUTES — không hardcode
 func CreateSession(u User) string {
-	ttl := getSessionDuration()
+	ttl := GetSessionDuration()
 	token, err := IssueRS256Token(u, ttl)
 	if err != nil {
 		log.Printf("[ENGINE] [AUTH] [WARN] Sinh JWT RS256 thất bại (%v), fallback session token: %s", err, u.Username)

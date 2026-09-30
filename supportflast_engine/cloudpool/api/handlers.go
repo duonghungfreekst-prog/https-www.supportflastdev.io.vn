@@ -2531,7 +2531,7 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, r, jwtToken, 86400*7)
+	setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "ÄÄƒng kÃ½ tÃ i khoáº£n thÃ nh cÃ´ng",
@@ -2684,7 +2684,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setAuthCookie(w, r, jwtToken, 86400*7)
+	setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"message": "ÄÄƒng nháº­p thÃ nh cÃ´ng",
@@ -2922,7 +2922,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		setAuthCookie(w, r, jwtToken, 86400*7)
+		setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
@@ -2982,9 +2982,14 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	if tokenString != "" {
 		if claims, err := VerifyJWTClaims(tokenString); err == nil && claims != nil {
 			remainingSec := claims.ExpiresAt - time.Now().Unix()
-			if remainingSec > 0 && remainingSec < 2*24*3600 {
+			maxTTL := int64(registry.GetSessionDuration().Seconds())
+			threshold := maxTTL / 4
+			if threshold < 3600 {
+				threshold = 3600
+			}
+			if remainingSec > 0 && remainingSec < threshold {
 				if newToken, err := GenerateJWTWithRole(user.ID, user.Username, user.Role); err == nil {
-					setAuthCookie(w, r, newToken, 86400*7)
+					setAuthCookie(w, r, newToken, int(maxTTL))
 					response["new_token"] = newToken
 					log.Printf("[ENGINE] [AUTH] Silent Token Renewal cho user '%s' (con %ds het han)", user.Username, remainingSec)
 				}
@@ -2996,8 +3001,28 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	tokenString := ""
+	if ah := r.Header.Get("Authorization"); len(ah) > 7 && strings.EqualFold(ah[:7], "Bearer ") {
+		tokenString = strings.TrimSpace(ah[7:])
+	}
+	if tokenString == "" {
+		cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token", "auth_token"}
+		for _, name := range cookieNames {
+			if c, err := r.Cookie(name); err == nil && strings.TrimSpace(c.Value) != "" {
+				tokenString = strings.TrimSpace(c.Value)
+				break
+			}
+		}
+	}
+
+	if tokenString != "" {
+		registry.RevokeToken(tokenString)
+		log.Printf("[ENGINE] [AUTH] Đã thu hồi token đăng xuất: %.16s...", tokenString)
+	}
+
 	setAuthCookie(w, r, "", -1)
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ Ä‘Äƒng xuáº¥t tÃ i khoáº£n thÃ nh cÃ´ng"})
+	registry.ClearSSOCookies(w, r)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đăng xuất tài khoản thành công"})
 }
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
