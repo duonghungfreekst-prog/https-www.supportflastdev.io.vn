@@ -124,6 +124,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "Internal server error", "code": "ERR_AI_500"}
     )
 
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     rss_mb = 0.0

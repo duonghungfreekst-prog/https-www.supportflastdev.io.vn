@@ -8,17 +8,18 @@ const API = {
   getCurrentUser() {
     try {
       const s = sessionStorage.getItem('cloudpool_current_user');
-      if (s) return JSON.parse(s);
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed) return parsed;
+      }
 
       const u = localStorage.getItem('cloudpool_current_user');
       if (u) {
         const parsed = JSON.parse(u);
-        if (parsed && (parsed.role === 'admin' || parsed.username === 'admin')) {
-          localStorage.removeItem('cloudpool_current_user');
-          localStorage.removeItem('cloudpool_jwt_token');
-          return null;
+        if (parsed) {
+          try { sessionStorage.setItem('cloudpool_current_user', u); } catch (_) {}
+          return parsed;
         }
-        return parsed;
       }
       return null;
     } catch (_) {
@@ -28,33 +29,38 @@ const API = {
 
   setCurrentUser(user) {
     if (user) {
-      if (user.role === 'admin' || user.username === 'admin') {
-        sessionStorage.setItem('cloudpool_current_user', JSON.stringify(user));
-        localStorage.removeItem('cloudpool_current_user');
-      } else {
-        localStorage.setItem('cloudpool_current_user', JSON.stringify(user));
-      }
+      try {
+        const uStr = JSON.stringify(user);
+        localStorage.setItem('cloudpool_current_user', uStr);
+        sessionStorage.setItem('cloudpool_current_user', uStr);
+      } catch (_) {}
     } else {
-      sessionStorage.removeItem('cloudpool_current_user');
-      localStorage.removeItem('cloudpool_current_user');
+      try {
+        localStorage.removeItem('cloudpool_current_user');
+        sessionStorage.removeItem('cloudpool_current_user');
+      } catch (_) {}
     }
   },
 
   getToken() {
-    return sessionStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_jwt_token') || '';
+    try {
+      return sessionStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_jwt_token') || '';
+    } catch (_) {
+      return '';
+    }
   },
 
-  setToken(token, isAdmin = false) {
+  setToken(token) {
     if (token) {
-      if (isAdmin) {
-        sessionStorage.setItem('cloudpool_jwt_token', token);
-        localStorage.removeItem('cloudpool_jwt_token');
-      } else {
+      try {
         localStorage.setItem('cloudpool_jwt_token', token);
-      }
+        sessionStorage.setItem('cloudpool_jwt_token', token);
+      } catch (_) {}
     } else {
-      sessionStorage.removeItem('cloudpool_jwt_token');
-      localStorage.removeItem('cloudpool_jwt_token');
+      try {
+        localStorage.removeItem('cloudpool_jwt_token');
+        sessionStorage.removeItem('cloudpool_jwt_token');
+      } catch (_) {}
     }
   },
 
@@ -581,7 +587,13 @@ const API = {
   },
 
   uploadUpdate(formData) {
-    const headers = {};
+    const headers = {
+      'ngrok-skip-browser-warning': 'true'
+    };
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     const user = this.getCurrentUser();
     if (user && user.id) {
       headers['X-User-ID'] = user.id;
@@ -589,6 +601,7 @@ const API = {
     return fetch('/api/admin/update/upload', {
       method: 'POST',
       headers,
+      credentials: 'include',
       body: formData,
     }).then(async (res) => {
       const data = await res.json();

@@ -404,7 +404,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// 1. Health check endpoint (bổ sung num_gc, cache_items và auto_https)
-	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
@@ -424,7 +424,9 @@ func main() {
 			"subagents":   5,
 			"auto_https":  autoHTTPSConfig.Enabled,
 		})
-	})
+	}
+	mux.HandleFunc("/api/health", healthHandler)
+	mux.HandleFunc("/health", healthHandler)
 
 	// 1.1. Graceful Shutdown & SQLite WAL Flush Endpoint (chỉ cho phép localhost)
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {

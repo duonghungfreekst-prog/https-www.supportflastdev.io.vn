@@ -61,7 +61,9 @@ const AuthManager = {
 
   recordActivity() {
     try {
-      localStorage.setItem('auth_last_activity', Date.now().toString());
+      const nowStr = Date.now().toString();
+      localStorage.setItem('auth_last_activity', nowStr);
+      sessionStorage.setItem('auth_last_activity', nowStr);
     } catch (_) {}
   },
 
@@ -83,19 +85,6 @@ const AuthManager = {
     this.bindEvents();
     this.fetchTurnstileConfig();
 
-    // Dọn sạch phiên Admin tàn dư trong localStorage
-    try {
-      const uStr = localStorage.getItem('cloudpool_current_user');
-      if (uStr) {
-        const u = JSON.parse(uStr);
-        if (u && (u.role === 'admin' || u.username === 'admin')) {
-          localStorage.removeItem('cloudpool_current_user');
-          localStorage.removeItem('cloudpool_jwt_token');
-          localStorage.removeItem('sf_admin_token');
-        }
-      }
-    } catch (_) {}
-
     // Lắng nghe tín hiệu đồng bộ đăng xuất từ tab khác
     try {
       if (typeof BroadcastChannel !== 'undefined') {
@@ -109,30 +98,21 @@ const AuthManager = {
       }
     } catch (_) {}
 
-    // 0. Kiểm tra phiên không hoạt động (Idle session timeout: 15 phút)
-    const AUTH_MAX_IDLE_MS = 15 * 60 * 1000;
-    const lastAct = parseInt(sessionStorage.getItem('auth_last_activity') || localStorage.getItem('auth_last_activity') || '0', 10);
-    const hasToken = !!API.getToken() || !!sessionStorage.getItem('cloudpool_current_user');
-    if (hasToken && lastAct > 0 && (Date.now() - lastAct) > AUTH_MAX_IDLE_MS) {
-      console.warn('[AUTH] Phiên đăng nhập đã hết hạn do không hoạt động quá 15 phút.');
-      await this.logout();
-      return;
-    }
     this.setupActivityTracking();
-    if (hasToken) {
-      this.recordActivity();
-    }
+    this.recordActivity();
 
-    // 1. Phục hồi trạng thái cho user thường hoặc admin từ sessionStorage
+    // 1. Phục hồi trạng thái cho user thường hoặc admin từ cache (bền vững localStorage + sessionStorage)
     const cachedUser = API.getCurrentUser();
     if (cachedUser && (cachedUser.id || cachedUser.username)) {
       this.currentUser = cachedUser;
       if (cachedUser.role === 'admin' || cachedUser.username === 'admin') {
-        if (sessionStorage.getItem('cloudpool_admin_session') === 'true') {
-          App.isAdminUnlocked = true;
-        } else {
-          App.isAdminUnlocked = false;
-        }
+        App.isAdminUnlocked = true;
+        sessionStorage.setItem('cloudpool_admin_session', 'true');
+        localStorage.setItem('cloudpool_admin_session', 'true');
+      } else {
+        App.isAdminUnlocked = false;
+        sessionStorage.removeItem('cloudpool_admin_session');
+        localStorage.removeItem('cloudpool_admin_session');
       }
       this.updateUserUI();
     }
@@ -142,7 +122,7 @@ const AuthManager = {
       const res = await API.getMe();
       const me = (res && res.user) ? res.user : res;
       if (res && res.new_token) {
-        API.setToken(res.new_token, me && me.role === 'admin');
+        API.setToken(res.new_token);
         console.log('[AUTH] Token đã được gia hạn tự động (Silent Renewal)');
       }
       if (me && (me.id || me.username) && me.role) {
@@ -151,40 +131,49 @@ const AuthManager = {
         if (me.role === 'admin' || me.username === 'admin') {
           App.isAdminUnlocked = true;
           sessionStorage.setItem('cloudpool_admin_session', 'true');
-          sessionStorage.setItem('cloudpool_current_user', JSON.stringify(me));
-          localStorage.removeItem('cloudpool_current_user');
-          localStorage.removeItem('cloudpool_jwt_token');
+          localStorage.setItem('cloudpool_admin_session', 'true');
         } else {
           App.isAdminUnlocked = false;
           sessionStorage.removeItem('cloudpool_admin_session');
+          localStorage.removeItem('cloudpool_admin_session');
         }
       } else {
+        // Backend trả về hợp lệ nhưng không có thông tin user
         this.currentUser = null;
         API.setCurrentUser(null);
         App.isAdminUnlocked = false;
         sessionStorage.removeItem('cloudpool_admin_session');
+        localStorage.removeItem('cloudpool_admin_session');
       }
     } catch (err) {
-      console.warn('[AUTH] Kiểm tra phiên /api/auth/me thất bại, thu hồi phiên an toàn:', err);
-      this.currentUser = null;
-      API.setCurrentUser(null);
-      API.setToken(null);
-      App.isAdminUnlocked = false;
-      sessionStorage.removeItem('cloudpool_admin_session');
+      console.warn('[AUTH] Kiểm tra phiên /api/auth/me không hoàn tất:', err.message);
+      const isAuthError = err.message && (
+        err.message.includes('401') || 
+        err.message.includes('Chưa đăng nhập') || 
+        err.message.includes('Unauthorized') ||
+        err.message.includes('token expired')
+      );
+      if (isAuthError) {
+        console.warn('[AUTH] Phiên đăng nhập không hợp lệ hoặc đã hết hạn trên máy chủ.');
+        this.currentUser = null;
+        API.setCurrentUser(null);
+        API.setToken(null);
+        App.isAdminUnlocked = false;
+        sessionStorage.removeItem('cloudpool_admin_session');
+        localStorage.removeItem('cloudpool_admin_session');
+      } else {
+        // Lỗi mạng hoặc máy chủ đang khởi động: duy trì phiên cachedUser
+        if (cachedUser) {
+          console.info('[AUTH] Duy trì phiên làm việc đã lưu từ bộ nhớ tạm do kết nối chưa sẵn sàng.');
+          this.currentUser = cachedUser;
+          if (cachedUser.role === 'admin' || cachedUser.username === 'admin') {
+            App.isAdminUnlocked = true;
+          }
+        }
+      }
     }
 
     this.updateUserUI();
-
-    // 3. Active Watchdog: Tự động đăng xuất sau 15 phút không hoạt động
-    setInterval(() => {
-      if (!this.currentUser) return;
-      const last = parseInt(sessionStorage.getItem('auth_last_activity') || localStorage.getItem('auth_last_activity') || '0', 10);
-      if (last > 0 && (Date.now() - last) > AUTH_MAX_IDLE_MS) {
-        console.warn('[AUTH] Active Watchdog: Tự động đăng xuất do không hoạt động quá 15 phút.');
-        this.logout();
-        alert('Phiên làm việc đã tự động kết thúc do không hoạt động quá 15 phút để bảo vệ an toàn.');
-      }
-    }, 10000);
   },
 
   bindEvents() {
@@ -247,9 +236,11 @@ const AuthManager = {
           if (userData.role === 'admin' || userData.username === 'admin') {
             App.isAdminUnlocked = true;
             sessionStorage.setItem('cloudpool_admin_session', 'true');
+            localStorage.setItem('cloudpool_admin_session', 'true');
           } else {
             App.isAdminUnlocked = false;
             sessionStorage.removeItem('cloudpool_admin_session');
+            localStorage.removeItem('cloudpool_admin_session');
           }
 
           App.applyAdminState();
