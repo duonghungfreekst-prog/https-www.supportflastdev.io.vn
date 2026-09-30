@@ -340,7 +340,6 @@ func createStandardHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadHeaderTimeout: 30 * time.Second,  // Bảo vệ Slowloris trên headers
 		ReadHeaderTimeout: 20 * time.Second,
 		ReadTimeout:       60 * time.Minute,
 		WriteTimeout:      0,
@@ -367,7 +366,6 @@ func createStandaloneHTTPSServer(addr string, handler http.Handler, tlsConfig *t
 		Addr:              addr,
 		Handler:           handler,
 		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 30 * time.Second,
 		ReadHeaderTimeout: 20 * time.Second,
 		ReadTimeout:       60 * time.Minute,
 		WriteTimeout:      0,

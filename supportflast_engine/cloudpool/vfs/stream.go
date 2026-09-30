@@ -79,6 +79,16 @@ func (c *ChunkCache) StartJanitor() {
 	}
 }
 
+func (c *ChunkCache) Contains(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	elem, found := c.entries[key]
+	if !found {
+		return false
+	}
+	entry := elem.Value.(*ChunkCacheEntry)
+	return time.Now().Before(entry.ExpiresAt)
+}
 func (c *ChunkCache) Get(key string) ([]byte, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -222,8 +232,8 @@ type FileStreamer struct {
 	offset              int64
 	chunkSize           int64
 	mu                  sync.Mutex
-	lastPrefetchedIdx   atomic.Int32
-	lastPrefetchedBlock atomic.Int64
+	lastPrefetchChunk atomic.Int32
+	lastPrefetchBlock atomic.Int64
 }
 
 // NewFileStreamer creates a seeker-capable stream reader for a virtual file
@@ -280,7 +290,7 @@ func (v *VFS) NewFileStreamer(ctx context.Context, fileID string) (*FileStreamer
 		chunkSize:    chunkSize,
 	}
 	fs.lastPrefetchChunk.Store(-1)
-	fs.lastPrefetchedBlock.Store(-1)
+	fs.lastPrefetchBlock.Store(-1)
 	return fs, nil
 }
 
@@ -435,7 +445,7 @@ func (s *FileStreamer) readInternal(p []byte, startOff int64) (int, error) {
 
 			// Kích hoạt nạp trước block 2MB tiếp theo vào RAM cache để video không bị khựng
 			if blockEnd+1 < chunkTotalSize {
-				s.triggerRangePrefetch(chunk, blockIdx+1, chunkTotalSize)
+				s.triggerRangePrefetchAhead(chunk, blockIdx, chunkTotalSize)
 			}
 
 			offsetInBlock := int(offsetInChunk - blockStart)
@@ -474,8 +484,8 @@ func (s *FileStreamer) readInternal(p []byte, startOff int64) (int, error) {
 			}
 
 			// Kích hoạt nạp trước chunk tiếp theo vào RAM cache (chỉ trigger 1 lần khi chuyển chunk)
-			if chunkIdx+1 < len(s.chunks) && int(s.lastPrefetchedIdx.Load()) != chunkIdx+1 {
-				s.triggerPrefetch(chunkIdx + 1)
+			if chunkIdx+1 < len(s.chunks) && int(s.lastPrefetchChunk.Load()) != chunkIdx+1 {
+				s.triggerPrefetchAhead(chunkIdx)
 			}
 
 			if int(offsetInChunk) >= len(chunkData) {
@@ -812,4 +822,6 @@ func (s *FileStreamer) Close() error {
 	if s.cancel != nil {
 		s.cancel()
 	}
-	return nil
+	return nil
+}
+
