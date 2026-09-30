@@ -119,6 +119,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 
 	// 1. Tự động kiểm tra, sinh mới file '.env' nếu chưa có, và nạp biến môi trường
 	if customEnvDir != "" {
+		config.ResetForTest()
 		os.Setenv("ENV_DIR", customEnvDir)
 	}
 	if err := config.InitEnv(); err != nil {

@@ -306,11 +306,17 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 			w.Header().Set("Content-Security-Policy", "default-src 'none'; media-src 'self' https: data: blob:; img-src 'self' https: data: blob:; style-src 'unsafe-inline';")
 		} else {
-			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-			w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; frame-src 'self' https: blob: data:; object-src 'self' https: blob: data:; media-src 'self' https: blob: data:;")
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https: blob: data:; object-src 'self' https: blob: data:; media-src 'self' https: blob: data:;")
 		}
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+		w.Header().Del("Server")
+		w.Header().Del("X-Powered-By")
+		w.Header().Del("X-AspNet-Version")
+		w.Header().Del("server")
+		w.Header().Del("x-powered-by")
+		w.Header().Del("x-aspnet-version")
 		w.Header().Set("ngrok-skip-browser-warning", "true")
 
 		// [BUG FIX] CORS Security (Rule PHAN 3.4)
@@ -590,6 +596,17 @@ func (s *Server) handleRefreshAccount(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
+
+	settings, _ := s.db.GetSettings()
+	guestMode := "view_only"
+	if settings != nil && settings.GuestAccessMode != "" {
+		guestMode = settings.GuestAccessMode
+	}
+
+	if user == nil && guestMode == "strict" {
+		writeError(w, http.StatusUnauthorized, "Chế độ bảo mật nghiêm ngặt. Vui lòng đăng nhập để xem danh sách tệp tin.", nil)
+		return
+	}
 
 	accountID := r.URL.Query().Get("account_id")
 	if accountID != "" {

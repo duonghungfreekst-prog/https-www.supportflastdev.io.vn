@@ -4,18 +4,31 @@
 
 const FilesManager = {
   currentFolderId: 'root',
-  breadcrumbs: [{ id: 'root', name: 'Gốc' }],
+  breadcrumbs: [{ id: 'root', name: '🏠 Gốc' }],
   files: [],
   selectedIds: new Set(),
   viewMode: localStorage.getItem('cloudpool_view_mode') || 'list',
   currentCategory: 'all',
   currentSort: 'date_desc',
+  searchQuery: '',
+  currentPage: 1,
+  pageSize: 50,
   contextTarget: null,
   filterAccountId: '',
   filterUserId: '',
   pendingOTPRequestId: null,   // Request đang chờ admin phê duyệt thời gian
   otpPollingInterval: null,    // ID vòng lặp polling badge thông báo
   lastPendingCount: 0,         // Đếm lần trước để so sánh
+
+  escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
 
   init() {
     this.bindEvents();
@@ -30,6 +43,7 @@ const FilesManager = {
     if (filterUserSelect) {
       filterUserSelect.addEventListener('change', (e) => {
         this.filterUserId = e.target.value;
+        this.currentPage = 1;
         this.loadFiles(this.currentFolderId);
       });
     }
@@ -39,6 +53,7 @@ const FilesManager = {
     if (filterSelect) {
       filterSelect.addEventListener('change', (e) => {
         this.filterAccountId = e.target.value;
+        this.currentPage = 1;
         this.loadFiles(this.currentFolderId);
       });
     }
@@ -46,11 +61,8 @@ const FilesManager = {
     // Category Filter Chips
     document.querySelectorAll('.filter-chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        this.currentCategory = chip.getAttribute('data-cat') || 'all';
-        const query = document.getElementById('global-search')?.value.trim() || '';
-        this.renderFiles(query);
+        const cat = chip.getAttribute('data-cat') || 'all';
+        this.setCategory(cat);
       });
     });
 
@@ -59,8 +71,8 @@ const FilesManager = {
     if (sortSelect) {
       sortSelect.addEventListener('change', (e) => {
         this.currentSort = e.target.value;
-        const query = document.getElementById('global-search')?.value.trim() || '';
-        this.renderFiles(query);
+        this.currentPage = 1;
+        this.renderFiles();
       });
     }
 
@@ -279,12 +291,25 @@ const FilesManager = {
       btnConfirmRename.addEventListener('click', () => this.confirmRename());
     }
 
-    // Search Filter
+    // Search Filter & Clear Search Button
     const searchInput = document.getElementById('global-search');
+    const btnClearSearch = document.getElementById('btn-clear-search');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        this.renderFiles(query);
+        const query = e.target.value;
+        this.searchQuery = (query || '').trim();
+        this.currentPage = 1;
+        if (btnClearSearch) {
+          btnClearSearch.style.display = this.searchQuery ? 'inline-block' : 'none';
+        }
+        this.renderFiles();
+      });
+    }
+
+    if (btnClearSearch) {
+      btnClearSearch.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.clearSearch();
       });
     }
 
@@ -487,14 +512,47 @@ const FilesManager = {
 
   filterByAccount(accountId) {
     this.filterAccountId = accountId;
+    this.currentPage = 1;
     const filterSelect = document.getElementById('filter-account-select');
     if (filterSelect) filterSelect.value = accountId;
     App.switchTab('files');
     this.loadFiles('root');
   },
 
+  renderLoading() {
+    const tbody = document.getElementById('files-table-body');
+    const grid = document.getElementById('files-grid-container');
+    const loadingHtml = `
+      <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+        <div style="font-size: 28px; margin-bottom: 10px;">⏳</div>
+        <div style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Đang tải danh sách tệp tin...</div>
+        <div style="font-size: 11.5px; color: var(--text-muted);">Đang kết nối cơ sở dữ liệu và đồng bộ trạng thái Google Drive</div>
+      </div>
+    `;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="padding: 0; border: none;">${loadingHtml}</td></tr>`;
+    if (grid) grid.innerHTML = `<div style="grid-column: 1/-1;">${loadingHtml}</div>`;
+  },
+
+  renderErrorState(errMsg) {
+    const tbody = document.getElementById('files-table-body');
+    const grid = document.getElementById('files-grid-container');
+    const errorHtml = `
+      <div style="text-align: center; padding: 42px 20px; color: var(--text-muted); background: rgba(239, 68, 68, 0.03); border: 1px dashed rgba(239, 68, 68, 0.3); border-radius: 12px; max-width: 500px; margin: 24px auto;">
+        <div style="font-size: 32px; margin-bottom: 10px;">⚠️</div>
+        <h3 style="font-size: 14.5px; font-weight: 700; color: #f87171; margin-bottom: 6px;">Không thể tải danh sách tệp tin</h3>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">${this.escapeHtml(errMsg || 'Lỗi kết nối máy chủ')}</p>
+        <button class="btn btn-secondary btn-sm" onclick="FilesManager.loadFiles(FilesManager.currentFolderId)" style="gap: 5px;">
+          <span>🔄 Thử lại</span>
+        </button>
+      </div>
+    `;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="padding: 0; border: none;">${errorHtml}</td></tr>`;
+    if (grid) grid.innerHTML = `<div style="grid-column: 1/-1;">${errorHtml}</div>`;
+  },
+
   async loadFiles(folderId = 'root') {
-    this.currentFolderId = folderId;
+    this.currentFolderId = folderId || 'root';
+    this.renderLoading();
     try {
       let data;
       if (this.filterAccountId) {
@@ -502,25 +560,28 @@ const FilesManager = {
       } else {
         data = await API.listFiles(folderId, this.filterUserId);
       }
-      this.files = (data && data.files) ? data.files : [];
+      this.files = (data && Array.isArray(data.files)) ? data.files : [];
       this.selectedIds.clear();
       this.updateBulkActionBar();
       this.renderBreadcrumbs();
       this.renderFiles();
     } catch (err) {
-      Toast.error('Không thể tải tệp tin: ' + err.message);
+      console.error('[FILES] Lỗi tải tệp tin:', err);
+      Toast.error('Không thể tải tệp tin: ' + (err.message || 'Lỗi kết nối'));
+      this.renderErrorState(err.message || 'Không thể kết nối đến máy chủ');
     }
   },
 
   navigateUp() {
     this.filterAccountId = '';
+    this.currentPage = 1;
     const filterSelect = document.getElementById('filter-account-select');
     if (filterSelect) filterSelect.value = '';
 
-    if (this.breadcrumbs && this.breadcrumbs.length > 1) {
+    if (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 1) {
       this.breadcrumbs.pop();
       const target = this.breadcrumbs[this.breadcrumbs.length - 1];
-      this.loadFiles(target.id);
+      this.loadFiles(target ? target.id : 'root');
     } else {
       this.navigateTo('root', '🏠 Gốc');
     }
@@ -528,8 +589,13 @@ const FilesManager = {
 
   navigateTo(folderId, folderName = 'Gốc') {
     this.filterAccountId = '';
+    this.currentPage = 1;
     const filterSelect = document.getElementById('filter-account-select');
     if (filterSelect) filterSelect.value = '';
+
+    if (!Array.isArray(this.breadcrumbs)) {
+      this.breadcrumbs = [{ id: 'root', name: '🏠 Gốc' }];
+    }
 
     if (folderId === 'root' || folderId === '') {
       this.breadcrumbs = [{ id: 'root', name: '🏠 Gốc' }];
@@ -539,7 +605,7 @@ const FilesManager = {
       if (idx >= 0) {
         this.breadcrumbs = this.breadcrumbs.slice(0, idx + 1);
       } else {
-        this.breadcrumbs.push({ id: folderId, name: folderName });
+        this.breadcrumbs.push({ id: folderId, name: folderName || 'Thư mục' });
       }
     }
     this.loadFiles(folderId);
@@ -550,7 +616,11 @@ const FilesManager = {
     const btnBack = document.getElementById('btn-nav-back');
     if (!container) return;
 
-    // Show or highlight Back button if inside subfolder
+    if (!Array.isArray(this.breadcrumbs) || this.breadcrumbs.length === 0) {
+      this.breadcrumbs = [{ id: 'root', name: '🏠 Gốc' }];
+    }
+
+    // Hiển thị hoặc ẩn nút Back
     if (btnBack) {
       if (this.currentFolderId !== 'root' || this.filterAccountId) {
         btnBack.style.display = 'inline-flex';
@@ -564,37 +634,59 @@ const FilesManager = {
       html = `
         <span class="crumb-item" onclick="FilesManager.navigateTo('root', '🏠 Gốc')">🏠 Gốc</span>
         <span class="crumb-separator">/</span>
-        <span class="crumb-item active" style="color: var(--accent-blue);">📂 Đang lọc theo tài khoản</span>
-        <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px; margin-left: 6px;" onclick="FilesManager.navigateTo('root', '🏠 Gốc')">✕ Xem tất cả</button>
+        <span class="crumb-item active" style="color: var(--accent-blue);">📂 Đang lọc theo tài khoản Drive</span>
+        <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px; margin-left: 6px;" onclick="FilesManager.clearAccountFilter()">✕ Xem tất cả</button>
       `;
     } else {
       this.breadcrumbs.forEach((crumb, i) => {
         const isLast = i === this.breadcrumbs.length - 1;
         const displayName = crumb.name || (crumb.id === 'root' ? '🏠 Gốc' : 'Thư mục');
-        html += `<span class="crumb-item ${isLast ? 'active' : ''}" data-crumb-id="${crumb.id}">${displayName}</span>`;
+        html += `<span class="crumb-item ${isLast ? 'active' : ''}" data-crumb-id="${crumb.id}">${this.escapeHtml(displayName)}</span>`;
         if (!isLast) {
           html += `<span class="crumb-separator">/</span>`;
         }
       });
+
+      if (this.filterUserId) {
+        html += `
+          <span class="crumb-separator">/</span>
+          <span class="crumb-item active" style="color: #60a5fa; font-size: 12px;">👤 Phân vùng người dùng</span>
+          <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 1px 6px; margin-left: 4px;" onclick="FilesManager.clearUserFilter()">✕ Bỏ lọc</button>
+        `;
+      }
     }
 
     container.innerHTML = html;
 
-    // Attach click listeners cleanly to avoid quote escaping issues
+    // Gắn sự kiện click an toàn
     container.querySelectorAll('.crumb-item[data-crumb-id]').forEach(el => {
-      el.addEventListener('click', (e) => {
+      el.addEventListener('click', () => {
         const cid = el.getAttribute('data-crumb-id');
-        this.navigateTo(cid, el.textContent.trim());
+        if (cid) {
+          this.navigateTo(cid, el.textContent.trim());
+        }
       });
     });
   },
 
-  renderFiles(filterQuery = '') {
-    let displayFiles = [...this.files];
+  renderFiles(filterQuery) {
+    if (typeof filterQuery === 'string') {
+      this.searchQuery = filterQuery.trim();
+    }
+    const query = (this.searchQuery || '').trim();
+
+    // Đồng bộ nút xóa tìm kiếm
+    const btnClearSearch = document.getElementById('btn-clear-search');
+    if (btnClearSearch) {
+      btnClearSearch.style.display = query ? 'inline-block' : 'none';
+    }
+
+    let displayFiles = [...(this.files || [])];
 
     // 1. Filter by category
     if (this.currentCategory && this.currentCategory !== 'all') {
       displayFiles = displayFiles.filter(f => {
+        if (!f) return false;
         if (f.is_dir) return false;
         const lowerMime = (f.mime_type || '').toLowerCase();
         const lowerName = (f.name || '').toLowerCase();
@@ -625,33 +717,43 @@ const FilesManager = {
       });
     }
 
-    // 2. Filter by search query
-    if (filterQuery) {
-      displayFiles = displayFiles.filter(f => f.name.toLowerCase().includes(filterQuery.toLowerCase()));
+    // 2. Filter by search query (hỗ trợ cả tiếng Việt có dấu và không dấu)
+    if (query) {
+      const normalizeStr = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const queryNorm = normalizeStr(query);
+      const queryLower = query.toLowerCase();
+
+      displayFiles = displayFiles.filter(f => {
+        if (!f) return false;
+        const name = f.name || '';
+        return name.toLowerCase().includes(queryLower) || normalizeStr(name).includes(queryNorm);
+      });
     }
 
-    // 3. Sort files
+    // 3. Sort files an toàn, không bị lỗi null pointer
     displayFiles.sort((a, b) => {
+      if (!a) return 1;
+      if (!b) return -1;
       const timeA = Utils.getTimestamp(a.updated_at || a.created_at);
       const timeB = Utils.getTimestamp(b.updated_at || b.created_at);
+      const nameA = a.name || '';
+      const nameB = b.name || '';
 
       if (this.currentSort === 'date_desc') {
-        // Tệp tin hoặc thư mục mới tải lên gần đây nhất sẽ luôn hiển thị trên đầu
         if (timeB !== timeA) return timeB - timeA;
         if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
-        return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true });
+        return nameA.localeCompare(nameB, 'vi', { sensitivity: 'base', numeric: true });
       }
 
-      // Đối với sắp xếp theo tên hoặc các tiêu chí khác: Folders first
       if (a.is_dir !== b.is_dir) {
         return a.is_dir ? -1 : 1;
       }
 
       switch (this.currentSort) {
         case 'name_asc':
-          return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true });
+          return nameA.localeCompare(nameB, 'vi', { sensitivity: 'base', numeric: true });
         case 'name_desc':
-          return b.name.localeCompare(a.name, 'vi', { sensitivity: 'base', numeric: true });
+          return nameB.localeCompare(nameA, 'vi', { sensitivity: 'base', numeric: true });
         case 'size_desc':
           return (b.size_bytes || 0) - (a.size_bytes || 0);
         case 'size_asc':
@@ -670,30 +772,43 @@ const FilesManager = {
     // Cập nhật số lượng đếm trên các filter chips
     this.updateCategoryCounts();
 
-    if (this.viewMode === 'grid') {
-      this.renderGridView(displayFiles);
-    } else {
-      this.renderListView(displayFiles);
+    // 4. Phân trang
+    const totalFiltered = displayFiles.length;
+    let pagedFiles = displayFiles;
+
+    if (this.pageSize > 0 && totalFiltered > 0) {
+      const totalPages = Math.ceil(totalFiltered / this.pageSize);
+      if (this.currentPage > totalPages) {
+        this.currentPage = totalPages;
+      }
+      if (this.currentPage < 1) {
+        this.currentPage = 1;
+      }
+      const startIdx = (this.currentPage - 1) * this.pageSize;
+      pagedFiles = displayFiles.slice(startIdx, startIdx + this.pageSize);
     }
+
+    if (this.viewMode === 'grid') {
+      this.renderGridView(pagedFiles, totalFiltered);
+    } else {
+      this.renderListView(pagedFiles, totalFiltered);
+    }
+
+    this.renderPagination(totalFiltered);
   },
 
   updateCategoryCounts() {
-    let videoCnt = 0, imgCnt = 0, docCnt = 0, otherCnt = 0, dirCnt = 0;
+    let videoCnt = 0, imgCnt = 0, docCnt = 0;
     (this.files || []).forEach(f => {
-      if (f.is_dir) {
-        dirCnt++;
-      } else {
-        const lowerName = (f.name || '').toLowerCase();
-        const lowerMime = (f.mime_type || '').toLowerCase();
-        if (lowerMime.startsWith('video/') || /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|3gp)$/i.test(lowerName)) {
-          videoCnt++;
-        } else if (lowerMime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|bmp)$/i.test(lowerName)) {
-          imgCnt++;
-        } else if (lowerMime.includes('pdf') || lowerMime.includes('word') || lowerMime.includes('sheet') || /\.(pdf|doc|docx|xls|xlsx|csv|txt)$/i.test(lowerName)) {
-          docCnt++;
-        } else {
-          otherCnt++;
-        }
+      if (!f || f.is_dir) return;
+      const lowerName = (f.name || '').toLowerCase();
+      const lowerMime = (f.mime_type || '').toLowerCase();
+      if (lowerMime.startsWith('video/') || /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|3gp)$/i.test(lowerName)) {
+        videoCnt++;
+      } else if (lowerMime.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|bmp)$/i.test(lowerName)) {
+        imgCnt++;
+      } else if (lowerMime.includes('pdf') || lowerMime.includes('word') || lowerMime.includes('sheet') || /\.(pdf|doc|docx|xls|xlsx|csv|txt)$/i.test(lowerName)) {
+        docCnt++;
       }
     });
 
@@ -719,8 +834,89 @@ const FilesManager = {
     }
     const sortSelect = document.getElementById('sort-files-select');
     if (sortSelect) sortSelect.value = this.currentSort;
-    const query = document.getElementById('global-search')?.value.trim() || '';
-    this.renderFiles(query);
+    this.currentPage = 1;
+    this.renderFiles();
+  },
+
+  setCategory(cat = 'all') {
+    this.currentCategory = cat;
+    this.currentPage = 1;
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      c.classList.toggle('active', (c.getAttribute('data-cat') || 'all') === cat);
+    });
+    this.renderFiles();
+  },
+
+  clearSearch() {
+    this.searchQuery = '';
+    this.currentPage = 1;
+    const searchInput = document.getElementById('global-search');
+    if (searchInput) searchInput.value = '';
+    const btnClearSearch = document.getElementById('btn-clear-search');
+    if (btnClearSearch) btnClearSearch.style.display = 'none';
+    this.renderFiles();
+  },
+
+  clearAccountFilter() {
+    this.filterAccountId = '';
+    this.currentPage = 1;
+    const filterSelect = document.getElementById('filter-account-select');
+    if (filterSelect) filterSelect.value = '';
+    this.loadFiles(this.currentFolderId);
+  },
+
+  clearUserFilter() {
+    this.filterUserId = '';
+    this.currentPage = 1;
+    const filterUserSelect = document.getElementById('filter-user-select');
+    if (filterUserSelect) filterUserSelect.value = '';
+    this.loadFiles(this.currentFolderId);
+  },
+
+  clearAllFilters() {
+    this.searchQuery = '';
+    this.currentCategory = 'all';
+    this.filterAccountId = '';
+    this.filterUserId = '';
+    this.currentPage = 1;
+
+    const searchInput = document.getElementById('global-search');
+    if (searchInput) searchInput.value = '';
+    const btnClearSearch = document.getElementById('btn-clear-search');
+    if (btnClearSearch) btnClearSearch.style.display = 'none';
+
+    const filterAcc = document.getElementById('filter-account-select');
+    if (filterAcc) filterAcc.value = '';
+
+    const filterUser = document.getElementById('filter-user-select');
+    if (filterUser) filterUser.value = '';
+
+    document.querySelectorAll('.filter-chip').forEach(c => {
+      c.classList.toggle('active', (c.getAttribute('data-cat') || 'all') === 'all');
+    });
+
+    this.loadFiles(this.currentFolderId);
+  },
+
+  resetToRoot() {
+    this.breadcrumbs = [{ id: 'root', name: '🏠 Gốc' }];
+    this.currentFolderId = 'root';
+    this.clearAllFilters();
+  },
+
+  triggerUpload() {
+    const fileInput = document.getElementById('file-input-hidden');
+    const user = API.getCurrentUser();
+    if (!user) {
+      Toast.warning('🔒 Vui lòng đăng nhập tài khoản trước khi tải lên tệp tin.');
+      if (typeof AuthManager !== 'undefined' && AuthManager.openLoginModal) {
+        AuthManager.openLoginModal();
+      }
+      return;
+    }
+    if (fileInput) {
+      fileInput.click();
+    }
   },
 
   // Hàm mã hóa tên thư mục / phân vùng tài khoản để bảo mật tuyệt đối
@@ -741,28 +937,247 @@ const FilesManager = {
     return `🔒 Phân vùng [${masked}]`;
   },
 
-  renderListView(displayFiles) {
-    const tbody = document.getElementById('files-table-body');
-    if (!tbody) return;
+  renderEmptyState(container, options = {}) {
+    if (!container) return;
+    const isListView = (container.id === 'files-table-body');
+    const isRoot = (this.currentFolderId === 'root');
+    const currentCrumb = (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 0)
+      ? this.breadcrumbs[this.breadcrumbs.length - 1]
+      : { name: 'Gốc' };
+    const folderName = isRoot ? 'Gốc' : (currentCrumb.name || 'Thư mục');
+    const isAdmin = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'admin');
 
-    if (displayFiles.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; padding: 36px; color: var(--text-muted);">
-            Thư mục này hiện đang trống. Kéo thả tệp vào đây hoặc bấm "Tải lên" để bắt đầu.
-          </td>
-        </tr>
+    let icon = '📁';
+    let title = 'Thư mục hiện đang trống';
+    let message = 'Chưa có tệp tin hoặc thư mục nào trong thư mục này.';
+    let actionsHtml = '';
+
+    if (options.reason === 'search') {
+      icon = '🔍';
+      title = 'Không tìm thấy tệp tin phù hợp';
+      message = `Không có kết quả nào khớp với từ khóa tìm kiếm "<b>${this.escapeHtml(this.searchQuery)}</b>".`;
+      actionsHtml = `
+        <button class="btn btn-primary btn-sm" onclick="FilesManager.clearSearch()" style="margin-top: 12px; gap: 6px;">
+          <span>✕ Xóa tìm kiếm</span>
+        </button>
       `;
+    } else if (options.reason === 'category') {
+      const catLabels = {
+        video: 'Video & Phim',
+        image: 'Hình ảnh & Đồ họa',
+        audio: 'Âm thanh & Nhạc',
+        document: 'Tài liệu & PDF',
+        spreadsheet: 'Bảng tính & Excel',
+        presentation: 'Trình chiếu Slide',
+        archive: 'Tệp nén & ISO',
+        code: 'Mã nguồn & CSDL',
+        design: 'Thiết kế 3D & Bản vẽ',
+        app: 'Ứng dụng & Cài đặt'
+      };
+      const catName = catLabels[this.currentCategory] || this.currentCategory;
+      icon = '🏷️';
+      title = `Không có tệp thuộc mục "${catName}"`;
+      message = `Thư mục hiện tại không chứa tệp tin nào thuộc danh mục này.`;
+      actionsHtml = `
+        <button class="btn btn-primary btn-sm" onclick="FilesManager.setCategory('all')" style="margin-top: 12px; gap: 6px;">
+          <span>📂 Xem tất cả thể loại</span>
+        </button>
+      `;
+    } else if (options.reason === 'account') {
+      icon = '☁️';
+      title = 'Tài khoản Drive này chưa có tệp';
+      message = 'Không tìm thấy tệp tin nào được liên kết với tài khoản Google Drive đã chọn.';
+      actionsHtml = `
+        <button class="btn btn-primary btn-sm" onclick="FilesManager.clearAccountFilter()" style="margin-top: 12px; gap: 6px;">
+          <span>☁️ Xem tất cả tài khoản Drive</span>
+        </button>
+      `;
+    } else if (options.reason === 'user') {
+      icon = '👥';
+      title = 'Phân vùng người dùng chưa có tệp';
+      message = 'Người dùng được chọn hiện chưa tải lên bất kỳ tệp tin nào trong phân vùng này.';
+      actionsHtml = `
+        <button class="btn btn-primary btn-sm" onclick="FilesManager.clearUserFilter()" style="margin-top: 12px; gap: 6px;">
+          <span>👥 Xem tất cả phân vùng</span>
+        </button>
+      `;
+    } else if (!isRoot) {
+      icon = '📂';
+      title = `Thư mục "${this.escapeHtml(folderName)}" hiện đang trống`;
+      message = 'Kéo thả tệp tin vào đây hoặc bấm nút bên dưới để bắt đầu lưu trữ trong thư mục này.';
+      actionsHtml = `
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="FilesManager.navigateUp()" style="gap: 5px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span>Quay lại thư mục cha</span>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="FilesManager.triggerUpload()" style="gap: 5px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Tải tệp vào đây</span>
+          </button>
+        </div>
+      `;
+    } else {
+      icon = '✨';
+      title = 'Kho lưu trữ hiện chưa có tệp tin';
+      message = 'Bắt đầu bằng cách kéo thả tệp tin vào màn hình hoặc bấm nút "Tải tệp" ở góc trên.';
+      actionsHtml = `
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap;">
+          <button class="btn btn-primary btn-sm" onclick="FilesManager.triggerUpload()" style="gap: 5px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Tải tệp lên ngay</span>
+          </button>
+          ${isAdmin ? `
+            <button class="btn btn-secondary btn-sm" onclick="FilesManager.importDriveFiles()" style="gap: 5px;">
+              <span style="color: #38bdf8;">⚡</span>
+              <span>Nạp tệp từ Google Drive</span>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    const emptyBoxHtml = `
+      <div class="empty-state-box" style="text-align: center; padding: 42px 20px; color: var(--text-muted); background: rgba(255,255,255,0.015); border-radius: 12px; border: 1px dashed var(--border-subtle); max-width: 520px; margin: 24px auto;">
+        <div style="font-size: 38px; line-height: 1; margin-bottom: 12px;">${icon}</div>
+        <h3 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">${title}</h3>
+        <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; margin: 0 auto; max-width: 420px;">${message}</p>
+        ${actionsHtml}
+      </div>
+    `;
+
+    if (isListView) {
+      let backRowHtml = '';
+      if (!isRoot && !this.filterAccountId) {
+        const parentId = (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 1) ? this.breadcrumbs[this.breadcrumbs.length - 2].id : 'root';
+        backRowHtml = `
+          <tr class="folder-back-row" onclick="FilesManager.navigateTo('${parentId}')" style="cursor: pointer;">
+            <td></td>
+            <td>
+              <div class="file-name-cell" style="color: var(--accent-blue);">
+                <span class="file-icon folder">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>
+                </span>
+                <span style="font-weight: 600;">.. (Quay lại thư mục cha)</span>
+              </div>
+            </td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td></td>
+          </tr>
+        `;
+      }
+      container.innerHTML = backRowHtml + `<tr><td colspan="6" style="padding: 0; border: none;">${emptyBoxHtml}</td></tr>`;
+    } else {
+      let backCardHtml = '';
+      if (!isRoot && !this.filterAccountId) {
+        backCardHtml = `
+          <div class="file-card up-card" onclick="FilesManager.navigateUp()" style="cursor: pointer; border: 1px dashed rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05); margin-bottom: 12px;">
+            <div class="file-card-icon folder" style="color: #60a5fa; font-size: 26px;">📁 ⬆️</div>
+            <div class="file-card-title" style="color: var(--accent-blue); font-weight: 600;">.. (Quay lại)</div>
+            <div class="file-card-meta"><span>Thư mục cha</span></div>
+          </div>
+        `;
+      }
+      container.innerHTML = backCardHtml + `<div style="grid-column: 1/-1;">${emptyBoxHtml}</div>`;
+    }
+  },
+
+  renderPagination(totalItems) {
+    const container = document.getElementById('files-pagination-container');
+    if (!container) return;
+
+    if (totalItems <= 0) {
+      container.style.display = 'none';
       return;
     }
 
-    const isAdmin = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'admin');
+    const pageSize = this.pageSize;
+    const totalPages = pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1;
+
+    // Nếu chỉ có 1 trang và số item ít (<= 25), ẩn thanh phân trang để UI thoáng
+    if (totalPages <= 1 && totalItems <= 25) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'flex';
+
+    const startItem = pageSize > 0 ? ((this.currentPage - 1) * pageSize + 1) : 1;
+    const endItem = pageSize > 0 ? Math.min(startItem + pageSize - 1, totalItems) : totalItems;
+
+    let html = `
+      <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap;">
+        <span>Hiển thị <b>${startItem} - ${endItem}</b> trong tổng số <b>${totalItems}</b> mục</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span>Mỗi trang:</span>
+          <select id="files-page-size-select" class="form-control" style="padding: 2px 6px; font-size: 11px; height: 26px; width: 75px; background: rgba(255,255,255,0.05);">
+            <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+            <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+            <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+            <option value="0" ${pageSize === 0 ? 'selected' : ''}>Tất cả</option>
+          </select>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <button class="btn btn-secondary btn-sm" ${this.currentPage <= 1 ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : 'onclick="FilesManager.goToPage(' + (this.currentPage - 1) + ')"'} style="font-size: 11px; padding: 4px 10px;">
+          ◀ Trước
+        </button>
+        <span style="font-size: 12px; font-weight: 600; color: var(--text-primary); padding: 0 6px;">
+          Trang ${this.currentPage} / ${totalPages}
+        </span>
+        <button class="btn btn-secondary btn-sm" ${this.currentPage >= totalPages ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : 'onclick="FilesManager.goToPage(' + (this.currentPage + 1) + ')"'} style="font-size: 11px; padding: 4px 10px;">
+          Sau ▶
+        </button>
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    const pageSizeSelect = document.getElementById('files-page-size-select');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', (e) => {
+        this.pageSize = parseInt(e.target.value, 10) || 50;
+        this.currentPage = 1;
+        this.renderFiles();
+      });
+    }
+  },
+
+  goToPage(page) {
+    this.currentPage = page;
+    this.renderFiles();
+    const target = document.getElementById('view-files');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  },
+
+  renderListView(displayFiles, totalFiltered = 0) {
+    const tbody = document.getElementById('files-table-body');
+    if (!tbody) return;
+
+    if (!displayFiles || displayFiles.length === 0) {
+      let reason = 'root';
+      if (this.searchQuery) reason = 'search';
+      else if (this.currentCategory !== 'all') reason = 'category';
+      else if (this.filterAccountId) reason = 'account';
+      else if (this.filterUserId) reason = 'user';
+      else if (this.currentFolderId !== 'root') reason = 'subfolder';
+
+      this.renderEmptyState(tbody, { reason, totalFiltered });
+      return;
+    }
+
+    const isMember = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'member');
+    const isAdmin = !isMember;
 
     let html = '';
 
     // If inside a subfolder, add standard ".." row to return to parent folder
     if (this.currentFolderId !== 'root' && !this.filterAccountId) {
-      const parentId = this.breadcrumbs.length > 1 ? this.breadcrumbs[this.breadcrumbs.length - 2].id : 'root';
+      const parentId = (Array.isArray(this.breadcrumbs) && this.breadcrumbs.length > 1) ? this.breadcrumbs[this.breadcrumbs.length - 2].id : 'root';
       html += `
         <tr class="folder-back-row" onclick="FilesManager.navigateTo('${parentId}')" style="cursor: pointer;">
           <td></td>
@@ -783,17 +1198,17 @@ const FilesManager = {
     }
 
     displayFiles.forEach(f => {
+      if (!f) return;
       const isSelected = this.selectedIds.has(f.id);
       const icon = Utils.getFileIconSVG(f.mime_type || '', f.is_dir, f.name);
       const sizeText = f.is_dir ? '-' : Utils.formatBytes(f.size_bytes);
-      const chunksText = f.is_dir ? '-' : `${f.chunk_count} chunks`;
+      const chunksText = f.is_dir ? '-' : `${f.chunk_count || 0} chunks`;
       const dateText = Utils.formatDate(f.updated_at || f.created_at);
-      const isMember = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'member');
-      const isAdmin = !isMember;
       const isLockedAdminFile = (isMember && (f.is_admin_owned || f.requires_otp));
 
-      const isGDriveFolder = f.is_dir && (f.name.includes('[Google Drive]') || f.name.startsWith('[Google Drive]'));
-      const displayName = isGDriveFolder ? this.maskFolderName(f.name) : f.name.replace(/^📁\s*/, '');
+      const isGDriveFolder = f.is_dir && (f.name && (f.name.includes('[Google Drive]') || f.name.startsWith('[Google Drive]')));
+      const rawDisplayName = isGDriveFolder ? this.maskFolderName(f.name) : (f.name || 'Tệp không tên').replace(/^📁\s*/, '');
+      const safeDisplayName = this.escapeHtml(rawDisplayName);
 
       let badgeHtml = '';
       if (f.has_missing_chunks) {
@@ -807,18 +1222,18 @@ const FilesManager = {
       let nameContent = '';
       if (isGDriveFolder) {
         nameContent = `
-          <span style="font-weight: 600; color: #38bdf8; font-family: var(--font-mono); letter-spacing: 0.02em;">${displayName}</span>
+          <span style="font-weight: 600; color: #38bdf8; font-family: var(--font-mono); letter-spacing: 0.02em;">${safeDisplayName}</span>
         `;
       } else {
-        nameContent = `<span style="user-select: none;">${displayName}</span>`;
+        nameContent = `<span style="user-select: none;">${safeDisplayName}</span>`;
       }
 
       html += `
-        <tr class="${isSelected ? 'selected' : ''}" oncontextmenu="FilesManager.openContextMenu(event, ${JSON.stringify(f).replace(/"/g, '&quot;')})">
+        <tr class="${isSelected ? 'selected' : ''}" oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')">
           <td onclick="event.stopPropagation();">
             <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="FilesManager.toggleSelect('${f.id}')" style="cursor: pointer;">
           </td>
-          <td onclick="FilesManager.handleItemClick('${f.id}', ${f.is_dir}, '${displayName.replace(/'/g, "\\'")}', '${f.mime_type || ''}', ${f.is_admin_owned ? 'true' : 'false'}, ${f.requires_otp ? 'true' : 'false'})">
+          <td onclick="FilesManager.handleItemClick('${f.id}')">
             <div class="file-name-cell">
               <span class="file-icon ${f.is_dir ? 'folder' : ''}">${icon}</span>
               ${nameContent}
@@ -831,25 +1246,25 @@ const FilesManager = {
           <td>
             <div class="file-actions-cell">
               ${isLockedAdminFile ? `
-                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px; color: #f87171; border-color: rgba(239,68,68,0.3);" onclick="event.stopPropagation(); FilesManager.openOTPModal(${JSON.stringify(f).replace(/"/g, '&quot;')}, 'preview')" title="Mở khóa bằng mã OTP">
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 8px; color: #f87171; border-color: rgba(239,68,68,0.3);" onclick="event.stopPropagation(); FilesManager.openOTPModal('${f.id}', 'preview')" title="Mở khóa bằng mã OTP">
                   🔑 Nhập OTP
                 </button>
-                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openOTPModal(${JSON.stringify(f).replace(/"/g, '&quot;')}, 'download')" title="Tải về qua mã OTP">
+                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openOTPModal('${f.id}', 'download')" title="Tải về qua mã OTP">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 </button>
               ` : `
                 ${isAdmin && !f.is_dir ? `
-                  <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px; color: #60a5fa;" onclick="event.stopPropagation(); FilesManager.openAdminGenerateOTPModal(${JSON.stringify(f).replace(/"/g, '&quot;')})" title="Cấp mã OTP 1 lần cho người dùng con">
+                  <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 2px 6px; color: #60a5fa;" onclick="event.stopPropagation(); FilesManager.openAdminGenerateOTPModal('${f.id}')" title="Cấp mã OTP 1 lần cho người dùng con">
                     🔑 Cấp OTP
                   </button>
                 ` : ''}
                 ${!f.is_dir ? `
-                  <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.handleItemClick('${f.id}', false, '${displayName.replace(/'/g, "\\'")}', '${f.mime_type || ''}', ${f.is_admin_owned ? 'true' : 'false'}, ${f.requires_otp ? 'true' : 'false'})" title="👁️ Xem trước nội dung (Không cần tải về)" style="color: #38bdf8;">
+                  <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.handleItemClick('${f.id}')" title="👁️ Xem trước nội dung (Không cần tải về)" style="color: #38bdf8;">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                   </button>
                 ` : ''}
                 ${!isGDriveFolder ? `
-                  <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openShareModal('${f.id}', '${f.name.replace(/'/g, "\\'")}', ${f.is_dir})" title="${f.is_dir ? 'Tạo link chia sẻ toàn bộ thư mục' : 'Tạo link chia sẻ xem trực tuyến 24/7'}" style="color: var(--accent-cyan);">
+                  <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openShareModal('${f.id}')" title="${f.is_dir ? 'Tạo link chia sẻ toàn bộ thư mục' : 'Tạo link chia sẻ xem trực tuyến 24/7'}" style="color: var(--accent-cyan);">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
                   </button>
                 ` : ''}
@@ -858,10 +1273,10 @@ const FilesManager = {
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                   </button>
                 ` : ''}
-                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openRenameModal('${f.id}', '${f.name}')" title="Đổi tên">
+                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.openRenameModal('${f.id}')" title="Đổi tên">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 </button>
-                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.deleteFile('${f.id}', '${f.name}')" title="Xóa" style="color: var(--accent-red);">
+                <button class="action-icon-btn" onclick="event.stopPropagation(); FilesManager.deleteFile('${f.id}')" title="Xóa" style="color: var(--accent-red);">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                 </button>
               `}
@@ -874,16 +1289,19 @@ const FilesManager = {
     tbody.innerHTML = html;
   },
 
-  renderGridView(displayFiles) {
+  renderGridView(displayFiles, totalFiltered = 0) {
     const container = document.getElementById('files-grid-container');
     if (!container) return;
 
-    if (displayFiles.length === 0 && this.currentFolderId === 'root') {
-      container.innerHTML = `
-        <div style="grid-column: 1/-1; text-align: center; padding: 48px; color: var(--text-muted); background: var(--bg-secondary); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
-          Thư mục này hiện đang trống. Kéo thả tệp vào đây để tải lên.
-        </div>
-      `;
+    if (!displayFiles || displayFiles.length === 0) {
+      let reason = 'root';
+      if (this.searchQuery) reason = 'search';
+      else if (this.currentCategory !== 'all') reason = 'category';
+      else if (this.filterAccountId) reason = 'account';
+      else if (this.filterUserId) reason = 'user';
+      else if (this.currentFolderId !== 'root') reason = 'subfolder';
+
+      this.renderEmptyState(container, { reason, totalFiltered });
       return;
     }
 
@@ -903,30 +1321,32 @@ const FilesManager = {
     }
 
     displayFiles.forEach(f => {
+      if (!f) return;
       const isSelected = this.selectedIds.has(f.id);
       const icon = Utils.getFileIconSVG(f.mime_type || '', f.is_dir, f.name);
       const sizeText = f.is_dir ? 'Thư mục' : Utils.formatBytes(f.size_bytes);
       const isLockedAdminFile = (isMember && (f.is_admin_owned || f.requires_otp));
-      const isGDriveFolder = f.is_dir && (f.name.includes('[Google Drive]') || f.name.startsWith('[Google Drive]'));
-      const displayName = isGDriveFolder ? this.maskFolderName(f.name) : f.name.replace(/^📁\s*/, '');
+      const isGDriveFolder = f.is_dir && (f.name && (f.name.includes('[Google Drive]') || f.name.startsWith('[Google Drive]')));
+      const rawDisplayName = isGDriveFolder ? this.maskFolderName(f.name) : (f.name || 'Tệp không tên').replace(/^📁\s*/, '');
+      const safeDisplayName = this.escapeHtml(rawDisplayName);
 
       html += `
         <div class="file-card ${isSelected ? 'selected' : ''} ${isLockedAdminFile ? 'locked-card' : ''}" 
-             onclick="FilesManager.handleItemClick('${f.id}', ${f.is_dir}, '${displayName.replace(/'/g, "\\'")}', '${f.mime_type || ''}', ${f.is_admin_owned ? 'true' : 'false'}, ${f.requires_otp ? 'true' : 'false'})"
-             oncontextmenu="FilesManager.openContextMenu(event, ${JSON.stringify(f).replace(/"/g, '&quot;')})">
+             onclick="FilesManager.handleItemClick('${f.id}')"
+             oncontextmenu="FilesManager.openContextMenu(event, '${f.id}')">
           <input type="checkbox" class="file-card-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); FilesManager.toggleSelect('${f.id}')">
           <div class="file-card-icon ${f.is_dir ? 'folder' : ''}">
             ${icon}
           </div>
-          <div class="file-card-title" title="${displayName}">
-            ${isGDriveFolder ? `<b style="color:#38bdf8; font-family: var(--font-mono);">${displayName}</b>` : displayName}
+          <div class="file-card-title" title="${safeDisplayName}">
+            ${isGDriveFolder ? `<b style="color:#38bdf8; font-family: var(--font-mono);">${safeDisplayName}</b>` : safeDisplayName}
             ${f.has_missing_chunks ? '<span style="color:#f59e0b; font-size:11px; display:block; margin-top:2px; font-weight:600;">⚠️ Thiếu dữ liệu nguồn</span>' : ''}
             ${isLockedAdminFile ? '<span style="color:#f87171; font-size:11px; display:block; margin-top:2px;">🔒 Cần OTP Admin</span>' : ''}
           </div>
           <div class="file-card-meta">
             <span>${sizeText}</span>
           </div>
-          ${!f.is_dir ? `<span class="file-card-chunk-badge" onclick="event.stopPropagation(); FilesManager.showChunkMap('${f.id}', '${displayName.replace(/'/g, "\\'")}')">${f.chunk_count} Chunks</span>` : ''}
+          ${!f.is_dir ? `<span class="file-card-chunk-badge" onclick="event.stopPropagation(); FilesManager.showChunkMap('${f.id}')">${f.chunk_count || 0} Chunks</span>` : ''}
         </div>
       `;
     });
@@ -1017,7 +1437,13 @@ const FilesManager = {
     }
   },
 
-  async showChunkMap(fileId, fileName) {
+  async showChunkMap(fileOrId, fileName) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : (this.files.find(f => f.id === fileOrId) || { id: fileOrId, name: fileName || fileOrId, size_bytes: 0 });
+    const fileId = file.id;
+    fileName = fileName || file.name || fileId;
+
     try {
       const data = await API.getFileChunks(fileId);
       const modal = document.getElementById('modal-chunk-map');
@@ -1025,11 +1451,13 @@ const FilesManager = {
       const metaEl = document.getElementById('chunk-map-meta');
       const grid = document.getElementById('chunk-map-grid');
 
-      titleEl.textContent = `Bản đồ Chunks: ${fileName}`;
-      metaEl.innerHTML = `Tổng kích thước: <b>${Utils.formatBytes(data.file.size_bytes)}</b> | Số lượng: <b>${data.chunks.length} chunks mã hóa AES-256</b>`;
+      if (titleEl) titleEl.textContent = `Bản đồ Chunks: ${fileName}`;
+      if (metaEl) {
+        metaEl.innerHTML = `Tổng kích thước: <b>${Utils.formatBytes(data.file ? data.file.size_bytes : file.size_bytes)}</b> | Số lượng: <b>${(data.chunks || []).length} chunks mã hóa AES-256</b>`;
+      }
 
       let html = '';
-      data.chunks.forEach(c => {
+      (data.chunks || []).forEach(c => {
         let accLabel = c.account_name || c.account_email;
         if (typeof AccountsManager !== 'undefined' && AccountsManager.isPrivacyMode) {
           accLabel = AccountsManager.maskName(c.account_name, c.account_email);
@@ -1060,22 +1488,27 @@ const FilesManager = {
         `;
       });
 
-      grid.innerHTML = html;
-      modal.classList.add('active');
+      if (grid) grid.innerHTML = html;
+      if (modal) modal.classList.add('active');
     } catch (err) {
       Toast.error('Không thể tải bản đồ chunk: ' + err.message);
     }
   },
 
-  handleItemClick(id, isDir, name, mimeType, isAdminOwned, requiresOTP) {
-    if (isDir) {
-      this.navigateTo(id, name);
+  handleItemClick(fileOrId, isDir, name, mimeType, isAdminOwned, requiresOTP) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : (this.files.find(f => f.id === fileOrId) || { id: fileOrId, name: name || '', mime_type: mimeType || '', is_admin_owned: isAdminOwned, requires_otp: requiresOTP, is_dir: isDir });
+    if (!file) return;
+
+    if (file.is_dir) {
+      this.navigateTo(file.id, file.name);
     } else {
-      const file = this.files.find(f => f.id === id) || { id, name, mime_type: mimeType, is_admin_owned: isAdminOwned, requires_otp: requiresOTP };
-      if (file && (file.has_missing_chunks === 1 || file.has_missing_chunks === true)) {
-        Toast.warning(`⚠️ Tệp "${name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể mở trực tuyến.`);
+      const fileName = file.name || 'tệp tin';
+      if (file.has_missing_chunks === 1 || file.has_missing_chunks === true) {
+        Toast.warning(`⚠️ Tệp "${fileName}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể mở trực tuyến.`);
         if (typeof PreviewManager !== 'undefined' && PreviewManager.showMissingChunksError) {
-          PreviewManager.showMissingChunksError(id, name, {
+          PreviewManager.showMissingChunksError(file.id, fileName, {
             missing_chunks: file.chunk_count,
             total_chunks: file.chunk_count,
             size_bytes: file.size_bytes
@@ -1088,7 +1521,7 @@ const FilesManager = {
         this.openOTPModal(file, 'preview');
         return;
       }
-      PreviewManager.openPreview(id, name, mimeType);
+      PreviewManager.openPreview(file.id, fileName, file.mime_type || mimeType || '');
     }
   },
 
@@ -1111,10 +1544,18 @@ const FilesManager = {
     }
   },
 
-  openRenameModal(id, currentName) {
-    document.getElementById('rename-target-id').value = id;
-    document.getElementById('rename-target-name').value = currentName;
-    document.getElementById('modal-rename').classList.add('active');
+  openRenameModal(fileOrId, currentName) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : this.files.find(f => f.id === fileOrId);
+    const id = file ? file.id : fileOrId;
+    currentName = currentName || (file ? file.name : '');
+    const idInput = document.getElementById('rename-target-id');
+    const nameInput = document.getElementById('rename-target-name');
+    const modal = document.getElementById('modal-rename');
+    if (idInput) idInput.value = id;
+    if (nameInput) nameInput.value = currentName;
+    if (modal) modal.classList.add('active');
   },
 
   async confirmRename() {
@@ -1135,7 +1576,13 @@ const FilesManager = {
     }
   },
 
-  async deleteFile(id, name) {
+  async deleteFile(fileOrId, name) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : this.files.find(f => f.id === fileOrId);
+    const id = file ? file.id : fileOrId;
+    name = name || (file ? file.name : 'tệp tin này');
+
     if (!confirm(`Bạn có chắc chắn muốn chuyển "${name}" vào Thùng rác (Recycle Bin)? Bạn có thể khôi phục lại bất kỳ lúc nào.`)) {
       return;
     }
@@ -1151,15 +1598,18 @@ const FilesManager = {
     }
   },
 
+  downloadFile(fileOrId) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : (this.files.find(f => f.id === fileOrId) || { id: fileOrId, name: 'tệp tin' });
+    const id = file.id;
 
-  downloadFile(id) {
-    const file = this.files.find(f => f.id === id);
     if (file && (file.has_missing_chunks === 1 || file.has_missing_chunks === true)) {
       Toast.error(`Tệp "${file.name}" đang bị thiếu các mảnh dữ liệu nguồn trên Google Drive! Không thể tải về.`);
       return;
     }
     if (typeof DownloadManager !== 'undefined') {
-      DownloadManager.downloadFile(file || id);
+      DownloadManager.downloadFile(file);
       return;
     }
     const isMember = (typeof AuthManager !== 'undefined' && AuthManager.currentUser && AuthManager.currentUser.role === 'member');
@@ -1174,7 +1624,12 @@ const FilesManager = {
   // Single-Use OTP File Access & Admin Approval Handlers
   // =========================================================================
 
-  openOTPModal(file, actionType = 'preview') {
+  openOTPModal(fileOrId, actionType = 'preview') {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : this.files.find(f => f.id === fileOrId);
+    if (!file) return;
+
     this.otpTargetFile = file;
     this.otpActionType = actionType;
 
@@ -1279,7 +1734,12 @@ const FilesManager = {
     }
   },
 
-  openAdminGenerateOTPModal(file) {
+  openAdminGenerateOTPModal(fileOrId) {
+    const file = (typeof fileOrId === 'object' && fileOrId !== null)
+      ? fileOrId
+      : this.files.find(f => f.id === fileOrId);
+    if (!file) return;
+
     this.adminOTPFile = file;
     const modal = document.getElementById('modal-admin-generate-otp');
     if (!modal) return;
@@ -2026,18 +2486,41 @@ const FilesManager = {
   // ────────────────────────────────────────────────────────
   // Public Share Links Methods
   // ────────────────────────────────────────────────────────
-  openShareModal(fileId, fileName, isFolder = false) {
-    document.getElementById('share-target-file-id').value = fileId;
+  openShareModal(fileOrId, fileName, isFolder = false) {
+    let targetId = fileOrId;
+    let targetName = fileName || '';
+    let targetIsDir = isFolder;
+
+    if (typeof fileOrId === 'object' && fileOrId !== null) {
+      targetId = fileOrId.id;
+      targetName = fileOrId.name;
+      targetIsDir = !!fileOrId.is_dir;
+    } else if (typeof fileOrId === 'string') {
+      const found = this.files.find(f => f.id === fileOrId);
+      if (found) {
+        targetId = found.id;
+        if (!targetName) targetName = found.name;
+        if (fileName === undefined) targetIsDir = !!found.is_dir;
+      }
+    }
+
+    const inputEl = document.getElementById('share-target-file-id');
+    if (inputEl) inputEl.value = targetId || '';
     const labelEl = document.getElementById('share-file-name-label');
     if (labelEl) {
-      labelEl.innerHTML = isFolder 
-        ? `<span style="color: var(--accent-amber); font-weight:700;">📁 Thư mục:</span> <b>${fileName}</b> (Bao gồm tất cả tệp con)`
-        : `<span style="color: var(--accent-blue); font-weight:700;">📄 Tệp tin:</span> <b>${fileName}</b>`;
+      const safeName = this.escapeHtml(targetName || 'Tệp không tên');
+      labelEl.innerHTML = targetIsDir 
+        ? `<span style="color: var(--accent-amber); font-weight:700;">📁 Thư mục:</span> <b>${safeName}</b> (Bao gồm tất cả tệp con)`
+        : `<span style="color: var(--accent-blue); font-weight:700;">📄 Tệp tin:</span> <b>${safeName}</b>`;
     }
-    document.getElementById('share-password-input').value = '';
-    document.getElementById('share-expiry-select').value = '0'; // Default to permanent
-    document.getElementById('share-max-downloads-select').value = '0';
-    document.getElementById('share-result-box').style.display = 'none';
+    const passInput = document.getElementById('share-password-input');
+    if (passInput) passInput.value = '';
+    const expirySelect = document.getElementById('share-expiry-select');
+    if (expirySelect) expirySelect.value = '0'; // Default to permanent
+    const maxDlSelect = document.getElementById('share-max-downloads-select');
+    if (maxDlSelect) maxDlSelect.value = '0';
+    const resultBox = document.getElementById('share-result-box');
+    if (resultBox) resultBox.style.display = 'none';
     document.getElementById('modal-share-link')?.classList.add('active');
   },
 

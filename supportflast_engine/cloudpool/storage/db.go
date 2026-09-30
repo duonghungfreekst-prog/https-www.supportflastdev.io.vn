@@ -737,14 +737,8 @@ func (s *DB) migrateTiDB() error {
 	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
 	s.setDefaultSetting("redirect_url", oauthRedirect)
 
-	// Ensure root directory entry exists
-	var count int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
-	if count == 0 {
-		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
-			VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
-	}
+	// Ensure root directory entry exists and is never marked as deleted
+	_ = s.ensureRootExistsUnlocked()
 
 	// Clean up any emoji duplicate prefixes in virtual folder names
 	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
@@ -1037,14 +1031,8 @@ func (s *DB) migrateSQLite() error {
 	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
 	s.setDefaultSetting("redirect_url", oauthRedirect)
 
-	// Ensure root directory entry exists
-	var count int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
-	if count == 0 {
-		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO virtual_files (id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
-			VALUES ('root', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
-	}
+	// Ensure root directory entry exists and is never marked as deleted
+	_ = s.ensureRootExistsUnlocked()
 
 	// Clean up any emoji duplicate prefixes in virtual folder names
 	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
@@ -1671,8 +1659,18 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		// Admin sees all files and system partitions
 		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
 	} else if userID == "guest" {
-		// Guest only sees guest partition
-		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = 'guest' AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
+		guestMode := "view_only"
+		var val string
+		if errMode := s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'guest_access_mode'").Scan(&val); errMode == nil && strings.TrimSpace(val) != "" {
+			guestMode = strings.TrimSpace(val)
+		}
+		if guestMode != "strict" {
+			// Khi guest_access_mode != "strict", cho phép khách xem danh sách tệp tin trong thư mục parent_id
+			rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
+		} else {
+			// Trong chế độ strict, khách chỉ xem được phân vùng riêng của khách
+			rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = 'guest' AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
+		}
 	} else {
 		// Child user is strictly isolated to their own uploaded files only
 		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = ? AND parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, userID, parentID)
@@ -1708,10 +1706,10 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		f.CreatedAt = parseFlexibleTime(rawCreated)
 		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 
-		// If a child user is viewing an Admin-owned file, mark it as locked with OTP requirement ONLY IF not shared
-		if userID != "user_admin" && userID != "all" && (f.UserID == "user_admin" || f.UserID == "") {
+		// If a child user or guest is viewing an Admin-owned file, mark it as locked with OTP requirement ONLY IF not shared
+		if userID != "user_admin" && userID != "all" && userID != "admin" && (f.UserID == "user_admin" || f.UserID == "admin" || f.UserID == "") {
 			f.IsAdminOwned = true
-			if !s.IsFileOrAncestorShared(f.ID) {
+			if !s.isFileOrAncestorSharedUnlocked(f.ID) {
 				f.RequiresOTP = true
 			} else {
 				f.RequiresOTP = false
@@ -1723,11 +1721,8 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 	return list, nil
 }
 
-// IsFileOrAncestorShared checks if the given file or any parent folder in its hierarchy has an active public share link
-func (s *DB) IsFileOrAncestorShared(fileID string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+// isFileOrAncestorSharedUnlocked checks if the given file or any parent folder in its hierarchy has an active public share link
+func (s *DB) isFileOrAncestorSharedUnlocked(fileID string) bool {
 	query := `
 	WITH RECURSIVE file_ancestors AS (
 		SELECT id, parent_id FROM virtual_files WHERE id = ?
@@ -1745,6 +1740,14 @@ func (s *DB) IsFileOrAncestorShared(fileID string) bool {
 	var count int
 	_ = s.db.QueryRow(query, fileID).Scan(&count)
 	return count > 0
+}
+
+// IsFileOrAncestorShared checks if the given file or any parent folder in its hierarchy has an active public share link
+func (s *DB) IsFileOrAncestorShared(fileID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.isFileOrAncestorSharedUnlocked(fileID)
 }
 
 func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) {
@@ -1789,9 +1792,47 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 	return list, nil
 }
 
+// ensureRootExistsUnlocked đảm bảo thư mục gốc root luôn tồn tại, cấu trúc chuẩn, và không bao giờ bị đánh dấu is_deleted = 1
+func (s *DB) ensureRootExistsUnlocked() error {
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
+	now := time.Now()
+	if count == 0 {
+		var err error
+		if s.IsMySQLOrTiDB() {
+			_, err = s.db.Exec(`INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, is_deleted, created_at, updated_at) 
+				VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, 0, ?, ?)`, now, now)
+		} else {
+			_, err = s.db.Exec(`INSERT OR IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, is_deleted, created_at, updated_at) 
+				VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, 0, ?, ?)`, now, now)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to create root folder: %w", err)
+		}
+	} else {
+		// Đảm bảo root luôn ở trạng thái chuẩn: is_deleted = 0, parent_id = '', is_dir = 1, path = '/'
+		_, err := s.db.Exec(`UPDATE virtual_files SET is_deleted = 0, deleted_at = NULL, parent_id = '', is_dir = 1, path = '/' WHERE id = 'root' AND (is_deleted != 0 OR parent_id != '' OR is_dir != 1 OR path != '/')`)
+		if err != nil {
+			return fmt.Errorf("failed to repair root folder status: %w", err)
+		}
+	}
+	return nil
+}
+
+// EnsureRootExists đảm bảo thư mục gốc root luôn tồn tại và không bao giờ bị đánh dấu is_deleted = 1 (thread-safe)
+func (s *DB) EnsureRootExists() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.ensureRootExistsUnlocked()
+}
+
 func (s *DB) SoftDeleteVirtualFile(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if id == "root" || id == "" {
+		return fmt.Errorf("không thể xóa thư mục gốc (root folder is protected)")
+	}
 
 	vFile, err := s.getVirtualFileUnsafe(id)
 	if err != nil {
@@ -2014,6 +2055,9 @@ func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.Virtual
 func (s *DB) DeleteVirtualFile(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if id == "root" || id == "" {
+		return fmt.Errorf("không thể xóa vĩnh viễn thư mục gốc (root folder is protected)")
+	}
 	_, err := s.db.Exec("DELETE FROM virtual_files WHERE id = ?", id)
 	return err
 }
@@ -2021,6 +2065,9 @@ func (s *DB) DeleteVirtualFile(id string) error {
 func (s *DB) RenameVirtualFile(id string, newName, newPath string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if id == "root" || id == "" {
+		return fmt.Errorf("không thể đổi tên thư mục gốc (root folder is protected)")
+	}
 	_, err := s.db.Exec("UPDATE virtual_files SET name=?, path=?, updated_at=? WHERE id=?", newName, newPath, time.Now(), id)
 	return err
 }
@@ -3805,13 +3852,8 @@ func (s *DB) EnsureTiDBCloudPoolDataReady() error {
 		_, _ = s.db.Exec(`UPDATE users SET password_hash = ?, failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
 	}
 
-	// 4. Đảm bảo thư mục gốc root trong virtual_files luôn tồn tại
-	var rootCount int
-	_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id = 'root'").Scan(&rootCount)
-	if rootCount == 0 {
-		_, _ = s.db.Exec(`INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
-			VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
-	}
+	// 4. Đảm bảo thư mục gốc root trong virtual_files luôn tồn tại và không bao giờ bị đánh dấu đã xóa
+	_ = s.ensureRootExistsUnlocked()
 
 	// 5. Kiểm tra số lượng bản ghi trong các bảng cốt lõi
 	var accCount, fileCount, chunkCount int

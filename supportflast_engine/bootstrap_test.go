@@ -18,6 +18,17 @@ import (
 )
 
 func createTestSandbox(t *testing.T) (string, func()) {
+	config.ResetForTest()
+	origDriver := os.Getenv("DB_DRIVER")
+	origTiDBHost := os.Getenv("TIDB_HOST")
+	origRender := os.Getenv("RENDER")
+	origDomain := os.Getenv("DOMAIN")
+
+	os.Setenv("DB_DRIVER", "sqlite")
+	os.Setenv("TIDB_HOST", "")
+	os.Setenv("RENDER", "")
+	os.Setenv("DOMAIN", "localhost")
+
 	// Tạo sandbox trên ổ D (hoặc F) theo Rule 1.4, tránh hoàn toàn ổ C
 	baseTemp := os.TempDir()
 	sandboxDir := filepath.Join(baseTemp, fmt.Sprintf("test_bootstrap_%d", time.Now().UnixNano()))
@@ -29,6 +40,10 @@ func createTestSandbox(t *testing.T) (string, func()) {
 		database.CloseDB()
 		security.SetCustomKeysDir("")
 		config.ResetForTest()
+		os.Setenv("DB_DRIVER", origDriver)
+		os.Setenv("TIDB_HOST", origTiDBHost)
+		os.Setenv("RENDER", origRender)
+		os.Setenv("DOMAIN", origDomain)
 		_ = os.RemoveAll(sandboxDir)
 	}
 

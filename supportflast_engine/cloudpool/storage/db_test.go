@@ -843,4 +843,380 @@ func TestParseFlexibleTimestamp(t *testing.T) {
 	}
 }
 
+func TestVFSRootAndHierarchyIntegrity(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "vfs_test.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra GetVirtualFile("root")
+	root, err := db.GetVirtualFile("root")
+	if err != nil {
+		t.Fatalf("GetVirtualFile('root') failed: %v", err)
+	}
+	if root == nil {
+		t.Fatalf("Root virtual file is nil")
+	}
+	if root.ID != "root" {
+		t.Errorf("Expected root.ID == 'root', got %s", root.ID)
+	}
+	if root.ParentID != "" {
+		t.Errorf("Expected root.ParentID == '', got %s", root.ParentID)
+	}
+	if !root.IsDir {
+		t.Errorf("Expected root.IsDir == true, got %v", root.IsDir)
+	}
+	if root.Path != "/" {
+		t.Errorf("Expected root.Path == '/', got %s", root.Path)
+	}
+	if root.IsTrashed {
+		t.Errorf("Expected root.IsTrashed == false, got %v", root.IsTrashed)
+	}
+
+	// 2. Tạo cây thư mục mô phỏng: root -> dir_test1 -> file1, file2
+	dir1 := &models.VirtualFile{
+		ID:        "dir_test1",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "Folder 1",
+		Path:      "/Folder 1",
+		IsDir:     true,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.SaveVirtualFile(dir1); err != nil {
+		t.Fatalf("SaveVirtualFile dir1 failed: %v", err)
+	}
+
+	file1 := &models.VirtualFile{
+		ID:        "file_test1",
+		UserID:    "user_admin",
+		ParentID:  "dir_test1",
+		Name:      "test1.txt",
+		Path:      "/Folder 1/test1.txt",
+		IsDir:     false,
+		SizeBytes: 1024,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.SaveVirtualFile(file1); err != nil {
+		t.Fatalf("SaveVirtualFile file1 failed: %v", err)
+	}
+
+	fileRoot := &models.VirtualFile{
+		ID:        "file_root",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "root_file.txt",
+		Path:      "/root_file.txt",
+		IsDir:     false,
+		SizeBytes: 2048,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	if err := db.SaveVirtualFile(fileRoot); err != nil {
+		t.Fatalf("SaveVirtualFile fileRoot failed: %v", err)
+	}
+
+	// 3. Kiểm tra ListVirtualFiles("user_admin", "root")
+	rootChildren, err := db.ListVirtualFiles("user_admin", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles('user_admin', 'root') failed: %v", err)
+	}
+	if len(rootChildren) != 2 {
+		t.Errorf("Expected 2 children at root (1 dir + 1 file), got %d", len(rootChildren))
+	}
+	for _, c := range rootChildren {
+		if c.ID == "root" {
+			t.Errorf("Root directory must not be present in its own child list")
+		}
+		if c.ParentID != "root" {
+			t.Errorf("Expected child ParentID == 'root', got %s", c.ParentID)
+		}
+	}
+
+	// 4. Kiểm tra GetAllFilesInFolderTree("root")
+	allFiles, err := db.GetAllFilesInFolderTree("root")
+	if err != nil {
+		t.Fatalf("GetAllFilesInFolderTree('root') failed: %v", err)
+	}
+	if len(allFiles) != 2 {
+		t.Errorf("Expected 2 files in folder tree, got %d", len(allFiles))
+	}
+
+	// 5. Kiểm tra bảo vệ thư mục gốc Root không bị xóa hoặc đổi tên
+	if err := db.SoftDeleteVirtualFile("root"); err == nil {
+		t.Errorf("SoftDeleteVirtualFile('root') should have been rejected")
+	}
+	if err := db.DeleteVirtualFile("root"); err == nil {
+		t.Errorf("DeleteVirtualFile('root') should have been rejected")
+	}
+	if err := db.RenameVirtualFile("root", "new_root", "/new_root"); err == nil {
+		t.Errorf("RenameVirtualFile('root') should have been rejected")
+	}
+
+	// Kiểm tra trạng thái root sau khi thử xóa: vẫn an toàn
+	rootCheck, err := db.GetVirtualFile("root")
+	if err != nil || rootCheck == nil {
+		t.Fatalf("GetVirtualFile('root') failed after delete attempts: %v", err)
+	}
+	if rootCheck.IsTrashed {
+		t.Errorf("Root is_deleted must be false after failed soft delete attempt")
+	}
+
+	// 6. Kiểm tra EnsureRootExists phục hồi root nếu bị cố tình can thiệp SQL
+	_, _ = db.SQLDB().Exec("UPDATE virtual_files SET is_deleted = 1, parent_id = 'invalid', is_dir = 0 WHERE id = 'root'")
+	if err := db.EnsureRootExists(); err != nil {
+		t.Fatalf("EnsureRootExists failed: %v", err)
+	}
+	rootRecovered, err := db.GetVirtualFile("root")
+	if err != nil || rootRecovered == nil {
+		t.Fatalf("Failed to reload root after EnsureRootExists: %v", err)
+	}
+	if rootRecovered.IsTrashed {
+		t.Errorf("Root must be active (IsTrashed == false) after EnsureRootExists")
+	}
+	if rootRecovered.ParentID != "" {
+		t.Errorf("Root parent_id must be restored to empty string, got %s", rootRecovered.ParentID)
+	}
+	if !rootRecovered.IsDir {
+		t.Errorf("Root is_dir must be restored to true, got %v", rootRecovered.IsDir)
+	}
+}
+
+func TestRealDatabaseVFSIntegrity(t *testing.T) {
+	realDBPath := `f:\supportflast.dev\data\cloudpool_metadata.db`
+	if _, err := os.Stat(realDBPath); os.IsNotExist(err) {
+		t.Skip("Bỏ qua kiểm tra CSDL thật vì file không tồn tại")
+	}
+
+	db, err := NewDB(realDBPath)
+	if err != nil {
+		t.Fatalf("NewDB on real database failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra thư mục gốc root
+	root, err := db.GetVirtualFile("root")
+	if err != nil {
+		t.Fatalf("GetVirtualFile('root') failed on real DB: %v", err)
+	}
+	if root.ParentID != "" {
+		t.Errorf("Expected root.ParentID == '', got '%s'", root.ParentID)
+	}
+	if root.Path != "/" {
+		t.Errorf("Expected root.Path == '/', got '%s'", root.Path)
+	}
+	if !root.IsDir {
+		t.Errorf("Expected root.IsDir == true, got %v", root.IsDir)
+	}
+	if root.IsTrashed {
+		t.Errorf("Expected root.IsTrashed == false, got %v", root.IsTrashed)
+	}
+
+	// 2. Thống kê tổng số records, folders, files
+	var totalRecords, totalFolders, totalFiles, trashedCount int
+	_ = db.SQLDB().QueryRow("SELECT COUNT(*) FROM virtual_files").Scan(&totalRecords)
+	_ = db.SQLDB().QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 1").Scan(&totalFolders)
+	_ = db.SQLDB().QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 0").Scan(&totalFiles)
+	_ = db.SQLDB().QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_deleted = 1").Scan(&trashedCount)
+
+	t.Logf("CSDL Thật: %d records (%d thư mục gồm root, %d tệp tin), trashed=%d", totalRecords, totalFolders, totalFiles, trashedCount)
+
+	if totalRecords != 675 {
+		t.Logf("Lưu ý: Tổng số bản ghi là %d (kỳ vọng ~675)", totalRecords)
+	}
+	if totalFolders != 11 {
+		t.Errorf("Kỳ vọng chính xác 11 thư mục (1 root + 10 thư mục con), thực tế: %d", totalFolders)
+	}
+	if trashedCount != 0 {
+		t.Errorf("Kỳ vọng 0 file/thư mục bị is_deleted=1, thực tế: %d", trashedCount)
+	}
+
+	// 3. Kiểm tra tính toàn vẹn của parent_id (không có bản ghi mồ côi)
+	var orphanCount int
+	_ = db.SQLDB().QueryRow(`
+		SELECT COUNT(*) FROM virtual_files 
+		WHERE parent_id != '' AND parent_id != 'root' AND parent_id NOT IN (SELECT id FROM virtual_files)
+	`).Scan(&orphanCount)
+	if orphanCount != 0 {
+		t.Errorf("Phát hiện %d bản ghi mồ côi (parent_id không tồn tại trong virtual_files)", orphanCount)
+	}
+
+	// 4. Kiểm tra ListVirtualFiles("user_admin", "root")
+	rootChildren, err := db.ListVirtualFiles("user_admin", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles('user_admin', 'root') failed: %v", err)
+	}
+	t.Logf("Số phần tử trực tiếp tại root: %d (10 thư mục con + %d files)", len(rootChildren), len(rootChildren)-10)
+	for _, c := range rootChildren {
+		if c.ID == "root" {
+			t.Errorf("Root directory must not be present in its own child list")
+		}
+		if c.ParentID != "root" {
+			t.Errorf("Child %s has invalid ParentID: %s", c.ID, c.ParentID)
+		}
+	}
+
+	// 5. Kiểm tra duyệt đệ quy GetAllFilesInFolderTree("root")
+	treeFiles, err := db.GetAllFilesInFolderTree("root")
+	if err != nil {
+		t.Fatalf("GetAllFilesInFolderTree('root') failed: %v", err)
+	}
+	t.Logf("Duyệt đệ quy từ root thành công: %d files tìm thấy (kỳ vọng %d files)", len(treeFiles), totalFiles)
+	if len(treeFiles) != totalFiles {
+		t.Errorf("Số file duyệt đệ quy (%d) không khớp tổng số file (%d)", len(treeFiles), totalFiles)
+	}
+
+	// 6. Kiểm tra bảo vệ root chống xóa trên CSDL thật
+	if err := db.SoftDeleteVirtualFile("root"); err == nil {
+		t.Errorf("SoftDeleteVirtualFile('root') should have been rejected")
+	}
+	if err := db.DeleteVirtualFile("root"); err == nil {
+		t.Errorf("DeleteVirtualFile('root') should have been rejected")
+	}
+}
+
+func TestListVirtualFilesGuestPolicy(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_guest_policy.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Tạo 2 file thuộc sở hữu của user_admin trong thư mục root
+	f1 := &models.VirtualFile{
+		ID:        "file_admin_1",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "admin_doc.pdf",
+		Path:      "/admin_doc.pdf",
+		IsDir:     false,
+		SizeBytes: 1024,
+		MimeType:  "application/pdf",
+	}
+	if err := db.SaveVirtualFile(f1); err != nil {
+		t.Fatalf("SaveVirtualFile f1 failed: %v", err)
+	}
+
+	f2 := &models.VirtualFile{
+		ID:        "file_admin_2",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "shared_doc.pdf",
+		Path:      "/shared_doc.pdf",
+		IsDir:     false,
+		SizeBytes: 2048,
+		MimeType:  "application/pdf",
+	}
+	if err := db.SaveVirtualFile(f2); err != nil {
+		t.Fatalf("SaveVirtualFile f2 failed: %v", err)
+	}
+
+	// Tạo Public Share cho f2
+	share := &models.PublicShare{
+		ID:        "share_token_123",
+		FileID:    f2.ID,
+		FileName:  f2.Name,
+		FileSize:  f2.SizeBytes,
+		MimeType:  f2.MimeType,
+		CreatedBy: "user_admin",
+		IsActive:  true,
+	}
+	if err := db.CreatePublicShare(share); err != nil {
+		t.Fatalf("CreatePublicShare failed: %v", err)
+	}
+
+	// 2. Kiểm tra chế độ mặc định ("view_only")
+	filesGuest, err := db.ListVirtualFiles("guest", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles guest in view_only failed: %v", err)
+	}
+	if len(filesGuest) < 2 {
+		t.Fatalf("Kỳ vọng ít nhất 2 file hiển thị cho guest ở view_only, thực tế: %d", len(filesGuest))
+	}
+
+	for _, f := range filesGuest {
+		if f.ID == "file_admin_1" {
+			if !f.IsAdminOwned {
+				t.Errorf("file_admin_1 phải có IsAdminOwned = true")
+			}
+			if !f.RequiresOTP {
+				t.Errorf("file_admin_1 chưa được chia sẻ nên phải RequiresOTP = true")
+			}
+		}
+		if f.ID == "file_admin_2" {
+			if !f.IsAdminOwned {
+				t.Errorf("file_admin_2 phải có IsAdminOwned = true")
+			}
+			if f.RequiresOTP {
+				t.Errorf("file_admin_2 đã có public share nên RequiresOTP phải là false")
+			}
+		}
+	}
+
+	// 3. Kiểm tra chế độ nghiêm ngặt ("strict")
+	settings, err := db.GetSettings()
+	if err != nil {
+		t.Fatalf("GetSettings failed: %v", err)
+	}
+	settings.GuestAccessMode = "strict"
+	if err := db.SaveSettings(settings); err != nil {
+		t.Fatalf("SaveSettings strict failed: %v", err)
+	}
+
+	filesGuestStrict, err := db.ListVirtualFiles("guest", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles guest in strict failed: %v", err)
+	}
+	if len(filesGuestStrict) != 0 {
+		t.Errorf("Kỳ vọng 0 file cho guest trong strict mode, thực tế: %d", len(filesGuestStrict))
+	}
+
+	// Thêm 1 file thuộc guest
+	fGuest := &models.VirtualFile{
+		ID:        "file_guest_1",
+		UserID:    "guest",
+		ParentID:  "root",
+		Name:      "guest_upload.txt",
+		Path:      "/guest_upload.txt",
+		IsDir:     false,
+		SizeBytes: 512,
+		MimeType:  "text/plain",
+	}
+	if err := db.SaveVirtualFile(fGuest); err != nil {
+		t.Fatalf("SaveVirtualFile fGuest failed: %v", err)
+	}
+
+	filesGuestStrict2, err := db.ListVirtualFiles("guest", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles guest in strict failed: %v", err)
+	}
+	if len(filesGuestStrict2) != 1 || filesGuestStrict2[0].ID != "file_guest_1" {
+		t.Errorf("Kỳ vọng chỉ 1 file guest_upload.txt hiển thị cho guest trong strict mode, thực tế: %d", len(filesGuestStrict2))
+	}
+
+	// 4. Kiểm tra Admin luôn xem được toàn bộ
+	filesAdmin, err := db.ListVirtualFiles("user_admin", "root")
+	if err != nil {
+		t.Fatalf("ListVirtualFiles user_admin failed: %v", err)
+	}
+	if len(filesAdmin) < 3 {
+		t.Errorf("Admin phải xem được tất cả các file (kỳ vọng >= 3, thực tế: %d)", len(filesAdmin))
+	}
+	for _, f := range filesAdmin {
+		if f.RequiresOTP {
+			t.Errorf("Admin xem file không bao giờ bị đánh dấu RequiresOTP")
+		}
+	}
+}
+
+
 
