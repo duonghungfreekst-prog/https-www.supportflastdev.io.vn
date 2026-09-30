@@ -273,7 +273,7 @@ func (s *DB) migrateTiDB() error {
 			INDEX idx_accounts_name_hash (name_hash)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
 
-		`CREATE TABLE IF NOT EXISTS users (
+		`CREATE TABLE IF NOT EXISTS cloudpool_users (
 			id VARCHAR(64) NOT NULL,
 			username VARCHAR(191) NOT NULL,
 			username_hash VARCHAR(191) NOT NULL,
@@ -472,22 +472,22 @@ func (s *DB) migrateTiDB() error {
 	}
 
 	var adminCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
 	if adminCount == 0 {
 		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
 			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
 	} else {
-		_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
 	}
 
 	// Always clear any lockout on restart for admin
-	_, _ = s.db.Exec(`UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
 
 	// Also repair any other users that have empty password_hash
 	defaultUserPassHash := core.HashSHA256([]byte("123456"))
-	_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
 
 	// Insert default settings if not exist
 	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
@@ -558,7 +558,7 @@ func (s *DB) migrateSQLite() error {
 			created_at DATETIME,
 			updated_at DATETIME
 		);`,
-		`CREATE TABLE IF NOT EXISTS users (
+		`CREATE TABLE IF NOT EXISTS cloudpool_users (
 			id TEXT PRIMARY KEY,
 			username TEXT NOT NULL,
 			username_hash TEXT NOT NULL UNIQUE,
@@ -773,23 +773,23 @@ func (s *DB) migrateSQLite() error {
 	}
 	
 	var adminCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
 	if adminCount == 0 {
 		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
 			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
 	} else {
 		// Keep admin user password synchronized with master_passphrase
-		_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
 	}
 
 	// Always clear any lockout on restart for admin
-	_, _ = s.db.Exec(`UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
 
 	// Also repair any other users that have empty password_hash
 	defaultUserPassHash := core.HashSHA256([]byte("123456"))
-	_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
 
 	// Insert default settings if not exist
 	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
@@ -991,7 +991,7 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 	}
 
 	// 2. Migrate Users
-	userRows, err := s.db.Query("SELECT id, username, email, display_name, avatar_url FROM users")
+	userRows, err := s.db.Query("SELECT id, username, email, display_name, avatar_url FROM cloudpool_users")
 	if err == nil {
 		defer userRows.Close()
 		type userRecord struct {
@@ -1036,7 +1036,7 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 			
 			if needsUpdate {
 				// In SQLite, username is UNIQUE. To avoid duplicate UNIQUE constraints during migration, we might temporarily conflict if hash isn't replacing properly, but it should be fine.
-				_, _ = s.db.Exec("UPDATE users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?", newUsername, newEmail, newDisplay, newAvatar, usernameHash, emailHash, rec.id)
+				_, _ = s.db.Exec("UPDATE cloudpool_users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?", newUsername, newEmail, newDisplay, newAvatar, usernameHash, emailHash, rec.id)
 			}
 		}
 	}
@@ -2499,7 +2499,7 @@ func (s *DB) getStatsFromDB() (*models.StorageStats, error) {
 		COALESCE((SELECT COUNT(*) FROM virtual_files WHERE is_dir = 0 AND id != 'root'), 0),
 		COALESCE((SELECT COUNT(*) FROM virtual_files WHERE is_dir = 1 AND id != 'root'), 0),
 		COALESCE((SELECT COUNT(*) FROM file_chunks), 0),
-		COALESCE((SELECT COUNT(*) FROM users), 0)`
+		COALESCE((SELECT COUNT(*) FROM cloudpool_users), 0)`
 
 	err := s.db.QueryRow(query).Scan(
 		&stats.TotalAccounts,
@@ -2588,7 +2588,7 @@ func (s *DB) CreateUser(u *models.User) error {
 	usernameHash := core.BlindIndexHash(masterKey, u.Username)
 	emailHash := core.BlindIndexHash(masterKey, u.Email)
 
-	_, err := s.db.Exec(`INSERT INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, quota_bytes, used_bytes, created_at, updated_at) 
+	_, err := s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, quota_bytes, used_bytes, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		u.ID, encUsername, usernameHash, encEmail, emailHash, u.PasswordHash, u.SecurityPinHash, u.SecurityTier, encDisplay, encAvatar, u.Role, u.QuotaBytes, u.UsedBytes, u.CreatedAt, u.UpdatedAt)
 	if err == nil {
@@ -2604,7 +2604,7 @@ func (s *DB) GetUserByUsername(username string) (*models.User, error) {
 	masterKey := s.getMasterKey()
 	usernameHash := core.BlindIndexHash(masterKey, username)
 
-	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM users WHERE username_hash = ?`, usernameHash)
+	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM cloudpool_users WHERE username_hash = ?`, usernameHash)
 	var u models.User
 	var rawLockedUntil, rawCreated, rawUpdated interface{}
 	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &rawLockedUntil, &rawCreated, &rawUpdated); err != nil {
@@ -2625,7 +2625,7 @@ func (s *DB) GetUserByID(id string) (*models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM users WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM cloudpool_users WHERE id = ?`, id)
 	var u models.User
 	var rawLockedUntil, rawCreated, rawUpdated interface{}
 	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &rawLockedUntil, &rawCreated, &rawUpdated); err != nil {
@@ -2647,7 +2647,7 @@ func (s *DB) ListUsers() ([]models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query(`SELECT id, username, email, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM users ORDER BY created_at ASC`)
+	rows, err := s.db.Query(`SELECT id, username, email, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM cloudpool_users ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -2678,7 +2678,7 @@ func (s *DB) DeleteUser(id string) error {
 	defer s.mu.Unlock()
 	masterKey := s.getMasterKey()
 	adminHash := core.BlindIndexHash(masterKey, "admin")
-	_, err := s.db.Exec("DELETE FROM users WHERE id = ? AND username_hash != ?", id, adminHash)
+	_, err := s.db.Exec("DELETE FROM cloudpool_users WHERE id = ? AND username_hash != ?", id, adminHash)
 	if err == nil {
 		s.InvalidateStatsCache()
 	}
@@ -2688,7 +2688,7 @@ func (s *DB) DeleteUser(id string) error {
 func (s *DB) UpdateUserQuota(id string, quotaBytes int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec("UPDATE users SET quota_bytes = ?, updated_at = ? WHERE id = ?", quotaBytes, time.Now(), id)
+	_, err := s.db.Exec("UPDATE cloudpool_users SET quota_bytes = ?, updated_at = ? WHERE id = ?", quotaBytes, time.Now(), id)
 	if err == nil {
 		s.InvalidateStatsCache()
 	}
@@ -2698,14 +2698,14 @@ func (s *DB) UpdateUserQuota(id string, quotaBytes int64) error {
 func (s *DB) UpdateUserPassword(id, passwordHash string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?", passwordHash, time.Now(), id)
+	_, err := s.db.Exec("UPDATE cloudpool_users SET password_hash = ?, updated_at = ? WHERE id = ?", passwordHash, time.Now(), id)
 	return err
 }
 
 func (s *DB) UpdateUserSecurityPin(id, pinHash string, tier int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec("UPDATE users SET security_pin_hash = ?, security_tier = ?, updated_at = ? WHERE id = ?", pinHash, tier, time.Now(), id)
+	_, err := s.db.Exec("UPDATE cloudpool_users SET security_pin_hash = ?, security_tier = ?, updated_at = ? WHERE id = ?", pinHash, tier, time.Now(), id)
 	return err
 }
 
@@ -2717,7 +2717,7 @@ func (s *DB) RecordLoginFailure(username string) (int, bool, error) {
 	usernameHash := core.BlindIndexHash(masterKey, username)
 
 	var fails int
-	_ = s.db.QueryRow("SELECT failed_login_count FROM users WHERE username_hash = ?", usernameHash).Scan(&fails)
+	_ = s.db.QueryRow("SELECT failed_login_count FROM cloudpool_users WHERE username_hash = ?", usernameHash).Scan(&fails)
 	fails++
 
 	var lockedUntil *time.Time
@@ -2728,7 +2728,7 @@ func (s *DB) RecordLoginFailure(username string) (int, bool, error) {
 		isLocked = true
 	}
 
-	_, err := s.db.Exec("UPDATE users SET failed_login_count = ?, locked_until = ?, updated_at = ? WHERE username_hash = ?",
+	_, err := s.db.Exec("UPDATE cloudpool_users SET failed_login_count = ?, locked_until = ?, updated_at = ? WHERE username_hash = ?",
 		fails, lockedUntil, time.Now(), usernameHash)
 	return fails, isLocked, err
 }
@@ -2740,7 +2740,7 @@ func (s *DB) ResetLoginFailure(username string) error {
 	masterKey := s.getMasterKey()
 	usernameHash := core.BlindIndexHash(masterKey, username)
 	
-	_, err := s.db.Exec("UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login_at = ?, updated_at = ? WHERE username_hash = ?",
+	_, err := s.db.Exec("UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL, last_login_at = ?, updated_at = ? WHERE username_hash = ?",
 		time.Now(), time.Now(), usernameHash)
 	return err
 }
@@ -2750,14 +2750,14 @@ func (s *DB) UpdateUserDisplayName(id, displayName string) error {
 	defer s.mu.Unlock()
 	masterKey := s.getMasterKey()
 	encDisplay := core.EncryptSecret(masterKey, displayName)
-	_, err := s.db.Exec("UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?", encDisplay, time.Now(), id)
+	_, err := s.db.Exec("UPDATE cloudpool_users SET display_name = ?, updated_at = ? WHERE id = ?", encDisplay, time.Now(), id)
 	return err
 }
 
 func (s *DB) UpdateUserUsage(id string, usedDelta int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, err := s.db.Exec("UPDATE users SET used_bytes = used_bytes + ?, updated_at = ? WHERE id = ?", usedDelta, time.Now(), id)
+	_, err := s.db.Exec("UPDATE cloudpool_users SET used_bytes = used_bytes + ?, updated_at = ? WHERE id = ?", usedDelta, time.Now(), id)
 	if err == nil {
 		s.InvalidateStatsCache()
 	}
@@ -3166,7 +3166,7 @@ func (s *DB) ListFileOTPs(limit int) ([]models.FileAccessOTP, error) {
 
 	rows, err := s.db.Query(`SELECT o.id, o.file_id, o.file_name, o.target_user_id, COALESCE(u.username, o.target_user_id), o.otp_code, o.created_by, o.is_used, COALESCE(o.used_by, ''), o.used_at, o.expires_at, o.created_at 
 		FROM file_access_otps o 
-		LEFT JOIN users u ON o.target_user_id = u.id 
+		LEFT JOIN cloudpool_users u ON o.target_user_id = u.id 
 		ORDER BY o.created_at DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
@@ -3857,14 +3857,14 @@ func (s *DB) EnsureTiDBCloudPoolDataReady() error {
 	}
 
 	var adminCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
 	now := time.Now()
 	if adminCount == 0 {
-		_, _ = s.db.Exec(`INSERT INTO users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
 			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
 	} else {
-		_, _ = s.db.Exec(`UPDATE users SET password_hash = ?, failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ?, failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
 	}
 
 	// 4. Đảm bảo thư mục gốc root trong virtual_files luôn tồn tại và không bao giờ bị đánh dấu đã xóa
@@ -4030,9 +4030,9 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 
 		var uQ string
 		if s.IsMySQLOrTiDB() {
-			uQ = `INSERT IGNORE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			uQ = `INSERT IGNORE INTO cloudpool_users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		} else {
-			uQ = `INSERT OR IGNORE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			uQ = `INSERT OR IGNORE INTO cloudpool_users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		}
 		_, _ = s.db.Exec(uQ, id, uname, unameHash, email, emailHash, passHash, pinHash, tier, disp, avatar, role, status, quota, used, createdAt, updatedAt)
 	}

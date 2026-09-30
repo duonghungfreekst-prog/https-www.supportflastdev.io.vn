@@ -552,7 +552,7 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	}
 
 	// 2. Kiểm tra User scan (GetUserByUsername, GetUserByID, ListUsers) với locked_until, created_at, updated_at
-	_, err = db.SQLDB().Exec("UPDATE users SET locked_until = ?, created_at = ?, updated_at = ? WHERE id = 'user_admin'",
+	_, err = db.SQLDB().Exec("UPDATE cloudpool_users SET locked_until = ?, created_at = ?, updated_at = ? WHERE id = 'user_admin'",
 		"2026-09-30 09:30:00", "2026-09-30 08:00:00", "2026-09-30 08:30:00")
 	if err != nil {
 		t.Fatalf("Failed to simulate TiDB string time in users: %v", err)

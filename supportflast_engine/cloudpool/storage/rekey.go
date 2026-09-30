@@ -145,7 +145,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	}
 
 	// 3. Users
-	userRows, err := tx.Query("SELECT id, username, email, display_name, avatar_url FROM users")
+	userRows, err := tx.Query("SELECT id, username, email, display_name, avatar_url FROM cloudpool_users")
 	if err != nil {
 		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi truy vấn users: %v", err)
 		return err
@@ -190,7 +190,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 		usernameHash := core.BlindIndexHash(newKey, usernamePlain)
 		emailHash := core.BlindIndexHash(newKey, emailPlain)
 
-		if _, err := tx.Exec("UPDATE users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?",
+		if _, err := tx.Exec("UPDATE cloudpool_users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?",
 			newUsername, newEmail, newDisplay, newAvatar, usernameHash, emailHash, u.id); err != nil {
 			log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi cập nhật users ID '%s': %v", u.id, err)
 			return err
