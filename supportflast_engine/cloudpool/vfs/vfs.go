@@ -37,7 +37,7 @@ func NewVFS(db *storage.DB, gd *gdrive.Manager) *VFS {
 	}
 }
 
-// ReserveInFlightQuota táº¡m giá»¯ dung lÆ°á»£ng áº£o cho má»™t tÃ i khoáº£n trong quÃ¡ trÃ¬nh upload chunk
+// ReserveInFlightQuota tạm giữ dung lượng ảo cho một tài khoản trong quá trình upload chunk
 func (v *VFS) ReserveInFlightQuota(accountID string, bytes int64) {
 	if accountID == "" || bytes <= 0 {
 		return
@@ -50,7 +50,7 @@ func (v *VFS) ReserveInFlightQuota(accountID string, bytes int64) {
 	v.inFlightQuota[accountID] += bytes
 }
 
-// ReleaseInFlightQuota giáº£i phÃ³ng dung lÆ°á»£ng áº£o Ä‘Ã£ táº¡m giá»¯ khi chunk hoÃ n táº¥t hoáº·c tháº¥t báº¡i
+// ReleaseInFlightQuota giải phóng dung lượng ảo đã tạm giữ khi chunk hoàn tất hoặc thất bại
 func (v *VFS) ReleaseInFlightQuota(accountID string, bytes int64) {
 	if accountID == "" || bytes <= 0 {
 		return
@@ -66,7 +66,7 @@ func (v *VFS) ReleaseInFlightQuota(accountID string, bytes int64) {
 	}
 }
 
-// GetInFlightQuota tráº£ vá» dung lÆ°á»£ng áº£o Ä‘ang táº¡m giá»¯ cá»§a má»™t tÃ i khoáº£n
+// GetInFlightQuota trả về dung lượng ảo đang tạm giữ của một tài khoản
 func (v *VFS) GetInFlightQuota(accountID string) int64 {
 	v.mu.Lock()
 	defer v.mu.Unlock()
@@ -371,11 +371,11 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		IsEncrypted: true,
 	}
 
-	// Auto-replace: Náº¿u cÃ³ file trÃ¹ng tÃªn trong cÃ¹ng thÆ° má»¥c cha,
-	// xÃ³a file cÅ© (chunks trÃªn Drive + báº£n ghi DB) trÆ°á»›c khi lÆ°u file má»›i.
+	// Auto-replace: Nếu có file trùng tên trong cùng thư mục cha,
+	// xóa file cũ (chunks trên Drive + bản ghi DB) trước khi lưu file mới.
 	existingFile, findErr := v.db.FindFileByNameInParent(parentID, fileName)
 	if findErr == nil && existingFile != nil {
-		// Láº¥y danh sÃ¡ch chunk cÅ© Ä‘á»ƒ xÃ³a trÃªn Google Drive (kiá»ƒm tra ref count)
+		// Lấy danh sách chunk cũ để xóa trên Google Drive (kiểm tra ref count)
 		oldChunks, chunkErr := v.db.GetChunksForFile(existingFile.ID)
 		if chunkErr == nil {
 			for _, oldChunk := range oldChunks {
@@ -401,17 +401,17 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 				}
 			}
 		}
-		// XÃ³a báº£n ghi chunk cÅ© trong DB
+		// Xóa bản ghi chunk cũ trong DB
 		_ = v.db.DeleteChunksForFile(existingFile.ID)
-		// HoÃ n tráº£ dung lÆ°á»£ng Ä‘Ã£ dÃ¹ng cá»§a user
+		// Hoàn trả dung lượng đã dùng của user
 		_ = v.db.UpdateUserUsage(existingFile.UserID, -existingFile.SizeBytes)
-		// XÃ³a báº£n ghi virtual file cÅ©
+		// Xóa bản ghi virtual file cũ
 		_ = v.db.DeleteVirtualFile(existingFile.ID)
 	}
 
 	if err := v.db.SaveVirtualFile(vFile); err != nil {
-		// Fallback: Náº¿u váº«n bá»‹ lá»—i UNIQUE constraint (do frontend cÅ© gá»­i sai parent_id,
-		// hoáº·c thao tÃ¡c song song bá»‹ Ä‘á»¥ng path), tÃ¬m vÃ  xÃ³a luÃ´n theo Path.
+		// Fallback: Nếu vẫn bị lỗi UNIQUE constraint (do frontend cũ gửi sai parent_id,
+		// hoặc thao tác song song bị đụng path), tìm và xóa luôn theo Path.
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") || strings.Contains(err.Error(), "2067") {
 			if conflictFile, _ := v.db.GetVirtualFileByPath(vFile.Path); conflictFile != nil {
 				_ = v.db.DeleteChunksForFile(conflictFile.ID)
@@ -436,7 +436,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		return nil, fmt.Errorf("failed to save chunk metadata: %w", err)
 	}
 
-	// Cáº­p nháº­t dung lÆ°á»£ng thá»±c táº¿ vÃ o CSDL cho cÃ¡c tÃ i khoáº£n nháº­n chunk má»›i vÃ  giáº£i phÃ³ng in-flight reservation
+	// Cập nhật dung lượng thực tế vào CSDL cho các tài khoản nhận chunk mới và giải phóng in-flight reservation
 	accUsage := make(map[string]int64)
 	for _, job := range jobs {
 		if !job.isDeduplicated && job.accountID != "" && job.gfileID != "" && job.err == nil {
@@ -517,7 +517,7 @@ func (v *VFS) EnsureDirectoryPath(userID, parentID, relPath string) (string, err
 				if existing, getErr := v.db.GetVirtualFileByPath(targetPath); getErr == nil && existing != nil {
 					curParentID = existing.ID
 				} else {
-					return "", fmt.Errorf("khÃ´ng thá»ƒ táº¡o thÆ° má»¥c '%s': %w", seg, err)
+					return "", fmt.Errorf("không thể tạo thư mục '%s': %w", seg, err)
 				}
 			} else {
 				curParentID = folder.ID
@@ -546,7 +546,7 @@ func (v *VFS) Mkdir(userID, parentID, folderName string) (*models.VirtualFile, e
 
 	// Check if already exists
 	if _, err := v.db.GetVirtualFileByPath(folderPath); err == nil {
-		return nil, fmt.Errorf("thÆ° má»¥c '%s' Ä‘Ã£ tá»“n táº¡i", folderName)
+		return nil, fmt.Errorf("thư mục '%s' đã tồn tại", folderName)
 	}
 
 	vFolder := &models.VirtualFile{

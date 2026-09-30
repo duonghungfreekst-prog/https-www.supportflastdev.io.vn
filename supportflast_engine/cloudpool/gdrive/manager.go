@@ -33,11 +33,11 @@ const (
 	DefaultServiceAccountsDir  = `f:\supportflast.dev\data\service_accounts`
 	DefaultOAuthCredentialsFile = `f:\supportflast.dev\data\oauth\credentials.json`
 
-	// CÃ¡c chiáº¿n lÆ°á»£c phÃ¢n bá»• vÃ  Ä‘iá»u phá»‘i tÃ i khoáº£n Google Drive
+	// Các chiến lược phân bổ và điều phối tài khoản Google Drive
 	StrategyLeastUsed   = "least_used"
 	StrategyWaterfill   = "waterfill"
 	StrategyRoundRobin  = "round_robin"
-	StrategyRoundRobin2 = "round-robin" // Há»— trá»£ Ä‘á»‹nh dáº¡ng hyphen
+	StrategyRoundRobin2 = "round-robin" // Hỗ trợ định dạng hyphen
 )
 
 type Manager struct {
@@ -73,13 +73,13 @@ func NewManager(db *storage.DB) *Manager {
 		serviceAccountsDir: saDir,
 	}
 
-	// Äáº£m báº£o cÃ¡c thÆ° má»¥c chá»©ng chá»‰ luÃ´n tá»“n táº¡i sáºµn sÃ ng
+	// Đảm bảo các thư mục chứng chỉ luôn tồn tại sẵn sàng
 	_ = m.EnsureDirectories()
 
 	return m
 }
 
-// EnsureDirectories tá»± Ä‘á»™ng táº¡o cÃ¡c thÆ° má»¥c chá»©ng chá»‰ OAuth vÃ  Service Account táº¡i thÆ° má»¥c data
+// EnsureDirectories tự động tạo các thư mục chứng chỉ OAuth và Service Account tại thư mục data
 func (m *Manager) EnsureDirectories() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -90,34 +90,34 @@ func (m *Manager) EnsureDirectories() error {
 			continue
 		}
 		if err := os.MkdirAll(d, 0755); err != nil {
-			return fmt.Errorf("khÃ´ng thá»ƒ táº¡o thÆ° má»¥c '%s': %w", d, err)
+			return fmt.Errorf("không thể tạo thư mục '%s': %w", d, err)
 		}
 	}
 	return nil
 }
 
-// GetDataDir tráº£ vá» Ä‘Æ°á»ng dáº«n thÆ° má»¥c data gá»‘c
+// GetDataDir trả về đường dẫn thư mục data gốc
 func (m *Manager) GetDataDir() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.dataDir
 }
 
-// GetOAuthDir tráº£ vá» Ä‘Æ°á»ng dáº«n thÆ° má»¥c chá»©ng chá»‰ OAuth
+// GetOAuthDir trả về đường dẫn thư mục chứng chỉ OAuth
 func (m *Manager) GetOAuthDir() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.oauthDir
 }
 
-// GetServiceAccountsDir tráº£ vá» Ä‘Æ°á»ng dáº«n thÆ° má»¥c chá»©ng chá»‰ Service Account
+// GetServiceAccountsDir trả về đường dẫn thư mục chứng chỉ Service Account
 func (m *Manager) GetServiceAccountsDir() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.serviceAccountsDir
 }
 
-// SetDataDir cho phÃ©p cáº­p nháº­t thÆ° má»¥c dá»¯ liá»‡u vÃ  tá»± Ä‘á»™ng Ä‘iá»u chá»‰nh thÆ° má»¥c OAuth/SA
+// SetDataDir cho phép cập nhật thư mục dữ liệu và tự động điều chỉnh thư mục OAuth/SA
 func (m *Manager) SetDataDir(dir string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -129,7 +129,7 @@ func (m *Manager) SetDataDir(dir string) {
 	_ = os.MkdirAll(m.serviceAccountsDir, 0755)
 }
 
-// GoogleOAuthClientJSON Ä‘áº¡i diá»‡n cho file credentials client JSON táº£i tá»« Google Cloud Console
+// GoogleOAuthClientJSON đại diện cho file credentials client JSON tải từ Google Cloud Console
 type GoogleOAuthClientJSON struct {
 	Installed *struct {
 		ClientID     string   `json:"client_id"`
@@ -146,7 +146,7 @@ type GoogleOAuthClientJSON struct {
 	RedirectURI  string `json:"redirect_uri"`
 }
 
-// LoadOAuthClientConfig tá»± Ä‘á»™ng tÃ¬m vÃ  náº¡p cáº¥u hÃ¬nh OAuth Client Credentials tá»« thÆ° má»¥c data
+// LoadOAuthClientConfig tự động tìm và nạp cấu hình OAuth Client Credentials từ thư mục data
 func (m *Manager) LoadOAuthClientConfig(optionalPath string) (*oauth2.Config, error) {
 	candidatePaths := []string{}
 	if optionalPath != "" {
@@ -200,7 +200,7 @@ func (m *Manager) LoadOAuthClientConfig(optionalPath string) (*oauth2.Config, er
 		}
 	}
 
-	// Fallback tá»« cáº¥u hÃ¬nh DB náº¿u cÃ³
+	// Fallback từ cấu hình DB nếu có
 	if clientID == "" && m.db != nil {
 		if settings, err := m.db.GetSettings(); err == nil && settings != nil {
 			clientID = settings.GoogleClientID
@@ -210,7 +210,7 @@ func (m *Manager) LoadOAuthClientConfig(optionalPath string) (*oauth2.Config, er
 	}
 
 	if clientID == "" {
-		return nil, fmt.Errorf("khÃ´ng tÃ¬m tháº¥y file OAuth credentials táº¡i '%s' vÃ  chÆ°a cáº¥u hÃ¬nh trong DB", foundPath)
+		return nil, fmt.Errorf("không tìm thấy file OAuth credentials tại '%s' và chưa cấu hình trong DB", foundPath)
 	}
 
 	if redirectURL == "" {
@@ -230,7 +230,7 @@ func (m *Manager) LoadOAuthClientConfig(optionalPath string) (*oauth2.Config, er
 	}, nil
 }
 
-// GetOAuthURL táº¡o Google OAuth Consent URL
+// GetOAuthURL tạo Google OAuth Consent URL
 func (m *Manager) GetOAuthURL(clientID, clientSecret, redirectURL, state string) string {
 	if clientID == "" || clientSecret == "" {
 		if cfg, err := m.LoadOAuthClientConfig(""); err == nil {
@@ -260,7 +260,7 @@ func (m *Manager) GetOAuthURL(clientID, clientSecret, redirectURL, state string)
 	return config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent select_account"))
 }
 
-// HandleOAuthCallback Ä‘á»•i authorization code láº¥y token, lÆ°u tÃ i khoáº£n vÃ  kÃ­ch hoáº¡t service
+// HandleOAuthCallback đổi authorization code lấy token, lưu tài khoản và kích hoạt service
 func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecret, redirectURL, code string) (*models.Account, error) {
 	if clientID == "" || clientSecret == "" {
 		if cfg, err := m.LoadOAuthClientConfig(""); err == nil {
@@ -298,7 +298,7 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 		return nil, fmt.Errorf("failed to serialize token: %w", err)
 	}
 
-	// Táº¡o Drive client
+	// Tạo Drive client
 	client := config.Client(ctx, token)
 	srv, err := drive.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
@@ -323,13 +323,13 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 		if totalQuota > 0 {
 			freeQuota = totalQuota - usedQuota
 		} else {
-			// KhÃ´ng giá»›i háº¡n hoáº·c custom workspace
+			// Không giới hạn hoặc custom workspace
 			totalQuota = 100 * 1024 * 1024 * 1024 * 1024 // 100TB
 			freeQuota = totalQuota - usedQuota
 		}
 	}
 
-	// Äáº£m báº£o thÆ° má»¥c lÆ°u trá»¯ gá»‘c trÃªn Google Drive
+	// Đảm bảo thư mục lưu trữ gốc trên Google Drive
 	rootFolderID, err := m.ensureRootFolder(srv)
 	if err != nil || rootFolderID == "" {
 		rootFolderID = "root"
@@ -411,7 +411,7 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 	return acc, nil
 }
 
-// AddServiceAccount thÃªm tÃ i khoáº£n Google Drive báº±ng Service Account JSON
+// AddServiceAccount thêm tài khoản Google Drive bằng Service Account JSON
 func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models.Account, error) {
 	creds, err := google.CredentialsFromJSON(ctx, saJSON, DriveScopeFull)
 	if err != nil {
@@ -473,7 +473,7 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 		}
 	}
 
-	// LÆ°u báº£n sao Service Account JSON an toÃ n vÃ o thÆ° má»¥c f:\supportflast.dev\data\service_accounts\
+	// Lưu bản sao Service Account JSON an toàn vào thư mục f:\supportflast.dev\data\service_accounts\
 	m.mu.RLock()
 	saDir := m.serviceAccountsDir
 	m.mu.RUnlock()
@@ -491,7 +491,7 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 	return acc, nil
 }
 
-// LoadServiceAccountsFromDir tá»± Ä‘á»™ng quÃ©t vÃ  náº¡p táº¥t cáº£ cÃ¡c file Service Account JSON tá»« thÆ° má»¥c chá»©ng chá»‰
+// LoadServiceAccountsFromDir tự động quét và nạp tất cả các file Service Account JSON từ thư mục chứng chỉ
 func (m *Manager) LoadServiceAccountsFromDir(optionalDir string) (int, []error) {
 	targetDir := optionalDir
 	if targetDir == "" {
@@ -502,7 +502,7 @@ func (m *Manager) LoadServiceAccountsFromDir(optionalDir string) (int, []error) 
 
 	entries, err := os.ReadDir(targetDir)
 	if err != nil {
-		return 0, []error{fmt.Errorf("khÃ´ng thá»ƒ Ä‘á»c thÆ° má»¥c Service Accounts '%s': %w", targetDir, err)}
+		return 0, []error{fmt.Errorf("không thể đọc thư mục Service Accounts '%s': %w", targetDir, err)}
 	}
 
 	var loadedCount int
@@ -516,18 +516,18 @@ func (m *Manager) LoadServiceAccountsFromDir(optionalDir string) (int, []error) 
 		filePath := filepath.Join(targetDir, entry.Name())
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			errList = append(errList, fmt.Errorf("lá»—i Ä‘á»c file '%s': %w", entry.Name(), err))
+			errList = append(errList, fmt.Errorf("lỗi đọc file '%s': %w", entry.Name(), err))
 			continue
 		}
 
-		// XÃ¡c thá»±c sÆ¡ bá»™ file Service Account
+		// Xác thực sơ bộ file Service Account
 		var saCheck struct {
 			Type        string `json:"type"`
 			ProjectID   string `json:"project_id"`
 			ClientEmail string `json:"client_email"`
 		}
 		if err := json.Unmarshal(data, &saCheck); err != nil || saCheck.Type != "service_account" {
-			continue // KhÃ´ng pháº£i file Service Account cá»§a Google
+			continue // Không phải file Service Account của Google
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -535,7 +535,7 @@ func (m *Manager) LoadServiceAccountsFromDir(optionalDir string) (int, []error) 
 		cancel()
 
 		if err != nil {
-			errList = append(errList, fmt.Errorf("khÃ´ng thá»ƒ náº¡p Service Account '%s': %w", entry.Name(), err))
+			errList = append(errList, fmt.Errorf("không thể nạp Service Account '%s': %w", entry.Name(), err))
 		} else {
 			loadedCount++
 		}
@@ -544,19 +544,19 @@ func (m *Manager) LoadServiceAccountsFromDir(optionalDir string) (int, []error) 
 	return loadedCount, errList
 }
 
-// SelectAccount Ä‘iá»u phá»‘i vÃ  chá»n tÃ i khoáº£n Google Drive tá»‘i Æ°u theo cÃ¡c cÆ¡ cháº¿:
-// 1. "least_used": Sáº¯p xáº¿p cÃ¡c tÃ i khoáº£n theo dung lÆ°á»£ng trá»‘ng kháº£ dá»¥ng giáº£m dáº§n;
-//    phÃ¢n tÃ¡n luÃ¢n phiÃªn giá»¯a cÃ¡c tÃ i khoáº£n dá»“i dÃ o dung lÆ°á»£ng nháº¥t Ä‘á»ƒ trÃ¡nh táº¯c ngháº½n I/O.
-// 2. "waterfill": RÃ³t Ä‘áº§y tuáº§n tá»± tá»«ng tÃ i khoáº£n; chá»‰ chuyá»ƒn sang tÃ i khoáº£n má»›i khi tÃ i khoáº£n hiá»‡n táº¡i Ä‘áº§y.
-// 3. "round_robin" / "round-robin": LuÃ¢n phiÃªn vÃ²ng trÃ²n Ä‘á»u Ä‘áº·n giá»¯a cÃ¡c tÃ i khoáº£n Ä‘á»§ dung lÆ°á»£ng.
+// SelectAccount điều phối và chọn tài khoản Google Drive tối ưu theo các cơ chế:
+// 1. "least_used": Sắp xếp các tài khoản theo dung lượng trống khả dụng giảm dần;
+//    phân tán luân phiên giữa các tài khoản dồi dào dung lượng nhất để tránh tắc nghẽn I/O.
+// 2. "waterfill": Rót đầy tuần tự từng tài khoản; chỉ chuyển sang tài khoản mới khi tài khoản hiện tại đầy.
+// 3. "round_robin" / "round-robin": Luân phiên vòng tròn đều đặn giữa các tài khoản đủ dung lượng.
 func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBytes int64, excludeAccountIDs ...string) (*models.Account, error) {
 	if m.db == nil {
-		return nil, errors.New("cÆ¡ sá»Ÿ dá»¯ liá»‡u lÆ°u trá»¯ tÃ i khoáº£n chÆ°a Ä‘Æ°á»£c khá»Ÿi táº¡o")
+		return nil, errors.New("cơ sở dữ liệu lưu trữ tài khoản chưa được khởi tạo")
 	}
 
 	accounts, err := m.db.ListAccounts()
 	if err != nil {
-		return nil, fmt.Errorf("khÃ´ng thá»ƒ truy váº¥n danh sÃ¡ch tÃ i khoáº£n: %w", err)
+		return nil, fmt.Errorf("không thể truy vấn danh sách tài khoản: %w", err)
 	}
 
 	excludeMap := make(map[string]bool)
@@ -575,7 +575,7 @@ func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBy
 	}
 
 	if len(activeAccounts) == 0 {
-		return nil, errors.New("khÃ´ng cÃ³ tÃ i khoáº£n Google Drive nÃ o cÃ²n Ä‘á»§ dung lÆ°á»£ng kháº£ dá»¥ng")
+		return nil, errors.New("không có tài khoản Google Drive nào còn đủ dung lượng khả dụng")
 	}
 
 	normStrategy := strings.ToLower(strings.TrimSpace(strategy))
@@ -583,14 +583,14 @@ func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBy
 
 	switch normStrategy {
 	case StrategyLeastUsed:
-		// Sáº¯p xáº¿p giáº£m dáº§n theo dung lÆ°á»£ng cÃ²n trá»‘ng (nhiá»u chá»— trá»‘ng nháº¥t lÃªn Ä‘áº§u)
+		// Sắp xếp giảm dần theo dung lượng còn trống (nhiều chỗ trống nhất lên đầu)
 		sort.Slice(activeAccounts, func(i, j int) bool {
 			return activeAccounts[i].FreeQuotaBytes > activeAccounts[j].FreeQuotaBytes
 		})
 
-		// Há»— trá»£ phÃ¢n bá»• luÃ¢n phiÃªn / phÃ¢n tÃ¡n Ä‘á»u chunk Ä‘a á»• Ä‘Ä©a:
-		// Náº¿u cÃ³ nhiá»u tÃ i khoáº£n dá»“i dÃ o dung lÆ°á»£ng kháº£ dá»¥ng, luÃ¢n phiÃªn phÃ¢n bá»• giá»¯a cÃ¡c tÃ i khoáº£n Ä‘Ã³
-		// Ä‘á»ƒ cÃ¡c chunk liÃªn tiáº¿p cá»§a má»™t tá»‡p lá»›n Ä‘Æ°á»£c phÃ¢n tÃ¡n Ä‘á»u qua nhiá»u tÃ i khoáº£n Google Drive khÃ¡c nhau.
+		// Hỗ trợ phân bổ luân phiên / phân tán đều chunk đa ổ đĩa:
+		// Nếu có nhiều tài khoản dồi dào dung lượng khả dụng, luân phiên phân bổ giữa các tài khoản đó
+		// để các chunk liên tiếp của một tệp lớn được phân tán đều qua nhiều tài khoản Google Drive khác nhau.
 		if len(activeAccounts) > 1 {
 			maxFree := activeAccounts[0].FreeQuotaBytes
 			var candidateCount int
@@ -614,8 +614,8 @@ func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBy
 		return &chosen, nil
 
 	case StrategyWaterfill:
-		// RÃ³t Ä‘áº§y: Chá»n tÃ i khoáº£n Ä‘áº§u tiÃªn cÃ²n Ä‘á»§ dung lÆ°á»£ng áº£o kháº£ dá»¥ng
-		// Thá»© tá»± Æ°u tiÃªn giá»¯ nguyÃªn theo danh sÃ¡ch cá»‘ Ä‘á»‹nh
+		// Rót đầy: Chọn tài khoản đầu tiên còn đủ dung lượng ảo khả dụng
+		// Thứ tự ưu tiên giữ nguyên theo danh sách cố định
 		chosen := activeAccounts[0]
 		return &chosen, nil
 
@@ -631,7 +631,7 @@ func (m *Manager) SelectAccount(ctx context.Context, strategy string, requiredBy
 		return &chosen, nil
 
 	default:
-		// Máº·c Ä‘á»‹nh fallback vá» least_used
+		// Mặc định fallback về least_used
 		sort.Slice(activeAccounts, func(i, j int) bool {
 			return activeAccounts[i].FreeQuotaBytes > activeAccounts[j].FreeQuotaBytes
 		})
@@ -693,7 +693,7 @@ func (pts *persistingTokenSource) Token() (*oauth2.Token, error) {
 	return tok, nil
 }
 
-// GetService láº¥y hoáº·c khá»Ÿi táº¡o má»™t drive.Service tÆ°Æ¡ng á»©ng vá»›i tÃ i khoáº£n
+// GetService lấy hoặc khởi tạo một drive.Service tương ứng với tài khoản
 func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Service, *models.Account, error) {
 	m.mu.RLock()
 	srv, exists := m.services[accountID]
@@ -785,7 +785,7 @@ func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Serv
 	return newSrv, acc, nil
 }
 
-// RefreshAccountQuota cáº­p nháº­t thÃ´ng tin dung lÆ°á»£ng tá»« Google Drive
+// RefreshAccountQuota cập nhật thông tin dung lượng từ Google Drive
 func (m *Manager) RefreshAccountQuota(ctx context.Context, accountID string) error {
 	srv, acc, err := m.GetService(context.Background(), accountID)
 	if err != nil {
@@ -817,7 +817,7 @@ func (m *Manager) RefreshAccountQuota(ctx context.Context, accountID string) err
 			free = total - used
 		}
 		status := "active"
-		if free <= 100*1024*1024 { // Ãt hÆ¡n 100MB
+		if free <= 100*1024*1024 { // Ít hơn 100MB
 			status = "full"
 		}
 		return m.db.UpdateAccountQuota(accountID, total, used, free, status, "")
@@ -826,7 +826,7 @@ func (m *Manager) RefreshAccountQuota(ctx context.Context, accountID string) err
 	return nil
 }
 
-// RefreshAllQuotas quÃ©t vÃ  cáº­p nháº­t dung lÆ°á»£ng táº¥t cáº£ cÃ¡c tÃ i khoáº£n
+// RefreshAllQuotas quét và cập nhật dung lượng tất cả các tài khoản
 func (m *Manager) RefreshAllQuotas(ctx context.Context) {
 	if m.db == nil {
 		return
@@ -841,7 +841,7 @@ func (m *Manager) RefreshAllQuotas(ctx context.Context) {
 	}
 }
 
-// ensureRootFolder kiá»ƒm tra hoáº·c táº¡o thÆ° má»¥c gá»‘c CloudPool trÃªn Google Drive
+// ensureRootFolder kiểm tra hoặc tạo thư mục gốc CloudPool trên Google Drive
 func (m *Manager) ensureRootFolder(srv *drive.Service) (string, error) {
 	q := fmt.Sprintf("name = '%s' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", CloudPoolFolderName)
 	fCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
@@ -871,7 +871,7 @@ func (m *Manager) ensureRootFolder(srv *drive.Service) (string, error) {
 	return file.Id, nil
 }
 
-// UploadChunk táº£i máº©u dá»¯ liá»‡u Ä‘Ã£ mÃ£ hÃ³a lÃªn tÃ i khoáº£n Google Drive chá»‰ Ä‘á»‹nh
+// UploadChunk tải mẩu dữ liệu đã mã hóa lên tài khoản Google Drive chỉ định
 func (m *Manager) UploadChunk(ctx context.Context, accountID, chunkFileName string, data []byte) (string, error) {
 	srv, acc, err := m.GetService(ctx, accountID)
 	if err != nil {
@@ -896,10 +896,10 @@ func (m *Manager) UploadChunk(ctx context.Context, accountID, chunkFileName stri
 		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
 	}
 
-	return "", fmt.Errorf("khÃ´ng táº£i Ä‘Æ°á»£c chunk lÃªn Google Drive: %w", lastErr)
+	return "", fmt.Errorf("không tải được chunk lên Google Drive: %w", lastErr)
 }
 
-// DownloadChunk táº£i ná»™i dung chunk tá»« Google Drive
+// DownloadChunk tải nội dung chunk từ Google Drive
 func (m *Manager) DownloadChunk(ctx context.Context, accountID, gdriveFileID string) ([]byte, error) {
 	srv, _, err := m.GetService(context.Background(), accountID)
 	if err != nil {
@@ -936,10 +936,10 @@ func (m *Manager) DownloadChunk(ctx context.Context, accountID, gdriveFileID str
 		time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
 	}
 
-	return nil, fmt.Errorf("lá»—i táº£i chunk tá»« Google Drive: %w", lastErr)
+	return nil, fmt.Errorf("lỗi tải chunk từ Google Drive: %w", lastErr)
 }
 
-// DownloadStream tráº£ vá» io.ReadCloser cho viá»‡c stream tá»©c thÃ¬ tá»« Google Drive
+// DownloadStream trả về io.ReadCloser cho việc stream tức thì từ Google Drive
 func (m *Manager) DownloadStream(ctx context.Context, accountID, gdriveFileID string) (io.ReadCloser, int64, error) {
 	srv, _, err := m.GetService(context.Background(), accountID)
 	if err != nil {
@@ -948,7 +948,7 @@ func (m *Manager) DownloadStream(ctx context.Context, accountID, gdriveFileID st
 
 	resp, err := srv.Files.Get(gdriveFileID).Context(ctx).Download()
 	if err != nil {
-		return nil, 0, fmt.Errorf("lá»—i táº£i stream tá»« Google Drive: %w", err)
+		return nil, 0, fmt.Errorf("lỗi tải stream từ Google Drive: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
@@ -957,7 +957,7 @@ func (m *Manager) DownloadStream(ctx context.Context, accountID, gdriveFileID st
 	return resp.Body, resp.ContentLength, nil
 }
 
-// DownloadRange táº£i byte range tá»« Google Drive phá»¥c vá»¥ seek/stream media
+// DownloadRange tải byte range từ Google Drive phục vụ seek/stream media
 func (m *Manager) DownloadRange(ctx context.Context, accountID, gdriveFileID string, start, end int64) ([]byte, error) {
 	srv, _, err := m.GetService(context.Background(), accountID)
 	if err != nil {
@@ -987,7 +987,7 @@ func (m *Manager) DownloadRange(ctx context.Context, accountID, gdriveFileID str
 	return io.ReadAll(resp.Body)
 }
 
-// DeleteChunk xÃ³a file chunk trÃªn Google Drive
+// DeleteChunk xóa file chunk trên Google Drive
 func (m *Manager) DeleteChunk(ctx context.Context, accountID, gdriveFileID string) error {
 	srv, _, err := m.GetService(context.Background(), accountID)
 	if err != nil {
@@ -998,7 +998,7 @@ func (m *Manager) DeleteChunk(ctx context.Context, accountID, gdriveFileID strin
 	return srv.Files.Delete(gdriveFileID).Context(delCtx).Do()
 }
 
-// ScanExistingDriveFiles quÃ©t cÃ¡c file sáºµn cÃ³ bÃªn ngoÃ i thÆ° má»¥c áº©n CloudPool
+// ScanExistingDriveFiles quét các file sẵn có bên ngoài thư mục ẩn CloudPool
 func (m *Manager) ScanExistingDriveFiles(ctx context.Context, accountID string) ([]*drive.File, error) {
 	srv, _, err := m.GetService(ctx, accountID)
 	if err != nil {

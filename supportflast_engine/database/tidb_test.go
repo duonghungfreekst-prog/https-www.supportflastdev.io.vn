@@ -19,8 +19,12 @@ func TestDefaultTiDBConfig(t *testing.T) {
 	if cfg.Database != DefaultTiDBDatabase {
 		t.Errorf("Kỳ vọng database mặc định '%s', thực tế: '%s'", DefaultTiDBDatabase, cfg.Database)
 	}
-	if cfg.User != DefaultTiDBUser {
-		t.Errorf("Kỳ vọng user mặc định '%s', thực tế: '%s'", DefaultTiDBUser, cfg.User)
+	expectedUser := DefaultTiDBUser
+	if strings.Contains(cfg.Host, "tidbcloud.com") {
+		expectedUser = "2KGt5QqixkveQPP.root"
+	}
+	if cfg.User != expectedUser {
+		t.Errorf("Kỳ vọng user mặc định '%s', thực tế: '%s'", expectedUser, cfg.User)
 	}
 	if cfg.TLSConfigName != DefaultTiDBTLSConfig {
 		t.Errorf("Kỳ vọng TLS config '%s', thực tế: '%s'", DefaultTiDBTLSConfig, cfg.TLSConfigName)

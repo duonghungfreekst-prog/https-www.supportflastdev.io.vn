@@ -33,6 +33,26 @@ mkdir -p "$DATA_DIR" "$STORAGE_DIR" "$JWT_KEYS_DIR" 2>/dev/null || true
 echo "[ENTRYPOINT] System parameters: PORT=${PORT} | HOST=${HOST} | USER=$(id -un 2>/dev/null || echo appuser):$(id -gn 2>/dev/null || echo appgroup) (UID:$(id -u 2>/dev/null || echo 10001))"
 echo "[ENTRYPOINT] Directories: DATA_DIR=${DATA_DIR} | STORAGE_DIR=${STORAGE_DIR}"
 
+# 3.1. Đánh giá chiến lược lưu trữ & kiểm tra khả năng tự phục hồi (Zero-Downtime Resilience)
+DB_DRIVER="${DB_DRIVER:-tidb}"
+CLOUDPOOL_DB_DRIVER="${CLOUDPOOL_DB_DRIVER:-$DB_DRIVER}"
+echo "[ENTRYPOINT] Database drivers: DB_DRIVER=${DB_DRIVER} | CLOUDPOOL_DB_DRIVER=${CLOUDPOOL_DB_DRIVER}"
+
+if [ "$DB_DRIVER" = "tidb" ] || [ "$DB_DRIVER" = "mysql" ]; then
+    echo "[ENTRYPOINT] Primary Storage: TiDB Cloud Serverless (${TIDB_HOST:-gateway01.ap-southeast-1.prod.aws.tidbcloud.com}:${TIDB_PORT:-4000}/${TIDB_DATABASE:-supportflast})"
+    echo "[ENTRYPOINT] Resilience: Auto-fallback to embedded SQLite enabled if TiDB Cloud is unreachable"
+else
+    echo "[ENTRYPOINT] Primary Storage: Embedded SQLite (${DATA_DIR}/supportflast.db)"
+fi
+
+# Kiểm tra tính sẵn sàng của file seed dữ liệu ban đầu
+if [ -f "${DATA_DIR}/apps.json" ]; then
+    echo "[ENTRYPOINT] Seed Metadata: ${DATA_DIR}/apps.json is READY (Auto-Bootstrap enabled)"
+fi
+if [ -f "${DATA_DIR}/keys.json" ]; then
+    echo "[ENTRYPOINT] Key Metadata: ${DATA_DIR}/keys.json is READY"
+fi
+
 # 4. Kiểm tra sự tồn tại và quyền thực thi của binary
 APP_BIN="/app/supportflast"
 if [ ! -x "$APP_BIN" ] && [ -x "./supportflast" ]; then

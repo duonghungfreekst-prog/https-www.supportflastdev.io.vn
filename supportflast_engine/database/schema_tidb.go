@@ -164,6 +164,17 @@ CREATE TABLE IF NOT EXISTS ` + "`security_events`" + ` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `
 
+// TiDBCreateRevokedTokensTable DDL tạo bảng revoked_tokens: Danh sách token JWT RS256 bị thu hồi
+const TiDBCreateRevokedTokensTable = `
+CREATE TABLE IF NOT EXISTS ` + "`revoked_tokens`" + ` (
+    ` + "`token_hash`" + ` VARCHAR(191) NOT NULL,
+    ` + "`expires_at`" + ` DATETIME NOT NULL,
+    ` + "`revoked_at`" + ` DATETIME NOT NULL,
+    PRIMARY KEY (` + "`token_hash`" + `),
+    INDEX ` + "`idx_revoked_tokens_expires`" + ` (` + "`expires_at`" + `)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+`
+
 // TableMigration định nghĩa một bước khởi tạo bảng trong tiến trình di trú
 type TableMigration struct {
 	Name string
@@ -179,6 +190,7 @@ var TiDBTableMigrations = []TableMigration{
 	{Name: "audit_logs", DDL: TiDBCreateAuditLogsTable},
 	{Name: "system_releases", DDL: TiDBCreateSystemReleasesTable},
 	{Name: "security_events", DDL: TiDBCreateSecurityEventsTable},
+	{Name: "revoked_tokens", DDL: TiDBCreateRevokedTokensTable},
 }
 
 // TiDBFullSchemaDDL toàn bộ DDL hợp nhất tương thích MySQL/TiDB
@@ -190,6 +202,7 @@ var TiDBFullSchemaDDL = strings.Join([]string{
 	TiDBCreateAuditLogsTable,
 	TiDBCreateSystemReleasesTable,
 	TiDBCreateSecurityEventsTable,
+	TiDBCreateRevokedTokensTable,
 }, "\n\n")
 
 // MigrateTiDBSchema thực thi di trú Schema DDL tương thích chuẩn TiDB Cloud (MySQL 8.0 / 5.7 wire protocol).

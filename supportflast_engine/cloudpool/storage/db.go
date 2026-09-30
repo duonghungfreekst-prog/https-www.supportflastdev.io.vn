@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"archive/zip"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -950,7 +952,7 @@ func (s *DB) migrateSQLite() error {
 	masterKey := s.getMasterKey()
 	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
 	encAdminName := core.EncryptSecret(masterKey, "admin")
-	encAdminDisplay := core.EncryptSecret(masterKey, "Quáº£n Trá»‹ ViÃªn")
+	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
 	
 	// Fetch master_passphrase from settings if already configured
 	var masterPass string
@@ -1028,8 +1030,8 @@ func (s *DB) migrateSQLite() error {
 	}
 
 	// Clean up any emoji duplicate prefixes in virtual folder names
-	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, 'ðŸ“ ', '') WHERE name LIKE 'ðŸ“ %'`)
-	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, 'ðŸ“ ', '') WHERE path LIKE '%ðŸ“ %'`)
+	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
+	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
 
 	return nil
 }
@@ -1263,13 +1265,16 @@ func (s *DB) GetAccount(id string) (*models.Account, error) {
 
 	var a models.Account
 	var lastErr sql.NullString
-	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &a.CreatedAt, &a.UpdatedAt)
+	var rawCreated, rawUpdated interface{}
+	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &rawCreated, &rawUpdated)
 	if err != nil {
 		return nil, err
 	}
 	if lastErr.Valid {
 		a.LastError = lastErr.String
 	}
+	a.CreatedAt = parseFlexibleTime(rawCreated)
+	a.UpdatedAt = parseFlexibleTime(rawUpdated)
 	if a.TotalQuotaBytes > 0 {
 		a.UsagePercent = float64(a.UsedQuotaBytes) / float64(a.TotalQuotaBytes) * 100.0
 	}
@@ -1296,13 +1301,16 @@ func (s *DB) GetAccountByEmail(email string) (*models.Account, error) {
 
 	var a models.Account
 	var lastErr sql.NullString
-	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &a.CreatedAt, &a.UpdatedAt)
+	var rawCreated, rawUpdated interface{}
+	err := row.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &rawCreated, &rawUpdated)
 	if err != nil {
 		return nil, err
 	}
 	if lastErr.Valid {
 		a.LastError = lastErr.String
 	}
+	a.CreatedAt = parseFlexibleTime(rawCreated)
+	a.UpdatedAt = parseFlexibleTime(rawUpdated)
 	if a.TotalQuotaBytes > 0 {
 		a.UsagePercent = float64(a.UsedQuotaBytes) / float64(a.TotalQuotaBytes) * 100.0
 	}
@@ -1331,12 +1339,15 @@ func (s *DB) ListAccounts() ([]models.Account, error) {
 	for rows.Next() {
 		var a models.Account
 		var lastErr sql.NullString
-		if err := rows.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		var rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&a.ID, &a.Email, &a.Name, &a.AvatarURL, &a.AuthType, &a.CredentialsJSON, &a.TokenJSON, &a.RootFolderID, &a.TotalQuotaBytes, &a.UsedQuotaBytes, &a.FreeQuotaBytes, &a.Status, &lastErr, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
 		if lastErr.Valid {
 			a.LastError = lastErr.String
 		}
+		a.CreatedAt = parseFlexibleTime(rawCreated)
+		a.UpdatedAt = parseFlexibleTime(rawUpdated)
 		if a.TotalQuotaBytes > 0 {
 			a.UsagePercent = float64(a.UsedQuotaBytes) / float64(a.TotalQuotaBytes) * 100.0
 		}
@@ -1451,6 +1462,26 @@ func parseFlexibleTime(val interface{}) time.Time {
 			return *v
 		}
 		return time.Now()
+	case sql.NullTime:
+		if v.Valid {
+			return v.Time
+		}
+		return time.Now()
+	case *sql.NullTime:
+		if v != nil && v.Valid {
+			return v.Time
+		}
+		return time.Now()
+	case sql.NullString:
+		if v.Valid {
+			return parseTimeString(v.String)
+		}
+		return time.Now()
+	case *sql.NullString:
+		if v != nil && v.Valid {
+			return parseTimeString(v.String)
+		}
+		return time.Now()
 	case []byte:
 		return parseTimeString(string(v))
 	case string:
@@ -1469,16 +1500,46 @@ func parseFlexibleTimePtr(val interface{}) *time.Time {
 		return &v
 	case *time.Time:
 		return v
+	case sql.NullTime:
+		if v.Valid {
+			return &v.Time
+		}
+		return nil
+	case *sql.NullTime:
+		if v != nil && v.Valid {
+			return &v.Time
+		}
+		return nil
+	case sql.NullString:
+		if !v.Valid {
+			return nil
+		}
+		str := strings.TrimSpace(v.String)
+		if str == "" || str == "NULL" || str == "null" || str == "0000-00-00 00:00:00" || str == "0000-00-00" {
+			return nil
+		}
+		t := parseTimeString(str)
+		return &t
+	case *sql.NullString:
+		if v == nil || !v.Valid {
+			return nil
+		}
+		str := strings.TrimSpace(v.String)
+		if str == "" || str == "NULL" || str == "null" || str == "0000-00-00 00:00:00" || str == "0000-00-00" {
+			return nil
+		}
+		t := parseTimeString(str)
+		return &t
 	case []byte:
 		str := strings.TrimSpace(string(v))
-		if str == "" || str == "NULL" || str == "null" {
+		if str == "" || str == "NULL" || str == "null" || str == "0000-00-00 00:00:00" || str == "0000-00-00" {
 			return nil
 		}
 		t := parseTimeString(str)
 		return &t
 	case string:
 		str := strings.TrimSpace(v)
-		if str == "" || str == "NULL" || str == "null" {
+		if str == "" || str == "NULL" || str == "null" || str == "0000-00-00 00:00:00" || str == "0000-00-00" {
 			return nil
 		}
 		t := parseTimeString(str)
@@ -1490,7 +1551,7 @@ func parseFlexibleTimePtr(val interface{}) *time.Time {
 
 func parseTimeString(s string) time.Time {
 	s = strings.TrimSpace(s)
-	if s == "" {
+	if s == "" || s == "0000-00-00 00:00:00" || s == "0000-00-00" || s == "NULL" || s == "null" {
 		return time.Now()
 	}
 	if idx := strings.Index(s, " m="); idx != -1 {
@@ -1502,9 +1563,13 @@ func parseTimeString(s string) time.Time {
 		"2006-01-02 15:04:05.999999999 +0700 +07",
 		"2006-01-02 15:04:05 -0700 MST",
 		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05.999999",
+		"2006-01-02 15:04:05.999",
 		"2006-01-02 15:04:05",
 		time.RFC3339Nano,
 		time.RFC3339,
+		"2006-01-02T15:04:05.999999999Z07:00",
+		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05",
 		"2006-01-02",
 	}
@@ -2067,8 +2132,8 @@ func (s *DB) DeleteChunksForFile(fileID string) error {
 	return err
 }
 
-// FindFileByNameInParent tÃ¬m file (khÃ´ng pháº£i folder) cÃ³ cÃ¹ng tÃªn trong cÃ¹ng thÆ° má»¥c cha.
-// DÃ¹ng Ä‘á»ƒ kiá»ƒm tra trÃ¹ng tÃªn trÆ°á»›c khi upload â†’ auto-replace.
+// FindFileByNameInParent tìm file (không phải folder) có cùng tên trong cùng thư mục cha.
+// Dùng để kiểm tra trùng tên trước khi upload → auto-replace.
 func (s *DB) FindFileByNameInParent(parentID, name string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -2083,10 +2148,11 @@ func (s *DB) FindFileByNameInParent(parentID, name string) (*models.VirtualFile,
 
 	var f models.VirtualFile
 	var sha, uid sql.NullString
+	var rawCreated, rawUpdated interface{}
 	err := row.Scan(&f.ID, &uid, &f.ParentID, &f.Name, &f.Path, &f.IsDir,
-		&f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &f.CreatedAt, &f.UpdatedAt)
+		&f.SizeBytes, &f.MimeType, &sha, &f.ChunkCount, &f.IsEncrypted, &rawCreated, &rawUpdated)
 	if err == sql.ErrNoRows {
-		return nil, nil // KhÃ´ng tÃ¬m tháº¥y - khÃ´ng pháº£i lá»—i
+		return nil, nil // Không tìm thấy - không phải lỗi
 	}
 	if err != nil {
 		return nil, err
@@ -2097,6 +2163,8 @@ func (s *DB) FindFileByNameInParent(parentID, name string) (*models.VirtualFile,
 	if uid.Valid {
 		f.UserID = uid.String
 	}
+	f.CreatedAt = parseFlexibleTime(rawCreated)
+	f.UpdatedAt = parseFlexibleTime(rawUpdated)
 	return &f, nil
 }
 
@@ -2433,7 +2501,9 @@ func (s *DB) ListActivityLogs(limit int) ([]models.ActivityLog, error) {
 	list := make([]models.ActivityLog, 0)
 	for rows.Next() {
 		var l models.ActivityLog
-		if err := rows.Scan(&l.ID, &l.UserID, &l.Username, &l.Action, &l.Target, &l.IPAddress, &l.Details, &l.CreatedAt); err == nil {
+		var rawCreatedAt interface{}
+		if err := rows.Scan(&l.ID, &l.UserID, &l.Username, &l.Action, &l.Target, &l.IPAddress, &l.Details, &rawCreatedAt); err == nil {
+			l.CreatedAt = parseFlexibleTime(rawCreatedAt)
 			list = append(list, l)
 		}
 	}
@@ -2472,9 +2542,13 @@ func (s *DB) GetUserByUsername(username string) (*models.User, error) {
 
 	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM users WHERE username_hash = ?`, usernameHash)
 	var u models.User
-	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	var rawLockedUntil, rawCreated, rawUpdated interface{}
+	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &rawLockedUntil, &rawCreated, &rawUpdated); err != nil {
 		return nil, err
 	}
+	u.LockedUntil = parseFlexibleTimePtr(rawLockedUntil)
+	u.CreatedAt = parseFlexibleTime(rawCreated)
+	u.UpdatedAt = parseFlexibleTime(rawUpdated)
 	u.HasSecurityPin = (u.SecurityPinHash != "")
 	u.Username = core.DecryptSecret(masterKey, u.Username)
 	u.Email = core.DecryptSecret(masterKey, u.Email)
@@ -2489,10 +2563,14 @@ func (s *DB) GetUserByID(id string) (*models.User, error) {
 
 	row := s.db.QueryRow(`SELECT id, username, email, password_hash, COALESCE(security_pin_hash, ''), COALESCE(security_tier, 1), display_name, avatar_url, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at FROM users WHERE id = ?`, id)
 	var u models.User
-	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt); err != nil {
+	var rawLockedUntil, rawCreated, rawUpdated interface{}
+	if err := row.Scan(&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &rawLockedUntil, &rawCreated, &rawUpdated); err != nil {
 		return nil, err
 	}
 	masterKey := s.getMasterKey()
+	u.LockedUntil = parseFlexibleTimePtr(rawLockedUntil)
+	u.CreatedAt = parseFlexibleTime(rawCreated)
+	u.UpdatedAt = parseFlexibleTime(rawUpdated)
 	u.HasSecurityPin = (u.SecurityPinHash != "")
 	u.Username = core.DecryptSecret(masterKey, u.Username)
 	u.Email = core.DecryptSecret(masterKey, u.Email)
@@ -2515,7 +2593,11 @@ func (s *DB) ListUsers() ([]models.User, error) {
 	masterKey := s.getMasterKey()
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &u.LockedUntil, &u.CreatedAt, &u.UpdatedAt); err == nil {
+		var rawLockedUntil, rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.SecurityPinHash, &u.SecurityTier, &u.DisplayName, &u.AvatarURL, &u.Role, &u.QuotaBytes, &u.UsedBytes, &u.FailedLoginCount, &rawLockedUntil, &rawCreated, &rawUpdated); err == nil {
+			u.LockedUntil = parseFlexibleTimePtr(rawLockedUntil)
+			u.CreatedAt = parseFlexibleTime(rawCreated)
+			u.UpdatedAt = parseFlexibleTime(rawUpdated)
 			u.HasSecurityPin = (u.SecurityPinHash != "")
 			u.Username = core.DecryptSecret(masterKey, u.Username)
 			u.Email = core.DecryptSecret(masterKey, u.Email)
@@ -2773,9 +2855,9 @@ func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 
 				if strVal != "" {
 					if colName == "credentials_json" || colName == "token_json" {
-						rowList[i] = "ðŸ”’ [Báº¢O Máº¬T: MÃƒ HÃ“A AES-256 GCM (" + strconv.Itoa(len(strVal)) + " bytes)]"
+						rowList[i] = "🔒 [BẢO MẬT: MÃ HÓA AES-256 GCM (" + strconv.Itoa(len(strVal)) + " bytes)]"
 					} else if (colName == "password_hash" || colName == "security_pin_hash") && len(strVal) > 6 {
-						rowList[i] = "ðŸ”’ [HASH Báº¢O Máº¬T (" + strVal[:8] + "...)]"
+						rowList[i] = "🔒 [HASH BẢO MẬT (" + strVal[:8] + "...)]"
 					} else {
 						rowList[i] = strVal
 					}
@@ -2810,7 +2892,7 @@ func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 
 	return &SQLResult{
 		Columns:       []string{"status", "affected_rows"},
-		Rows:          [][]interface{}{{"Thá»±c thi thÃ nh cÃ´ng", affected}},
+		Rows:          [][]interface{}{{"Thực thi thành công", affected}},
 		AffectedRows:  affected,
 		ExecutionMs:   elapsed,
 		IsSelectQuery: false,
@@ -2889,7 +2971,9 @@ func (s *DB) ListLoginSessions(limit int) ([]models.LoginSession, error) {
 	list := make([]models.LoginSession, 0)
 	for rows.Next() {
 		var s models.LoginSession
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Username, &s.IPAddress, &s.DeviceInfo, &s.LocationInfo, &s.Status, &s.UserAgent, &s.CreatedAt); err == nil {
+		var rawCreatedAt interface{}
+		if err := rows.Scan(&s.ID, &s.UserID, &s.Username, &s.IPAddress, &s.DeviceInfo, &s.LocationInfo, &s.Status, &s.UserAgent, &rawCreatedAt); err == nil {
+			s.CreatedAt = parseFlexibleTime(rawCreatedAt)
 			list = append(list, s)
 		}
 	}
@@ -2929,27 +3013,29 @@ func (s *DB) VerifyAndBurnOTP(fileID, userID, otpCode string) (bool, error) {
 
 	otpCode = strings.TrimSpace(otpCode)
 	if otpCode == "" {
-		return false, fmt.Errorf("MÃ£ OTP khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+		return false, fmt.Errorf("Mã OTP không được để trống")
 	}
 
 	var otpID string
-	var expiresAt time.Time
+	var rawExpires interface{}
 	var isUsed int
 
 	row := s.db.QueryRow(`SELECT id, expires_at, is_used FROM file_access_otps 
 		WHERE file_id = ? AND otp_code = ? AND (target_user_id = 'all' OR target_user_id = ?) 
 		ORDER BY created_at DESC LIMIT 1`, fileID, otpCode, userID)
 
-	if err := row.Scan(&otpID, &expiresAt, &isUsed); err != nil {
-		return false, fmt.Errorf("MÃ£ OTP khÃ´ng chÃ­nh xÃ¡c hoáº·c khÃ´ng Ã¡p dá»¥ng cho tá»‡p tin nÃ y")
+	if err := row.Scan(&otpID, &rawExpires, &isUsed); err != nil {
+		return false, fmt.Errorf("Mã OTP không chính xác hoặc không áp dụng cho tệp tin này")
 	}
 
+	expiresAt := parseFlexibleTime(rawExpires)
+
 	if isUsed == 1 {
-		return false, fmt.Errorf("MÃ£ OTP nÃ y Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng (Má»—i mÃ£ chá»‰ cÃ³ giÃ¡ trá»‹ 1 láº§n duy nháº¥t)")
+		return false, fmt.Errorf("Mã OTP này đã được sử dụng (Mỗi mã chỉ có giá trị 1 lần duy nhất)")
 	}
 
 	if time.Now().After(expiresAt) {
-		return false, fmt.Errorf("MÃ£ OTP Ä‘Ã£ háº¿t thá»i háº¡n hiá»‡u lá»±c")
+		return false, fmt.Errorf("Mã OTP đã hết thời hạn hiệu lực")
 	}
 
 	// Burn OTP immediately (Single-use per Rule)
@@ -2973,16 +3059,18 @@ func (s *DB) VerifyOTPOnly(fileID, userID, otpCode string) (bool, error) {
 	}
 
 	var otpID string
-	var expiresAt time.Time
+	var rawExpires interface{}
 	var isUsed int
 
 	row := s.db.QueryRow(`SELECT id, expires_at, is_used FROM file_access_otps 
 		WHERE file_id = ? AND otp_code = ? AND (target_user_id = 'all' OR target_user_id = ?) 
 		ORDER BY created_at DESC LIMIT 1`, fileID, otpCode, userID)
 
-	if err := row.Scan(&otpID, &expiresAt, &isUsed); err != nil {
+	if err := row.Scan(&otpID, &rawExpires, &isUsed); err != nil {
 		return false, fmt.Errorf("Mã OTP không chính xác hoặc không áp dụng cho tệp tin này")
 	}
+
+	expiresAt := parseFlexibleTime(rawExpires)
 
 	if isUsed == 1 {
 		return false, fmt.Errorf("Mã OTP này đã được sử dụng")
@@ -3018,16 +3106,18 @@ func (s *DB) ListFileOTPs(limit int) ([]models.FileAccessOTP, error) {
 		var o models.FileAccessOTP
 		var isUsedInt int
 		var usedBy string
-		var usedAt *time.Time
+		var rawUsedAt, rawExpiresAt, rawCreatedAt interface{}
 		var targetUsername string
 
-		if err := rows.Scan(&o.ID, &o.FileID, &o.FileName, &o.TargetUserID, &targetUsername, &o.OTPCode, &o.CreatedBy, &isUsedInt, &usedBy, &usedAt, &o.ExpiresAt, &o.CreatedAt); err != nil {
+		if err := rows.Scan(&o.ID, &o.FileID, &o.FileName, &o.TargetUserID, &targetUsername, &o.OTPCode, &o.CreatedBy, &isUsedInt, &usedBy, &rawUsedAt, &rawExpiresAt, &rawCreatedAt); err != nil {
 			return nil, err
 		}
 		o.IsUsed = (isUsedInt == 1)
 		o.UsedBy = usedBy
 		o.TargetUsername = targetUsername
-		o.UsedAt = usedAt
+		o.UsedAt = parseFlexibleTimePtr(rawUsedAt)
+		o.ExpiresAt = parseFlexibleTime(rawExpiresAt)
+		o.CreatedAt = parseFlexibleTime(rawCreatedAt)
 
 		if o.IsUsed {
 			o.Status = "used"
@@ -3091,9 +3181,12 @@ func (s *DB) ListFileAccessRequests(status string) ([]models.FileAccessRequest, 
 	list := make([]models.FileAccessRequest, 0)
 	for rows.Next() {
 		var r models.FileAccessRequest
-		if err := rows.Scan(&r.ID, &r.FileID, &r.FileName, &r.UserID, &r.Username, &r.UserDisplayName, &r.Status, &r.OTPCode, &r.CreatedAt, &r.UpdatedAt); err != nil {
+		var rawCreated, rawUpdated interface{}
+		if err := rows.Scan(&r.ID, &r.FileID, &r.FileName, &r.UserID, &r.Username, &r.UserDisplayName, &r.Status, &r.OTPCode, &rawCreated, &rawUpdated); err != nil {
 			return nil, err
 		}
+		r.CreatedAt = parseFlexibleTime(rawCreated)
+		r.UpdatedAt = parseFlexibleTime(rawUpdated)
 		list = append(list, r)
 	}
 	return list, nil
@@ -3180,25 +3273,26 @@ func (s *DB) GetPublicShare(id string) (*models.PublicShare, error) {
 	defer s.mu.RUnlock()
 
 	query := `SELECT s.id, s.file_id, s.created_by, s.password_hash, s.max_downloads, s.download_count, s.expires_at, s.created_at, s.is_active,
-		COALESCE(f.name, 'Tá»‡p tin Ä‘Ã£ xÃ³a'), COALESCE(f.size_bytes, 0), COALESCE(f.mime_type, 'application/octet-stream'), COALESCE(f.is_dir, 0)
+		COALESCE(f.name, 'Tệp tin đã xóa'), COALESCE(f.size_bytes, 0), COALESCE(f.mime_type, 'application/octet-stream'), COALESCE(f.is_dir, 0)
 		FROM public_shares s
 		LEFT JOIN virtual_files f ON s.file_id = f.id
 		WHERE s.id = ?`
 
 	row := s.db.QueryRow(query, id)
 	var sh models.PublicShare
-	var exp *time.Time
+	var rawExp, rawCreated interface{}
 	var passHash string
 	var isActiveInt, isDirInt int
 
-	err := row.Scan(&sh.ID, &sh.FileID, &sh.CreatedBy, &passHash, &sh.MaxDownloads, &sh.DownloadCount, &exp, &sh.CreatedAt, &isActiveInt, &sh.FileName, &sh.FileSize, &sh.MimeType, &isDirInt)
+	err := row.Scan(&sh.ID, &sh.FileID, &sh.CreatedBy, &passHash, &sh.MaxDownloads, &sh.DownloadCount, &rawExp, &rawCreated, &isActiveInt, &sh.FileName, &sh.FileSize, &sh.MimeType, &isDirInt)
 	if err != nil {
 		return nil, err
 	}
 
 	sh.PasswordHash = passHash
 	sh.HasPassword = (passHash != "")
-	sh.ExpiresAt = exp
+	sh.ExpiresAt = parseFlexibleTimePtr(rawExp)
+	sh.CreatedAt = parseFlexibleTime(rawCreated)
 	sh.IsActive = (isActiveInt == 1)
 	sh.IsDir = (isDirInt == 1)
 
@@ -3229,7 +3323,7 @@ func (s *DB) ListPublicShares() ([]models.PublicShare, error) {
 	defer s.mu.RUnlock()
 
 	query := `SELECT s.id, s.file_id, s.created_by, s.password_hash, s.max_downloads, s.download_count, s.expires_at, s.created_at, s.is_active,
-		COALESCE(f.name, 'Tá»‡p tin Ä‘Ã£ xÃ³a'), COALESCE(f.size_bytes, 0), COALESCE(f.mime_type, 'application/octet-stream'), COALESCE(f.is_dir, 0)
+		COALESCE(f.name, 'Tệp tin đã xóa'), COALESCE(f.size_bytes, 0), COALESCE(f.mime_type, 'application/octet-stream'), COALESCE(f.is_dir, 0)
 		FROM public_shares s
 		LEFT JOIN virtual_files f ON s.file_id = f.id
 		ORDER BY s.created_at DESC`
@@ -3244,16 +3338,18 @@ func (s *DB) ListPublicShares() ([]models.PublicShare, error) {
 	now := time.Now()
 	for rows.Next() {
 		var sh models.PublicShare
-		var exp *time.Time
+		var rawExp, rawCreated interface{}
 		var passHash string
 		var isActiveInt, isDirInt int
 
-		if err := rows.Scan(&sh.ID, &sh.FileID, &sh.CreatedBy, &passHash, &sh.MaxDownloads, &sh.DownloadCount, &exp, &sh.CreatedAt, &isActiveInt, &sh.FileName, &sh.FileSize, &sh.MimeType, &isDirInt); err != nil {
+		if err := rows.Scan(&sh.ID, &sh.FileID, &sh.CreatedBy, &passHash, &sh.MaxDownloads, &sh.DownloadCount, &rawExp, &rawCreated, &isActiveInt, &sh.FileName, &sh.FileSize, &sh.MimeType, &isDirInt); err != nil {
 			return nil, err
 		}
 
+		sh.PasswordHash = passHash
 		sh.HasPassword = (passHash != "")
-		sh.ExpiresAt = exp
+		sh.ExpiresAt = parseFlexibleTimePtr(rawExp)
+		sh.CreatedAt = parseFlexibleTime(rawCreated)
 		sh.IsActive = (isActiveInt == 1)
 		sh.IsDir = (isDirInt == 1)
 
@@ -3316,7 +3412,7 @@ func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]
 		`
 		_ = s.db.QueryRow(checkQuery, rootFolderID, currentFolderID).Scan(&isDescendant)
 		if isDescendant == 0 {
-			return nil, fmt.Errorf("thÆ° má»¥c khÃ´ng thuá»™c cÃ¢y thÆ° má»¥c Ä‘Æ°á»£c chia sáº»")
+			return nil, fmt.Errorf("thư mục không thuộc cây thư mục được chia sẻ")
 		}
 	}
 
@@ -3462,17 +3558,17 @@ func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownRespons
 	}
 
 	cats := map[string]*catAccumulator{
-		"video":        {Label: "Video & Phim", Icon: "ðŸŽ¬", Color: "#ef4444"},
-		"image":        {Label: "HÃ¬nh áº£nh", Icon: "ðŸ–¼ï¸", Color: "#10b981"},
-		"audio":        {Label: "Ã‚m thanh & Nháº¡c", Icon: "ðŸŽµ", Color: "#f59e0b"},
-		"document":     {Label: "TÃ i liá»‡u & PDF", Icon: "ðŸ“„", Color: "#8b5cf6"},
-		"spreadsheet":  {Label: "Báº£ng tÃ­nh & Excel", Icon: "ðŸ“Š", Color: "#22c55e"},
-		"presentation": {Label: "TrÃ¬nh chiáº¿u Slide", Icon: "ðŸ“½ï¸", Color: "#f97316"},
-		"archive":      {Label: "Tá»‡p nÃ©n & ISO", Icon: "ðŸ“¦", Color: "#ec4899"},
-		"code":         {Label: "MÃ£ nguá»“n & CSDL", Icon: "ðŸ’»", Color: "#06b6d4"},
-		"design":       {Label: "Thiáº¿t káº¿ & 3D", Icon: "ðŸŽ¨", Color: "#a855f7"},
-		"app":          {Label: "á»¨ng dá»¥ng & CÃ i Ä‘áº·t", Icon: "âš™ï¸", Color: "#6366f1"},
-		"other":        {Label: "Äá»‹nh dáº¡ng khÃ¡c", Icon: "ðŸ“", Color: "#64748b"},
+		"video":        {Label: "Video & Phim", Icon: "🎬", Color: "#ef4444"},
+		"image":        {Label: "Hình ảnh", Icon: "🖼️", Color: "#10b981"},
+		"audio":        {Label: "Âm thanh & Nhạc", Icon: "🎵", Color: "#f59e0b"},
+		"document":     {Label: "Tài liệu & PDF", Icon: "📄", Color: "#8b5cf6"},
+		"spreadsheet":  {Label: "Bảng tính & Excel", Icon: "📊", Color: "#22c55e"},
+		"presentation": {Label: "Trình chiếu Slide", Icon: "📽️", Color: "#f97316"},
+		"archive":      {Label: "Tệp nén & ISO", Icon: "📦", Color: "#ec4899"},
+		"code":         {Label: "Mã nguồn & CSDL", Icon: "💻", Color: "#06b6d4"},
+		"design":       {Label: "Thiết kế & 3D", Icon: "🎨", Color: "#a855f7"},
+		"app":          {Label: "Ứng dụng & Cài đặt", Icon: "⚙️", Color: "#6366f1"},
+		"other":        {Label: "Định dạng khác", Icon: "📁", Color: "#64748b"},
 	}
 
 	var allFilesTotalBytes int64

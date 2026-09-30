@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -100,7 +101,7 @@ func TestDatabaseOperations(t *testing.T) {
 		UserID:       "user_admin",
 		Username:     "admin",
 		IPAddress:    "127.0.0.1",
-		DeviceInfo:   "Windows PC Â· Chrome",
+		DeviceInfo:   "Windows PC · Chrome",
 		LocationInfo: "Localhost",
 		Status:       "SUCCESS",
 		UserAgent:    "Mozilla/5.0",
@@ -403,6 +404,331 @@ func TestTiDBAndMySQLCompatibilityHelpers(t *testing.T) {
 
 	// 4. Khôi phục lại driver sqlite để đóng DB an toàn
 	db.driver = "sqlite"
+}
+
+func TestFlexibleTimeParsing(t *testing.T) {
+	refTime := time.Date(2026, 9, 30, 8, 30, 0, 0, time.UTC)
+
+	// 1. Test parseFlexibleTime với các kiểu dữ liệu
+	// time.Time
+	if got := parseFlexibleTime(refTime); !got.Equal(refTime) {
+		t.Errorf("Expected %v, got %v", refTime, got)
+	}
+
+	// *time.Time
+	if got := parseFlexibleTime(&refTime); !got.Equal(refTime) {
+		t.Errorf("Expected %v, got %v", refTime, got)
+	}
+
+	// []byte (mô phỏng []uint8 từ MySQL/TiDB driver)
+	byteVal := []byte("2026-09-30 08:30:00")
+	gotByte := parseFlexibleTime(byteVal)
+	if gotByte.Year() != 2026 || gotByte.Month() != 9 || gotByte.Day() != 30 || gotByte.Hour() != 8 || gotByte.Minute() != 30 {
+		t.Errorf("parseFlexibleTime([]byte) failed, got: %v", gotByte)
+	}
+
+	// RFC3339 string
+	strRFC := "2026-09-30T08:30:00Z"
+	gotRFC := parseFlexibleTime(strRFC)
+	if gotRFC.Year() != 2026 || gotRFC.Month() != 9 || gotRFC.Day() != 30 {
+		t.Errorf("parseFlexibleTime(RFC3339) failed, got: %v", gotRFC)
+	}
+
+	// sql.NullTime
+	nullTime := sql.NullTime{Time: refTime, Valid: true}
+	if got := parseFlexibleTime(nullTime); !got.Equal(refTime) {
+		t.Errorf("parseFlexibleTime(sql.NullTime) failed, got %v", got)
+	}
+
+	// sql.NullString
+	nullStr := sql.NullString{String: "2026-09-30 08:30:00", Valid: true}
+	gotNullStr := parseFlexibleTime(nullStr)
+	if gotNullStr.Year() != 2026 {
+		t.Errorf("parseFlexibleTime(sql.NullString) failed, got: %v", gotNullStr)
+	}
+
+	// nil hoặc chuỗi rỗng trả về thời gian hợp lệ (không crash)
+	if got := parseFlexibleTime(nil); got.IsZero() {
+		t.Errorf("Expected non-zero fallback for nil, got zero")
+	}
+	if got := parseFlexibleTime([]byte("")); got.IsZero() {
+		t.Errorf("Expected non-zero fallback for empty byte slice, got zero")
+	}
+
+	// 2. Test parseFlexibleTimePtr
+	// nil
+	if ptr := parseFlexibleTimePtr(nil); ptr != nil {
+		t.Errorf("Expected nil for nil input, got: %v", ptr)
+	}
+
+	// []byte("NULL")
+	if ptr := parseFlexibleTimePtr([]byte("NULL")); ptr != nil {
+		t.Errorf("Expected nil for 'NULL' byte slice, got: %v", ptr)
+	}
+
+	// []byte("0000-00-00 00:00:00")
+	if ptr := parseFlexibleTimePtr([]byte("0000-00-00 00:00:00")); ptr != nil {
+		t.Errorf("Expected nil for zero date, got: %v", ptr)
+	}
+
+	// []byte hợp lệ
+	ptrValid := parseFlexibleTimePtr([]byte("2026-09-30 08:30:00"))
+	if ptrValid == nil || ptrValid.Year() != 2026 {
+		t.Errorf("Expected valid *time.Time for byte slice, got: %v", ptrValid)
+	}
+
+	// sql.NullString valid = false
+	if ptr := parseFlexibleTimePtr(sql.NullString{Valid: false}); ptr != nil {
+		t.Errorf("Expected nil for invalid sql.NullString, got: %v", ptr)
+	}
+
+	// sql.NullTime valid = true
+	if ptr := parseFlexibleTimePtr(sql.NullTime{Time: refTime, Valid: true}); ptr == nil || !ptr.Equal(refTime) {
+		t.Errorf("Expected equal time for valid sql.NullTime, got: %v", ptr)
+	}
+}
+
+func TestTiDBByteSliceScanCompatibility(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_tidb_compat.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra Account scan khi cột created_at, updated_at lưu dưới dạng chuỗi text hoặc blob (tương đương TiDB driver []uint8)
+	acc := &models.Account{
+		ID:              "acc_tidb_1",
+		Email:           "tidb_driver@test.com",
+		Name:            "TiDB Driver Test",
+		AuthType:        "oauth",
+		CredentialsJSON: `{"client_id":"tidb_id"}`,
+		TokenJSON:       `{"access_token":"tidb_token"}`,
+		TotalQuotaBytes: 10 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  10 * 1024 * 1024 * 1024,
+		Status:          "active",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.SaveAccount(acc); err != nil {
+		t.Fatalf("SaveAccount failed: %v", err)
+	}
+
+	// Cập nhật giá trị cột created_at, updated_at thành dạng chuỗi SQL thô (mô phỏng driver TiDB/MySQL trả về []uint8)
+	rawTimeString := "2026-09-30 08:45:00"
+	_, err = db.SQLDB().Exec("UPDATE accounts SET created_at = ?, updated_at = ? WHERE id = ?", rawTimeString, rawTimeString, acc.ID)
+	if err != nil {
+		t.Fatalf("Failed to simulate TiDB string time in accounts: %v", err)
+	}
+
+	// Test GetAccount
+	loadedAcc, err := db.GetAccount(acc.ID)
+	if err != nil {
+		t.Fatalf("GetAccount failed with TiDB string/blob time: %v", err)
+	}
+	if loadedAcc.CreatedAt.Year() != 2026 || loadedAcc.UpdatedAt.Year() != 2026 {
+		t.Errorf("GetAccount returned unexpected CreatedAt/UpdatedAt: %v, %v", loadedAcc.CreatedAt, loadedAcc.UpdatedAt)
+	}
+
+	// Test GetAccountByEmail
+	loadedByEmail, err := db.GetAccountByEmail("tidb_driver@test.com")
+	if err != nil {
+		t.Fatalf("GetAccountByEmail failed with TiDB string/blob time: %v", err)
+	}
+	if loadedByEmail.ID != acc.ID {
+		t.Errorf("GetAccountByEmail ID mismatch: expected %s, got %s", acc.ID, loadedByEmail.ID)
+	}
+
+	// Test ListAccounts (trực tiếp tái hiện và khắc phục lỗi TiDB "sql: Scan error on column index 13, name created_at")
+	accList, err := db.ListAccounts()
+	if err != nil {
+		t.Fatalf("ListAccounts failed with TiDB string/blob time: %v", err)
+	}
+	if len(accList) == 0 {
+		t.Fatalf("ListAccounts returned 0 accounts")
+	}
+
+	// 2. Kiểm tra User scan (GetUserByUsername, GetUserByID, ListUsers) với locked_until, created_at, updated_at
+	_, err = db.SQLDB().Exec("UPDATE users SET locked_until = ?, created_at = ?, updated_at = ? WHERE id = 'user_admin'",
+		"2026-09-30 09:30:00", "2026-09-30 08:00:00", "2026-09-30 08:30:00")
+	if err != nil {
+		t.Fatalf("Failed to simulate TiDB string time in users: %v", err)
+	}
+
+	userByUname, err := db.GetUserByUsername("admin")
+	if err != nil {
+		t.Fatalf("GetUserByUsername failed: %v", err)
+	}
+	if userByUname.LockedUntil == nil || userByUname.LockedUntil.Year() != 2026 {
+		t.Errorf("Expected LockedUntil parsed properly, got: %v", userByUname.LockedUntil)
+	}
+
+	userByID, err := db.GetUserByID("user_admin")
+	if err != nil {
+		t.Fatalf("GetUserByID failed: %v", err)
+	}
+	if userByID.CreatedAt.Year() != 2026 {
+		t.Errorf("Expected CreatedAt parsed properly, got: %v", userByID.CreatedAt)
+	}
+
+	users, err := db.ListUsers()
+	if err != nil {
+		t.Fatalf("ListUsers failed: %v", err)
+	}
+	if len(users) == 0 {
+		t.Fatalf("ListUsers returned empty list")
+	}
+
+	// 3. Kiểm tra OTP scan (ListFileOTPs, VerifyOTPOnly, VerifyAndBurnOTP)
+	futureExp := time.Now().Add(1 * time.Hour)
+	otp := &models.FileAccessOTP{
+		ID:           "otp_tidb_1",
+		FileID:       "file_tidb_test",
+		FileName:     "document.pdf",
+		TargetUserID: "all",
+		OTPCode:      "654321",
+		CreatedBy:    "user_admin",
+		ExpiresAt:    futureExp,
+		CreatedAt:    time.Now(),
+	}
+	if err := db.CreateFileOTP(otp); err != nil {
+		t.Fatalf("CreateFileOTP failed: %v", err)
+	}
+
+	// Mô phỏng chuỗi text ngày tháng trong bảng file_access_otps
+	_, err = db.SQLDB().Exec("UPDATE file_access_otps SET expires_at = ?, created_at = ? WHERE id = ?",
+		"2026-10-01 12:00:00", "2026-09-30 08:00:00", otp.ID)
+	if err != nil {
+		t.Fatalf("Failed to update file_access_otps time strings: %v", err)
+	}
+
+	otps, err := db.ListFileOTPs(10)
+	if err != nil {
+		t.Fatalf("ListFileOTPs failed: %v", err)
+	}
+	if len(otps) == 0 {
+		t.Fatalf("ListFileOTPs returned 0 items")
+	}
+
+	validOTP, err := db.VerifyOTPOnly("file_tidb_test", "any_user", "654321")
+	if err != nil || !validOTP {
+		t.Fatalf("VerifyOTPOnly failed: %v", err)
+	}
+
+	// 4. Kiểm tra Access Request scan (ListFileAccessRequests)
+	req := &models.FileAccessRequest{
+		ID:              "req_tidb_1",
+		FileID:          "file_tidb_test",
+		FileName:        "document.pdf",
+		UserID:          "child_user_1",
+		Username:        "child",
+		UserDisplayName: "Child User",
+		Status:          "pending",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	if err := db.CreateFileAccessRequest(req); err != nil {
+		t.Fatalf("CreateFileAccessRequest failed: %v", err)
+	}
+	_, err = db.SQLDB().Exec("UPDATE file_access_requests SET created_at = ?, updated_at = ? WHERE id = ?",
+		"2026-09-30 08:00:00", "2026-09-30 08:30:00", req.ID)
+	if err != nil {
+		t.Fatalf("Failed to update file_access_requests time strings: %v", err)
+	}
+
+	reqs, err := db.ListFileAccessRequests("all")
+	if err != nil {
+		t.Fatalf("ListFileAccessRequests failed: %v", err)
+	}
+	if len(reqs) == 0 {
+		t.Fatalf("ListFileAccessRequests returned 0 items")
+	}
+
+	// 5. Kiểm tra Public Share scan (GetPublicShare, ListPublicShares)
+	share := &models.PublicShare{
+		ID:            "sh_tidb_test",
+		FileID:        "file_tidb_test",
+		CreatedBy:     "user_admin",
+		MaxDownloads:  10,
+		DownloadCount: 0,
+		ExpiresAt:     &futureExp,
+		CreatedAt:     time.Now(),
+	}
+	if err := db.CreatePublicShare(share); err != nil {
+		t.Fatalf("CreatePublicShare failed: %v", err)
+	}
+	_, err = db.SQLDB().Exec("UPDATE public_shares SET expires_at = ?, created_at = ? WHERE id = ?",
+		"2026-10-01 12:00:00", "2026-09-30 08:00:00", share.ID)
+	if err != nil {
+		t.Fatalf("Failed to update public_shares time strings: %v", err)
+	}
+
+	loadedShare, err := db.GetPublicShare(share.ID)
+	if err != nil {
+		t.Fatalf("GetPublicShare failed: %v", err)
+	}
+	if loadedShare.ExpiresAt == nil || loadedShare.ExpiresAt.Year() != 2026 {
+		t.Errorf("Expected valid ExpiresAt, got: %v", loadedShare.ExpiresAt)
+	}
+
+	shares, err := db.ListPublicShares()
+	if err != nil {
+		t.Fatalf("ListPublicShares failed: %v", err)
+	}
+	if len(shares) == 0 {
+		t.Fatalf("ListPublicShares returned 0 items")
+	}
+
+	// 6. Kiểm tra Activity Log & Login Session scan
+	actLog := &models.ActivityLog{
+		ID:        "log_tidb_1",
+		UserID:    "user_admin",
+		Username:  "admin",
+		Action:    "TEST",
+		Target:    "test",
+		IPAddress: "127.0.0.1",
+		CreatedAt: time.Now(),
+	}
+	if err := db.LogActivity(actLog); err != nil {
+		t.Fatalf("LogActivity failed: %v", err)
+	}
+	_, err = db.SQLDB().Exec("UPDATE activity_logs SET created_at = ? WHERE id = ?", "2026-09-30 08:00:00", actLog.ID)
+	if err != nil {
+		t.Fatalf("Failed to update activity_logs time strings: %v", err)
+	}
+
+	logs, err := db.ListActivityLogs(10)
+	if err != nil {
+		t.Fatalf("ListActivityLogs failed: %v", err)
+	}
+	if len(logs) == 0 {
+		t.Fatalf("ListActivityLogs returned 0 items")
+	}
+
+	loginSess := &models.LoginSession{
+		ID:        "sess_tidb_1",
+		UserID:    "user_admin",
+		Username:  "admin",
+		IPAddress: "127.0.0.1",
+		CreatedAt: time.Now(),
+	}
+	if err := db.LogLoginSession(loginSess); err != nil {
+		t.Fatalf("LogLoginSession failed: %v", err)
+	}
+	_, err = db.SQLDB().Exec("UPDATE login_sessions SET created_at = ? WHERE id = ?", "2026-09-30 08:00:00", loginSess.ID)
+	if err != nil {
+		t.Fatalf("Failed to update login_sessions time strings: %v", err)
+	}
+
+	sessions, err := db.ListLoginSessions(10)
+	if err != nil {
+		t.Fatalf("ListLoginSessions failed: %v", err)
+	}
+	if len(sessions) == 0 {
+		t.Fatalf("ListLoginSessions returned 0 items")
+	}
 }
 
 

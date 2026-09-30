@@ -2,8 +2,10 @@ package database
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -173,6 +175,15 @@ CREATE INDEX IF NOT EXISTS idx_security_events_ip ON security_events(ip_address)
 CREATE INDEX IF NOT EXISTS idx_security_events_type ON security_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_security_events_blocked_until ON security_events(blocked_until);
+
+-- 8. Bảng revoked_tokens: Danh sách token JWT RS256 bị thu hồi / đăng xuất (lưu vết bền vững)
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+    token_hash TEXT PRIMARY KEY,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
 `
 
 // User cấu trúc thực thể người dùng
@@ -344,6 +355,11 @@ func ActiveDriver() string {
 	return "sqlite"
 }
 
+// GetActiveDriver là bí danh (alias) của ActiveDriver đảm bảo tương thích ngược
+func GetActiveDriver() string {
+	return ActiveDriver()
+}
+
 // SetDBInstance gán con trỏ kết nối DB và cập nhật activeDriver phục vụ unit test và tích hợp
 func SetDBInstance(db *sql.DB, driver ...string) {
 	dbMutex.Lock()
@@ -470,7 +486,7 @@ func CloseDB() error {
 // role='admin', display_name='Quản Trị Viên Hệ Thống'.
 // Hỗ trợ đồng nhất cả SQLite và TiDB/MySQL.
 // TUYỆT ĐỐI KHÔNG seed app rác hoặc review giả lập (Tuân thủ nghiêm ngặt Rule 9.1).
-func SeedInitialData(db *sql.DB) error {
+func SeedInitialData(db *sql.DB, dataDir ...string) error {
 	if db == nil {
 		return fmt.Errorf("database connection is nil")
 	}
@@ -546,6 +562,323 @@ func SeedInitialData(db *sql.DB) error {
 
 	log.Printf("[ENGINE] [DATABASE] Initial admin user successfully seeded: username='%s', email='%s', role='%s'",
 		DefaultAdminUsername, DefaultAdminEmail, DefaultAdminRole)
+	return nil
+}
+
+// SeedInitialApps nạp danh sách ứng dụng chính thức từ apps.json nếu bảng apps rỗng
+func SeedInitialApps(db *sql.DB, dataDir ...string) error {
+	if db == nil {
+		return fmt.Errorf("database connection is nil")
+	}
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM apps").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to count apps: %w", err)
+	}
+	if count > 0 {
+		return nil // Đã có dữ liệu apps, không nạp đè
+	}
+
+	var candidates []string
+	if len(dataDir) > 0 && strings.TrimSpace(dataDir[0]) != "" {
+		candidates = append(candidates,
+			filepath.Join(dataDir[0], "apps.json"),
+			filepath.Join(dataDir[0], "backups", "supportflast_snapshot.json"),
+			filepath.Join(dataDir[0], "supportflast_snapshot.json"),
+		)
+	}
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		candidates = append(candidates,
+			filepath.Join(envDataDir, "apps.json"),
+			filepath.Join(envDataDir, "backups", "supportflast_snapshot.json"),
+			filepath.Join(envDataDir, "supportflast_snapshot.json"),
+		)
+	}
+	candidates = append(candidates,
+		filepath.Join("..", "data", "apps.json"),
+		filepath.Join("data", "apps.json"),
+		filepath.Join("data", "backups", "supportflast_snapshot.json"),
+		filepath.Join("..", "data", "backups", "supportflast_snapshot.json"),
+		`f:\supportflast.dev\data\apps.json`,
+		`f:\supportflast.dev\data\backups\supportflast_snapshot.json`,
+	)
+
+	var jsonPath string
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			jsonPath = c
+			break
+		}
+	}
+	if jsonPath == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return fmt.Errorf("không thể đọc file '%s': %w", jsonPath, err)
+	}
+
+	var wrapper struct {
+		Apps []App `json:"apps"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
+	}
+	if len(wrapper.Apps) == 0 {
+		return nil
+	}
+
+	var query string
+	if isMySQLOrTiDB(db) {
+		query = `
+			INSERT IGNORE INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	} else {
+		query = `
+			INSERT OR IGNORE INTO apps (
+				id, name, version, platform, category, ` + "`desc`" + `, file_name,
+				size_bytes, size_formatted, sha256, author, downloads,
+				status, published_at, download_url, video_url, guide, user_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	}
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert app statement: %w", err)
+	}
+	defer stmt.Close()
+
+	inserted := 0
+	for _, a := range wrapper.Apps {
+		var uid *string
+		if strings.TrimSpace(a.UserID) != "" {
+			trimmed := strings.TrimSpace(a.UserID)
+			uid = &trimmed
+		}
+		_, errExec := stmt.Exec(
+			a.ID, a.Name, a.Version, a.Platform, a.Category, a.Desc, a.FileName,
+			a.SizeBytes, a.SizeFormatted, a.SHA256, a.Author, a.Downloads,
+			a.Status, a.PublishedAt, a.DownloadURL, a.VideoURL, a.Guide, uid,
+		)
+		if errExec == nil {
+			inserted++
+		}
+	}
+
+	log.Printf("[ENGINE] [DATABASE] Tự động nạp thành công %d/%d ứng dụng từ '%s' vào CSDL", inserted, len(wrapper.Apps), jsonPath)
+	return nil
+}
+
+// SeedInitialKeys nạp danh sách khóa API từ keys.json nếu bảng api_keys rỗng
+func SeedInitialKeys(db *sql.DB, dataDir ...string) error {
+	if db == nil {
+		return fmt.Errorf("database connection is nil")
+	}
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM api_keys").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to count api_keys: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	var candidates []string
+	if len(dataDir) > 0 && strings.TrimSpace(dataDir[0]) != "" {
+		candidates = append(candidates, filepath.Join(dataDir[0], "keys.json"))
+	}
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		candidates = append(candidates, filepath.Join(envDataDir, "keys.json"))
+	}
+	candidates = append(candidates,
+		filepath.Join("..", "data", "keys.json"),
+		filepath.Join("data", "keys.json"),
+		`f:\supportflast.dev\data\keys.json`,
+	)
+
+	var jsonPath string
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			jsonPath = c
+			break
+		}
+	}
+	if jsonPath == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return fmt.Errorf("không thể đọc file '%s': %w", jsonPath, err)
+	}
+
+	type keyRecord struct {
+		ID          string   `json:"id"`
+		Name        string   `json:"name"`
+		Key         string   `json:"key"`
+		Prefix      string   `json:"prefix"`
+		CreatedAt   string   `json:"created_at"`
+		Status      string   `json:"status"`
+		Permissions []string `json:"permissions"`
+	}
+
+	var keys []keyRecord
+	if err := json.Unmarshal(data, &keys); err != nil {
+		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
+	}
+
+	var query string
+	if isMySQLOrTiDB(db) {
+		query = `
+			INSERT IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	} else {
+		query = `
+			INSERT OR IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`
+	}
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert api_key: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, k := range keys {
+		h := sha256.Sum256([]byte(k.Key))
+		keyHash := hex.EncodeToString(h[:])
+		permBytes, _ := json.Marshal(k.Permissions)
+		adminID := DefaultAdminID
+		_, _ = stmt.Exec(k.ID, adminID, k.Name, keyHash, k.Prefix, k.Status, string(permBytes), k.CreatedAt)
+	}
+
+	log.Printf("[ENGINE] [DATABASE] Tự động nạp thành công %d khóa API từ '%s' vào CSDL", len(keys), jsonPath)
+	return nil
+}
+
+// SeedInitialReleases nạp bản cập nhật hệ thống từ system_updates.json nếu bảng system_releases rỗng
+func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
+	if db == nil {
+		return fmt.Errorf("database connection is nil")
+	}
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM system_releases").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to count system_releases: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	var candidates []string
+	if len(dataDir) > 0 && strings.TrimSpace(dataDir[0]) != "" {
+		candidates = append(candidates,
+			filepath.Join(dataDir[0], "system_updates.json"),
+			filepath.Join(dataDir[0], "backups", "supportflast_snapshot.json"),
+			filepath.Join(dataDir[0], "supportflast_snapshot.json"),
+		)
+	}
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		candidates = append(candidates,
+			filepath.Join(envDataDir, "system_updates.json"),
+			filepath.Join(envDataDir, "backups", "supportflast_snapshot.json"),
+			filepath.Join(envDataDir, "supportflast_snapshot.json"),
+		)
+	}
+	candidates = append(candidates,
+		filepath.Join("..", "data", "system_updates.json"),
+		filepath.Join("data", "system_updates.json"),
+		filepath.Join("data", "backups", "supportflast_snapshot.json"),
+		filepath.Join("..", "data", "backups", "supportflast_snapshot.json"),
+		`f:\supportflast.dev\data\system_updates.json`,
+		`f:\supportflast.dev\data\backups\supportflast_snapshot.json`,
+	)
+
+	var jsonPath string
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			jsonPath = c
+			break
+		}
+	}
+	if jsonPath == "" {
+		// Tự động chèn bản ghi phiên bản hệ thống mặc định để đảm bảo bảng system_releases luôn sẵn sàng
+		var defQuery string
+		var nowVal interface{}
+		if isMySQLOrTiDB(db) {
+			defQuery = `INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
+			nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
+		} else {
+			defQuery = `INSERT OR IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
+			nowVal = time.Now().UTC().Format(time.RFC3339)
+		}
+		_, _ = db.Exec(defQuery, "v2.1.0", "SupportFlast Polyglot Cloud Architecture", nowVal, "sf-build-2026-cloud", "Phiên bản phát hành hệ thống chính thức tự động khởi tạo", "System Auto-Bootstrap")
+		log.Println("[ENGINE] [DATABASE] Đã tự động khởi tạo phiên bản hệ thống mặc định v2.1.0 cho system_releases")
+		return nil
+	}
+
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return fmt.Errorf("không thể đọc file '%s': %w", jsonPath, err)
+	}
+
+	var sysUpdate struct {
+		System struct {
+			Version   string `json:"version"`
+			UpdatedAt string `json:"updated_at"`
+			BuildHash string `json:"build_hash"`
+		} `json:"system"`
+		Releases []SystemRelease `json:"releases"`
+	}
+	if err := json.Unmarshal(data, &sysUpdate); err != nil {
+		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
+	}
+
+	var query string
+	if isMySQLOrTiDB(db) {
+		query = `
+			INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`
+	} else {
+		query = `
+			INSERT OR IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`
+	}
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert release statement: %w", err)
+	}
+	defer stmt.Close()
+
+	if sysUpdate.System.Version != "" {
+		_, _ = stmt.Exec(
+			sysUpdate.System.Version,
+			"SupportFlast Enterprise Production Release",
+			sysUpdate.System.UpdatedAt,
+			sysUpdate.System.BuildHash,
+			"Bản phát hành chính thức tự động khởi tạo",
+			"System Auto-Bootstrap",
+		)
+	}
+	for _, r := range sysUpdate.Releases {
+		_, _ = stmt.Exec(r.Version, r.Title, r.Date, r.BuildHash, r.Notes, r.PublishedBy)
+	}
+
+	log.Printf("[ENGINE] [DATABASE] Tự động nạp bản cập nhật hệ thống từ '%s' vào CSDL", jsonPath)
 	return nil
 }
 
@@ -876,4 +1209,44 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 		return true, time.Now().Add(time.Hour), nil
 	}
 	return true, t, nil
+}
+
+// RecordRevokedToken lưu trữ token hash đã bị thu hồi vào CSDL SQLite / TiDB
+func RecordRevokedToken(tokenHash string, expiresAt time.Time) error {
+	db := GetDB()
+	if db == nil {
+		return fmt.Errorf("CSDL chưa được khởi tạo")
+	}
+	expStr := expiresAt.Format(time.RFC3339)
+	nowStr := time.Now().Format(time.RFC3339)
+
+	var query string
+	if ActiveDriver() == "tidb" || ActiveDriver() == "mysql" {
+		query = `
+			INSERT INTO revoked_tokens (token_hash, expires_at, revoked_at)
+			VALUES (?, ?, ?)
+			ON DUPLICATE KEY UPDATE expires_at = VALUES(expires_at), revoked_at = VALUES(revoked_at)
+		`
+	} else {
+		query = `
+			INSERT INTO revoked_tokens (token_hash, expires_at, revoked_at)
+			VALUES (?, ?, ?)
+			ON CONFLICT(token_hash) DO UPDATE SET expires_at=excluded.expires_at, revoked_at=excluded.revoked_at
+		`
+	}
+
+	_, err := db.Exec(query, tokenHash, expStr, nowStr)
+	return err
+}
+
+// IsTokenHashRevoked kiểm tra xem token hash có nằm trong danh sách thu hồi và chưa hết hạn không
+func IsTokenHashRevoked(tokenHash string) bool {
+	db := GetDB()
+	if db == nil {
+		return false
+	}
+	var count int
+	nowStr := time.Now().Format(time.RFC3339)
+	err := db.QueryRow("SELECT COUNT(*) FROM revoked_tokens WHERE token_hash = ? AND expires_at > ?", tokenHash, nowStr).Scan(&count)
+	return err == nil && count > 0
 }

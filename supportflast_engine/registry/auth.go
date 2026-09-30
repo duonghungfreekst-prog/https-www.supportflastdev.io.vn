@@ -2,6 +2,7 @@ package registry
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -390,38 +391,58 @@ func IssueRS256Token(u User, duration time.Duration) (string, error) {
 }
 
 // RevokeToken đưa token vào danh sách bị thu hồi (khi người dùng đăng xuất)
+// Lưu đồng thời trên bộ nhớ RAM và lưu trữ bền vững vào CSDL SQLite / TiDB
 func RevokeToken(token string) {
 	clean := strings.TrimSpace(token)
 	if clean == "" {
 		return
 	}
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
 	revocationMutex.Lock()
-	defer revocationMutex.Unlock()
-	revokedTokens[clean] = time.Now().Add(7 * 24 * time.Hour)
+	revokedTokens[clean] = expiresAt
+	revocationMutex.Unlock()
+
+	// Lưu token hash vào CSDL để không bị mất khi server khởi động lại (Rule 3.2 & Rule 8.2)
+	h := sha256.Sum256([]byte(clean))
+	tokenHash := hex.EncodeToString(h[:])
+	_ = database.RecordRevokedToken(tokenHash, expiresAt)
 }
 
-// IsTokenRevoked kiểm tra xem token đã bị thu hồi hay chưa
+// IsTokenRevoked kiểm tra xem token đã bị thu hồi hay chưa (RAM L1 cache trước, SQLite/TiDB sau)
 func IsTokenRevoked(token string) bool {
 	clean := strings.TrimSpace(token)
 	if clean == "" {
 		return false
 	}
 	revocationMutex.RLock()
-	defer revocationMutex.RUnlock()
 	exp, exists := revokedTokens[clean]
-	if !exists {
-		return false
+	revocationMutex.RUnlock()
+	if exists {
+		if time.Now().Before(exp) {
+			return true
+		}
 	}
-	if time.Now().After(exp) {
-		return false
+
+	// Kiểm tra CSDL bền vững (đảm bảo phiên bị thu hồi không tái sinh sau khi server restart)
+	h := sha256.Sum256([]byte(clean))
+	tokenHash := hex.EncodeToString(h[:])
+	if database.IsTokenHashRevoked(tokenHash) {
+		revocationMutex.Lock()
+		revokedTokens[clean] = time.Now().Add(time.Hour)
+		revocationMutex.Unlock()
+		return true
 	}
-	return true
+	return false
 }
 
 // CreateSession tạo phiên làm việc cho user và cấp phát token Asymmetric JWT (RS256) theo Rule 3.2
 // TTL được đọc từ JWT_EXPIRY_MINUTES — không hardcode
 func CreateSession(u User) string {
 	ttl := GetSessionDuration()
+	// Đối với Quản Trị Viên (Admin): Giới hạn phiên tối đa 1 giờ (3600s) cho API, tự hủy khi đóng tab/trình duyệt
+	if u.Role == "admin" && ttl > time.Hour {
+		ttl = time.Hour
+	}
 	token, err := IssueRS256Token(u, ttl)
 	if err != nil {
 		log.Printf("[ENGINE] [AUTH] [WARN] Sinh JWT RS256 thất bại (%v), fallback session token: %s", err, u.Username)
@@ -443,19 +464,16 @@ func CreateSession(u User) string {
 
 // SetSSOCookies thiết lập cookie phiên dùng chung đồng bộ giữa SupportFlast Hub và CloudPool Storage.
 // BẢO MẬT: HttpOnly=true cho TẤT CẢ cookie phiên ngăn JavaScript đọc token (chống XSS cookie theft).
-// LỖ HỔNG ĐÃ VÁ: Trước đây chỉ cloudpool_token có HttpOnly; sf_auth_token và supportflast_auth_token
-// có thể bị XSS đọc nếu có mã độc thoát qua sanitizer.
 func SetSSOCookies(w http.ResponseWriter, r *http.Request, token string, maxAge int) {
 	isHTTPS := GetRequestScheme(r) == "https" ||
 		r.TLS != nil ||
 		strings.Contains(r.Header.Get("Origin"), "https://") ||
 		strings.Contains(r.Host, "supportflastdev.io.vn")
 
-	// SameSite=Lax cho phép giữ cookie phiên khi người dùng mở tab mới, chuyển tab hoặc chuyển giữa các trang
 	sameSite := http.SameSiteLaxMode
 	secure := isHTTPS
 
-	cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token"}
+	cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token", "auth_token"}
 	for _, name := range cookieNames {
 		http.SetCookie(w, &http.Cookie{
 			Name:     name,
@@ -469,9 +487,65 @@ func SetSSOCookies(w http.ResponseWriter, r *http.Request, token string, maxAge 
 	}
 }
 
-// ClearSSOCookies xóa sạch cookie phiên khi đăng xuất
+// SetAdminSessionCookies thiết lập cookie phiên DÀNH RIÊNG CHO QUẢN TRỊ VIÊN (Admin).
+// QUAN TRỌNG: TUYỆT ĐỐI KHÔNG THIẾT LẬP MaxAge VÀ Expires!
+// Cookie này là Session Cookie chỉ lưu trong bộ nhớ RAM tạm thời của trình duyệt,
+// tự động bị trình duyệt xóa sạch hoàn toàn ngay khi người dùng đóng trình duyệt ("thoát web ra"),
+// ngăn chặn hoàn toàn việc vô tình để phiên Admin duy trì vô tận trên thiết bị.
+func SetAdminSessionCookies(w http.ResponseWriter, r *http.Request, token string) {
+	isHTTPS := GetRequestScheme(r) == "https" ||
+		r.TLS != nil ||
+		strings.Contains(r.Header.Get("Origin"), "https://") ||
+		strings.Contains(r.Host, "supportflastdev.io.vn")
+
+	sameSite := http.SameSiteLaxMode
+	secure := isHTTPS
+
+	cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token", "auth_token"}
+	for _, name := range cookieNames {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    token,
+			Path:     "/",
+			HttpOnly: true, // BẮT BUỘC HttpOnly cho mọi cookie phiên (Rule 8.2)
+			Secure:   secure,
+			SameSite: sameSite,
+			// KHÔNG CÓ MaxAge, KHÔNG CÓ Expires -> Session Cookie tự hủy khi đóng trình duyệt
+		})
+	}
+}
+
+// ClearSSOCookies xóa sạch cookie phiên khi đăng xuất hoặc hết hạn phiên
 func ClearSSOCookies(w http.ResponseWriter, r *http.Request) {
-	SetSSOCookies(w, r, "", -1)
+	isHTTPS := GetRequestScheme(r) == "https" ||
+		r.TLS != nil ||
+		strings.Contains(r.Header.Get("Origin"), "https://") ||
+		strings.Contains(r.Host, "supportflastdev.io.vn")
+
+	sameSite := http.SameSiteLaxMode
+	secure := isHTTPS
+
+	cookieNames := []string{"cloudpool_token", "sf_auth_token", "supportflast_auth_token", "auth_token"}
+	domains := []string{"", r.Host}
+	if strings.Contains(r.Host, "supportflastdev.io.vn") {
+		domains = append(domains, ".supportflastdev.io.vn", "www.supportflastdev.io.vn")
+	}
+
+	for _, name := range cookieNames {
+		for _, domain := range domains {
+			http.SetCookie(w, &http.Cookie{
+				Name:     name,
+				Value:    "",
+				Path:     "/",
+				Domain:   domain,
+				HttpOnly: true,
+				Secure:   secure,
+				SameSite: sameSite,
+				MaxAge:   -1,
+				Expires:  time.Unix(1, 0), // Thu, 01 Jan 1970 00:00:01 GMT để mọi browser hủy cookie
+			})
+		}
+	}
 }
 
 // GetUserFromToken xác thực token phiên qua Asymmetric JWT RS256 hoặc bảng users của SQLite
@@ -970,7 +1044,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	_ = database.RecordAuditLog(foundUser.ID, database.AuditActionLoginSuccess, clientIP, r.UserAgent(), fmt.Sprintf("Đăng nhập thành công với vai trò: %s", foundUser.Role))
 
 	token := CreateSession(*foundUser)
-	SetSSOCookies(w, r, token, 86400*7)
+	if foundUser.Role == "admin" {
+		SetAdminSessionCookies(w, r, token)
+	} else {
+		SetSSOCookies(w, r, token, 86400*7)
+	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
@@ -983,6 +1061,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 // MeHandler lấy thông tin người dùng hiện tại từ phiên đăng nhập (GET /api/auth/me)
 func MeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 
 	token := ExtractToken(r)
 	if token == "" {
@@ -991,6 +1070,8 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, ok := GetUserFromToken(token)
 	if !ok || user == nil {
+		// BẢO MẬT: Khi phiên hết hạn hoặc token không hợp lệ, xóa sạch cookie phía client ngay lập tức
+		ClearSSOCookies(w, r)
 		http.Error(w, `{"error":"Chưa đăng nhập hoặc phiên làm việc đã hết hạn"}`, http.StatusUnauthorized)
 		return
 	}
@@ -1011,6 +1092,8 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 // LogoutHandler xử lý đăng xuất (POST /api/auth/logout)
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+	w.Header().Set("Clear-Site-Data", `"cache", "cookies", "storage"`)
 
 	token := ExtractToken(r)
 	if token != "" {
@@ -1022,11 +1105,11 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		delete(sessions, token)
 		sessionMutex.Unlock()
 
-		// Thu hồi token Asymmetric JWT RS256 để chống tái sử dụng (Token Revocation)
+		// Thu hồi token Asymmetric JWT RS256 để chống tái sử dụng (Token Revocation bền vững trên DB)
 		RevokeToken(token)
 	}
 
-	// Xóa cookie phiên dùng chung SSO
+	// Xóa cookie phiên dùng chung SSO trên mọi domain và host
 	ClearSSOCookies(w, r)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{

@@ -764,8 +764,8 @@ func printFinalVerification(portalDB, cpDB, tidbDB *sql.DB) {
 		}
 	}
 
-	// 2. Chi tiết 11 tài khoản Google Drive (bảng accounts)
-	fmt.Println("\n🌐 2. CHI TIẾT 11 TÀI KHOẢN GOOGLE DRIVE (BẢNG 'accounts'):")
+	// 2. Chi tiết 12 tài khoản Google Drive (bảng accounts)
+	fmt.Println("\n🌐 2. CHI TIẾT 12 TÀI KHOẢN GOOGLE DRIVE (BẢNG 'accounts'):")
 	accRows, err := tidbDB.Query("SELECT id, email, auth_type, total_quota_bytes, used_quota_bytes, status FROM accounts ORDER BY email;")
 	if err == nil {
 		defer accRows.Close()

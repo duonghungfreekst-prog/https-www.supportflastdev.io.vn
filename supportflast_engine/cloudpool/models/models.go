@@ -157,8 +157,8 @@ type LoginSession struct {
 	UserID       string    `json:"user_id"`
 	Username     string    `json:"username"`
 	IPAddress    string    `json:"ip_address"`
-	DeviceInfo   string    `json:"device_info"`   // e.g. "Windows 11 Â· Cá»‘c Cá»‘c", "iOS Â· Safari"
-	LocationInfo string    `json:"location_info"` // e.g. "HÃ  Ná»™i, Viá»‡t Nam" or "Localhost / LAN"
+	DeviceInfo   string    `json:"device_info"`   // e.g. "Windows 11 · Cốc Cốc", "iOS · Safari"
+	LocationInfo string    `json:"location_info"` // e.g. "Hà Nội, Việt Nam" or "Localhost / LAN"
 	Status       string    `json:"status"`        // "SUCCESS", "FAILED_PASSWORD", "LOCKED"
 	UserAgent    string    `json:"user_agent"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -185,8 +185,8 @@ type Settings struct {
 	ChunkSizeBytes        int64  `json:"chunk_size_bytes"`     // Default: 20MB (20971520)
 	ParallelWorkers       int    `json:"parallel_workers"`     // Default: 4 parallel upload workers
 	AllocationStrategy    string `json:"allocation_strategy"` // "least_used", "waterfill", "round_robin"
-	GuestAccessMode       string `json:"guest_access_mode"`   // "strict" (cáº§n login), "view_only" (chá»‰ xem táº£i), "full_upload" (cho upload)
-	AllowSelfRegistration bool   `json:"allow_self_registration"` // Cho phÃ©p ngÆ°á»i dÃ¹ng tá»± Ä‘Äƒng kÃ½
+	GuestAccessMode       string `json:"guest_access_mode"`   // "strict" (cần login), "view_only" (chỉ xem tải), "full_upload" (cho upload)
+	AllowSelfRegistration bool   `json:"allow_self_registration"` // Cho phép người dùng tự đăng ký
 	WebDAVEnabled         bool   `json:"webdav_enabled"`
 	WebDAVUsername        string `json:"webdav_username"`
 	WebDAVPassword        string `json:"webdav_password,omitempty"`

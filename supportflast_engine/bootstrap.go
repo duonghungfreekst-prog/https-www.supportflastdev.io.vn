@@ -226,6 +226,11 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu thất bại: %w", err)
 	}
 
+	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
+	_ = database.SeedInitialApps(db, dataDir)
+	_ = database.SeedInitialKeys(db, dataDir)
+	_ = database.SeedInitialReleases(db, dataDir)
+
 	// 6. Tự động khởi tạo CSDL CloudPool (TiDB Cloud Serverless hoặc SQLite)
 	var storageDB *cloudpoolStorage.DB
 	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")

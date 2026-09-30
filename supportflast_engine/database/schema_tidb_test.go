@@ -15,6 +15,7 @@ func TestTiDBSchemaDDL_ContainsRequiredTables(t *testing.T) {
 		"audit_logs",
 		"system_releases",
 		"security_events",
+		"revoked_tokens",
 	}
 
 	if len(TiDBTableMigrations) != len(requiredTables) {

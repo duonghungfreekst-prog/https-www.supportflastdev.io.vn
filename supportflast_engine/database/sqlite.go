@@ -148,8 +148,8 @@ func openDatabaseLocked(dbPath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to execute database schema DDL: %w", err)
 	}
 
-	// Tự động seed tài khoản admin chuẩn nếu bảng users rỗng
-	if err := SeedInitialData(db); err != nil {
+	// Tự động seed tài khoản admin chuẩn nếu bảng users rỗng và nạp apps/keys/releases nếu trống
+	if err := SeedInitialData(db, filepath.Dir(dbPath)); err != nil {
 		log.Printf("[ENGINE] [DATABASE] [WARN] SeedInitialData failed: %v", err)
 	}
 

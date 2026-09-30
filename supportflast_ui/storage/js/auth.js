@@ -83,12 +83,38 @@ const AuthManager = {
     this.bindEvents();
     this.fetchTurnstileConfig();
 
-    // 0. Kiểm tra phiên không hoạt động (Idle session timeout: 2 giờ)
-    const AUTH_MAX_IDLE_MS = 2 * 60 * 60 * 1000;
-    const lastAct = parseInt(localStorage.getItem('auth_last_activity') || '0', 10);
-    const hasToken = !!API.getToken() || !!localStorage.getItem('cloudpool_current_user');
+    // Dọn sạch phiên Admin tàn dư trong localStorage
+    try {
+      const uStr = localStorage.getItem('cloudpool_current_user');
+      if (uStr) {
+        const u = JSON.parse(uStr);
+        if (u && (u.role === 'admin' || u.username === 'admin')) {
+          localStorage.removeItem('cloudpool_current_user');
+          localStorage.removeItem('cloudpool_jwt_token');
+          localStorage.removeItem('sf_admin_token');
+        }
+      }
+    } catch (_) {}
+
+    // Lắng nghe tín hiệu đồng bộ đăng xuất từ tab khác
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('supportflast_auth_sync');
+        bc.onmessage = (ev) => {
+          if (ev && ev.data && ev.data.action === 'logout') {
+            console.warn('[AUTH] Nhận tín hiệu đăng xuất từ tab khác, đồng bộ đăng xuất.');
+            this.logout();
+          }
+        };
+      }
+    } catch (_) {}
+
+    // 0. Kiểm tra phiên không hoạt động (Idle session timeout: 15 phút)
+    const AUTH_MAX_IDLE_MS = 15 * 60 * 1000;
+    const lastAct = parseInt(sessionStorage.getItem('auth_last_activity') || localStorage.getItem('auth_last_activity') || '0', 10);
+    const hasToken = !!API.getToken() || !!sessionStorage.getItem('cloudpool_current_user');
     if (hasToken && lastAct > 0 && (Date.now() - lastAct) > AUTH_MAX_IDLE_MS) {
-      console.warn('[AUTH] Phiên đăng nhập đã hết hạn do không hoạt động quá 2 giờ.');
+      console.warn('[AUTH] Phiên đăng nhập đã hết hạn do không hoạt động quá 15 phút.');
       await this.logout();
       return;
     }
@@ -97,13 +123,16 @@ const AuthManager = {
       this.recordActivity();
     }
 
-    // 1. Phục hồi ngay lập tức trạng thái đăng nhập từ localStorage để chống nhấp nháy UI (Zero-flicker on F5)
+    // 1. Phục hồi trạng thái cho user thường hoặc admin từ sessionStorage
     const cachedUser = API.getCurrentUser();
     if (cachedUser && (cachedUser.id || cachedUser.username)) {
       this.currentUser = cachedUser;
       if (cachedUser.role === 'admin' || cachedUser.username === 'admin') {
-        App.isAdminUnlocked = true;
-        sessionStorage.setItem('cloudpool_admin_session', 'true');
+        if (sessionStorage.getItem('cloudpool_admin_session') === 'true') {
+          App.isAdminUnlocked = true;
+        } else {
+          App.isAdminUnlocked = false;
+        }
       }
       this.updateUserUI();
     }
@@ -112,9 +141,8 @@ const AuthManager = {
     try {
       const res = await API.getMe();
       const me = (res && res.user) ? res.user : res;
-      // Silent Token Renewal: nếu server cấp token mới (token sắp hết hạn), lưu ngay
       if (res && res.new_token) {
-        API.setToken(res.new_token);
+        API.setToken(res.new_token, me && me.role === 'admin');
         console.log('[AUTH] Token đã được gia hạn tự động (Silent Renewal)');
       }
       if (me && (me.id || me.username) && me.role) {
@@ -123,6 +151,9 @@ const AuthManager = {
         if (me.role === 'admin' || me.username === 'admin') {
           App.isAdminUnlocked = true;
           sessionStorage.setItem('cloudpool_admin_session', 'true');
+          sessionStorage.setItem('cloudpool_current_user', JSON.stringify(me));
+          localStorage.removeItem('cloudpool_current_user');
+          localStorage.removeItem('cloudpool_jwt_token');
         } else {
           App.isAdminUnlocked = false;
           sessionStorage.removeItem('cloudpool_admin_session');
@@ -134,20 +165,26 @@ const AuthManager = {
         sessionStorage.removeItem('cloudpool_admin_session');
       }
     } catch (err) {
-      console.warn('[AUTH] Kiểm tra phiên /api/auth/me:', err);
-      const errMsg = (err && err.message) ? err.message.toLowerCase() : '';
-      if (errMsg.includes('401') || errMsg.includes('chưa đăng nhập') || errMsg.includes('hết hạn') || errMsg.includes('unauthorized') || errMsg.includes('403')) {
-        this.currentUser = null;
-        API.setCurrentUser(null);
-        API.setToken(null);
-        App.isAdminUnlocked = false;
-        sessionStorage.removeItem('cloudpool_admin_session');
-      } else {
-        console.log('[AUTH] Duy trì phiên đăng nhập từ bộ nhớ đệm (Chống văng khi mạng chậm hoặc reload)');
-      }
+      console.warn('[AUTH] Kiểm tra phiên /api/auth/me thất bại, thu hồi phiên an toàn:', err);
+      this.currentUser = null;
+      API.setCurrentUser(null);
+      API.setToken(null);
+      App.isAdminUnlocked = false;
+      sessionStorage.removeItem('cloudpool_admin_session');
     }
 
     this.updateUserUI();
+
+    // 3. Active Watchdog: Tự động đăng xuất sau 15 phút không hoạt động
+    setInterval(() => {
+      if (!this.currentUser) return;
+      const last = parseInt(sessionStorage.getItem('auth_last_activity') || localStorage.getItem('auth_last_activity') || '0', 10);
+      if (last > 0 && (Date.now() - last) > AUTH_MAX_IDLE_MS) {
+        console.warn('[AUTH] Active Watchdog: Tự động đăng xuất do không hoạt động quá 15 phút.');
+        this.logout();
+        alert('Phiên làm việc đã tự động kết thúc do không hoạt động quá 15 phút để bảo vệ an toàn.');
+      }
+    }, 10000);
   },
 
   bindEvents() {
@@ -367,6 +404,9 @@ const AuthManager = {
   },
 
   async logout() {
+    try {
+      await API.logout();
+    } catch (_) {}
     this.currentUser = null;
     API.setCurrentUser(null);
     API.setToken(null);
@@ -385,9 +425,6 @@ const AuthManager = {
       try { localStorage.removeItem(k); } catch (_) {}
       try { sessionStorage.removeItem(k); } catch (_) {}
     });
-    try {
-      await API.logout();
-    } catch (_) {}
     try {
       document.cookie.split(";").forEach(c => {
         const eqPos = c.indexOf("=");

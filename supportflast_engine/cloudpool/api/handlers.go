@@ -221,7 +221,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/admin/otp/requests", s.handleListAdminAccessRequests)
 	mux.HandleFunc("/api/admin/otp/approve-request", s.handleApproveAccessRequest)
 	mux.HandleFunc("/api/admin/otp/reject-request", s.handleRejectAccessRequest)
-	mux.HandleFunc("/api/admin/otp/pending-count", s.handleOTPPendingCount) // Polling badge thÃ´ng bÃ¡o
+	mux.HandleFunc("/api/admin/otp/pending-count", s.handleOTPPendingCount) // Polling badge thông báo
 
 
 	mux.HandleFunc("/api/settings", s.handleSettings)
@@ -358,6 +358,7 @@ func writeError(w http.ResponseWriter, status int, clientMsg string, serverErr e
 		cleanErr := strings.ReplaceAll(strings.ReplaceAll(serverErr.Error(), "\n", "\\n"), "\r", "")
 		fmt.Printf("[ENGINE] [ERROR] %s: %s\n", clientMsg, cleanErr)
 	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writeJSON(w, status, map[string]string{
 		"error": clientMsg,
 	})
@@ -414,7 +415,7 @@ func setAuthCookie(w http.ResponseWriter, r *http.Request, token string, maxAge 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := s.db.GetStats()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ láº¥y sá»‘ liá»‡u thá»‘ng kÃª", err)
+		writeError(w, http.StatusInternalServerError, "Không thể lấy số liệu thống kê", err)
 		return
 	}
 	stats.RustCoreActive = core.IsDLLLoaded()
@@ -432,7 +433,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.db.ListAccounts()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch tÃ i khoáº£n", err)
+		writeError(w, http.StatusInternalServerError, "Không thể lấy danh sách tài khoản", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, accounts)
@@ -441,7 +442,7 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleOAuthURL(w http.ResponseWriter, r *http.Request) {
 	settings, err := s.db.GetSettings()
 	if err != nil || settings.GoogleClientID == "" {
-		writeError(w, http.StatusBadRequest, "Vui lÃ²ng cáº¥u hÃ¬nh Google Client ID & Secret trong pháº§n CÃ i Ä‘áº·t trÆ°á»›c", err)
+		writeError(w, http.StatusBadRequest, "Vui lòng cấu hình Google Client ID & Secret trong phần Cài đặt trước", err)
 		return
 	}
 
@@ -468,13 +469,13 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if code == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u mÃ£ xÃ¡c thá»±c OAuth (code)", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu mã xác thực OAuth (code)", nil)
 		return
 	}
 
 	settings, err := s.db.GetSettings()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y cáº¥u hÃ¬nh", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy cấu hình", err)
 		return
 	}
 
@@ -495,7 +496,7 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/storage/?oauth_error="+errType, http.StatusTemporaryRedirect)
 			return
 		}
-		writeError(w, http.StatusBadRequest, "XÃ¡c thá»±c Google tháº¥t báº¡i: "+err.Error(), err)
+		writeError(w, http.StatusBadRequest, "Xác thực Google thất bại: "+err.Error(), err)
 		return
 	}
 
@@ -516,26 +517,26 @@ func (s *Server) handleAddServiceAccount(w http.ResponseWriter, r *http.Request)
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thÃªm tÃ i khoáº£n Ä‘Ã¡m mÃ¢y", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thêm tài khoản đám mây", nil)
 		return
 	}
 
 	file, _, err := r.FormFile("sa_file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Vui lÃ²ng táº£i lÃªn tá»‡p JSON Service Account", err)
+		writeError(w, http.StatusBadRequest, "Vui lòng tải lên tệp JSON Service Account", err)
 		return
 	}
 	defer file.Close()
 
 	saBytes, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "KhÃ´ng Ä‘á»c Ä‘Æ°á»£c tá»‡p JSON", err)
+		writeError(w, http.StatusBadRequest, "Không đọc được tệp JSON", err)
 		return
 	}
 
 	acc, err := s.gd.AddServiceAccount(r.Context(), saBytes)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Lá»—i káº¿t ná»‘i Service Account: "+err.Error(), err)
+		writeError(w, http.StatusBadRequest, "Lỗi kết nối Service Account: "+err.Error(), err)
 		return
 	}
 
@@ -545,28 +546,28 @@ func (s *Server) handleAddServiceAccount(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n xÃ³a tÃ i khoáº£n Ä‘Ã¡m mÃ¢y", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền xóa tài khoản đám mây", nil)
 		return
 	}
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID tÃ i khoáº£n", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu ID tài khoản", nil)
 		return
 	}
 
 	if err := s.db.DeleteAccount(id); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i xÃ³a tÃ i khoáº£n", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi xóa tài khoản", err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ xÃ³a tÃ i khoáº£n thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa tài khoản thành công"})
 }
 
 func (s *Server) handleRefreshAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user != nil && user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n lÃ m má»›i dung lÆ°á»£ng tÃ i khoáº£n", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền làm mới dung lượng tài khoản", nil)
 		return
 	}
 
@@ -574,12 +575,12 @@ func (s *Server) handleRefreshAccount(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		// Refresh all
 		go s.gd.RefreshAllQuotas(context.Background())
-		writeJSON(w, http.StatusOK, map[string]string{"message": "Äang quÃ©t vÃ  lÃ m má»›i dung lÆ°á»£ng táº¥t cáº£ tÃ i khoáº£n"})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Đang quét và làm mới dung lượng tất cả tài khoản"})
 		return
 	}
 
 	if err := s.gd.RefreshAccountQuota(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ cáº­p nháº­t dung lÆ°á»£ng: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Không thể cập nhật dung lượng: "+err.Error(), err)
 		return
 	}
 
@@ -594,7 +595,7 @@ func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	if accountID != "" {
 		files, err := s.db.ListFilesByAccount(accountID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch tá»‡p cá»§a tÃ i khoáº£n", err)
+			writeError(w, http.StatusInternalServerError, "Không thể tải danh sách tệp của tài khoản", err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -626,7 +627,7 @@ func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 
 	files, err := s.vfs.ListDirectory(targetUserID, parentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ táº£i danh sÃ¡ch tá»‡p", err)
+		writeError(w, http.StatusInternalServerError, "Không thể tải danh sách tệp", err)
 		return
 	}
 
@@ -655,11 +656,11 @@ func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 		currentUserID = user.ID
 	} else {
 		if guestMode == "strict" {
-			writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ táº¡o thÆ° má»¥c", nil)
+			writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để tạo thư mục", nil)
 			return
 		}
 		if guestMode == "view_only" {
-			writeError(w, http.StatusForbidden, "Cháº¿ Ä‘á»™ KhÃ¡ch chá»‰ cho phÃ©p xem vÃ  táº£i xuá»‘ng. Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ táº¡o thÆ° má»¥c.", nil)
+			writeError(w, http.StatusForbidden, "Chế độ Khách chỉ cho phép xem và tải xuống. Vui lòng đăng nhập để tạo thư mục.", nil)
 			return
 		}
 	}
@@ -669,7 +670,7 @@ func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 		Name     string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
-		writeError(w, http.StatusBadRequest, "TÃªn thÆ° má»¥c khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Tên thư mục không hợp lệ", err)
 		return
 	}
 
@@ -688,57 +689,57 @@ func (s *Server) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 		NewName string `json:"new_name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.ID == "" || body.NewName == "" {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u Ä‘á»•i tÃªn khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu đổi tên không hợp lệ", err)
 		return
 	}
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘á»•i tÃªn tá»‡p tin", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để đổi tên tệp tin", nil)
 		return
 	}
 	if user.Role != "admin" {
 		vfile, err := s.db.GetVirtualFile(body.ID)
 		if err == nil && vfile != nil && vfile.UserID != "" && vfile.UserID != user.ID {
-			writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n Ä‘á»•i tÃªn tá»‡p tin cá»§a tÃ i khoáº£n khÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Bạn không có quyền đổi tên tệp tin của tài khoản khác", nil)
 			return
 		}
 	}
 
 	if err := s.vfs.RenameFileOrFolder(body.ID, body.NewName); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i Ä‘á»•i tÃªn: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi đổi tên: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ Ä‘á»•i tÃªn thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đổi tên thành công"})
 }
 
 func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID", nil)
 		return
 	}
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ xÃ³a tá»‡p tin", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để xóa tệp tin", nil)
 		return
 	}
 	if user.Role != "admin" {
 		vfile, err := s.db.GetVirtualFile(id)
 		if err == nil && vfile != nil && vfile.UserID != "" && vfile.UserID != user.ID {
-			writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n xÃ³a tá»‡p tin cá»§a tÃ i khoáº£n khÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Bạn không có quyền xóa tệp tin của tài khoản khác", nil)
 			return
 		}
 	}
 
 	if err := s.vfs.DeleteFileOrFolder(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i xÃ³a tá»‡p/thÆ° má»¥c: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi xóa tệp/thư mục: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ xÃ³a thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa thành công"})
 }
 
 func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
@@ -759,11 +760,11 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 		currentUserID = user.ID
 	} else {
 		if guestMode == "strict" {
-			writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ táº£i lÃªn tá»‡p tin", nil)
+			writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để tải lên tệp tin", nil)
 			return
 		}
 		if guestMode == "view_only" {
-			writeError(w, http.StatusForbidden, "Cháº¿ Ä‘á»™ KhÃ¡ch (Guest) chá»‰ cho phÃ©p xem vÃ  táº£i xuá»‘ng. Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ táº£i lÃªn.", nil)
+			writeError(w, http.StatusForbidden, "Chế độ Khách (Guest) chỉ cho phép xem và tải xuống. Vui lòng đăng nhập để tải lên.", nil)
 			return
 		}
 	}
@@ -832,7 +833,7 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Kiá»ƒm tra trÆ°á»›c xem cÃ³ file trÃ¹ng tÃªn khÃ´ng (Ä‘á»ƒ bÃ¡o vá»›i frontend)
+			// Kiểm tra trước xem có file trùng tên không (để báo với frontend)
 			existingOld, _ := s.db.FindFileByNameInParent(parentID, fileName)
 			wasReplaced := existingOld != nil
 
@@ -861,7 +862,7 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if uploadedFile == nil {
-		writeError(w, http.StatusBadRequest, "KhÃ´ng tÃ¬m tháº¥y tá»‡p Ä‘Ã­nh kÃ¨m trong request", nil)
+		writeError(w, http.StatusBadRequest, "Không tìm thấy tệp đính kèm trong request", nil)
 		return
 	}
 
@@ -1306,13 +1307,13 @@ func formatContentDisposition(dispositionType, filename string) string {
 func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID", nil)
 		return
 	}
 
 	vfile, err := s.db.GetVirtualFile(id)
 	if err != nil || vfile.IsDir {
-		writeError(w, http.StatusNotFound, "Tá»‡p khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tệp không tồn tại", err)
 		return
 	}
 
@@ -1378,7 +1379,7 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 
 	streamer, err := s.vfs.NewFileStreamer(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i khá»Ÿi táº¡o luá»“ng stream: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi khởi tạo luồng stream: "+err.Error(), err)
 		return
 	}
 	defer streamer.Close()
@@ -1413,13 +1414,13 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID", nil)
 		return
 	}
 
 	vfile, err := s.db.GetVirtualFile(id)
 	if err != nil || vfile.IsDir {
-		writeError(w, http.StatusNotFound, "Tá»‡p khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tệp không tồn tại", err)
 		return
 	}
 
@@ -1825,7 +1826,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		settings, err := s.db.GetSettings()
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Lá»—i Ä‘á»c cÃ i Ä‘áº·t", err)
+			writeError(w, http.StatusInternalServerError, "Lỗi đọc cài đặt", err)
 			return
 		}
 		// Mask sensitive passphrase for display
@@ -1839,13 +1840,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		user := s.getUserFromRequest(r)
 		if user == nil || user.Role != "admin" {
-			writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thay Ä‘á»•i cÃ i Ä‘áº·t há»‡ thá»‘ng", nil)
+			writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thay đổi cài đặt hệ thống", nil)
 			return
 		}
 
 		var req models.Settings
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u cÃ i Ä‘áº·t khÃ´ng há»£p lá»‡", err)
+			writeError(w, http.StatusBadRequest, "Dữ liệu cài đặt không hợp lệ", err)
 			return
 		}
 
@@ -1887,11 +1888,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := s.db.SaveSettings(&req); err != nil {
-			writeError(w, http.StatusInternalServerError, "Lá»—i lÆ°u cÃ i Ä‘áº·t", err)
+			writeError(w, http.StatusInternalServerError, "Lỗi lưu cài đặt", err)
 			return
 		}
 
-		writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ lÆ°u cÃ i Ä‘áº·t thÃ nh cÃ´ng"})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "Đã lưu cài đặt thành công"})
 		return
 	}
 
@@ -1963,23 +1964,23 @@ func (s *Server) handleRemoteInfo(w http.ResponseWriter, r *http.Request) {
 		"lan_webdav_urls": webdavURLs,
 		"webdav_user":    settings.WebDAVUsername,
 		"windows_mount_cmd": fmt.Sprintf(`net use Z: http://localhost:%d/webdav /user:%s [PASSWORD]`, port, settings.WebDAVUsername),
-		"cloudflare_tunnel_guide": `CÃ i Ä‘áº·t Cloudflare Tunnel Ä‘á»ƒ truy cáº­p tá»« xa toÃ n cáº§u:
-1. Táº£i cloudflared: winget install --id Cloudflare.cloudflared
-2. Cháº¡y lá»‡nh: cloudflared tunnel --url http://localhost:8080
-3. Báº¡n sáº½ nháº­n Ä‘Æ°á»£c Ä‘Æ°á»ng link HTTPS miá»…n phÃ­ dáº¡ng https://xxxx.trycloudflare.com Ä‘á»ƒ truy cáº­p tá»« xa má»i lÃºc má»i nÆ¡i!`,
+		"cloudflare_tunnel_guide": `Cài đặt Cloudflare Tunnel để truy cập từ xa toàn cầu:
+1. Tải cloudflared: winget install --id Cloudflare.cloudflared
+2. Chạy lệnh: cloudflared tunnel --url http://localhost:8080
+3. Bạn sẽ nhận được đường link HTTPS miễn phí dạng https://xxxx.trycloudflare.com để truy cập từ xa mọi lúc mọi nơi!`,
 	})
 }
 
 func (s *Server) handleFileChunks(w http.ResponseWriter, r *http.Request) {
 	fileID := r.URL.Query().Get("id")
 	if fileID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID", nil)
 		return
 	}
 
 	chunks, err := s.db.GetChunkDetailsForFile(fileID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y thÃ´ng tin chunks: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy thông tin chunks: "+err.Error(), err)
 		return
 	}
 
@@ -1993,19 +1994,19 @@ func (s *Server) handleFileChunks(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleToggleAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user != nil && user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n táº¡m dá»«ng hoáº·c kÃ­ch hoáº¡t tÃ i khoáº£n", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền tạm dừng hoặc kích hoạt tài khoản", nil)
 		return
 	}
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID tÃ i khoáº£n", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu ID tài khoản", nil)
 		return
 	}
 
 	acc, err := s.db.GetAccount(id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "TÃ i khoáº£n khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tài khoản không tồn tại", err)
 		return
 	}
 
@@ -2015,7 +2016,7 @@ func (s *Server) handleToggleAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.ToggleAccountStatus(id, newStatus); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i thay Ä‘á»•i tráº¡ng thÃ¡i", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi thay đổi trạng thái", err)
 		return
 	}
 
@@ -2033,7 +2034,7 @@ func (s *Server) handleBulkDeleteFiles(w http.ResponseWriter, r *http.Request) {
 		IDs []string `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "Danh sÃ¡ch tá»‡p khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Danh sách tệp không hợp lệ", err)
 		return
 	}
 
@@ -2045,7 +2046,7 @@ func (s *Server) handleBulkDeleteFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message":       fmt.Sprintf("ÄÃ£ xÃ³a thÃ nh cÃ´ng %d tá»‡p/thÆ° má»¥c", deletedCount),
+		"message":       fmt.Sprintf("Đã xóa thành công %d tệp/thư mục", deletedCount),
 		"deleted_count": deletedCount,
 	})
 }
@@ -2053,7 +2054,7 @@ func (s *Server) handleBulkDeleteFiles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSQLTables(w http.ResponseWriter, r *http.Request) {
 	tables, err := s.db.GetDatabaseTables()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch báº£ng: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách bảng: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, tables)
@@ -2065,10 +2066,10 @@ func (s *Server) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// [BUG FIX] Admin-only guard â€” prevents regular users from executing raw SQL
+	// [BUG FIX] Admin-only guard — prevents regular users from executing raw SQL
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thá»±c thi SQL", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thực thi SQL", nil)
 		return
 	}
 
@@ -2076,7 +2077,7 @@ func (s *Server) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
 		Query string `json:"query"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Query) == "" {
-		writeError(w, http.StatusBadRequest, "CÃ¢u truy váº¥n SQL khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng", err)
+		writeError(w, http.StatusBadRequest, "Câu truy vấn SQL không được để trống", err)
 		return
 	}
 
@@ -2091,10 +2092,10 @@ func (s *Server) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSQLDownloadDB(w http.ResponseWriter, r *http.Request) {
-	// [BUG FIX] Admin-only guard â€” prevents unauthorized download of the entire database
+	// [BUG FIX] Admin-only guard — prevents unauthorized download of the entire database
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n táº£i xuá»‘ng Database", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền tải xuống Database", nil)
 		return
 	}
 
@@ -2113,16 +2114,16 @@ func (s *Server) handleSQLOptimize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.db.OptimizeDatabase(); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i tá»‘i Æ°u CSDL: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tối ưu CSDL: "+err.Error(), err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ tá»‘i Æ°u hÃ³a vÃ  chá»‘ng phÃ¢n máº£nh CSDL thÃ nh cÃ´ng (VACUUM & Optimize)"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã tối ưu hóa và chống phân mảnh CSDL thành công (VACUUM & Optimize)"})
 }
 
 func (s *Server) handleSQLCheck(w http.ResponseWriter, r *http.Request) {
 	status, err := s.db.CheckDatabaseIntegrity()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i kiá»ƒm tra toÃ n váº¹n: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi kiểm tra toàn vẹn: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -2139,11 +2140,11 @@ func (s *Server) handleSQLBackup(w http.ResponseWriter, r *http.Request) {
 	backupName := fmt.Sprintf("cloudpool_backup_%s.db", time.Now().Format("20060102_150405"))
 	backupPath := filepath.Join("data", backupName)
 	if err := s.db.BackupDatabase(backupPath); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o báº£n sao lÆ°u: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo bản sao lưu: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{
-		"message":     "ÄÃ£ táº¡o báº£n sao lÆ°u CSDL tá»©c thá»i an toÃ n",
+		"message":     "Đã tạo bản sao lưu CSDL tức thời an toàn",
 		"backup_file": backupName,
 	})
 }
@@ -2493,13 +2494,13 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 
 	// Check if already exists
 	if _, err := s.db.GetUserByUsername(req.Username); err == nil {
-		writeError(w, http.StatusConflict, "TÃªn tÃ i khoáº£n nÃ y Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng", nil)
+		writeError(w, http.StatusConflict, "Tên tài khoản này đã được sử dụng", nil)
 		return
 	}
 
 	passHash, err := core.HashPasswordBcrypt(req.Password)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i bÄƒm máº­t kháº©u", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi băm mật khẩu", err)
 		return
 	}
 	displayName := req.DisplayName
@@ -2521,20 +2522,20 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateUser(user); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o tÃ i khoáº£n: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo tài khoản: "+err.Error(), err)
 		return
 	}
 
 	jwtToken, err := GenerateJWTWithRole(user.ID, user.Username, user.Role)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o phiÃªn Ä‘Äƒng nháº­p", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo phiên đăng nhập", err)
 		return
 	}
 
 	setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message": "ÄÄƒng kÃ½ tÃ i khoáº£n thÃ nh cÃ´ng",
+		"message": "Đăng ký tài khoản thành công",
 		"user":    user,
 		"token":   jwtToken,
 	})
@@ -2593,7 +2594,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		})
 		// Constant-time dummy check to prevent timing attacks (Rule PHAN 3.6)
 		_ = subtle.ConstantTimeCompare([]byte("dummy"), []byte("dummy2"))
-		writeError(w, http.StatusUnauthorized, "TÃ i khoáº£n hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c", nil)
+		writeError(w, http.StatusUnauthorized, "Tài khoản hoặc mật khẩu không chính xác", nil)
 		return
 	}
 
@@ -2609,7 +2610,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 			Status:       "BLOCKED_LOCKED",
 			UserAgent:    userAgent,
 		})
-		writeError(w, http.StatusLocked, fmt.Sprintf("TÃ i khoáº£n Ä‘ang bá»‹ táº¡m khÃ³a an toÃ n trong %d phÃºt do nháº­p sai quÃ¡ nhiá»u láº§n.", remaining), nil)
+		writeError(w, http.StatusLocked, fmt.Sprintf("Tài khoản đang bị tạm khóa an toàn trong %d phút do nhập sai quá nhiều lần.", remaining), nil)
 		return
 	}
 
@@ -2650,10 +2651,10 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if isLocked {
-			writeError(w, http.StatusLocked, "Báº¡n Ä‘Ã£ nháº­p sai máº­t kháº©u 5 láº§n. TÃ i khoáº£n Ä‘Ã£ bá»‹ táº¡m khÃ³a 15 phÃºt Ä‘á»ƒ báº£o vá»‡ an toÃ n.", nil)
+			writeError(w, http.StatusLocked, "Bạn đã nhập sai mật khẩu 5 lần. Tài khoản đã bị tạm khóa 15 phút để bảo vệ an toàn.", nil)
 			return
 		}
-		writeError(w, http.StatusUnauthorized, fmt.Sprintf("TÃ i khoáº£n hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c (CÃ²n %d láº§n thá»­ trÆ°á»›c khi khÃ³a)", 5-fails), nil)
+		writeError(w, http.StatusUnauthorized, fmt.Sprintf("Tài khoản hoặc mật khẩu không chính xác (Còn %d lần thử trước khi khóa)", 5-fails), nil)
 		return
 	}
 
@@ -2675,19 +2676,23 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		Action:    "LOGIN",
 		Target:    "Web Explorer",
 		IPAddress: clientIP,
-		Details:   fmt.Sprintf("ÄÄƒng nháº­p tá»« %s (%s)", deviceInfo, locationInfo),
+		Details:   fmt.Sprintf("Đăng nhập từ %s (%s)", deviceInfo, locationInfo),
 	})
 
 	jwtToken, err := GenerateJWTWithRole(user.ID, user.Username, user.Role)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o phiÃªn Ä‘Äƒng nháº­p", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo phiên đăng nhập", err)
 		return
 	}
 
-	setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
+	if user.Role == "admin" {
+		registry.SetAdminSessionCookies(w, r, jwtToken)
+	} else {
+		setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message": "ÄÄƒng nháº­p thÃ nh cÃ´ng",
+		"message": "Đăng nhập thành công",
 		"user":    user,
 		"token":   jwtToken,
 	})
@@ -2696,14 +2701,14 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := s.db.ListLoginSessions(50)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch phiÃªn: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách phiên: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, sessions)
 }
 
 func parseDeviceInfo(ua string) string {
-	os := "Thiáº¿t bá»‹ khÃ´ng xÃ¡c Ä‘á»‹nh"
+	os := "Thiết bị không xác định"
 	if strings.Contains(ua, "Windows NT 10.0") || strings.Contains(ua, "Windows") {
 		os = "Windows PC"
 	} else if strings.Contains(ua, "Macintosh") || strings.Contains(ua, "Mac OS") {
@@ -2720,7 +2725,7 @@ func parseDeviceInfo(ua string) string {
 
 	browser := "Web Browser"
 	if strings.Contains(ua, "CocCoc") {
-		browser = "Cá»‘c Cá»‘c"
+		browser = "Cốc Cốc"
 	} else if strings.Contains(ua, "Edg/") {
 		browser = "Microsoft Edge"
 	} else if strings.Contains(ua, "Chrome") {
@@ -2731,7 +2736,7 @@ func parseDeviceInfo(ua string) string {
 		browser = "Mozilla Firefox"
 	}
 
-	return fmt.Sprintf("%s Â· %s", os, browser)
+	return fmt.Sprintf("%s · %s", os, browser)
 }
 
 func getClientIP(r *http.Request) string {
@@ -2745,7 +2750,7 @@ func getClientIP(r *http.Request) string {
 			return strings.TrimSpace(cf)
 		}
 	}
-	// X-Real-IP is set by nginx/caddy proxy â€” trust only if no CF header
+	// X-Real-IP is set by nginx/caddy proxy — trust only if no CF header
 	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
 		if !strings.Contains(xrip, ",") {
 			return strings.TrimSpace(xrip)
@@ -2761,9 +2766,9 @@ func getClientIP(r *http.Request) string {
 
 func resolveLocation(ip string) string {
 	if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" || strings.HasPrefix(ip, "192.168.") || strings.HasPrefix(ip, "10.") || strings.HasPrefix(ip, "172.") {
-		return "MÃ¡y Cá»¥c Bá»™ / Máº¡ng LAN (Local Host)"
+		return "Máy Cục Bộ / Mạng LAN (Local Host)"
 	}
-	return "Viá»‡t Nam (Truy cáº­p tá»« xa / Internet)"
+	return "Việt Nam (Truy cập từ xa / Internet)"
 }
 
 func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
@@ -2774,7 +2779,7 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ cÃ i Ä‘áº·t mÃ£ PIN báº£o máº­t", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để cài đặt mã PIN bảo mật", nil)
 		return
 	}
 
@@ -2784,12 +2789,12 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 		SecurityTier int    `json:"security_tier"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if len(req.NewPin) != 6 {
-		writeError(w, http.StatusBadRequest, "MÃ£ PIN báº£o máº­t cáº¥p 2 báº¯t buá»™c pháº£i cÃ³ Ä‘Ãºng 6 chá»¯ sá»‘", nil)
+		writeError(w, http.StatusBadRequest, "Mã PIN bảo mật cấp 2 bắt buộc phải có đúng 6 chữ số", nil)
 		return
 	}
 
@@ -2797,7 +2802,7 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 	if user.SecurityPinHash != "" {
 		oldPinHash := core.HashSHA256([]byte(req.OldPin))
 		if subtle.ConstantTimeCompare([]byte(user.SecurityPinHash), []byte(oldPinHash)) != 1 {
-			writeError(w, http.StatusUnauthorized, "MÃ£ PIN báº£o máº­t hiá»‡n táº¡i khÃ´ng chÃ­nh xÃ¡c", nil)
+			writeError(w, http.StatusUnauthorized, "Mã PIN bảo mật hiện tại không chính xác", nil)
 			return
 		}
 	}
@@ -2809,7 +2814,7 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 
 	newPinHash := core.HashSHA256([]byte(req.NewPin))
 	if err := s.db.UpdateUserSecurityPin(user.ID, newPinHash, tier); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i cáº­p nháº­t mÃ£ PIN: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi cập nhật mã PIN: "+err.Error(), err)
 		return
 	}
 
@@ -2819,10 +2824,10 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 		Action:    "SET_PIN",
 		Target:    "Security PIN",
 		IPAddress: r.RemoteAddr,
-		Details:   fmt.Sprintf("ÄÃ£ cáº­p nháº­t mÃ£ PIN cáº¥p 2 (Tier %d)", tier),
+		Details:   fmt.Sprintf("Đã cập nhật mã PIN cấp 2 (Tier %d)", tier),
 	})
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ cÃ i Ä‘áº·t mÃ£ PIN báº£o vá»‡ cáº¥p 2 thÃ nh cÃ´ng!"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã cài đặt mã PIN bảo vệ cấp 2 thành công!"})
 }
 
 func (s *Server) handleAuthVerifyPin(w http.ResponseWriter, r *http.Request) {
@@ -2833,7 +2838,7 @@ func (s *Server) handleAuthVerifyPin(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "ChÆ°a Ä‘Äƒng nháº­p", nil)
+		writeError(w, http.StatusUnauthorized, "Chưa đăng nhập", nil)
 		return
 	}
 
@@ -2841,19 +2846,19 @@ func (s *Server) handleAuthVerifyPin(w http.ResponseWriter, r *http.Request) {
 		Pin string `json:"pin"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Pin) != 6 {
-		writeError(w, http.StatusBadRequest, "MÃ£ PIN pháº£i cÃ³ 6 chá»¯ sá»‘", nil)
+		writeError(w, http.StatusBadRequest, "Mã PIN phải có 6 chữ số", nil)
 		return
 	}
 
 	pinHash := core.HashSHA256([]byte(req.Pin))
 	if subtle.ConstantTimeCompare([]byte(user.SecurityPinHash), []byte(pinHash)) != 1 {
-		writeError(w, http.StatusUnauthorized, "MÃ£ PIN báº£o máº­t khÃ´ng chÃ­nh xÃ¡c", nil)
+		writeError(w, http.StatusUnauthorized, "Mã PIN bảo mật không chính xác", nil)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"verified": true,
-		"message":  "XÃ¡c thá»±c mÃ£ PIN cáº¥p 2 thÃ nh cÃ´ng",
+		"message":  "Xác thực mã PIN cấp 2 thành công",
 	})
 }
 
@@ -2867,7 +2872,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Password == "" {
-		writeError(w, http.StatusBadRequest, "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng", err)
+		writeError(w, http.StatusBadRequest, "Mật khẩu không được để trống", err)
 		return
 	}
 
@@ -2891,7 +2896,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 3. Check against currently logged in user (chá»‰ Ã¡p dá»¥ng náº¿u user Ä‘Ã³ thá»±c sá»± cÃ³ quyá»n admin)
+	// 3. Check against currently logged in user (chỉ áp dụng nếu user đó thực sự có quyền admin)
 	currentUser := s.getUserFromRequest(r)
 	currentUserMatched := false
 	if currentUser != nil && currentUser.Role == "admin" {
@@ -2906,7 +2911,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 4. Fallback cá»©ng Ä‘Ã£ bá»‹ xÃ³a bá» vÃ¬ lÃ½ do báº£o máº­t â€” chá»‰ cháº¥p nháº­n máº­t kháº©u tá»« DB
+	// 4. Fallback cứng đã bị xóa bỏ vì lý do bảo mật — chỉ chấp nhận mật khẩu từ DB
 
 	if adminPassMatched || masterPassMatched || currentUserMatched {
 		// Reset login failures on success
@@ -2918,7 +2923,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 		// Issue admin session cookie
 		jwtToken, err := GenerateJWTWithRole("user_admin", "admin", "admin")
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o phiÃªn quáº£n trá»‹", err)
+			writeError(w, http.StatusInternalServerError, "Lỗi tạo phiên quản trị", err)
 			return
 		}
 
@@ -2926,12 +2931,12 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
-			"message": "XÃ¡c thá»±c Quáº£n trá»‹ thÃ nh cÃ´ng!",
+			"message": "Xác thực Quản trị thành công!",
 			"user": map[string]interface{}{
 				"id":           "user_admin",
 				"username":     "admin",
 				"role":         "admin",
-				"display_name": "Quáº£n Trá»‹ ViÃªn",
+				"display_name": "Quản Trị Viên",
 			},
 		})
 		return
@@ -2941,13 +2946,13 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 	if adminUser != nil {
 		_, _, _ = s.db.RecordLoginFailure("admin")
 	}
-	writeError(w, http.StatusUnauthorized, "Máº­t kháº©u Quáº£n trá»‹ khÃ´ng chÃ­nh xÃ¡c!", nil)
+	writeError(w, http.StatusUnauthorized, "Mật khẩu Quản trị không chính xác!", nil)
 }
 
 func (s *Server) handleListLogs(w http.ResponseWriter, r *http.Request) {
 	logs, err := s.db.ListActivityLogs(100)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y nháº­t kÃ½ kiá»ƒm toÃ¡n: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy nhật ký kiểm toán: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, logs)
@@ -2956,7 +2961,7 @@ func (s *Server) handleListLogs(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "ChÆ°a Ä‘Äƒng nháº­p", nil)
+		writeError(w, http.StatusUnauthorized, "Chưa đăng nhập", nil)
 		return
 	}
 
@@ -3020,6 +3025,8 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[ENGINE] [AUTH] Đã thu hồi token đăng xuất: %.16s...", tokenString)
 	}
 
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+	w.Header().Set("Clear-Site-Data", `"cache", "cookies", "storage"`)
 	setAuthCookie(w, r, "", -1)
 	registry.ClearSSOCookies(w, r)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đăng xuất tài khoản thành công"})
@@ -3028,13 +3035,13 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusUnauthorized, "YÃªu cáº§u quyá»n Quáº£n trá»‹ viÃªn", nil)
+		writeError(w, http.StatusUnauthorized, "Yêu cầu quyền Quản trị viên", nil)
 		return
 	}
 
 	users, err := s.db.ListUsers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch ngÆ°á»i dÃ¹ng", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách người dùng", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, users)
@@ -3048,7 +3055,7 @@ func (s *Server) handleUpdateUserQuota(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusUnauthorized, "YÃªu cáº§u quyá»n Quáº£n trá»‹ viÃªn", nil)
+		writeError(w, http.StatusUnauthorized, "Yêu cầu quyền Quản trị viên", nil)
 		return
 	}
 
@@ -3057,16 +3064,16 @@ func (s *Server) handleUpdateUserQuota(w http.ResponseWriter, r *http.Request) {
 		QuotaBytes int64  `json:"quota_bytes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := s.db.UpdateUserQuota(req.UserID, req.QuotaBytes); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i cáº­p nháº­t háº¡n ngáº¡ch: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi cập nhật hạn ngạch: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ cáº­p nháº­t háº¡n ngáº¡ch thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã cập nhật hạn ngạch thành công"})
 }
 
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -3077,7 +3084,7 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusUnauthorized, "YÃªu cáº§u quyá»n Quáº£n trá»‹ viÃªn", nil)
+		writeError(w, http.StatusUnauthorized, "Yêu cầu quyền Quản trị viên", nil)
 		return
 	}
 
@@ -3085,16 +3092,16 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 		UserID string `json:"user_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
 	if err := s.db.DeleteUser(req.UserID); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i xÃ³a ngÆ°á»i dÃ¹ng: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi xóa người dùng: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ xÃ³a ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa người dùng thành công"})
 }
 
 func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -3105,7 +3112,7 @@ func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘á»•i máº­t kháº©u", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để đổi mật khẩu", nil)
 		return
 	}
 
@@ -3114,11 +3121,11 @@ func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request
 		NewPassword string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
 
-	// [PASSWORD POLICY - Production] Min 8 kÃ½ tá»±, pháº£i cÃ³ chá»¯ vÃ  sá»‘
+	// [PASSWORD POLICY - Production] Min 8 ký tự, phải có chữ và số
 	if err := validatePasswordStrength(req.NewPassword); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -3126,17 +3133,17 @@ func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request
 
 	// Verify old password
 	if !core.CheckPasswordHashBcrypt(req.OldPassword, user.PasswordHash) {
-		writeError(w, http.StatusUnauthorized, "Máº­t kháº©u hiá»‡n táº¡i khÃ´ng chÃ­nh xÃ¡c", nil)
+		writeError(w, http.StatusUnauthorized, "Mật khẩu hiện tại không chính xác", nil)
 		return
 	}
 
 	newHash, err := core.HashPasswordBcrypt(req.NewPassword)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i bÄƒm máº­t kháº©u", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi băm mật khẩu", err)
 		return
 	}
 	if err := s.db.UpdateUserPassword(user.ID, newHash); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i cáº­p nháº­t máº­t kháº©u: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi cập nhật mật khẩu: "+err.Error(), err)
 		return
 	}
 
@@ -3149,7 +3156,7 @@ func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ Ä‘á»•i máº­t kháº©u thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đổi mật khẩu thành công"})
 }
 
 func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -3160,7 +3167,7 @@ func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusUnauthorized, "YÃªu cáº§u quyá»n Quáº£n trá»‹ viÃªn", nil)
+		writeError(w, http.StatusUnauthorized, "Yêu cầu quyền Quản trị viên", nil)
 		return
 	}
 
@@ -3169,10 +3176,10 @@ func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request
 		NewPassword string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == "" {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu không hợp lệ", err)
 		return
 	}
-	// [PASSWORD POLICY - Production] Min 8 kÃ½ tá»±, pháº£i cÃ³ chá»¯ vÃ  sá»‘
+	// [PASSWORD POLICY - Production] Min 8 ký tự, phải có chữ và số
 	if err := validatePasswordStrength(req.NewPassword); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -3180,15 +3187,15 @@ func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request
 
 	newHash, err := core.HashPasswordBcrypt(req.NewPassword)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i bÄƒm máº­t kháº©u", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi băm mật khẩu", err)
 		return
 	}
 	if err := s.db.UpdateUserPassword(req.UserID, newHash); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i Ä‘áº·t láº¡i máº­t kháº©u: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi đặt lại mật khẩu: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ Ä‘áº·t láº¡i máº­t kháº©u ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đặt lại mật khẩu người dùng thành công"})
 }
 
 // -------------------------------------------------------------
@@ -3312,7 +3319,7 @@ func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n cáº­p nháº­t vÃ  nÃ¢ng cáº¥p pháº§n má»m", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền cập nhật và nâng cấp phần mềm", nil)
 		return
 	}
 
@@ -3323,12 +3330,12 @@ func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 	if user.HasSecurityPin {
 		pin := r.FormValue("security_pin")
 		if pin == "" {
-			writeError(w, http.StatusForbidden, "Vui lÃ²ng nháº­p MÃ£ PIN Báº£o máº­t Cáº¥p 2 Ä‘á»ƒ xÃ¡c nháº­n quyá»n nÃ¢ng cáº¥p há»‡ thá»‘ng", nil)
+			writeError(w, http.StatusForbidden, "Vui lòng nhập Mã PIN Bảo mật Cấp 2 để xác nhận quyền nâng cấp hệ thống", nil)
 			return
 		}
 		pinHash := core.HashSHA256([]byte(pin))
 		if subtle.ConstantTimeCompare([]byte(user.SecurityPinHash), []byte(pinHash)) != 1 {
-			writeError(w, http.StatusForbidden, "MÃ£ PIN Báº£o máº­t Cáº¥p 2 khÃ´ng chÃ­nh xÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Mã PIN Bảo mật Cấp 2 không chính xác", nil)
 			return
 		}
 	}
@@ -3338,7 +3345,7 @@ func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Vui lÃ²ng Ä‘Ã­nh kÃ¨m tá»‡p tin cáº­p nháº­t", err)
+		writeError(w, http.StatusBadRequest, "Vui lòng đính kèm tệp tin cập nhật", err)
 		return
 	}
 	defer file.Close()
@@ -3350,13 +3357,13 @@ func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 	// Sanitize filename against directory traversal (Rule 3.1)
 	cleanName := filepath.Base(targetFilename)
 	if cleanName == "." || cleanName == "/" || cleanName == "\\" || strings.Contains(cleanName, "..") {
-		writeError(w, http.StatusBadRequest, "TÃªn tá»‡p khÃ´ng há»£p lá»‡", nil)
+		writeError(w, http.StatusBadRequest, "Tên tệp không hợp lệ", nil)
 		return
 	}
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "KhÃ´ng Ä‘á»c Ä‘Æ°á»£c dá»¯ liá»‡u tá»‡p táº£i lÃªn", err)
+		writeError(w, http.StatusBadRequest, "Không đọc được dữ liệu tệp tải lên", err)
 		return
 	}
 
@@ -3595,7 +3602,7 @@ func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n hoÃ n tÃ¡c", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền hoàn tác", nil)
 		return
 	}
 
@@ -3604,7 +3611,7 @@ func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 		TargetFilename string `json:"target_filename"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "Dá»¯ liá»‡u hoÃ n tÃ¡c khÃ´ng há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Dữ liệu hoàn tác không hợp lệ", err)
 		return
 	}
 
@@ -3628,12 +3635,12 @@ func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 	bakPath := targetPath + ".bak"
 	bakBytes, err := os.ReadFile(bakPath)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "KhÃ´ng tÃ¬m tháº¥y báº£n sao lÆ°u (.bak) cá»§a tá»‡p nÃ y", err)
+		writeError(w, http.StatusNotFound, "Không tìm thấy bản sao lưu (.bak) của tệp này", err)
 		return
 	}
 
 	if err := os.WriteFile(targetPath, bakBytes, 0644); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i khÃ´i phá»¥c tá»‡p: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi khôi phục tệp: "+err.Error(), err)
 		return
 	}
 
@@ -3641,7 +3648,7 @@ func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 	_ = os.Remove(bakPath)
 
 	writeJSON(w, http.StatusOK, map[string]string{
-		"message": fmt.Sprintf("ÄÃ£ hoÃ n tÃ¡c thÃ nh cÃ´ng tá»‡p tin '%s' tá»« báº£n sao lÆ°u .bak!", cleanName),
+		"message": fmt.Sprintf("Đã hoàn tác thành công tệp tin '%s' từ bản sao lưu .bak!", cleanName),
 	})
 }
 
@@ -3653,12 +3660,12 @@ func (s *Server) handleRestartEngine(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n khá»Ÿi Ä‘á»™ng láº¡i há»‡ thá»‘ng", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền khởi động lại hệ thống", nil)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{
-		"message": "Äang khá»Ÿi Ä‘á»™ng láº¡i CloudPool Engine trong 2 giÃ¢y...",
+		"message": "Đang khởi động lại CloudPool Engine trong 2 giây...",
 	})
 
 	go func() {
@@ -3708,7 +3715,7 @@ func (s *Server) handleVerifyFileOTP(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ xÃ¡c thá»±c mÃ£ OTP", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để xác thực mã OTP", nil)
 		return
 	}
 
@@ -3717,13 +3724,13 @@ func (s *Server) handleVerifyFileOTP(w http.ResponseWriter, r *http.Request) {
 		OTPCode string `json:"otp_code"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.FileID == "" || req.OTPCode == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u thÃ´ng tin tá»‡p tin hoáº·c mÃ£ OTP", err)
+		writeError(w, http.StatusBadRequest, "Thiếu thông tin tệp tin hoặc mã OTP", err)
 		return
 	}
 
 	valid, err := s.db.VerifyAndBurnOTP(req.FileID, user.ID, req.OTPCode)
 	if !valid || err != nil {
-		writeError(w, http.StatusForbidden, "Lá»—i xÃ¡c thá»±c: "+err.Error(), err)
+		writeError(w, http.StatusForbidden, "Lỗi xác thực: "+err.Error(), err)
 		return
 	}
 
@@ -3739,16 +3746,16 @@ func (s *Server) handleVerifyFileOTP(w http.ResponseWriter, r *http.Request) {
 		Action:    "OTP_VERIFY_SUCCESS",
 		Target:    fileName,
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("XÃ¡c thá»±c thÃ nh cÃ´ng mÃ£ OTP má»Ÿ khÃ³a tá»‡p '%s' (MÃ£ Ä‘Ã£ Ä‘Æ°á»£c há»§y sá»­ dá»¥ng 1 láº§n)", fileName),
+		Details:   fmt.Sprintf("Xác thực thành công mã OTP mở khóa tệp '%s' (Mã đã được hủy sử dụng 1 lần)", fileName),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status":       "success",
-		"message":      "Má»Ÿ khÃ³a tá»‡p tin thÃ nh cÃ´ng! MÃ£ OTP Ä‘Ã£ Ä‘Æ°á»£c sá»­ dá»¥ng (1 láº§n).",
+		"message":      "Mở khóa tệp tin thành công! Mã OTP đã được sử dụng (1 lần).",
 		"file_id":      req.FileID,
 		"file_name":    fileName,
 		"otp_burned":   true,
-		"auto_unlock":  true, // Frontend dÃ¹ng Ä‘á»ƒ tá»± Ä‘á»™ng má»Ÿ file
+		"auto_unlock":  true, // Frontend dùng để tự động mở file
 	})
 }
 
@@ -3760,7 +3767,7 @@ func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ gá»­i yÃªu cáº§u", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để gửi yêu cầu", nil)
 		return
 	}
 
@@ -3768,13 +3775,13 @@ func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 		FileID string `json:"file_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.FileID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID tá»‡p tin", err)
+		writeError(w, http.StatusBadRequest, "Thiếu ID tệp tin", err)
 		return
 	}
 
 	vfile, err := s.db.GetVirtualFile(req.FileID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "Tá»‡p tin khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tệp tin không tồn tại", err)
 		return
 	}
 
@@ -3788,12 +3795,12 @@ func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateFileAccessRequest(accessReq); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i gá»­i yÃªu cáº§u: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi gửi yêu cầu: "+err.Error(), err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message": "ÄÃ£ gá»­i yÃªu cáº§u cáº¥p mÃ£ OTP tá»›i Quáº£n Trá»‹ ViÃªn thÃ nh cÃ´ng!",
+		"message": "Đã gửi yêu cầu cấp mã OTP tới Quản Trị Viên thành công!",
 		"request": accessReq,
 	})
 }
@@ -3801,13 +3808,13 @@ func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListMyFileRequests(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "ChÆ°a Ä‘Äƒng nháº­p", nil)
+		writeError(w, http.StatusUnauthorized, "Chưa đăng nhập", nil)
 		return
 	}
 
 	requests, err := s.db.ListFileAccessRequests("all")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch yÃªu cáº§u", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách yêu cầu", err)
 		return
 	}
 
@@ -3829,7 +3836,7 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n táº¡o mÃ£ OTP", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền tạo mã OTP", nil)
 		return
 	}
 
@@ -3839,13 +3846,13 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 		DurationMinutes int    `json:"duration_minutes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.FileID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID tá»‡p tin", err)
+		writeError(w, http.StatusBadRequest, "Thiếu ID tệp tin", err)
 		return
 	}
 
 	vfile, err := s.db.GetVirtualFile(req.FileID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "Tá»‡p tin khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tệp tin không tồn tại", err)
 		return
 	}
 
@@ -3869,7 +3876,7 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.db.CreateFileOTP(otpObj); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o mÃ£ OTP: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo mã OTP: "+err.Error(), err)
 		return
 	}
 
@@ -3879,11 +3886,11 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 		Action:    "OTP_GENERATE",
 		Target:    vfile.Name,
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("Táº¡o mÃ£ OTP 1 láº§n cho tá»‡p '%s' (Hiá»‡u lá»±c %d phÃºt)", vfile.Name, req.DurationMinutes),
+		Details:   fmt.Sprintf("Tạo mã OTP 1 lần cho tệp '%s' (Hiệu lực %d phút)", vfile.Name, req.DurationMinutes),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message":    "Táº¡o mÃ£ OTP má»Ÿ khÃ³a 1 láº§n thÃ nh cÃ´ng!",
+		"message":    "Tạo mã OTP mở khóa 1 lần thành công!",
 		"otp_code":   otpCode,
 		"file_name":  vfile.Name,
 		"expires_at": expiresAt.Format("2006-01-02 15:04:05"),
@@ -3894,13 +3901,13 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListFileOTPs(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n xem danh sÃ¡ch OTP", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền xem danh sách OTP", nil)
 		return
 	}
 
 	otps, err := s.db.ListFileOTPs(100)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch OTP: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách OTP: "+err.Error(), err)
 		return
 	}
 	writeJSON(w, http.StatusOK, otps)
@@ -3914,7 +3921,7 @@ func (s *Server) handleRevokeFileOTP(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thu há»“i OTP", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thu hồi OTP", nil)
 		return
 	}
 
@@ -3922,28 +3929,28 @@ func (s *Server) handleRevokeFileOTP(w http.ResponseWriter, r *http.Request) {
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID OTP", err)
+		writeError(w, http.StatusBadRequest, "Thiếu ID OTP", err)
 		return
 	}
 
 	if err := s.db.RevokeFileOTP(req.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i thu há»“i OTP: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi thu hồi OTP: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ thu há»“i vÃ  há»§y mÃ£ OTP thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã thu hồi và hủy mã OTP thành công"})
 }
 
 func (s *Server) handleListAdminAccessRequests(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n xem danh sÃ¡ch yÃªu cáº§u", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền xem danh sách yêu cầu", nil)
 		return
 	}
 
 	requests, err := s.db.ListFileAccessRequests("all")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch yÃªu cáº§u", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách yêu cầu", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, requests)
@@ -3957,7 +3964,7 @@ func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Reque
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n phÃª duyá»‡t yÃªu cáº§u", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền phê duyệt yêu cầu", nil)
 		return
 	}
 
@@ -3966,7 +3973,7 @@ func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Reque
 		DurationMinutes int    `json:"duration_minutes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RequestID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u thÃ´ng tin yÃªu cáº§u", err)
+		writeError(w, http.StatusBadRequest, "Thiếu thông tin yêu cầu", err)
 		return
 	}
 
@@ -3984,7 +3991,7 @@ func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	if targetReq == nil {
-		writeError(w, http.StatusNotFound, "KhÃ´ng tÃ¬m tháº¥y yÃªu cáº§u", nil)
+		writeError(w, http.StatusNotFound, "Không tìm thấy yêu cầu", nil)
 		return
 	}
 
@@ -4009,11 +4016,11 @@ func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Reque
 		Action:    "OTP_APPROVE_REQUEST",
 		Target:    targetReq.FileName,
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("PhÃª duyá»‡t cáº¥p mÃ£ OTP cho user '%s' truy cáº­p tá»‡p '%s'", targetReq.Username, targetReq.FileName),
+		Details:   fmt.Sprintf("Phê duyệt cấp mã OTP cho user '%s' truy cập tệp '%s'", targetReq.Username, targetReq.FileName),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"message":    fmt.Sprintf("ÄÃ£ phÃª duyá»‡t vÃ  cáº¥p mÃ£ OTP '%s' cho ngÆ°á»i dÃ¹ng %s thÃ nh cÃ´ng!", otpCode, targetReq.Username),
+		"message":    fmt.Sprintf("Đã phê duyệt và cấp mã OTP '%s' cho người dùng %s thành công!", otpCode, targetReq.Username),
 		"otp_code":   otpCode,
 		"expires_at": expiresAt.Format("2006-01-02 15:04:05"),
 	})
@@ -4027,7 +4034,7 @@ func (s *Server) handleRejectAccessRequest(w http.ResponseWriter, r *http.Reques
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n tá»« chá»‘i yÃªu cáº§u", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền từ chối yêu cầu", nil)
 		return
 	}
 
@@ -4035,12 +4042,12 @@ func (s *Server) handleRejectAccessRequest(w http.ResponseWriter, r *http.Reques
 		RequestID string `json:"request_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RequestID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u ID yÃªu cáº§u", err)
+		writeError(w, http.StatusBadRequest, "Thiếu ID yêu cầu", err)
 		return
 	}
 
 	_ = s.db.RejectFileAccessRequest(req.RequestID)
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ tá»« chá»‘i yÃªu cáº§u cáº¥p OTP"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã từ chối yêu cầu cấp OTP"})
 }
 
 func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) {
@@ -4051,7 +4058,7 @@ func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) 
 
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n náº¡p tá»‡p tá»« Google Drive", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền nạp tệp từ Google Drive", nil)
 		return
 	}
 
@@ -4062,7 +4069,7 @@ func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) 
 
 	count, err := s.vfs.ImportExistingDriveFiles(r.Context(), req.AccountID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i quÃ©t vÃ  náº¡p tá»‡p tá»« Google Drive: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi quét và nạp tệp từ Google Drive: "+err.Error(), err)
 		return
 	}
 
@@ -4072,40 +4079,40 @@ func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) 
 		Action:    "IMPORT_DRIVE",
 		Target:    "Google Drive",
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("ÄÃ£ quÃ©t vÃ  tá»± Ä‘á»™ng náº¡p %d tá»‡p tin cÃ³ sáºµn tá»« Google Drive vÃ o CloudPool", count),
+		Details:   fmt.Sprintf("Đã quét và tự động nạp %d tệp tin có sẵn từ Google Drive vào CloudPool", count),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":        true,
 		"imported_count": count,
-		"message":        fmt.Sprintf("ÄÃ£ quÃ©t vÃ  tá»± Ä‘á»™ng náº¡p thÃ nh cÃ´ng %d tá»‡p tin cÃ³ sáºµn tá»« Google Drive vÃ o CloudPool!", count),
+		"message":        fmt.Sprintf("Đã quét và tự động nạp thành công %d tệp tin có sẵn từ Google Drive vào CloudPool!", count),
 	})
 }
 
 func (s *Server) handleListDriveFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n xem tá»‡p tá»« Google Drive", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền xem tệp từ Google Drive", nil)
 		return
 	}
 
 	accountID := r.URL.Query().Get("account_id")
 	if accountID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u account_id", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu account_id", nil)
 		return
 	}
 
 	files, err := s.gd.ScanExistingDriveFiles(r.Context(), accountID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i láº¥y danh sÃ¡ch file tá»« Drive: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi lấy danh sách file từ Drive: "+err.Error(), err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, files)
 }
 
-// handleOTPPendingCount tráº£ vá» sá»‘ lÆ°á»£ng yÃªu cáº§u OTP Ä‘ang chá» duyá»‡t.
-// DÃ¹ng cho admin polling nháº¹ (má»—i 15s) Ä‘á»ƒ hiá»ƒn thá»‹ badge thÃ´ng bÃ¡o.
+// handleOTPPendingCount trả về số lượng yêu cầu OTP đang chờ duyệt.
+// Dùng cho admin polling nhẹ (mỗi 15s) để hiển thị badge thông báo.
 func (s *Server) handleOTPPendingCount(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -4141,7 +4148,7 @@ func (s *Server) handleOTPPendingCount(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListTrashFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ xem thÃ¹ng rÃ¡c", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để xem thùng rác", nil)
 		return
 	}
 
@@ -4152,7 +4159,7 @@ func (s *Server) handleListTrashFiles(w http.ResponseWriter, r *http.Request) {
 
 	files, err := s.db.ListTrashFiles(userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch thÃ¹ng rÃ¡c", err)
+		writeError(w, http.StatusInternalServerError, "Không thể lấy danh sách thùng rác", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, files)
@@ -4166,7 +4173,7 @@ func (s *Server) handleRestoreTrashFile(w http.ResponseWriter, r *http.Request) 
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ khÃ´i phá»¥c tá»‡p tin", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để khôi phục tệp tin", nil)
 		return
 	}
 
@@ -4174,20 +4181,20 @@ func (s *Server) handleRestoreTrashFile(w http.ResponseWriter, r *http.Request) 
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID cáº§n khÃ´i phá»¥c", err)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID cần khôi phục", err)
 		return
 	}
 
 	if user.Role != "admin" {
 		vfile, err := s.db.GetVirtualFile(req.ID)
 		if err == nil && vfile != nil && vfile.UserID != "" && vfile.UserID != user.ID {
-			writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n khÃ´i phá»¥c tá»‡p tin cá»§a tÃ i khoáº£n khÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Bạn không có quyền khôi phục tệp tin của tài khoản khác", nil)
 			return
 		}
 	}
 
 	if err := s.vfs.RestoreFileOrFolder(r.Context(), req.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i khÃ´i phá»¥c tá»‡p: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi khôi phục tệp: "+err.Error(), err)
 		return
 	}
 
@@ -4197,10 +4204,10 @@ func (s *Server) handleRestoreTrashFile(w http.ResponseWriter, r *http.Request) 
 		Action:    "RESTORE",
 		Target:    req.ID,
 		IPAddress: getClientIP(r),
-		Details:   "ÄÃ£ khÃ´i phá»¥c tá»‡p tá»« ThÃ¹ng rÃ¡c",
+		Details:   "Đã khôi phục tệp từ Thùng rác",
 	})
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ khÃ´i phá»¥c tá»‡p thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã khôi phục tệp thành công"})
 }
 
 func (s *Server) handlePurgeTrashFile(w http.ResponseWriter, r *http.Request) {
@@ -4211,7 +4218,7 @@ func (s *Server) handlePurgeTrashFile(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ xÃ³a vÄ©nh viá»…n tá»‡p tin", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để xóa vĩnh viễn tệp tin", nil)
 		return
 	}
 
@@ -4219,24 +4226,24 @@ func (s *Server) handlePurgeTrashFile(w http.ResponseWriter, r *http.Request) {
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file ID", err)
+		writeError(w, http.StatusBadRequest, "Thiếu file ID", err)
 		return
 	}
 
 	if user.Role != "admin" {
 		vfile, err := s.db.GetVirtualFile(req.ID)
 		if err == nil && vfile != nil && vfile.UserID != "" && vfile.UserID != user.ID {
-			writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n xÃ³a tá»‡p tin cá»§a tÃ i khoáº£n khÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Bạn không có quyền xóa tệp tin của tài khoản khác", nil)
 			return
 		}
 	}
 
 	if err := s.vfs.PurgeFileOrFolderPermanently(r.Context(), req.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i xÃ³a vÄ©nh viá»…n: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi xóa vĩnh viễn: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ xÃ³a vÄ©nh viá»…n tá»‡p vÃ  giáº£i phÃ³ng dung lÆ°á»£ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa vĩnh viễn tệp và giải phóng dung lượng"})
 }
 
 func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
@@ -4247,7 +4254,7 @@ func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ dá»n sáº¡ch thÃ¹ng rÃ¡c", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để dọn sạch thùng rác", nil)
 		return
 	}
 
@@ -4258,7 +4265,7 @@ func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 
 	purged, err := s.vfs.EmptyTrash(r.Context(), userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i dá»n sáº¡ch thÃ¹ng rÃ¡c: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi dọn sạch thùng rác: "+err.Error(), err)
 		return
 	}
 
@@ -4266,15 +4273,15 @@ func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 		UserID:    user.ID,
 		Username:  user.Username,
 		Action:    "EMPTY_TRASH",
-		Target:    "ThÃ¹ng rÃ¡c",
+		Target:    "Thùng rác",
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("ÄÃ£ dá»n sáº¡ch thÃ¹ng rÃ¡c (xÃ³a %d tá»‡p)", purged),
+		Details:   fmt.Sprintf("Đã dọn sạch thùng rác (xóa %d tệp)", purged),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":      true,
 		"purged_count": purged,
-		"message":      fmt.Sprintf("ÄÃ£ dá»n sáº¡ch thÃ¹ng rÃ¡c thÃ nh cÃ´ng (%d tá»‡p Ä‘Æ°á»£c xÃ³a vÄ©nh viá»…n)!", purged),
+		"message":      fmt.Sprintf("Đã dọn sạch thùng rác thành công (%d tệp được xóa vĩnh viễn)!", purged),
 	})
 }
 
@@ -4295,23 +4302,23 @@ func (s *Server) handleCreatePublicShare(w http.ResponseWriter, r *http.Request)
 		MaxDownloads int    `json:"max_downloads"` // 0 = unlimited
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.FileID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u file_id há»£p lá»‡", err)
+		writeError(w, http.StatusBadRequest, "Thiếu file_id hợp lệ", err)
 		return
 	}
 
 	vfile, err := s.db.GetVirtualFile(req.FileID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "Tá»‡p tin hoáº·c thÆ° má»¥c khÃ´ng tá»“n táº¡i", err)
+		writeError(w, http.StatusNotFound, "Tệp tin hoặc thư mục không tồn tại", err)
 		return
 	}
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ táº¡o liÃªn káº¿t chia sáº» cÃ´ng khai", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để tạo liên kết chia sẻ công khai", nil)
 		return
 	}
 	if user.Role != "admin" && vfile.UserID != "" && vfile.UserID != user.ID {
-		writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n chia sáº» tá»‡p tin cá»§a tÃ i khoáº£n khÃ¡c", nil)
+		writeError(w, http.StatusForbidden, "Bạn không có quyền chia sẻ tệp tin của tài khoản khác", nil)
 		return
 	}
 	createdBy := user.Username
@@ -4360,13 +4367,13 @@ func (s *Server) handleCreatePublicShare(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := s.db.CreatePublicShare(share); err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ táº¡o link chia sáº»: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Không thể tạo link chia sẻ: "+err.Error(), err)
 		return
 	}
 
-	targetType := "tá»‡p"
+	targetType := "tệp"
 	if vfile.IsDir {
-		targetType = "thÆ° má»¥c"
+		targetType = "thư mục"
 	}
 
 	_ = s.db.LogActivity(&models.ActivityLog{
@@ -4375,27 +4382,27 @@ func (s *Server) handleCreatePublicShare(w http.ResponseWriter, r *http.Request)
 		Action:    "SHARE",
 		Target:    vfile.Name,
 		IPAddress: getClientIP(r),
-		Details:   fmt.Sprintf("ÄÃ£ táº¡o link chia sáº» cÃ´ng khai cho %s '%s'", targetType, vfile.Name),
+		Details:   fmt.Sprintf("Đã tạo link chia sẻ công khai cho %s '%s'", targetType, vfile.Name),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":      true,
 		"share_token":  shareToken,
 		"share":        share,
-		"message":      fmt.Sprintf("ÄÃ£ táº¡o link chia sáº» %s thÃ nh cÃ´ng!", targetType),
+		"message":      fmt.Sprintf("Đã tạo link chia sẻ %s thành công!", targetType),
 	})
 }
 
 func (s *Server) handleListPublicShares(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ xem danh sÃ¡ch liÃªn káº¿t chia sáº»", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để xem danh sách liên kết chia sẻ", nil)
 		return
 	}
 
 	shares, err := s.db.ListPublicShares()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ láº¥y danh sÃ¡ch link chia sáº»", err)
+		writeError(w, http.StatusInternalServerError, "Không thể lấy danh sách link chia sẻ", err)
 		return
 	}
 
@@ -4421,7 +4428,7 @@ func (s *Server) handleRevokePublicShare(w http.ResponseWriter, r *http.Request)
 
 	user := s.getUserFromRequest(r)
 	if user == nil {
-		writeError(w, http.StatusUnauthorized, "Vui lÃ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ thu há»“i liÃªn káº¿t chia sáº»", nil)
+		writeError(w, http.StatusUnauthorized, "Vui lòng đăng nhập để thu hồi liên kết chia sẻ", nil)
 		return
 	}
 
@@ -4429,41 +4436,41 @@ func (s *Server) handleRevokePublicShare(w http.ResponseWriter, r *http.Request)
 		ID string `json:"id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u share ID", err)
+		writeError(w, http.StatusBadRequest, "Thiếu share ID", err)
 		return
 	}
 
 	if user.Role != "admin" {
 		sh, err := s.db.GetPublicShare(req.ID)
 		if err == nil && sh != nil && sh.CreatedBy != user.Username {
-			writeError(w, http.StatusForbidden, "Báº¡n khÃ´ng cÃ³ quyá»n thu há»“i liÃªn káº¿t chia sáº» cá»§a ngÆ°á»i khÃ¡c", nil)
+			writeError(w, http.StatusForbidden, "Bạn không có quyền thu hồi liên kết chia sẻ của người khác", nil)
 			return
 		}
 	}
 
 	if err := s.db.RevokePublicShare(req.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ thu há»“i link: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Không thể thu hồi link: "+err.Error(), err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "ÄÃ£ thu há»“i link chia sáº» thÃ nh cÃ´ng"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã thu hồi link chia sẻ thành công"})
 }
 
 func (s *Server) handlePublicShareInfo(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u share token", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu share token", nil)
 		return
 	}
 
 	sh, err := s.db.GetPublicShare(token)
 	if err != nil || sh == nil {
-		writeError(w, http.StatusNotFound, "Link chia sáº» khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ bá»‹ thu há»“i", err)
+		writeError(w, http.StatusNotFound, "Link chia sẻ không tồn tại hoặc đã bị thu hồi", err)
 		return
 	}
 
 	if !sh.IsActive {
-		writeError(w, http.StatusGone, "Link chia sáº» nÃ y Ä‘Ã£ háº¿t háº¡n hoáº·c Ä‘áº¡t giá»›i háº¡n táº£i tá»‘i Ä‘a", nil)
+		writeError(w, http.StatusGone, "Link chia sẻ này đã hết hạn hoặc đạt giới hạn tải tối đa", nil)
 		return
 	}
 
@@ -4494,25 +4501,25 @@ func (s *Server) handlePublicShareBrowseFolder(w http.ResponseWriter, r *http.Re
 	pass := r.URL.Query().Get("pass")
 
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u share token", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu share token", nil)
 		return
 	}
 
 	sh, err := s.db.GetPublicShare(token)
 	if err != nil || sh == nil || !sh.IsActive {
-		writeError(w, http.StatusNotFound, "Link chia sáº» khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ háº¿t háº¡n", nil)
+		writeError(w, http.StatusNotFound, "Link chia sẻ không tồn tại hoặc đã hết hạn", nil)
 		return
 	}
 
 	if sh.HasPassword {
 		if pass == "" || subtle.ConstantTimeCompare([]byte(core.HashSHA256([]byte(pass))), []byte(sh.PasswordHash)) != 1 {
-			writeError(w, http.StatusUnauthorized, "Máº­t kháº©u báº£o vá»‡ khÃ´ng chÃ­nh xÃ¡c", nil)
+			writeError(w, http.StatusUnauthorized, "Mật khẩu bảo vệ không chính xác", nil)
 			return
 		}
 	}
 
 	if !sh.IsDir {
-		writeError(w, http.StatusBadRequest, "Äá»‘i tÆ°á»£ng chia sáº» khÃ´ng pháº£i lÃ  thÆ° má»¥c", nil)
+		writeError(w, http.StatusBadRequest, "Đối tượng chia sẻ không phải là thư mục", nil)
 		return
 	}
 
@@ -4523,7 +4530,7 @@ func (s *Server) handlePublicShareBrowseFolder(w http.ResponseWriter, r *http.Re
 
 	items, err := s.db.ListFilesInFolderForShare(sh.FileID, targetFolderID)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Lá»—i náº¡p thÆ° má»¥c: "+err.Error(), err)
+		writeError(w, http.StatusBadRequest, "Lỗi nạp thư mục: "+err.Error(), err)
 		return
 	}
 
@@ -4541,19 +4548,19 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	fileID := r.URL.Query().Get("file_id")
 
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u share token", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu share token", nil)
 		return
 	}
 
 	sh, err := s.db.GetPublicShare(token)
 	if err != nil || sh == nil || !sh.IsActive {
-		writeError(w, http.StatusNotFound, "Link chia sáº» khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ háº¿t háº¡n", nil)
+		writeError(w, http.StatusNotFound, "Link chia sẻ không tồn tại hoặc đã hết hạn", nil)
 		return
 	}
 
 	if sh.HasPassword {
 		if pass == "" || subtle.ConstantTimeCompare([]byte(core.HashSHA256([]byte(pass))), []byte(sh.PasswordHash)) != 1 {
-			writeError(w, http.StatusUnauthorized, "Máº­t kháº©u báº£o vá»‡ khÃ´ng chÃ­nh xÃ¡c", nil)
+			writeError(w, http.StatusUnauthorized, "Mật khẩu bảo vệ không chính xác", nil)
 			return
 		}
 	}
@@ -4565,7 +4572,7 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	if fileID != "" && fileID != sh.FileID {
 		vfile, err := s.db.GetVirtualFile(fileID)
 		if err != nil || vfile.IsDir {
-			writeError(w, http.StatusNotFound, "Tá»‡p tin khÃ´ng tá»“n táº¡i", err)
+			writeError(w, http.StatusNotFound, "Tệp tin không tồn tại", err)
 			return
 		}
 		targetFileID = vfile.ID
@@ -4575,7 +4582,7 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 
 	streamer, err := s.vfs.NewFileStreamer(r.Context(), targetFileID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i náº¡p tá»‡p: "+err.Error(), err)
+		writeError(w, http.StatusInternalServerError, "Lỗi nạp tệp: "+err.Error(), err)
 		return
 	}
 	defer streamer.Close()
@@ -4603,19 +4610,19 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 	fileID := r.URL.Query().Get("file_id")
 
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "Thiáº¿u share token", nil)
+		writeError(w, http.StatusBadRequest, "Thiếu share token", nil)
 		return
 	}
 
 	sh, err := s.db.GetPublicShare(token)
 	if err != nil || sh == nil || !sh.IsActive {
-		writeError(w, http.StatusNotFound, "Link chia sáº» khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ háº¿t háº¡n", nil)
+		writeError(w, http.StatusNotFound, "Link chia sẻ không tồn tại hoặc đã hết hạn", nil)
 		return
 	}
 
 	if sh.HasPassword {
 		if pass == "" || subtle.ConstantTimeCompare([]byte(core.HashSHA256([]byte(pass))), []byte(sh.PasswordHash)) != 1 {
-			writeError(w, http.StatusUnauthorized, "Máº­t kháº©u báº£o vá»‡ khÃ´ng chÃ­nh xÃ¡c", nil)
+			writeError(w, http.StatusUnauthorized, "Mật khẩu bảo vệ không chính xác", nil)
 			return
 		}
 	}
@@ -4626,12 +4633,12 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 	if fileID != "" && fileID != sh.FileID {
 		vfile, err := s.db.GetVirtualFile(fileID)
 		if err != nil || vfile.IsDir {
-			writeError(w, http.StatusNotFound, "Tá»‡p khÃ´ng tá»“n táº¡i", err)
+			writeError(w, http.StatusNotFound, "Tệp không tồn tại", err)
 			return
 		}
 		streamer, err := s.vfs.NewFileStreamer(r.Context(), vfile.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "Lá»—i náº¡p tá»‡p: "+err.Error(), err)
+			writeError(w, http.StatusInternalServerError, "Lỗi nạp tệp: "+err.Error(), err)
 			return
 		}
 		defer streamer.Close()
@@ -4743,19 +4750,19 @@ func (s *Server) handleStorageBreakdown(w http.ResponseWriter, r *http.Request) 
 
 	resp, err := s.db.GetStorageBreakdown(userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ tÃ­nh toÃ¡n cÆ¡ cáº¥u dung lÆ°á»£ng", err)
+		writeError(w, http.StatusInternalServerError, "Không thể tính toán cơ cấu dung lượng", err)
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// validatePasswordStrength kiá»ƒm tra Ä‘á»™ máº¡nh máº­t kháº©u theo chuáº©n Production:
-// - Tá»‘i thiá»ƒu 8 kÃ½ tá»±
-// - Pháº£i cÃ³ Ã­t nháº¥t 1 chá»¯ cÃ¡i (a-z hoáº·c A-Z)
-// - Pháº£i cÃ³ Ã­t nháº¥t 1 chá»¯ sá»‘ (0-9)
+// validatePasswordStrength kiểm tra độ mạnh mật khẩu theo chuẩn Production:
+// - Tối thiểu 8 ký tự
+// - Phải có ít nhất 1 chữ cái (a-z hoặc A-Z)
+// - Phải có ít nhất 1 chữ số (0-9)
 func validatePasswordStrength(password string) error {
 	if len(password) < 8 {
-		return fmt.Errorf("máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 8 kÃ½ tá»± (hiá»‡n táº¡i: %d kÃ½ tá»±)", len(password))
+		return fmt.Errorf("mật khẩu phải có ít nhất 8 ký tự (hiện tại: %d ký tự)", len(password))
 	}
 	hasLetter := false
 	hasDigit := false
@@ -4768,10 +4775,10 @@ func validatePasswordStrength(password string) error {
 		}
 	}
 	if !hasLetter {
-		return fmt.Errorf("máº­t kháº©u pháº£i chá»©a Ã­t nháº¥t 1 chá»¯ cÃ¡i (a-z)")
+		return fmt.Errorf("mật khẩu phải chứa ít nhất 1 chữ cái (a-z)")
 	}
 	if !hasDigit {
-		return fmt.Errorf("máº­t kháº©u pháº£i chá»©a Ã­t nháº¥t 1 chá»¯ sá»‘ (0-9)")
+		return fmt.Errorf("mật khẩu phải chứa ít nhất 1 chữ số (0-9)")
 	}
 	return nil
 }

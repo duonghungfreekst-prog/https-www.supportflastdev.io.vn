@@ -17,7 +17,7 @@ var (
 	tunnelURL string
 )
 
-// handleTunnelStatus tráº£ vá» tráº¡ng thÃ¡i cá»§a Ä‘Æ°á»ng háº§m
+// handleTunnelStatus trả về trạng thái của đường hầm
 func (s *Server) handleTunnelStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"running": true,
@@ -32,12 +32,12 @@ func (s *Server) handleTunnelStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleTunnelStart báº¯t Ä‘áº§u káº¿t ná»‘i SSH tunnel
+// handleTunnelStart bắt đầu kết nối SSH tunnel
 func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
-	// Chá»‰ Admin má»›i cÃ³ quyá»n báº­t Tunnel
+	// Chỉ Admin mới có quyền bật Tunnel
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thiáº¿t láº­p Truy cáº­p tá»« xa", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thiết lập Truy cập từ xa", nil)
 		return
 	}
 
@@ -45,7 +45,7 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 	defer tunnelMu.Unlock()
 
 	if tunnelCmd != nil && tunnelCmd.Process != nil && tunnelCmd.ProcessState == nil {
-		// Äang cháº¡y rá»“i
+		// Đang chạy rồi
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"running": true,
 			"url":     tunnelURL,
@@ -53,28 +53,28 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sá»­ dá»¥ng SSH tÃ­ch há»£p sáºµn trÃªn Windows Ä‘á»ƒ táº¡o Tunnel tá»›i localhost.run
+	// Sử dụng SSH tích hợp sẵn trên Windows để tạo Tunnel tới localhost.run
 	tunnelCmd = exec.Command("ssh", "-o", "StrictHostKeyChecking=no", "-o", "ServerAliveInterval=30", "-R", "80:localhost:8080", "nokey@localhost.run")
 	
 	stdout, err := tunnelCmd.StdoutPipe()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o Ä‘Æ°á»ng á»‘ng (pipe) máº¡ng", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo đường ống (pipe) mạng", err)
 		return
 	}
 	stderr, err := tunnelCmd.StderrPipe()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Lá»—i táº¡o Ä‘Æ°á»ng á»‘ng (pipe) máº¡ng", err)
+		writeError(w, http.StatusInternalServerError, "Lỗi tạo đường ống (pipe) mạng", err)
 		return
 	}
 
 	if err := tunnelCmd.Start(); err != nil {
-		writeError(w, http.StatusInternalServerError, "KhÃ´ng thá»ƒ khá»Ÿi Ä‘á»™ng káº¿t ná»‘i SSH. Há»‡ Ä‘iá»u hÃ nh khÃ´ng há»— trá»£ hoáº·c bá»‹ cháº·n.", err)
+		writeError(w, http.StatusInternalServerError, "Không thể khởi động kết nối SSH. Hệ điều hành không hỗ trợ hoặc bị chặn.", err)
 		return
 	}
 
 	tunnelURL = ""
 	
-	// DÃ¹ng Regex Ä‘á»ƒ quÃ©t link HTTPS sinh ra tá»« mÃ¡y chá»§
+	// Dùng Regex để quét link HTTPS sinh ra từ máy chủ
 	urlRegex := regexp.MustCompile(`https://[a-zA-Z0-9-]+\.lhr\.life`)
 	
 	scanOutput := func(r io.Reader) {
@@ -96,7 +96,7 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 	go scanOutput(stdout)
 	go scanOutput(stderr)
 	
-	// Giáº£i phÃ³ng tiáº¿n trÃ¬nh ngáº§m khi thoÃ¡t
+	// Giải phóng tiến trình ngầm khi thoát
 	go func() {
 		_ = tunnelCmd.Wait()
 		tunnelMu.Lock()
@@ -107,16 +107,16 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"running": true,
-		"message": "Äang káº¿t ná»‘i Ä‘áº¿n Tráº¡m trung chuyá»ƒn. Xin chá» vÃ i giÃ¢y...",
+		"message": "Đang kết nối đến Trạm trung chuyển. Xin chờ vài giây...",
 	})
 }
 
-// handleTunnelStop táº¯t Ä‘Æ°á»ng háº§m
+// handleTunnelStop tắt đường hầm
 func (s *Server) handleTunnelStop(w http.ResponseWriter, r *http.Request) {
-	// Chá»‰ Admin má»›i cÃ³ quyá»n táº¯t
+	// Chỉ Admin mới có quyền tắt
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
-		writeError(w, http.StatusForbidden, "Chá»‰ Quáº£n trá»‹ viÃªn má»›i cÃ³ quyá»n thiáº¿t láº­p Truy cáº­p tá»« xa", nil)
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thiết lập Truy cập từ xa", nil)
 		return
 	}
 

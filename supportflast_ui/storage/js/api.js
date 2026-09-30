@@ -7,8 +7,20 @@ const API = {
 
   getCurrentUser() {
     try {
+      const s = sessionStorage.getItem('cloudpool_current_user');
+      if (s) return JSON.parse(s);
+
       const u = localStorage.getItem('cloudpool_current_user');
-      return u ? JSON.parse(u) : null;
+      if (u) {
+        const parsed = JSON.parse(u);
+        if (parsed && (parsed.role === 'admin' || parsed.username === 'admin')) {
+          localStorage.removeItem('cloudpool_current_user');
+          localStorage.removeItem('cloudpool_jwt_token');
+          return null;
+        }
+        return parsed;
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -16,25 +28,50 @@ const API = {
 
   setCurrentUser(user) {
     if (user) {
-      localStorage.setItem('cloudpool_current_user', JSON.stringify(user));
+      if (user.role === 'admin' || user.username === 'admin') {
+        sessionStorage.setItem('cloudpool_current_user', JSON.stringify(user));
+        localStorage.removeItem('cloudpool_current_user');
+      } else {
+        localStorage.setItem('cloudpool_current_user', JSON.stringify(user));
+      }
     } else {
+      sessionStorage.removeItem('cloudpool_current_user');
       localStorage.removeItem('cloudpool_current_user');
     }
   },
 
   getToken() {
-    return localStorage.getItem('cloudpool_jwt_token') || '';
+    return sessionStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_jwt_token') || '';
   },
 
-  setToken(token) {
+  setToken(token, isAdmin = false) {
     if (token) {
-      localStorage.setItem('cloudpool_jwt_token', token);
+      if (isAdmin) {
+        sessionStorage.setItem('cloudpool_jwt_token', token);
+        localStorage.removeItem('cloudpool_jwt_token');
+      } else {
+        localStorage.setItem('cloudpool_jwt_token', token);
+      }
     } else {
+      sessionStorage.removeItem('cloudpool_jwt_token');
       localStorage.removeItem('cloudpool_jwt_token');
     }
   },
 
   async logout() {
+    const currentToken = this.getToken();
+    try {
+      if (currentToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` },
+          credentials: 'include'
+        }).catch(() => {});
+      } else {
+        await this.request('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      }
+    } catch (_) {}
+
     this.setCurrentUser(null);
     this.setToken(null);
     const keys = [
@@ -59,7 +96,14 @@ const API = {
         }
       });
     } catch (_) {}
-    return this.request('/api/auth/logout', { method: 'POST' }).catch(() => {});
+
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('supportflast_auth_sync');
+        bc.postMessage({ action: 'logout' });
+        bc.close();
+      }
+    } catch (_) {}
   },
 
   async request(endpoint, options = {}) {

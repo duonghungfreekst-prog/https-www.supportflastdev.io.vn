@@ -7,8 +7,8 @@ import (
 	"supportflast_engine/cloudpool/core"
 )
 
-// RekeyDatabase giáº£i mÃ£ toÃ n bá»™ dá»¯ liá»‡u mÃ£ hÃ³a báº±ng khÃ³a cÅ© vÃ  mÃ£ hÃ³a láº¡i báº±ng khÃ³a má»›i.
-// ToÃ n bá»™ quÃ¡ trÃ¬nh Ä‘Æ°á»£c bá»c trong Transaction Ä‘á»ƒ Ä‘áº£m báº£o tÃ­nh nguyÃªn tá»­ (Atomicity).
+// RekeyDatabase giải mã toàn bộ dữ liệu mã hóa bằng khóa cũ và mã hóa lại bằng khóa mới.
+// Toàn bộ quá trình được bọc trong Transaction để đảm bảo tính nguyên tử (Atomicity).
 func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	if oldPassphrase == newPassphrase {
 		return nil
@@ -22,13 +22,13 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		log.Printf("[ENGINE] [ERROR] RekeyDatabase: khÃ´ng thá»ƒ báº¯t Ä‘áº§u transaction: %v", err)
+		log.Printf("[ENGINE] [ERROR] RekeyDatabase: không thể bắt đầu transaction: %v", err)
 		return err
 	}
 	defer tx.Rollback()
 
-	// HÃ m trá»£ giÃºp giáº£i mÃ£ báº±ng khÃ³a cÅ© vÃ  mÃ£ hÃ³a láº¡i báº±ng khÃ³a má»›i
-	// Tuyá»‡t Ä‘á»‘i khÃ´ng nuá»‘t lá»—i Ã¢m tháº§m náº¿u dá»¯ liá»‡u báº¯t Ä‘áº§u báº±ng ENC: nhÆ°ng khÃ´ng giáº£i mÃ£ Ä‘Æ°á»£c
+	// Hàm trợ giúp giải mã bằng khóa cũ và mã hóa lại bằng khóa mới
+	// Tuyệt đối không nuốt lỗi âm thầm nếu dữ liệu bắt đầu bằng ENC: nhưng không giải mã được
 	processField := func(fieldName, recID, val string) (plain string, encrypted string, err error) {
 		if !strings.HasPrefix(val, "ENC:") {
 			return val, val, nil
@@ -38,15 +38,15 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 			return pt, core.EncryptSecret(newKey, pt), nil
 		}
 
-		// Fallback kiá»ƒm tra xem trÆ°á»ng nÃ y Ä‘Ã£ Ä‘Æ°á»£c mÃ£ hÃ³a báº±ng newKey tá»« trÆ°á»›c hay chÆ°a (trÃ¡nh lá»—i náº¿u rekey dá»Ÿ dang trÆ°á»›c Ä‘Ã³)
+		// Fallback kiểm tra xem trường này đã được mã hóa bằng newKey từ trước hay chưa (tránh lỗi nếu rekey dở dang trước đó)
 		ptNew := core.DecryptSecret(newKey, val)
 		if !strings.HasPrefix(ptNew, "ENC:") {
 			return ptNew, val, nil
 		}
 
-		// Cáº£ hai khÃ³a Ä‘á»u khÃ´ng giáº£i mÃ£ Ä‘Æ°á»£c -> Dá»¯ liá»‡u bá»‹ há»ng hoáº·c sai máº­t kháº©u
-		log.Printf("[ENGINE] [WARN] RekeyDatabase: khÃ´ng thá»ƒ giáº£i mÃ£ trÆ°á»ng '%s' cho báº£n ghi ID '%s' (dá»¯ liá»‡u há»ng hoáº·c sai khÃ³a cÅ©)", fieldName, recID)
-		return "", "", fmt.Errorf("rekey tháº¥t báº¡i táº¡i trÆ°á»ng '%s' (ID: %s): khÃ´ng thá»ƒ giáº£i mÃ£ dá»¯ liá»‡u ENC: báº±ng khÃ³a cÅ©", fieldName, recID)
+		// Cả hai khóa đều không giải mã được -> Dữ liệu bị hỏng hoặc sai mật khẩu
+		log.Printf("[ENGINE] [WARN] RekeyDatabase: không thể giải mã trường '%s' cho bản ghi ID '%s' (dữ liệu hỏng hoặc sai khóa cũ)", fieldName, recID)
+		return "", "", fmt.Errorf("rekey thất bại tại trường '%s' (ID: %s): không thể giải mã dữ liệu ENC: bằng khóa cũ", fieldName, recID)
 	}
 
 	// 1. Settings (google_client_id, google_client_secret, master_passphrase)
@@ -89,7 +89,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	// 2. Accounts
 	rows, err := tx.Query("SELECT id, email, name, avatar_url, credentials_json, token_json FROM accounts")
 	if err != nil {
-		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i truy váº¥n accounts: %v", err)
+		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi truy vấn accounts: %v", err)
 		return err
 	}
 	type accRecord struct {
@@ -139,7 +139,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 
 		if _, err := tx.Exec("UPDATE accounts SET email = ?, name = ?, avatar_url = ?, credentials_json = ?, token_json = ?, email_hash = ?, name_hash = ? WHERE id = ?",
 			newEmail, newName, newAvatar, newCreds, newToken, emailHash, nameHash, rec.id); err != nil {
-			log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i cáº­p nháº­t accounts ID '%s': %v", rec.id, err)
+			log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi cập nhật accounts ID '%s': %v", rec.id, err)
 			return err
 		}
 	}
@@ -147,7 +147,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	// 3. Users
 	userRows, err := tx.Query("SELECT id, username, email, display_name, avatar_url FROM users")
 	if err != nil {
-		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i truy váº¥n users: %v", err)
+		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi truy vấn users: %v", err)
 		return err
 	}
 	type userRecord struct {
@@ -192,17 +192,17 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 
 		if _, err := tx.Exec("UPDATE users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?",
 			newUsername, newEmail, newDisplay, newAvatar, usernameHash, emailHash, u.id); err != nil {
-			log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i cáº­p nháº­t users ID '%s': %v", u.id, err)
+			log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi cập nhật users ID '%s': %v", u.id, err)
 			return err
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		log.Printf("[ENGINE] [ERROR] RekeyDatabase: commit transaction tháº¥t báº¡i: %v", err)
+		log.Printf("[ENGINE] [ERROR] RekeyDatabase: commit transaction thất bại: %v", err)
 		return err
 	}
 
-	log.Printf("[ENGINE] RekeyDatabase hoÃ n táº¥t thÃ nh cÃ´ng cho %d accounts vÃ  %d users", len(records), len(urecords))
+	log.Printf("[ENGINE] RekeyDatabase hoàn tất thành công cho %d accounts và %d users", len(records), len(urecords))
 	return nil
 }
 

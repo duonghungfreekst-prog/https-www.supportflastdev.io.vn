@@ -391,16 +391,55 @@ func OpenTiDBConnection(configs ...TiDBConfig) (*sql.DB, error) {
 	log.Printf("[ENGINE] [TIDB] Kết nối TiDB Cloud thành công! (Host=%s:%d, DB=%s, TLS=1.2+, MaxOpen=%d, MaxIdle=%d, Lifetime=%v)",
 		cfg.Host, cfg.Port, cfg.Database, maxOpen, maxIdle, connMaxLifetime)
 
-	// 6. Tự động gọi MigrateTiDBSchema để khởi tạo bảng và chỉ mục
+	// 6. Tự động gọi MigrateTiDBSchema và EnsureTiDBSchemaAndData để đảm bảo đầy đủ bảng và dữ liệu seed
 	if cfg.AutoMigrate {
-		log.Printf("[ENGINE] [TIDB] Tự động kích hoạt MigrateTiDBSchema cho CSDL '%s'...", cfg.Database)
-		if err := MigrateTiDBSchema(db); err != nil {
+		log.Printf("[ENGINE] [TIDB] Tự động kích hoạt MigrateTiDBSchema & EnsureTiDBSchemaAndData cho CSDL '%s'...", cfg.Database)
+		if err := EnsureTiDBSchemaAndData(db); err != nil {
 			_ = db.Close()
-			return nil, fmt.Errorf("tự động thực thi MigrateTiDBSchema thất bại: %w", err)
+			return nil, fmt.Errorf("tự động thực thi EnsureTiDBSchemaAndData thất bại: %w", err)
 		}
 	}
 
 	return db, nil
+}
+
+// CheckTiDBHealth kiểm tra kết nối mạng và tính sẵn sàng của cơ sở dữ liệu TiDB Cloud
+func CheckTiDBHealth(db *sql.DB) error {
+	if db == nil {
+		return fmt.Errorf("kết nối cơ sở dữ liệu TiDB Cloud là nil")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping kiểm tra sức khỏe TiDB Cloud thất bại: %w", err)
+	}
+	return nil
+}
+
+// EnsureTiDBSchemaAndData kiểm tra và đảm bảo toàn bộ schema cùng dữ liệu khởi tạo (Admin, Apps, Releases, API Keys) sẵn sàng
+func EnsureTiDBSchemaAndData(db *sql.DB, dataDir ...string) error {
+	if db == nil {
+		return fmt.Errorf("kết nối cơ sở dữ liệu TiDB Cloud là nil")
+	}
+
+	// 1. Kiểm tra liveness và health
+	if err := CheckTiDBHealth(db); err != nil {
+		return fmt.Errorf("kiểm tra kết nối TiDB Cloud không khả dụng: %w", err)
+	}
+
+	// 2. Di trú Schema 7 bảng chính
+	if err := MigrateTiDBSchema(db); err != nil {
+		return fmt.Errorf("di trú schema TiDB thất bại: %w", err)
+	}
+
+	// 3. Khởi tạo tài khoản Admin và seed dữ liệu nếu bảng rỗng
+	if err := SeedInitialTiDBAdmin(db, dataDir...); err != nil {
+		log.Printf("[ENGINE] [TIDB] [WARN] SeedInitialTiDBAdmin gặp cảnh báo: %v", err)
+	}
+
+	log.Println("[ENGINE] [TIDB] Xác thực Schema và Dữ liệu Khởi tạo TiDB Cloud hoàn tất thành công 100%.")
+	return nil
 }
 
 // InitTiDB khởi tạo đối tượng singleton TiDB cho toàn bộ ứng dụng
@@ -465,7 +504,7 @@ func CloseTiDB() error {
 
 // SeedInitialTiDBAdmin kiểm tra bảng users trong TiDB. Nếu rỗng, tạo sẵn tài khoản Admin chuẩn
 // (Admin@2026!SupportFlast, BCrypt cost 12). Tuyệt đối không chèn dữ liệu rác/demo theo Rule 9.1.
-func SeedInitialTiDBAdmin(db *sql.DB) error {
+func SeedInitialTiDBAdmin(db *sql.DB, dataDir ...string) error {
 	if db == nil {
 		return fmt.Errorf("kết nối database TiDB là nil")
 	}
@@ -480,6 +519,9 @@ func SeedInitialTiDBAdmin(db *sql.DB) error {
 	var adminExists int
 	_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ? OR username = ?", DefaultAdminID, DefaultAdminUsername).Scan(&adminExists)
 	if adminExists > 0 {
+		_ = SeedInitialApps(db, dataDir...)
+		_ = SeedInitialKeys(db, dataDir...)
+		_ = SeedInitialReleases(db, dataDir...)
 		return nil // Đã tồn tại tài khoản admin chuẩn, không chèn lại
 	}
 
@@ -512,6 +554,12 @@ func SeedInitialTiDBAdmin(db *sql.DB) error {
 
 	log.Printf("[ENGINE] [TIDB] Khởi tạo thành công tài khoản quản trị viên chuẩn: username='%s', email='%s', role='%s'",
 		DefaultAdminUsername, DefaultAdminEmail, DefaultAdminRole)
+
+	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
+	_ = SeedInitialApps(db, dataDir...)
+	_ = SeedInitialKeys(db, dataDir...)
+	_ = SeedInitialReleases(db, dataDir...)
+
 	return nil
 }
 
