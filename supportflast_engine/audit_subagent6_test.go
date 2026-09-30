@@ -15,7 +15,6 @@ import (
 	"supportflast_engine/database"
 
 	_ "github.com/go-sql-driver/mysql"
-	_ "modernc.org/sqlite"
 )
 
 func maskStr(s string) string {

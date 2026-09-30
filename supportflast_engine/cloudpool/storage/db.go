@@ -22,11 +22,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
-	_ "modernc.org/sqlite"
 )
-
-// DefaultDBPath đường dẫn mặc định của cơ sở dữ liệu metadata kho lưu trữ
-const DefaultDBPath = `f:\supportflast.dev\data\cloudpool_metadata.db`
 
 // Cấu hình Google OAuth 2.0 Client ID & Secret mặc định chính thức
 var (
@@ -42,45 +38,7 @@ func decodeOAuthDefault(data []byte, key byte) string {
 	return string(res)
 }
 
-// ResolveDBPath xác định đường dẫn file cơ sở dữ liệu metadata SQLite linh hoạt đồng bộ với Go Engine
-// Ưu tiên:
-// 1. Tham số customPath (nếu được truyền vào)
-// 2. Biến môi trường CLOUDPOOL_DB_PATH hoặc DB_PATH
-// 3. Biến môi trường DATA_DIR (filepath.Join(DATA_DIR, "cloudpool_metadata.db"))
-// 4. Các thư mục ứng viên: "../data/cloudpool_metadata.db", "data/cloudpool_metadata.db", "f:\supportflast.dev\data\cloudpool_metadata.db"
-func ResolveDBPath(customPath ...string) string {
-	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
-		return customPath[0]
-	}
-
-	if envDBPath := strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_PATH")); envDBPath != "" {
-		return envDBPath
-	}
-	if envDBPath := strings.TrimSpace(os.Getenv("DB_PATH")); envDBPath != "" {
-		return envDBPath
-	}
-
-	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
-		return filepath.Join(envDataDir, "cloudpool_metadata.db")
-	}
-
-	candidates := []string{
-		filepath.Join("..", "data", "cloudpool_metadata.db"),
-		filepath.Join("data", "cloudpool_metadata.db"),
-		DefaultDBPath,
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	// Mặc định tạo tại ../data hoặc data đồng bộ với Go Engine
-	if info, err := os.Stat(".."); err == nil && info.IsDir() {
-		return filepath.Join("..", "data", "cloudpool_metadata.db")
-	}
-	return filepath.Join("data", "cloudpool_metadata.db")
-}
+// ResolveDBPath đã bị loại bỏ vì không còn hỗ trợ SQLite
 
 type DB struct {
 	db      *sql.DB
@@ -91,23 +49,17 @@ type DB struct {
 	cache   *cache.LRUCache
 }
 
-// Driver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql")
+// Driver trả về loại cơ sở dữ liệu hiện hành ("tidb", "mysql")
 func (s *DB) Driver() string {
 	if s.driver == "" {
-		return "sqlite"
+		return "tidb"
 	}
 	return s.driver
 }
 
 // IsMySQLOrTiDB kiểm tra xem kết nối hiện tại có phải là TiDB hoặc MySQL hay không
 func (s *DB) IsMySQLOrTiDB() bool {
-	drv := s.Driver()
-	return drv == "tidb" || drv == "mysql"
-}
-
-// IsSQLite kiểm tra xem kết nối hiện tại có phải là SQLite hay không
-func (s *DB) IsSQLite() bool {
-	return !s.IsMySQLOrTiDB()
+	return true
 }
 
 // SQLDB trả về con trỏ *sql.DB bên dưới để sử dụng trực tiếp nếu cần
@@ -116,46 +68,14 @@ func (s *DB) SQLDB() *sql.DB {
 }
 
 // NewDB khởi tạo đối tượng DB cho CloudPool.
-// Để đảm bảo tương thích ngược 100%:
-// - Nếu dbPath được truyền vào cụ thể, hàm sẽ mở cơ sở dữ liệu SQLite theo đường dẫn đó.
-// - Nếu dbPath rỗng, hàm sẽ kiểm tra các biến môi trường CLOUDPOOL_DB_DRIVER hoặc DB_DRIVER.
-//   Nếu được chỉ định là "tidb" hoặc "mysql", tự động kết nối tới TiDB Cloud.
-//   Ngược lại, mặc định mở SQLite tại ResolveDBPath().
+// Hệ thống hiện chỉ hỗ trợ TiDB Cloud / MySQL.
 func NewDB(dbPath string) (*DB, error) {
-	if strings.TrimSpace(dbPath) == "" {
-		envDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
-		if envDriver == "" {
-			envDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-		}
-		if envDriver == "tidb" || envDriver == "mysql" {
-			return NewDBWithConfig(envDriver, "", "")
-		}
-	}
-	return NewDBWithConfig("sqlite", "", dbPath)
+	return NewDBWithConfig("tidb", "", "")
 }
 
-// NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu đa nền tảng (hỗ trợ cả SQLite và MySQL/TiDB Cloud)
-// - driver: "sqlite", "tidb", "mysql" (nếu để trống, tự động nhận diện từ CLOUDPOOL_DB_DRIVER hoặc DB_DRIVER)
-// - dsn: Chuỗi kết nối DSN (sử dụng khi kết nối TiDB/MySQL; nếu để trống sẽ tự động lấy từ ENV hoặc TiDBConfig)
-// - dbPath: Đường dẫn file CSDL (sử dụng khi driver là "sqlite"; nếu để trống sẽ phân giải qua ResolveDBPath)
+// NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu (chỉ TiDB Cloud / MySQL)
 func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
-	normDriver := strings.ToLower(strings.TrimSpace(driver))
-	if normDriver == "" {
-		normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
-		if normDriver == "" {
-			normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-		}
-		if normDriver == "" {
-			normDriver = "sqlite"
-		}
-	}
-
-	switch normDriver {
-	case "tidb", "mysql":
-		return openTiDBConnection(normDriver, dsn)
-	default:
-		return openSQLiteConnection(dbPath)
-	}
+	return openTiDBConnection("tidb", dsn)
 }
 
 // NewTiDB khởi tạo đối tượng CloudPool DB kết nối trực tiếp tới TiDB Cloud qua cấu hình TiDBConfig
@@ -166,79 +86,6 @@ func NewTiDB(cfg database.TiDBConfig) (*DB, error) {
 // NewTiDBFromDSN khởi tạo đối tượng CloudPool DB từ chuỗi DSN TiDB/MySQL
 func NewTiDBFromDSN(dsn string) (*DB, error) {
 	return openTiDBConnection("tidb", dsn)
-}
-
-func openSQLiteConnection(dbPath string) (*DB, error) {
-	if strings.TrimSpace(dbPath) == "" {
-		dbPath = ResolveDBPath()
-	}
-
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create data dir: %w", err)
-	}
-
-	cleanPath := filepath.ToSlash(dbPath)
-	// DSN cấu hình busy_timeout(5000), foreign_keys và synchronous mà không ép cứng journal_mode trong DSN
-	// để cho phép hàm ConfigureJournalModeWithFallback thương lượng chế độ phù hợp với filesystem
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)&_pragma=synchronous(NORMAL)", cleanPath)
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
-	}
-
-	if err := db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("ping failed on cloudpool sqlite database: %w", err)
-	}
-
-	// Kích hoạt journal mode với cơ chế fallback tự động cho Shared Hosting / Network Volumes (NFS, GlusterFS, CIFS)
-	activeMode, err := ConfigureJournalModeWithFallback(db)
-	if err != nil {
-		log.Printf("[CLOUDPOOL] [WARN] Cảnh báo cấu hình journal_mode: %v", err)
-	}
-
-	// Cấu hình Connection Pool tối ưu theo chế độ journal (Rule PHAN 7.1):
-	// - WAL mode: cho phép đa kết nối đọc đồng thời (MaxOpenConns=25)
-	// - TRUNCATE / DELETE mode (Shared Hosting / Network Volumes): SQLite cần MaxOpenConns=1
-	//   để tuần tự hóa các thao tác ghi qua pool, loại trừ triệt để lỗi locking (SQLITE_BUSY)
-	if activeMode == "wal" {
-		db.SetMaxOpenConns(25)
-		db.SetMaxIdleConns(10)
-	} else {
-		db.SetMaxOpenConns(1)
-		db.SetMaxIdleConns(1)
-		log.Printf("[CLOUDPOOL] Tự động cấu hình MaxOpenConns=1 cho chế độ %s để ngăn ngừa xung đột khóa kết nối", strings.ToUpper(activeMode))
-	}
-	db.SetConnMaxLifetime(30 * time.Minute)
-
-	var foreignKeys int
-	_ = db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys)
-	log.Printf("[ENGINE] [DATABASE] CloudPool SQLite initialized at '%s' (journal_mode=%s, foreign_keys=%d)", dbPath, strings.ToUpper(activeMode), foreignKeys)
-
-	s := &DB{
-		db:     db,
-		path:   dbPath,
-		driver: "sqlite",
-		cache:  cache.NewLRUCache(cache.MaxEntriesLimit, cache.DefaultCleanupInterval),
-	}
-	if err := s.migrate(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to migrate database: %w", err)
-	}
-
-	// Tự động kiểm tra và đồng bộ lại tài liệu từ snapshot nếu SQLite là database chính (cloudpool_metadata.db)
-	isMainDB := filepath.Base(dbPath) == "cloudpool_metadata.db" || dbPath == ResolveDBPath()
-	forceSync := strings.TrimSpace(os.Getenv("FORCE_AUTO_SYNC")) == "1"
-	skipSync := strings.TrimSpace(os.Getenv("SKIP_AUTO_SYNC")) == "1"
-
-	if (isMainDB || forceSync) && !skipSync {
-		if err := s.AutoSyncFromSnapshotIfEmpty(); err != nil {
-			log.Printf("[ENGINE] [STORAGE] [WARN] Cảnh báo tự động đồng bộ SQLite từ snapshot: %v", err)
-		}
-	}
-
-	return s, nil
 }
 
 func openTiDBConnection(driverName, dsn string) (*DB, error) {
@@ -368,91 +215,13 @@ func openTiDBWithConfig(cfg database.TiDBConfig, rawDSN ...string) (*DB, error) 
 	return s, nil
 }
 
-// ConfigureJournalModeWithFallback thiết lập chế độ journal cho CloudPool SQLite với cơ chế chịu lỗi cao.
-// Cố gắng kích hoạt 'PRAGMA journal_mode = WAL;'. Nếu gặp lỗi khóa (POSIX lock / shared memory)
-// trên các môi trường hosting đặc thù (NFS, GlusterFS, CIFS, Shared Hosting), tự động fallback
-// an toàn sang 'TRUNCATE' hoặc 'DELETE' kết hợp 'PRAGMA busy_timeout = 5000;' để ứng dụng không bao giờ bị crash.
-func ConfigureJournalModeWithFallback(db *sql.DB) (string, error) {
-	if db == nil {
-		return "", fmt.Errorf("database connection is nil")
-	}
-
-	// 1. Luôn cấu hình busy_timeout = 5000ms trước tiên
-	if _, err := db.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
-		log.Printf("[CLOUDPOOL] [WARN] Cấu hình PRAGMA busy_timeout=5000 thất bại: %v", err)
-	}
-
-	// 2. Thử kích hoạt WAL mode (Write-Ahead Logging)
-	var activeMode string
-	walErr := db.QueryRow("PRAGMA journal_mode = WAL;").Scan(&activeMode)
-	activeMode = strings.ToLower(strings.TrimSpace(activeMode))
-
-	if walErr == nil && activeMode == "wal" {
-		log.Printf("[CLOUDPOOL] SQLite kích hoạt thành công chế độ journal_mode = WAL")
-		applyStoragePragmas(db)
-		return "wal", nil
-	}
-
-	// Gặp lỗi locking hoặc filesystem không hỗ trợ shared memory (-shm POSIX lock)
-	log.Printf("[CLOUDPOOL] [WARN] SQLite không thể kích hoạt WAL mode (err=%v, active_mode=%s). Phát hiện môi trường Shared Hosting/Network Volume (NFS, GlusterFS, CIFS). Bắt đầu fallback an toàn...", walErr, activeMode)
-
-	// 3. Fallback 1: Thử PRAGMA journal_mode = TRUNCATE
-	// TRUNCATE giữ lại file journal và chỉ set độ dài về 0, tối ưu cho network storage do giảm thao tác xóa/tạo file metadata
-	var truncateMode string
-	truncateErr := db.QueryRow("PRAGMA journal_mode = TRUNCATE;").Scan(&truncateMode)
-	truncateMode = strings.ToLower(strings.TrimSpace(truncateMode))
-
-	if truncateErr == nil && (truncateMode == "truncate" || truncateMode == "delete") {
-		log.Printf("[CLOUDPOOL] SQLite đã fallback an toàn sang journal_mode = TRUNCATE (chế độ thực tế: %s)", truncateMode)
-		applyStoragePragmas(db)
-		return truncateMode, nil
-	}
-
-	log.Printf("[CLOUDPOOL] [WARN] Chế độ TRUNCATE thất bại (err=%v, mode=%s), tiếp tục fallback sang DELETE...", truncateErr, truncateMode)
-
-	// 4. Fallback 2: Thử PRAGMA journal_mode = DELETE (Rollback journal truyền thống, tương thích 100% mọi filesystem)
-	var deleteMode string
-	deleteErr := db.QueryRow("PRAGMA journal_mode = DELETE;").Scan(&deleteMode)
-	deleteMode = strings.ToLower(strings.TrimSpace(deleteMode))
-
-	if deleteErr == nil && deleteMode != "" {
-		log.Printf("[CLOUDPOOL] SQLite đã fallback an toàn sang journal_mode = DELETE (chế độ thực tế: %s)", deleteMode)
-		applyStoragePragmas(db)
-		return deleteMode, nil
-	}
-
-	// Đảm bảo các pragma an toàn vẫn được thực thi
-	applyStoragePragmas(db)
-	return activeMode, fmt.Errorf("không thể thiết lập journal mode an toàn: wal_err=%v, truncate_err=%v, delete_err=%v", walErr, truncateErr, deleteErr)
-}
-
-// applyStoragePragmas cấu hình các tham số bảo vệ concurrency và toàn vẹn dữ liệu cho CloudPool
-func applyStoragePragmas(db *sql.DB) {
-	pragmas := []string{
-		"PRAGMA busy_timeout = 5000;",
-		"PRAGMA foreign_keys = ON;",
-		"PRAGMA synchronous = NORMAL;",
-		"PRAGMA cache_size = -2000;", // Giới hạn cache DB tối đa 2MB RAM (chống phình RAM trên Shared Hosting)
-		"PRAGMA temp_store = MEMORY;",
-	}
-	for _, p := range pragmas {
-		if _, err := db.Exec(p); err != nil {
-			log.Printf("[CLOUDPOOL] [WARN] Thực thi pragma '%s' cảnh báo: %v", p, err)
-		}
-	}
-}
+// Các hàm SQLite PRAGMA đã được loại bỏ
 
 func (s *DB) Path() string {
 	return s.path
 }
 
-func (s *DB) Checkpoint() error {
-	if s.db != nil && !s.IsMySQLOrTiDB() {
-		_, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
-		return err
-	}
-	return nil
-}
+// Checkpoint đã được loại bỏ do không dùng SQLite
 
 func (s *DB) Close() error {
 	s.cacheMu.Lock()
@@ -4403,112 +4172,8 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	return insertedAccounts, insertedFiles, insertedChunks, nil
 }
 
-// SyncToLocalSQLiteCacheIfMissing tự động tạo và đồng bộ bản sao lưu SQLite cục bộ từ TiDB Cloud
+// SyncToLocalSQLiteCacheIfMissing đã bị loại bỏ vì không còn hỗ trợ SQLite
 func (s *DB) SyncToLocalSQLiteCacheIfMissing() error {
-	if !s.IsMySQLOrTiDB() {
-		return nil
-	}
-
-	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
-	if dataDir == "" {
-		dataDir = "data"
-	}
-	sqlitePath := filepath.Join(dataDir, "cloudpool_metadata.db")
-
-	if fi, err := os.Stat(sqlitePath); err == nil && fi.Size() > 50*1024 {
-		return nil // File SQLite đã tồn tại và có dữ liệu (>50KB)
-	}
-
-	log.Printf("[ENGINE] [TIDB] [STORAGE] Bắt đầu tự động tạo và đồng bộ bản sao lưu SQLite cục bộ tại '%s'...", sqlitePath)
-	dir := filepath.Dir(sqlitePath)
-	_ = os.MkdirAll(dir, 0755)
-
-	localDB, err := openSQLiteConnection(sqlitePath)
-	if err != nil {
-		return fmt.Errorf("không thể mở SQLite cache cục bộ: %w", err)
-	}
-	defer localDB.Close()
-
-	// Sao chép Settings từ TiDB sang SQLite
-	sRows, err := s.db.Query("SELECT `key`, `value` FROM settings")
-	if err == nil {
-		for sRows.Next() {
-			var k, v string
-			if sRows.Scan(&k, &v) == nil {
-				_, _ = localDB.SQLDB().Exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", k, v)
-			}
-		}
-		sRows.Close()
-	}
-
-	// Sao chép Users từ TiDB sang SQLite
-	uRows, err := s.db.Query("SELECT id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at FROM users")
-	if err == nil {
-		for uRows.Next() {
-			var id, un, unh, em, emh, ph, pin, disp, av, r, st, cr, up string
-			var tier int
-			var q, u int64
-			if uRows.Scan(&id, &un, &unh, &em, &emh, &ph, &pin, &tier, &disp, &av, &r, &st, &q, &u, &cr, &up) == nil {
-				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					id, un, unh, em, emh, ph, pin, tier, disp, av, r, st, q, u, cr, up)
-			}
-		}
-		uRows.Close()
-	}
-
-	// Sao chép Accounts từ TiDB sang SQLite
-	aRows, err := s.db.Query("SELECT id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at FROM accounts")
-	var syncAccCount int
-	if err == nil {
-		for aRows.Next() {
-			var id, em, emh, nm, nmh, av, at, cred, tok, rf, st, le, cr, up string
-			var tq, uq, fq int64
-			if aRows.Scan(&id, &em, &emh, &nm, &nmh, &av, &at, &cred, &tok, &rf, &tq, &uq, &fq, &st, &le, &cr, &up) == nil {
-				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					id, em, emh, nm, nmh, av, at, cred, tok, rf, tq, uq, fq, st, le, cr, up)
-				syncAccCount++
-			}
-		}
-		aRows.Close()
-	}
-
-	// Sao chép VirtualFiles từ TiDB sang SQLite
-	fRows, err := s.db.Query("SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at FROM virtual_files")
-	var syncFileCount int
-	if err == nil {
-		for fRows.Next() {
-			var id, uid, pid, nm, pt, mime, cr, up string
-			var sha, delAt sql.NullString
-			var isDir, cc, isEnc, miss, del int
-			var sz int64
-			if fRows.Scan(&id, &uid, &pid, &nm, &pt, &isDir, &sz, &mime, &sha, &cc, &isEnc, &miss, &del, &delAt, &cr, &up) == nil {
-				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					id, uid, pid, nm, pt, isDir, sz, mime, sha.String, cc, isEnc, miss, del, delAt.String, cr, up)
-				syncFileCount++
-			}
-		}
-		fRows.Close()
-	}
-
-	// Sao chép FileChunks từ TiDB sang SQLite
-	cRows, err := s.db.Query("SELECT chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count FROM file_chunks")
-	var syncChunkCount int
-	if err == nil {
-		for cRows.Next() {
-			var cid, fid, aid, gid, sha, st string
-			var idx, rc int
-			var csz, esz int64
-			if cRows.Scan(&cid, &fid, &idx, &aid, &gid, &csz, &esz, &sha, &st, &rc) == nil {
-				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					cid, fid, idx, aid, gid, csz, esz, sha, st, rc)
-				syncChunkCount++
-			}
-		}
-		cRows.Close()
-	}
-
-	log.Printf("[ENGINE] [TIDB] [STORAGE] Hoàn tất đồng bộ bản sao lưu SQLite cục bộ: %d tài khoản, %d tệp tin VFS, %d chunk.",
-		syncAccCount, syncFileCount, syncChunkCount)
 	return nil
 }
 

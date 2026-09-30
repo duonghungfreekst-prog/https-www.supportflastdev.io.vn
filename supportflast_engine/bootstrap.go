@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"database/sql"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -193,106 +192,33 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	}
 	log.Printf("[BOOTSTRAP] [RSA] Cặp khóa RSA 2048-bit sẵn sàng tại: '%s'", keysDir)
 
-	// 5. Tự động khởi tạo CSDL (TiDB Cloud hoặc SQLite) & seed tài khoản Admin
-	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if driver == "" {
-		if os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn") {
-			driver = "tidb"
-		} else {
-			driver = "sqlite"
-		}
-	}
-	dbPath := filepath.Join(dataDir, "supportflast.db")
-	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")
-	res.MainDBPath = dbPath
-
-	// Cơ chế tự động nhận diện thông minh: Nếu cấu hình là SQLite nhưng file SQLite bị xóa trên đĩa,
-	// kiểm tra xem TiDB Cloud có sẵn sàng không để tự động bảo vệ dữ liệu người dùng
-	if driver == "sqlite" {
-		_, statMain := os.Stat(dbPath)
-		_, statStorage := os.Stat(storageDBPath)
-		if os.IsNotExist(statMain) || os.IsNotExist(statStorage) {
-			log.Println("[BOOTSTRAP] [DATABASE] Phát hiện tệp tin SQLite bị xóa hoặc chưa tồn tại. Đang kiểm tra tính sẵn sàng của TiDB Cloud...")
-			tidbCfg := database.DefaultTiDBConfig()
-			if testDB, testErr := database.OpenTiDBConnection(tidbCfg); testErr == nil {
-				_ = testDB.Close()
-				log.Println("[BOOTSTRAP] [DATABASE] TiDB Cloud đang hoạt động sẵn sàng! Tự động kích hoạt kết nối TiDB Cloud để bảo tồn 100% dữ liệu.")
-				driver = "tidb"
-			} else {
-				log.Printf("[BOOTSTRAP] [DATABASE] [INFO] TiDB Cloud không khả dụng (%v). Tiếp tục chế độ SQLite và tự động phục hồi từ bản sao lưu snapshot.", testErr)
-			}
-		}
-	}
-
-	var db *sql.DB
-	var err error
-
-	if driver == "tidb" || driver == "mysql" {
-		log.Printf("[BOOTSTRAP] [DATABASE] Đang khởi tạo CSDL TiDB Cloud (%s:%s)...", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"))
-		db, err = database.InitDB()
-		if err != nil {
-			log.Printf("[BOOTSTRAP] [DATABASE] [WARN] Kết nối TiDB Cloud thất bại: %v. Tự động fallback sang SQLite...", err)
-			db, err = database.InitSQLite(dbPath)
-		} else {
-			log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu TiDB Cloud Serverless đã kết nối và sẵn sàng!")
-		}
-	} else {
-		if _, errStat := os.Stat(dbPath); os.IsNotExist(errStat) {
-			log.Printf("[BOOTSTRAP] [DATABASE] Chưa có CSDL '%s'. Đang tự động khởi tạo bảng và chỉ mục...", dbPath)
-		}
-		db, err = database.InitSQLite(dbPath)
-	}
+	// 5. Tự động khởi tạo CSDL TiDB Cloud & seed tài khoản Admin
+	log.Printf("[BOOTSTRAP] [DATABASE] Đang khởi tạo CSDL TiDB Cloud (%s:%s)...", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"))
+	db, err := database.InitDB()
 	if err != nil {
-		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu thất bại: %w", err)
+		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu TiDB Cloud thất bại: %w", err)
 	}
+	log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu TiDB Cloud Serverless đã kết nối và sẵn sàng!")
+	res.MainDBPath = fmt.Sprintf("tidb://%s:%s/%s", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"), os.Getenv("TIDB_DATABASE"))
 
 	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
 	_ = database.SeedInitialApps(db, dataDir)
 	_ = database.SeedInitialKeys(db, dataDir)
 	_ = database.SeedInitialReleases(db, dataDir)
 
-	// 6. Tự động khởi tạo CSDL CloudPool (TiDB Cloud Serverless hoặc SQLite)
+	// 6. Tự động khởi tạo CSDL CloudPool Storage kết nối TiDB Cloud
 	var storageDB *cloudpoolStorage.DB
-	cloudpoolDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
-	if cloudpoolDriver == "" {
-		cloudpoolDriver = driver
+	tidbCfg := database.DefaultTiDBConfig()
+	log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage kết nối trực tiếp TiDB Cloud (%s:%d/%s)...",
+		tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
+
+	storageDB, err = cloudpoolStorage.NewTiDB(tidbCfg)
+	if err != nil {
+		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool trên TiDB Cloud thất bại: %w", err)
 	}
-
-	if cloudpoolDriver == "tidb" || cloudpoolDriver == "mysql" {
-		tidbCfg := database.DefaultTiDBConfig()
-		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage kết nối trực tiếp TiDB Cloud (%s:%d/%s)...",
-			tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
-
-		var tidbErr error
-		storageDB, tidbErr = cloudpoolStorage.NewTiDB(tidbCfg)
-		if tidbErr != nil {
-			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Kết nối TiDB Cloud cho CloudPool thất bại: %v. Tự động fallback an toàn sang SQLite...", tidbErr)
-			if _, errStat := os.Stat(storageDBPath); os.IsNotExist(errStat) {
-				log.Printf("[BOOTSTRAP] [STORAGE] Chưa có CSDL CloudPool '%s'. Đang tự động khởi tạo schema...", storageDBPath)
-			}
-			storageDB, err = cloudpoolStorage.NewDB(storageDBPath)
-			if err != nil {
-				return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool fallback SQLite thất bại: %w", err)
-			}
-			res.CloudPoolDBPath = storageDBPath
-			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Metadata (Fallback SQLite) đã khởi tạo tại '%s'", storageDBPath)
-		} else {
-			cloudpoolURL := fmt.Sprintf("tidb://%s:%d/%s", tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
-			res.CloudPoolDBPath = cloudpoolURL
-			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối và migrate toàn diện trên TiDB Cloud Serverless (%s)!", cloudpoolURL)
-		}
-	} else {
-		res.CloudPoolDBPath = storageDBPath
-		if _, errStat := os.Stat(storageDBPath); os.IsNotExist(errStat) {
-			log.Printf("[BOOTSTRAP] [STORAGE] Chưa có CSDL CloudPool '%s'. Đang tự động khởi tạo schema...", storageDBPath)
-		}
-
-		storageDB, err = cloudpoolStorage.NewDB(storageDBPath)
-		if err != nil {
-			return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool 'cloudpool_metadata.db' thất bại: %w", err)
-		}
-		log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Metadata đã khởi tạo và migrate thành công tại '%s'", storageDBPath)
-	}
+	cloudpoolURL := fmt.Sprintf("tidb://%s:%d/%s", tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
+	res.CloudPoolDBPath = cloudpoolURL
+	log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối và migrate toàn diện trên TiDB Cloud Serverless (%s)!", cloudpoolURL)
 
 	res.StorageDB = storageDB
 

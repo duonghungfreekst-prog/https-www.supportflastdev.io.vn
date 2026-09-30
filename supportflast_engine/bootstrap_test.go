@@ -14,7 +14,6 @@ import (
 	"supportflast_engine/security"
 
 	"golang.org/x/crypto/bcrypt"
-	_ "modernc.org/sqlite"
 )
 
 func createTestSandbox(t *testing.T) (string, func()) {

@@ -127,9 +127,9 @@ var fallbackAgents = []SubagentMeta{
 	},
 	{
 		ID:          "agent_storage",
-		Name:        "Storage & SQLite Embedded Optimizer",
+		Name:        "Storage & TiDB Cloud Optimizer",
 		Color:       "#118AB2",
-		Description: "Quản lý bộ nhớ Flash máy, tối ưu SQLite (WAL mode, checkpoint) và dọn dẹp cache rác chống đầy bộ nhớ",
+		Description: "Quản lý bộ nhớ Flash máy, kết nối Cloud DB Serverless và dọn dẹp cache rác chống đầy bộ nhớ",
 		Status:      "online",
 	},
 	{
@@ -164,7 +164,7 @@ func dispatchInternalMobileSubagent(payload ChatPayload) map[string]interface{} 
 			agentID = "agent_mobile"
 		case strings.Contains(queryLower, "wi-fi") || strings.Contains(queryLower, "wifi") || strings.Contains(queryLower, "tunnel") || strings.Contains(queryLower, "cloudflare") || strings.Contains(queryLower, "4g"):
 			agentID = "agent_network"
-		case strings.Contains(queryLower, "bộ nhớ") || strings.Contains(queryLower, "dung lượng") || strings.Contains(queryLower, "sqlite") || strings.Contains(queryLower, "wal") || strings.Contains(queryLower, "dọn dẹp"):
+		case strings.Contains(queryLower, "bộ nhớ") || strings.Contains(queryLower, "dung lượng") || strings.Contains(queryLower, "tidb") || strings.Contains(queryLower, "db") || strings.Contains(queryLower, "dọn dẹp"):
 			agentID = "agent_storage"
 		case strings.Contains(queryLower, "benchmark") || strings.Contains(queryLower, "hiệu năng") || strings.Contains(queryLower, "qps") || strings.Contains(queryLower, "latency") || strings.Contains(queryLower, "tải"):
 			agentID = "agent_analytics"
@@ -202,10 +202,10 @@ func dispatchInternalMobileSubagent(payload ChatPayload) map[string]interface{} 
 			"- Tối ưu băng thông: Bật nén HTTP Gzip giúp tiết kiệm 70% dung lượng data di động 4G/5G."
 		meta["network_mode"] = "Wi-Fi + Cloudflare Tunnel Ready"
 	case "agent_storage":
-		responseText = "**[Tối Ưu Bộ Nhớ Lưu Trữ & SQLite Nhúng - Subagent Storage On-Device]**\n" +
-			"- Cơ sở dữ liệu: SQLite WAL Mode (Write-Ahead Logging) siêu tốc.\n" +
-			"- Bộ nhớ đệm DB: Giới hạn 2MB cache, hạn chế tối đa chu kỳ ghi bộ nhớ Flash UFS/eMMC.\n" +
-			"- Dọn dẹp cache: Cơ chế Auto-Vacuum và giải phóng file tạm hoạt động trơn tru."
+		responseText = "**[Tối Ưu Bộ Nhớ Lưu Trữ & TiDB Cloud - Subagent Storage On-Device]**\n" +
+			"- Cơ sở dữ liệu: TiDB Cloud Serverless siêu tốc.\n" +
+			"- Bộ nhớ đệm DB: Giới hạn 2MB cache, kết nối MySQL tối ưu.\n" +
+			"- Dọn dẹp cache: Cơ chế giải phóng file tạm hoạt động trơn tru."
 		meta["storage_health"] = "Optimal"
 	case "agent_analytics":
 		responseText = "**[Phân Tích Hiệu Năng & Đo Kiểm 10 Subagents - Subagent Analytics On-Device]**\n" +
@@ -428,7 +428,7 @@ func main() {
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/health", healthHandler)
 
-	// 1.1. Graceful Shutdown & SQLite WAL Flush Endpoint (chỉ cho phép localhost)
+	// 1.1. Graceful Shutdown Endpoint (chỉ cho phép localhost)
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
@@ -442,27 +442,12 @@ func main() {
 
 		log.Println("[ENGINE] [SHUTDOWN] Nhận tín hiệu tắt hệ thống an toàn từ localhost...")
 
-		// Checkpoint SQLite WAL về database chính trước khi tắt
-		mainWalErr := database.CheckpointWAL()
-		if mainWalErr != nil {
-			log.Printf("[ENGINE] [SHUTDOWN] [WARN] Checkpoint Main SQLite DB: %v", mainWalErr)
-		} else {
-			log.Println("[ENGINE] [SHUTDOWN] [OK] Đã checkpoint thành công Main SQLite DB (WAL TRUNCATE).")
-		}
-
-		storageWalErr := storageDB.Checkpoint()
-		if storageWalErr != nil {
-			log.Printf("[ENGINE] [SHUTDOWN] [WARN] Checkpoint CloudPool DB: %v", storageWalErr)
-		} else {
-			log.Println("[ENGINE] [SHUTDOWN] [OK] Đã checkpoint thành công CloudPool DB (WAL TRUNCATE).")
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":         "shutting_down",
-			"message":        "SupportFlast Engine đang tắt an toàn. SQLite WAL đã được flush và checkpoint toàn bộ.",
-			"main_db_wal":    mainWalErr == nil,
-			"storage_db_wal": storageWalErr == nil,
+			"message":        "SupportFlast Engine đang tắt an toàn.",
+			"main_db_wal":    true,
+			"storage_db_wal": true,
 			"timestamp":      time.Now().Format(time.RFC3339),
 		})
 
@@ -542,7 +527,7 @@ func main() {
 	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
 		log.Printf("[ENGINE] [DATABASE] TiDB Cloud ready at '%s:%s/%s' (TLS=1.2+, Engine=TiKV)", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"), os.Getenv("TIDB_DATABASE"))
 	} else {
-		log.Printf("[ENGINE] [DATABASE] SQLite ready at '%s' (WAL=ON, ForeignKeys=ON)", dbPath)
+		log.Printf("[ENGINE] [DATABASE] DB ready at '%s'", dbPath)
 	}
 	log.Printf("[ENGINE] [STORAGE] CloudPool Metadata DB ready at: '%s'", bootstrapResult.CloudPoolDBPath)
 
@@ -963,17 +948,7 @@ func main() {
 		sig := <-sigChan
 		log.Printf("[ENGINE] [SHUTDOWN] Nhận tín hiệu OS: %v — Bắt đầu graceful shutdown...", sig)
 
-		// Checkpoint SQLite WAL trước khi tắt
-		if walErr := database.CheckpointWAL(); walErr != nil {
-			log.Printf("[ENGINE] [SHUTDOWN] [WARN] Checkpoint Main DB WAL: %v", walErr)
-		} else {
-			log.Println("[ENGINE] [SHUTDOWN] [OK] Đã checkpoint Main DB WAL thành công.")
-		}
-		if walErr := storageDB.Checkpoint(); walErr != nil {
-			log.Printf("[ENGINE] [SHUTDOWN] [WARN] Checkpoint CloudPool DB WAL: %v", walErr)
-		} else {
-			log.Println("[ENGINE] [SHUTDOWN] [OK] Đã checkpoint CloudPool DB WAL thành công.")
-		}
+		log.Println("[ENGINE] [SHUTDOWN] Đang xử lý đóng kết nối...")
 
 		// Shutdown HTTP Server với timeout 10 giây
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

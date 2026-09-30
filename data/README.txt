@@ -1,1 +1,0 @@
-Thu muc luu tru SQLite WAL Database (data/supportflast.db). Tu dong khoi tao khi chay.
