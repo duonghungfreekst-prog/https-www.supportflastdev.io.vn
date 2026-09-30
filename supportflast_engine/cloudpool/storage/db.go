@@ -240,10 +240,7 @@ func (s *DB) Close() error {
 }
 
 func (s *DB) migrate() error {
-	if s.IsMySQLOrTiDB() {
-		return s.migrateTiDB()
-	}
-	return s.migrateSQLite()
+	return s.migrateTiDB()
 }
 
 func (s *DB) migrateTiDB() error {
@@ -533,304 +530,6 @@ func (s *DB) migrateTiDB() error {
 	// Covering Composite Indexes tối ưu hóa triệt để ListVirtualFiles cho TiDB (Zero FileSort)
 	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name)`)
 	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name)`)
-
-	return nil
-}
-
-func (s *DB) migrateSQLite() error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS accounts (
-			id TEXT PRIMARY KEY,
-			email TEXT NOT NULL,
-			email_hash TEXT NOT NULL UNIQUE,
-			name TEXT,
-			name_hash TEXT,
-			avatar_url TEXT,
-			auth_type TEXT NOT NULL,
-			credentials_json TEXT,
-			token_json TEXT,
-			root_folder_id TEXT,
-			total_quota_bytes INTEGER DEFAULT 0,
-			used_quota_bytes INTEGER DEFAULT 0,
-			free_quota_bytes INTEGER DEFAULT 0,
-			status TEXT DEFAULT 'active',
-			last_error TEXT,
-			created_at DATETIME,
-			updated_at DATETIME
-		);`,
-		`CREATE TABLE IF NOT EXISTS cloudpool_users (
-			id TEXT PRIMARY KEY,
-			username TEXT NOT NULL,
-			username_hash TEXT NOT NULL UNIQUE,
-			email TEXT DEFAULT '',
-			email_hash TEXT DEFAULT '',
-			password_hash TEXT NOT NULL,
-			security_pin_hash TEXT DEFAULT '',
-			security_tier INTEGER DEFAULT 1,
-			display_name TEXT,
-			avatar_url TEXT DEFAULT '',
-			role TEXT DEFAULT 'user',
-			status TEXT DEFAULT 'active',
-			quota_bytes INTEGER DEFAULT 0,
-			used_bytes INTEGER DEFAULT 0,
-			failed_login_count INTEGER DEFAULT 0,
-			locked_until DATETIME,
-			last_login_at DATETIME,
-			created_at DATETIME,
-			updated_at DATETIME
-		);`,
-		`CREATE TABLE IF NOT EXISTS virtual_files (
-			id TEXT PRIMARY KEY,
-			user_id TEXT DEFAULT 'user_admin',
-			parent_id TEXT DEFAULT '',
-			name TEXT NOT NULL,
-			path TEXT NOT NULL,
-			is_dir BOOLEAN DEFAULT 0,
-			size_bytes INTEGER DEFAULT 0,
-			mime_type TEXT,
-			sha256 TEXT,
-			chunk_count INTEGER DEFAULT 0,
-			is_encrypted BOOLEAN DEFAULT 1,
-			has_missing_chunks BOOLEAN DEFAULT 0,
-			is_deleted BOOLEAN DEFAULT 0,
-			deleted_at DATETIME,
-			created_at DATETIME,
-			updated_at DATETIME
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);`,
-		`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);`,
-		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent ON virtual_files(parent_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_vfiles_path ON virtual_files(path);`,
-		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent_del_dir_name ON virtual_files(parent_id, is_deleted, is_dir, name);`,
-		`CREATE INDEX IF NOT EXISTS idx_vfiles_user_parent_del_dir_name ON virtual_files(user_id, parent_id, is_deleted, is_dir, name);`,
-		`CREATE TABLE IF NOT EXISTS file_chunks (
-			chunk_id TEXT PRIMARY KEY,
-			file_id TEXT NOT NULL,
-			chunk_index INTEGER NOT NULL,
-			account_id TEXT NOT NULL,
-			gdrive_file_id TEXT NOT NULL,
-			chunk_size_bytes INTEGER DEFAULT 0,
-			encrypted_size_bytes INTEGER DEFAULT 0,
-			sha256 TEXT,
-			status TEXT DEFAULT 'uploaded',
-			ref_count INTEGER DEFAULT 1,
-			FOREIGN KEY(file_id) REFERENCES virtual_files(id) ON DELETE CASCADE,
-			FOREIGN KEY(account_id) REFERENCES accounts(id)
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_chunks_file ON file_chunks(file_id, chunk_index);`,
-		`CREATE INDEX IF NOT EXISTS idx_chunks_account ON file_chunks(account_id);`,
-		`CREATE TABLE IF NOT EXISTS activity_logs (
-			id TEXT PRIMARY KEY,
-			user_id TEXT,
-			username TEXT,
-			action TEXT,
-			target TEXT,
-			ip_address TEXT,
-			details TEXT,
-			created_at DATETIME
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_logs_user ON activity_logs(user_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_logs_created ON activity_logs(created_at);`,
-		`CREATE TABLE IF NOT EXISTS login_sessions (
-			id TEXT PRIMARY KEY,
-			user_id TEXT,
-			username TEXT,
-			ip_address TEXT,
-			device_info TEXT,
-			location_info TEXT,
-			status TEXT,
-			user_agent TEXT,
-			created_at DATETIME
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_sessions_user ON login_sessions(user_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_sessions_created ON login_sessions(created_at);`,
-		`CREATE TABLE IF NOT EXISTS settings (
-			key TEXT PRIMARY KEY,
-			value TEXT
-		);`,
-		`CREATE TABLE IF NOT EXISTS file_access_otps (
-			id TEXT PRIMARY KEY,
-			file_id TEXT NOT NULL,
-			file_name TEXT NOT NULL,
-			target_user_id TEXT NOT NULL DEFAULT 'all',
-			otp_code TEXT NOT NULL,
-			created_by TEXT NOT NULL DEFAULT 'user_admin',
-			is_used INTEGER DEFAULT 0,
-			used_by TEXT DEFAULT '',
-			used_at DATETIME,
-			expires_at DATETIME NOT NULL,
-			created_at DATETIME NOT NULL
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_file_otps ON file_access_otps(file_id, otp_code, is_used);`,
-		`CREATE TABLE IF NOT EXISTS file_access_requests (
-			id TEXT PRIMARY KEY,
-			file_id TEXT NOT NULL,
-			file_name TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			username TEXT NOT NULL,
-			user_display_name TEXT NOT NULL,
-			status TEXT DEFAULT 'pending',
-			otp_code TEXT DEFAULT '',
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_access_req_user ON file_access_requests(user_id, status);`,
-		`CREATE TABLE IF NOT EXISTS public_shares (
-			id TEXT PRIMARY KEY,
-			file_id TEXT NOT NULL,
-			created_by TEXT NOT NULL DEFAULT 'user_admin',
-			password_hash TEXT DEFAULT '',
-			max_downloads INTEGER DEFAULT 0,
-			download_count INTEGER DEFAULT 0,
-			expires_at DATETIME,
-			created_at DATETIME NOT NULL,
-			is_active INTEGER DEFAULT 1
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_public_shares ON public_shares(id, is_active);`,
-	}
-
-	for _, q := range queries {
-		if _, err := s.db.Exec(q); err != nil {
-			return err
-		}
-	}
-
-	// Add user_id column to virtual_files if legacy table exists
-	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN user_id TEXT DEFAULT 'user_admin';")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_user ON virtual_files(user_id);")
-	_, _ = s.db.Exec("UPDATE virtual_files SET user_id = 'user_admin' WHERE user_id = '' OR user_id IS NULL;")
-
-	// Soft Delete / Trash Columns
-	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN is_deleted BOOLEAN DEFAULT 0;")
-	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN deleted_at DATETIME;")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_deleted ON virtual_files(is_deleted);")
-
-	// Missing Chunks & Data Integrity Flag
-	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN has_missing_chunks BOOLEAN DEFAULT 0;")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_missing_chunks ON virtual_files(has_missing_chunks);")
-
-	// Deduplication Chunk Reference Count
-	_, _ = s.db.Exec("ALTER TABLE file_chunks ADD COLUMN ref_count INTEGER DEFAULT 1;")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_chunks_sha256 ON file_chunks(sha256, status);")
-
-	// Multi-Tier Security Columns
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN email TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN security_pin_hash TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN security_tier INTEGER DEFAULT 1;")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active';")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN failed_login_count INTEGER DEFAULT 0;")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN locked_until DATETIME;")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME;")
-
-	// Add hash columns for Blind Index
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN username_hash TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN email_hash TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN email_hash TEXT DEFAULT '';")
-	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN name_hash TEXT DEFAULT '';")
-
-	// Missing Performance Indexes
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users(email_hash);")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_username_hash ON users(username_hash);")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_deleted ON virtual_files(parent_id, is_deleted);")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_del_dir_name ON virtual_files(parent_id, is_deleted, is_dir, name);")
-	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_user_parent_del_dir_name ON virtual_files(user_id, parent_id, is_deleted, is_dir, name);")
-
-	// Backup history table (also created by Python backup script)
-	_, _ = s.db.Exec(`CREATE TABLE IF NOT EXISTS gdrive_backups (
-		id TEXT PRIMARY KEY,
-		filename TEXT NOT NULL,
-		size_bytes INTEGER NOT NULL,
-		sha256 TEXT NOT NULL,
-		gdrive_file_id TEXT NOT NULL,
-		gdrive_web_link TEXT NOT NULL,
-		target_email TEXT NOT NULL,
-		manifest_json TEXT,
-		created_at TEXT NOT NULL
-	);`)
-
-
-	// Encrypt any existing plaintext credentials/tokens in database
-	s.migrateEncryptAllPlaintextSecrets()
-
-	// Ensure default admin user exists with valid password hash and Blind Indexing
-	masterKey := s.getMasterKey()
-	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
-	encAdminName := core.EncryptSecret(masterKey, "admin")
-	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
-	
-	// Fetch master_passphrase from settings if already configured
-	var masterPass string
-	_ = s.db.QueryRow("SELECT value FROM settings WHERE key = 'master_passphrase'").Scan(&masterPass)
-	if masterPass == "" {
-		masterPass = "admin"
-	}
-
-	// Generate bcrypt password hash for admin
-	adminPassBcrypt, err := core.HashPasswordBcrypt(masterPass)
-	if err != nil {
-		adminPassBcrypt = core.HashSHA256([]byte(masterPass))
-	}
-	
-	var adminCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
-	if adminCount == 0 {
-		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
-			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
-	} else {
-		// Keep admin user password synchronized with master_passphrase
-		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
-	}
-
-	// Always clear any lockout on restart for admin
-	_, _ = s.db.Exec(`UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
-
-	// Also repair any other users that have empty password_hash
-	defaultUserPassHash := core.HashSHA256([]byte("123456"))
-	_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
-
-	// Insert default settings if not exist
-	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
-
-	s.setDefaultSetting("chunk_size_bytes", "20971520") // 20 MB
-	s.setDefaultSetting("allocation_strategy", "least_used")
-	s.setDefaultSetting("webdav_enabled", "true")
-	s.setDefaultSetting("webdav_username", "admin")
-	s.setDefaultSetting("webdav_password", "admin123")
-	s.setDefaultSetting("server_port", "8080")
-	s.setDefaultSetting("guest_access_mode", "view_only")
-	s.setDefaultSetting("allow_self_registration", "true")
-	oauthClientID := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
-	if oauthClientID == "" {
-		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
-	}
-	if oauthClientID == "" {
-		oauthClientID = DefaultGoogleClientID
-	}
-	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
-	if oauthClientSecret == "" {
-		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
-	}
-	if oauthClientSecret == "" {
-		oauthClientSecret = DefaultGoogleClientSecret
-	}
-	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
-	if oauthRedirect == "" {
-		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
-	}
-	masterKey = s.getMasterKey()
-	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
-	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
-	s.setDefaultSetting("redirect_url", oauthRedirect)
-
-	// Ensure root directory entry exists and is never marked as deleted
-	_ = s.ensureRootExistsUnlocked()
-
-	// Clean up any emoji duplicate prefixes in virtual folder names
-	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
-	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
 
 	return nil
 }
@@ -2999,14 +2698,7 @@ func (s *DB) CheckDatabaseIntegrity() (string, error) {
 }
 
 func (s *DB) BackupDatabase(destPath string) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.IsMySQLOrTiDB() {
-		return fmt.Errorf("tính năng VACUUM INTO chỉ khả dụng trên SQLite; đối với TiDB vui lòng sử dụng TiDB Backup & Restore (BR) hoặc mysqldump")
-	}
-	cleanDest := filepath.ToSlash(destPath)
-	_, err := s.db.Exec(fmt.Sprintf("VACUUM INTO '%s';", strings.ReplaceAll(cleanDest, "'", "''")))
-	return err
+	return fmt.Errorf("BackupDatabase using VACUUM is only for SQLite. Use TiDB Backup & Restore (BR) or mysqldump.")
 }
 
 func (s *DB) LogLoginSession(sess *models.LoginSession) error {
@@ -3886,7 +3578,7 @@ func (s *DB) EnsureTiDBCloudPoolDataReady() error {
 	}
 
 	// 6. Tự động đồng bộ dự phòng sang file SQLite cục bộ nếu file SQLite bị xóa hoặc rỗng
-	go s.SyncToLocalSQLiteCacheIfMissing()
+	
 
 	log.Printf("[ENGINE] [TIDB] [STORAGE] Xác nhận CSDL TiDB Cloud sẵn sàng 100%%: %d tài khoản Google Drive, %d tệp tin VFS, %d chunk dữ liệu.",
 		accCount, fileCount, chunkCount)
@@ -4170,11 +3862,6 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 
 	s.ClearCache()
 	return insertedAccounts, insertedFiles, insertedChunks, nil
-}
-
-// SyncToLocalSQLiteCacheIfMissing đã bị loại bỏ vì không còn hỗ trợ SQLite
-func (s *DB) SyncToLocalSQLiteCacheIfMissing() error {
-	return nil
 }
 
 func findCloudPoolSnapshot() ([]byte, string, error) {

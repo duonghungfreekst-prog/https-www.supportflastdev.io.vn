@@ -938,18 +938,25 @@ func (m *Manager) UploadChunk(ctx context.Context, accountID, chunkFileName stri
 
 // DownloadChunk tải nội dung chunk từ Google Drive
 func (m *Manager) DownloadChunk(ctx context.Context, accountID, gdriveFileID string) ([]byte, error) {
-	srv, _, err := m.GetService(context.Background(), accountID)
+	srv, _, err := m.GetService(ctx, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get drive service: %w", err)
 	}
 
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
-		dlCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		dlCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		resp, err := srv.Files.Get(gdriveFileID).Context(dlCtx).Download()
 		if err == nil {
 			if resp.StatusCode == http.StatusOK {
-				data, readErr := io.ReadAll(resp.Body)
+				var data []byte
+				var readErr error
+				if resp.ContentLength > 0 {
+					data = make([]byte, resp.ContentLength)
+					_, readErr = io.ReadFull(resp.Body, data)
+				} else {
+					data, readErr = io.ReadAll(resp.Body)
+				}
 				_ = resp.Body.Close()
 				cancel()
 				if readErr == nil {
@@ -978,7 +985,7 @@ func (m *Manager) DownloadChunk(ctx context.Context, accountID, gdriveFileID str
 
 // DownloadStream trả về io.ReadCloser cho việc stream tức thì từ Google Drive
 func (m *Manager) DownloadStream(ctx context.Context, accountID, gdriveFileID string) (io.ReadCloser, int64, error) {
-	srv, _, err := m.GetService(context.Background(), accountID)
+	srv, _, err := m.GetService(ctx, accountID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get drive service: %w", err)
 	}
@@ -996,12 +1003,12 @@ func (m *Manager) DownloadStream(ctx context.Context, accountID, gdriveFileID st
 
 // DownloadRange tải byte range từ Google Drive phục vụ seek/stream media
 func (m *Manager) DownloadRange(ctx context.Context, accountID, gdriveFileID string, start, end int64) ([]byte, error) {
-	srv, _, err := m.GetService(context.Background(), accountID)
+	srv, _, err := m.GetService(ctx, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get drive service for account %s: %w", accountID, err)
 	}
 
-	dlCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	dlCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
 	call := srv.Files.Get(gdriveFileID).Context(dlCtx)
@@ -1021,12 +1028,17 @@ func (m *Manager) DownloadRange(ctx context.Context, accountID, gdriveFileID str
 		return nil, fmt.Errorf("Google Drive download returned status: %d", resp.StatusCode)
 	}
 
+	if resp.ContentLength > 0 {
+		data := make([]byte, resp.ContentLength)
+		_, err := io.ReadFull(resp.Body, data)
+		return data, err
+	}
 	return io.ReadAll(resp.Body)
 }
 
 // DeleteChunk xóa file chunk trên Google Drive
 func (m *Manager) DeleteChunk(ctx context.Context, accountID, gdriveFileID string) error {
-	srv, _, err := m.GetService(context.Background(), accountID)
+	srv, _, err := m.GetService(ctx, accountID)
 	if err != nil {
 		return err
 	}

@@ -49,6 +49,30 @@ var globalChunkCache = &ChunkCache{
 	maxBytes:   256 * 1024 * 1024, // 256MB giới hạn trần RAM nghiêm ngặt (an toàn dưới ngưỡng 500MB trong Rule PHAN 7.1)
 }
 
+
+func init() {
+	go globalChunkCache.StartJanitor()
+}
+
+func (c *ChunkCache) StartJanitor() {
+	ticker := time.NewTicker(30 * time.Second)
+	for range ticker.C {
+		c.mu.Lock()
+		now := time.Now()
+		var next *list.Element
+		for e := c.lruList.Front(); e != nil; e = next {
+			next = e.Next()
+			entry := e.Value.(*ChunkCacheEntry)
+			if now.After(entry.ExpiresAt) {
+				c.lruList.Remove(e)
+				delete(c.entries, entry.Key)
+				c.curBytes -= int64(len(entry.Data))
+			}
+		}
+		c.mu.Unlock()
+	}
+}
+
 func (c *ChunkCache) Get(key string) ([]byte, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

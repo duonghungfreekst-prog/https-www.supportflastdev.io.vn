@@ -4644,6 +4644,14 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Disposition", formatContentDisposition("inline", targetFileName))
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+	
+	if models.IsMediaStreamable(mimeType) {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+	}
+	
 	http.ServeContent(w, r, targetFileName, streamer.ModTime(), streamer)
 }
 
