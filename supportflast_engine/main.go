@@ -341,9 +341,11 @@ func createStandardHTTPServer(addr string, handler http.Handler) *http.Server {
 		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 30 * time.Second,  // Bảo vệ Slowloris trên headers
-		ReadTimeout:       15 * time.Minute,  // Cho phép upload tệp lớn & video phân mảnh
-		WriteTimeout:      30 * time.Minute,  // Cho phép tải xuống & streaming video dài
+		ReadHeaderTimeout: 20 * time.Second,
+		ReadTimeout:       60 * time.Minute,
+		WriteTimeout:      0,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    2 << 20,
 	}
 }
 
@@ -366,9 +368,11 @@ func createStandaloneHTTPSServer(addr string, handler http.Handler, tlsConfig *t
 		Handler:           handler,
 		TLSConfig:         tlsConfig,
 		ReadHeaderTimeout: 30 * time.Second,
-		ReadTimeout:       15 * time.Minute,
-		WriteTimeout:      30 * time.Minute,
+		ReadHeaderTimeout: 20 * time.Second,
+		ReadTimeout:       60 * time.Minute,
+		WriteTimeout:      0,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    2 << 20,
 	}
 }
 

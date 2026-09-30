@@ -322,7 +322,13 @@ func (s *DB) migrateTiDB() error {
 			INDEX idx_vfiles_missing_chunks (has_missing_chunks),
 			INDEX idx_vfiles_parent_deleted (parent_id, is_deleted),
 			INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name),
-			INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name)
+			INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name),
+    INDEX idx_vfiles_trash_admin (is_deleted, deleted_at),
+    INDEX idx_vfiles_trash_user (user_id, is_deleted, deleted_at),
+    INDEX idx_vfiles_size_admin (is_deleted, is_dir, size_bytes),
+    INDEX idx_vfiles_size_user (user_id, is_deleted, is_dir, size_bytes),
+    INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
+
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
 
 		`CREATE TABLE IF NOT EXISTS file_chunks (
@@ -422,7 +428,8 @@ func (s *DB) migrateTiDB() error {
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			is_active INT NOT NULL DEFAULT 1,
 			PRIMARY KEY (id),
-			INDEX idx_public_shares (id, is_active)
+			INDEX idx_public_shares (id, is_active),
+    INDEX idx_public_shares_file (file_id, is_active)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
 
 		`CREATE TABLE IF NOT EXISTS gdrive_backups (
@@ -529,7 +536,13 @@ func (s *DB) migrateTiDB() error {
 
 	// Covering Composite Indexes tối ưu hóa triệt để ListVirtualFiles cho TiDB (Zero FileSort)
 	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name)`)
-	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name)`)
+	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name),
+    INDEX idx_vfiles_trash_admin (is_deleted, deleted_at),
+    INDEX idx_vfiles_trash_user (user_id, is_deleted, deleted_at),
+    INDEX idx_vfiles_size_admin (is_deleted, is_dir, size_bytes),
+    INDEX idx_vfiles_size_user (user_id, is_deleted, is_dir, size_bytes),
+    INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
+`)
 
 	return nil
 }

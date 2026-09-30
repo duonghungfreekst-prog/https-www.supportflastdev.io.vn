@@ -2717,24 +2717,22 @@ html[data-touch="true"] .file-card {
 /* Hiển thị chuẩn xác và hoàn chỉnh Cloudflare Turnstile, che phần cảnh báo test bên dưới nếu có */
 .cf-turnstile-clean,
 #cf-turnstile-storage-login.cf-turnstile-clean {
-  position: relative !important;
-  height: 65px !important;
-  max-height: 65px !important;
-  min-height: 65px !important;
-  overflow: hidden !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 8px !important;
-  box-sizing: border-box !important;
+    position: relative !important;
+    height: 65px !important;
+    max-height: 65px !important;
+    min-height: 65px !important;
+    overflow: hidden !important;
+    display: block !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
 }
 
 .cf-turnstile-clean iframe,
-.cf-turnstile-clean > div,
-.cf-turnstile-clean > div > div {
-  height: 65px !important;
-  max-height: 65px !important;
-  overflow: hidden !important;
+.cf-turnstile-clean > div {
+    height: 65px !important;
+    max-height: 65px !important;
+    overflow: hidden !important;
+    transform: translateY(0) !important;
 }
 
 /* ==========================================================================

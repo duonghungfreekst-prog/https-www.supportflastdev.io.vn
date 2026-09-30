@@ -47,19 +47,17 @@
             max-height: 65px !important;
             min-height: 65px !important;
             overflow: hidden !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+            display: block !important;
             border-radius: 8px !important;
             box-sizing: border-box !important;
         }
 
         .cf-turnstile-clean iframe,
-        .cf-turnstile-clean > div,
-        .cf-turnstile-clean > div > div {
+        .cf-turnstile-clean > div {
             height: 65px !important;
             max-height: 65px !important;
             overflow: hidden !important;
+            transform: translateY(0) !important;
         }
 
         :root {
@@ -1742,7 +1740,7 @@
                 display: flex !important;
                 flex-wrap: nowrap !important;
                 justify-content: space-between !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 width: 100% !important;
                 padding: 12px 0 !important;
                 gap: 8px !important;
@@ -1765,7 +1763,7 @@
             }
             .nav-right {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 8px !important;
                 flex-shrink: 0 !important;
             }
@@ -1982,7 +1980,7 @@
             /* Footer */
             footer {
                 flex-direction: column !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 text-align: center !important;
                 gap: 14px !important;
                 padding: 22px 0 !important;
@@ -2010,7 +2008,7 @@
                 display: flex !important;
                 flex-wrap: nowrap !important;
                 justify-content: space-between !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 width: 100% !important;
                 padding: 10px 0 !important;
                 gap: 6px !important;
@@ -2042,7 +2040,7 @@
 
             .nav-right {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 5px !important;
                 flex-shrink: 0 !important;
             }
@@ -3414,7 +3412,7 @@
             .modal-overlay {
                 padding: 12px 8px !important;
                 backdrop-filter: blur(12px) !important;
-                align-items: center !important;
+                align-items: flex-start !important;
             }
 
             /* Modal Box theo chuẩn 95vw, 16px 14px, max-height 92vh, border-radius 14px */
@@ -3505,7 +3503,7 @@
 
             .guide-header-title-box {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 10px !important;
                 width: 100% !important;
                 padding-right: 44px !important;
@@ -3539,7 +3537,7 @@
 
             .guide-header-actions {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 8px !important;
                 width: 100% !important;
             }
@@ -3589,7 +3587,7 @@
             .guide-toc-sidebar {
                 display: flex !important;
                 flex-direction: row !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 overflow-x: auto !important;
                 overflow-y: hidden !important;
                 white-space: nowrap !important;
@@ -3609,7 +3607,7 @@
 
             .guide-toc-title {
                 display: inline-flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 font-size: 0.72rem !important;
                 margin-bottom: 0 !important;
                 padding: 6px 10px !important;
@@ -3622,7 +3620,7 @@
 
             .guide-toc-sidebar .toc-link {
                 display: inline-flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 5px !important;
                 flex-shrink: 0 !important;
                 padding: 6px 12px !important;
@@ -3713,7 +3711,7 @@
 
             .guide-footer-actions {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 8px !important;
                 width: 100% !important;
             }
@@ -3771,7 +3769,7 @@
 
             .video-header-title-box {
                 display: flex !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 10px !important;
                 width: 100% !important;
                 padding-right: 44px !important;
@@ -3794,7 +3792,7 @@
             .video-header-actions {
                 display: flex !important;
                 flex-wrap: wrap !important;
-                align-items: center !important;
+                align-items: flex-start !important;
                 gap: 8px !important;
                 width: 100% !important;
             }
@@ -7150,8 +7148,8 @@
                                 <input type="password" id="admin-login-pass" placeholder="Nhập mật khẩu..." required style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.9rem;outline:none;" onfocus="this.style.borderColor='#00e5ff'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Nhập -->
-                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;">
-                                <div id="cf-turnstile-login" class="cf-turnstile-clean" style="display:flex;align-items:center;justify-content:center;"></div>
+                            <div style="margin-bottom:16px;display:block;width:100%;height:65px;overflow:hidden;text-align:center;">
+                                <div id="cf-turnstile-login" class="cf-turnstile-clean" style="display:inline-block;height:65px;overflow:hidden;"></div>
                             </div>
                             <div id="admin-login-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <button type="submit" id="admin-login-btn-submit" style="width:100%;background:linear-gradient(135deg, #00e5ff, #3b82f6);color:#010308;padding:12px;border-radius:10px;font-weight:800;font-size:0.92rem;border:none;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 18px rgba(0,229,255,0.35);">
@@ -7187,8 +7185,8 @@
                                 </div>
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Ký -->
-                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;">
-                                <div id="cf-turnstile-register" class="cf-turnstile-clean" style="display:flex;align-items:center;justify-content:center;"></div>
+                            <div style="margin-bottom:16px;display:block;width:100%;height:65px;overflow:hidden;text-align:center;">
+                                <div id="cf-turnstile-register" class="cf-turnstile-clean" style="display:inline-block;height:65px;overflow:hidden;"></div>
                             </div>
                             <div id="admin-reg-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <div id="admin-reg-success" style="display:none;color:#4ade80;font-size:0.82rem;margin-bottom:14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);padding:9px 12px;border-radius:8px;"></div>

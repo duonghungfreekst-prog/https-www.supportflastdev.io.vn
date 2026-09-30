@@ -487,7 +487,7 @@ const PreviewManager = {
           <div id="video-unmute-hint" style="display: none; padding: 8px 14px; background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-md, 8px); font-size: 12px; color: #60a5fa; text-align: center; cursor: pointer;">
             🔊 Trình duyệt đang tắt tiếng tự động. Chạm vào đây để bật âm thanh.
           </div>
-          <video id="pro-video-player" src="${streamURL}" controls playsinline preload="metadata" style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000; box-shadow: 0 4px 24px rgba(0,0,0,0.6);">
+          <video id="pro-video-player" src="${streamURL}" controls playsinline preload="auto" crossorigin="anonymous" style="width: 100%; max-height: 60vh; border-radius: var(--radius-md, 8px); background: #000; box-shadow: 0 4px 24px rgba(0,0,0,0.6);">
             Trình duyệt của bạn không hỗ trợ phát trực tiếp định dạng video này.
           </video>
           <div id="video-error-status" style="display: none; padding: 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md, 8px); text-align: center;">
@@ -624,6 +624,34 @@ const PreviewManager = {
         };
 
         vidPlayer.addEventListener('error', handleVideoFailure);
+
+        vidPlayer.addEventListener('progress', () => {
+          // Reset watchdog on progress
+          if (PreviewManager._videoWatchdog) {
+            clearTimeout(PreviewManager._videoWatchdog);
+          }
+          PreviewManager._videoWatchdog = setTimeout(() => {
+            if (vidPlayer && vidPlayer.readyState === 0 && !vidPlayer.error) {
+              handleVideoFailure();
+            }
+          }, 15000);
+          
+          if (vidPlayer.buffered.length > 0 && loadStatus.style.display !== 'none') {
+             let cur = vidPlayer.currentTime;
+             let bufEnd = vidPlayer.buffered.end(vidPlayer.buffered.length - 1);
+             let ahead = bufEnd - cur;
+             if (ahead > 1.5) {
+                loadStatus.style.display = 'none';
+             } else {
+                if (loadText) loadText.innerHTML = '⚡ Đang đệm thêm dữ liệu... (' + ahead.toFixed(1) + 's)';
+             }
+          }
+        });
+        
+        vidPlayer.addEventListener('canplaythrough', () => {
+          loadStatus.style.display = 'none';
+        });
+
 
         // Khởi động phát video thông minh với xử lý chính sách Autoplay trên thiết bị di động
         vidPlayer.play().catch(playErr => {

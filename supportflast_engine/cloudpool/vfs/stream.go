@@ -3,6 +3,7 @@ package vfs
 import (
 	"container/list"
 	"context"
+	"runtime"
 	"errors"
 	"fmt"
 	"io"
@@ -16,12 +17,17 @@ import (
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
 )
+const (
+	MaxConcurrentPrefetch = 32
+	MaxPrefetchAhead = 2
+)
+
 
 const (
 	// NativeRangeBlockSize kích thước khối tải dải byte (4MB) cho các tệp native Google Drive không mã hóa.
 	// 4MB giúp tăng gấp đôi lượng đệm video/audio, giảm 50% số lượng HTTP range request tới Google Drive,
 	// giúp tua và phát mượt mà không bị khựng, đồng thời vẫn kiểm soát nghiêm ngặt dung lượng RAM (Rule PHAN 7.1).
-	NativeRangeBlockSize int64 = 4 * 1024 * 1024 // 4 MB
+	NativeRangeBlockSize int64 = 16 * 1024 * 1024 // 16 MB
 )
 
 // ChunkCacheEntry holds decrypted chunk bytes or range block bytes in memory with LRU tracking
@@ -45,7 +51,7 @@ type ChunkCache struct {
 var globalChunkCache = &ChunkCache{
 	entries:    make(map[string]*list.Element),
 	lruList:    list.New(),
-	maxEntries: 256,               // Tối đa 256 entries trong bộ nhớ đệm
+	maxEntries: 1024,               // Tối đa 256 entries trong bộ nhớ đệm
 	maxBytes:   256 * 1024 * 1024, // 256MB giới hạn trần RAM nghiêm ngặt (an toàn dưới ngưỡng 500MB trong Rule PHAN 7.1)
 }
 
@@ -273,7 +279,7 @@ func (v *VFS) NewFileStreamer(ctx context.Context, fileID string) (*FileStreamer
 		offset:       0,
 		chunkSize:    chunkSize,
 	}
-	fs.lastPrefetchedIdx.Store(-1)
+	fs.lastPrefetchChunk.Store(-1)
 	fs.lastPrefetchedBlock.Store(-1)
 	return fs, nil
 }
@@ -414,7 +420,7 @@ func (s *FileStreamer) readInternal(p []byte, startOff int64) (int, error) {
 			blockData, err := s.fetchNativeRangeBlock(chunk, blockIdx, blockStart, blockEnd)
 			if err != nil {
 				if is404(err) {
-					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, range %d-%d, driveID %s): %v\n",
+					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, range %d-%d, driveID %s): %v\\n",
 						s.file.ID, blockStart, blockEnd, chunk.GDriveFileID, err)
 					if readTotal > 0 {
 						return readTotal, fmt.Errorf("[STREAMER ERROR] Chunk missing on Drive: 404: %w", err)
@@ -454,7 +460,7 @@ func (s *FileStreamer) readInternal(p []byte, startOff int64) (int, error) {
 			chunkData, err := s.fetchAndDecryptChunk(chunk)
 			if err != nil {
 				if is404(err) {
-					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s): %v\n",
+					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s): %v\\n",
 						s.file.ID, chunkIdx, chunk.GDriveFileID, err)
 					if readTotal > 0 {
 						return readTotal, fmt.Errorf("[STREAMER ERROR] Chunk missing on Drive: 404: %w", err)
@@ -514,7 +520,7 @@ var (
 	flightMu sync.Mutex
 	inFlight = make(map[string]*chunkFlight)
 	// Semaphore to limit concurrent background prefetches to max 8 (Rule PHAN 7.1)
-	prefetchSem = make(chan struct{}, 8)
+	prefetchSem = make(chan struct{}, 32)
 )
 
 // fetchNativeRangeBlock tải dải byte 2MB của tệp native Google Drive
@@ -559,7 +565,7 @@ func (s *FileStreamer) fetchNativeRangeBlock(chunk models.FileChunk, blockIdx in
 	rangeBytes, err := s.vfs.gd.DownloadRange(dlCtx, chunk.AccountID, chunk.GDriveFileID, blockStart, blockEnd)
 	if err != nil {
 		if is404(err) {
-			fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s, range %d-%d): %v\n",
+			fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s, range %d-%d): %v\\n",
 				s.file.ID, chunk.ChunkIndex, chunk.GDriveFileID, blockStart, blockEnd, err)
 			flight.err = fmt.Errorf("[STREAMER ERROR] Chunk missing on Drive: 404: %w", err)
 			return nil, flight.err
@@ -623,7 +629,7 @@ func (s *FileStreamer) fetchAndDecryptChunk(chunk models.FileChunk) ([]byte, err
 	rawBytes, err := s.vfs.gd.DownloadChunk(dlCtx, chunk.AccountID, chunk.GDriveFileID)
 	if err != nil {
 		if is404(err) {
-			fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s): %v\n",
+			fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 (file %s, chunk %d, driveID %s): %v\\n",
 				s.file.ID, chunk.ChunkIndex, chunk.GDriveFileID, err)
 			flight.err = fmt.Errorf("[STREAMER ERROR] Chunk missing on Drive: 404: %w", err)
 			return nil, flight.err
@@ -682,109 +688,122 @@ func (s *FileStreamer) fetchAndDecryptChunk(chunk models.FileChunk) ([]byte, err
 }
 
 // triggerRangePrefetch nạp trước ngầm khối 2MB tiếp theo vào RAM buffer cho native Drive file
-func (s *FileStreamer) triggerRangePrefetch(chunk models.FileChunk, nextBlockIdx int64, chunkTotalSize int64) {
-	blockStart := nextBlockIdx * NativeRangeBlockSize
-	if chunkTotalSize > 0 && blockStart >= chunkTotalSize {
-		return
-	}
-	blockEnd := blockStart + NativeRangeBlockSize - 1
-	if chunkTotalSize > 0 && blockEnd >= chunkTotalSize {
-		blockEnd = chunkTotalSize - 1
-	}
+func (s *FileStreamer) triggerRangePrefetchAhead(chunk models.FileChunk, currentBlockIdx int64, chunkTotalSize int64) {
+	allQueued := true
 
-	old := s.lastPrefetchedBlock.Load()
-	if old == nextBlockIdx {
-		return
-	}
-	if !s.lastPrefetchedBlock.CompareAndSwap(old, nextBlockIdx) {
-		return
-	}
+	for step := int64(1); step <= MaxPrefetchAhead; step++ {
+		targetBlockIdx := currentBlockIdx + step
+		blockStart := targetBlockIdx * NativeRangeBlockSize
+		if chunkTotalSize > 0 && blockStart >= chunkTotalSize {
+			break
+		}
+		blockEnd := blockStart + NativeRangeBlockSize - 1
+		if chunkTotalSize > 0 && blockEnd >= chunkTotalSize {
+			blockEnd = chunkTotalSize - 1
+		}
 
-	rangeKey := fmt.Sprintf("range_%s_%s_%d", chunk.AccountID, chunk.GDriveFileID, blockStart)
-	if _, found := globalChunkCache.Get(rangeKey); found {
-		return
-	}
+		rangeKey := fmt.Sprintf("range_%s_%s_%d", chunk.AccountID, chunk.GDriveFileID, blockStart)
 
-	flightMu.Lock()
-	if _, running := inFlight[rangeKey]; running {
+		if globalChunkCache.Contains(rangeKey) {
+			continue
+		}
+
+		flightMu.Lock()
+		if _, running := inFlight[rangeKey]; running {
+			flightMu.Unlock()
+			continue
+		}
 		flightMu.Unlock()
-		return
-	}
-	flightMu.Unlock()
 
-	select {
-	case prefetchSem <- struct{}{}:
-		go func() {
-			defer func() {
-				<-prefetchSem
-				if r := recover(); r != nil {
-					// Bảo vệ goroutine không panic
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		if mem.Alloc > 400*1024*1024 { 
+			allQueued = false
+			break
+		}
+
+		select {
+		case prefetchSem <- struct{}{}:
+			go func(bIdx, bStart, bEnd int64) {
+				defer func() {
+					<-prefetchSem
+					if r := recover(); r != nil {
+					}
+				}()
+				if s.ctx != nil && s.ctx.Err() != nil {
+					return
 				}
-			}()
-			if s.ctx != nil && s.ctx.Err() != nil {
-				return
-			}
-			_, err := s.fetchNativeRangeBlock(chunk, nextBlockIdx, blockStart, blockEnd)
-			if err != nil && is404(err) {
-				fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 in prefetch (file %s, range %d-%d): %v\n",
-					s.file.ID, blockStart, blockEnd, err)
-			}
-		}()
-	default:
-		// Đang có 2 prefetch khác chạy ngầm, bỏ qua để bảo vệ CPU/RAM
-		return
+				_, err := s.fetchNativeRangeBlock(chunk, bIdx, bStart, bEnd)
+				if err != nil && is404(err) {
+					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 in prefetch (file %s, range %d-%d): %v\n", s.file.ID, bStart, bEnd, err)
+				}
+			}(targetBlockIdx, blockStart, blockEnd)
+		default:
+			allQueued = false
+			break
+		}
+	}
+
+	if allQueued {
+		s.lastPrefetchBlock.Store(currentBlockIdx)
 	}
 }
 
 // triggerPrefetch nạp trước ngầm chunk mã hóa tiếp theo vào RAM buffer
-func (s *FileStreamer) triggerPrefetch(nextChunkIdx int) {
-	if nextChunkIdx < 0 || nextChunkIdx >= len(s.chunks) {
-		return
-	}
+func (s *FileStreamer) triggerPrefetchAhead(currentChunkIdx int) {
+	allQueued := true
 
-	old := s.lastPrefetchedIdx.Load()
-	if int(old) == nextChunkIdx {
-		return
-	}
-	if !s.lastPrefetchedIdx.CompareAndSwap(old, int32(nextChunkIdx)) {
-		return
-	}
+	for step := 1; step <= MaxPrefetchAhead; step++ {
+		targetIdx := currentChunkIdx + step
+		if targetIdx >= len(s.chunks) {
+			break
+		}
 
-	nextChunk := s.chunks[nextChunkIdx]
-	cacheKey := fmt.Sprintf("chunk_%s_%s", nextChunk.AccountID, nextChunk.GDriveFileID)
-	if _, found := globalChunkCache.Get(cacheKey); found {
-		return
-	}
+		targetChunk := s.chunks[targetIdx]
+		cacheKey := fmt.Sprintf("chunk_%s_%s", targetChunk.AccountID, targetChunk.GDriveFileID)
 
-	flightMu.Lock()
-	if _, running := inFlight[cacheKey]; running {
+		if globalChunkCache.Contains(cacheKey) {
+			continue
+		}
+
+		flightMu.Lock()
+		if _, running := inFlight[cacheKey]; running {
+			flightMu.Unlock()
+			continue
+		}
 		flightMu.Unlock()
-		return
-	}
-	flightMu.Unlock()
 
-	// Try acquiring semaphore; if full, do not spawn more goroutines (prevents goroutine explosion)
-	select {
-	case prefetchSem <- struct{}{}:
-		go func() {
-			defer func() {
-				<-prefetchSem
-				if r := recover(); r != nil {
-					// Bảo vệ goroutine không ảnh hưởng luồng chính
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		if mem.Alloc > 400*1024*1024 {
+			allQueued = false
+			break
+		}
+
+		select {
+		case prefetchSem <- struct{}{}:
+			go func(chk models.FileChunk, idx int) {
+				defer func() {
+					<-prefetchSem
+					if r := recover(); r != nil {
+					}
+				}()
+				if s.ctx != nil && s.ctx.Err() != nil {
+					return
 				}
-			}()
-			if s.ctx != nil && s.ctx.Err() != nil {
-				return
-			}
-			_, err := s.fetchAndDecryptChunk(nextChunk)
-			if err != nil && is404(err) {
-				fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 in prefetch (file %s, chunk %d): %v\n",
-					s.file.ID, nextChunkIdx, err)
-			}
-		}()
-	default:
-		// Đang có 2 prefetch khác chạy ngầm, bỏ qua để bảo vệ CPU/RAM
-		return
+				_, err := s.fetchAndDecryptChunk(chk)
+				if err != nil && is404(err) {
+					fmt.Printf("[STREAMER ERROR] Chunk missing on Drive: 404 in prefetch (file %s, chunk %d): %v\n", s.file.ID, idx, err)
+				}
+			}(targetChunk, targetIdx)
+		default:
+			allQueued = false
+			break
+		}
+	}
+
+	if allQueued {
+		s.lastPrefetchChunk.Store(int32(currentChunkIdx))
 	}
 }
 
@@ -793,5 +812,4 @@ func (s *FileStreamer) Close() error {
 	if s.cancel != nil {
 		s.cancel()
 	}
-	return nil
-}
+	return nil

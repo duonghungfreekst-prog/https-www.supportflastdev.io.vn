@@ -71,6 +71,12 @@ func DecryptChunk(key [32]byte, encryptedData []byte) ([]byte, error) {
 		return nil, errors.New("encrypted chunk is too short")
 	}
 
+	// 1. Uu tien Zero-Copy In-Place (0 cap phat, 0 memcpy, cuc nhanh)
+	if decSlice, ok := tryRustDecryptInPlace(key, encryptedData); ok {
+		return decSlice, nil
+	}
+
+	// 2. Fallback sang FFI cu (neu DLL chua co ham in-place hoac OS khac)
 	if decSlice, ok := tryRustDecrypt(key, encryptedData); ok {
 		return decSlice, nil
 	}

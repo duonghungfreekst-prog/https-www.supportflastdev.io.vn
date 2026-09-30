@@ -40,6 +40,19 @@ const (
 	StrategyRoundRobin2 = "round-robin" // Hỗ trợ định dạng hyphen
 )
 
+
+var sharedTransport = &http.Transport{
+	MaxIdleConns:          500,
+	MaxIdleConnsPerHost:   500,
+	ForceAttemptHTTP2:     true,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	DisableCompression:    false,
+	WriteBufferSize:       128 * 1024,
+	ReadBufferSize:        128 * 1024,
+}
+
 type Manager struct {
 	db                 *storage.DB
 	services           map[string]*drive.Service
@@ -739,7 +752,12 @@ func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Serv
 			return nil, nil, fmt.Errorf("failed to load SA creds: %w", err)
 		}
 		var errSrv error
-		newSrv, errSrv = drive.NewService(context.Background(), option.WithCredentials(creds))
+		saTransport := &oauth2.Transport{
+			Source: creds.TokenSource,
+			Base:   sharedTransport,
+		}
+		saClient := &http.Client{Transport: saTransport}
+		newSrv, errSrv = drive.NewService(context.Background(), option.WithHTTPClient(saClient))
 		if errSrv != nil {
 			return nil, nil, fmt.Errorf("failed to create SA drive service: %w", errSrv)
 		}
@@ -777,8 +795,8 @@ func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Serv
 		transport := &oauth2.Transport{
 			Source: pts,
 			Base: &http.Transport{
-				MaxIdleConns:          100,
-				MaxIdleConnsPerHost:   100,
+				MaxIdleConns:          500,
+				MaxIdleConnsPerHost:   500,
 				IdleConnTimeout:       90 * time.Second,
 				TLSHandshakeTimeout:   10 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,

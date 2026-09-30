@@ -280,8 +280,11 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),
 		Handler:      handler,
-		ReadTimeout:  30 * time.Minute, // Large file upload support
-		WriteTimeout: 30 * time.Minute, // Large file stream support
+		ReadHeaderTimeout: 20 * time.Second,
+		ReadTimeout:       60 * time.Minute,
+		WriteTimeout:      0,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    2 << 20,
 	}
 
 	return s.server.ListenAndServe()

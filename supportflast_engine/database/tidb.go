@@ -23,8 +23,8 @@ const (
 	DefaultTiDBDatabase        = "supportflast"
 	DefaultTiDBUser            = "root"
 	DefaultTiDBTLSConfig       = "tidb"
-	DefaultTiDBMaxOpenConns    = 25
-	DefaultTiDBMaxIdleConns    = 10
+	DefaultTiDBMaxOpenConns    = 250
+	DefaultTiDBMaxIdleConns    = 200
 	DefaultTiDBConnMaxLifetime = 5 * time.Minute
 	DefaultTiDBConnMaxIdleTime = 3 * time.Minute
 	DefaultTiDBConnectTimeout  = 10 * time.Second

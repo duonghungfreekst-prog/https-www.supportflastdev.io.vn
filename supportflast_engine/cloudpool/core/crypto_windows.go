@@ -19,6 +19,7 @@ var (
 	procDecrypt    *syscall.LazyProc
 	procHashChunk  *syscall.LazyProc
 	procFreeBuffer *syscall.LazyProc
+	procDecryptInPlace *syscall.LazyProc
 	procFreeString *syscall.LazyProc
 
 	// PQC Procedures từ supportflast_core.dll (Kyber-768 & Dilithium & Hybrid PQC)
@@ -78,6 +79,7 @@ func initRustDLL() {
 				procDecrypt = rustDLL.NewProc("decrypt_chunk_ffi")
 				procHashChunk = rustDLL.NewProc("hash_chunk_ffi")
 				procFreeBuffer = rustDLL.NewProc("free_rust_buffer")
+		procDecryptInPlace = rustDLL.NewProc("decrypt_chunk_in_place_ffi")
 				procFreeString = rustDLL.NewProc("free_rust_string")
 
 				// PQC Procedures
@@ -362,4 +364,23 @@ func tryRustPqcHybridDecrypt(recipientKyberSKHex string, envelopeJSON string) (s
 func isDLLLoaded() bool {
 	initRustDLL()
 	return dllLoaded
+}
+
+// tryRustDecryptInPlace thuc hien giai ma in-place Zero-Copy
+func tryRustDecryptInPlace(key [32]byte, encryptedData []byte) ([]byte, bool) {
+	initRustDLL()
+	if !dllLoaded || procDecryptInPlace == nil || procDecryptInPlace.Find() != nil || len(encryptedData) < 28 {
+		return nil, false
+	}
+	var ptLen uintptr
+	r1, _, _ := procDecryptInPlace.Call(
+		uintptr(unsafe.Pointer(&key[0])),
+		uintptr(unsafe.Pointer(&encryptedData[0])),
+		uintptr(len(encryptedData)),
+		uintptr(unsafe.Pointer(&ptLen)),
+	)
+	if r1 == 0 && ptLen > 0 {
+		return encryptedData[12 : 12+ptLen], true
+	}
+	return nil, false
 }
