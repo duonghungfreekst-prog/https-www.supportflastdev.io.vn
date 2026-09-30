@@ -1466,7 +1466,7 @@ func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFi
 	var rows *sql.Rows
 	var err error
 
-	if userID == "all" || userID == "user_admin" || userID == "admin" || userID == "" {
+	if userID == "all" || userID == "user_admin" || userID == "admin" {
 		// Admin sees all files and system partitions
 		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE parent_id = ? AND id != 'root' AND is_deleted = 0 ORDER BY is_dir DESC, name ASC`, parentID)
 	} else if userID == "guest" {
@@ -1837,7 +1837,7 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 	var rows *sql.Rows
 	var err error
 
-	if userID == "all" || userID == "" || userID == "user_admin" {
+	if userID == "all" || userID == "user_admin" || userID == "admin" {
 		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE is_deleted = 1 ORDER BY deleted_at DESC`)
 	} else {
 		rows, err = s.db.Query(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE user_id = ? AND is_deleted = 1 ORDER BY deleted_at DESC`, userID)
@@ -1883,7 +1883,7 @@ func (s *DB) GetTrashFileIDs(userID string) ([]string, error) {
 
 	var rows *sql.Rows
 	var err error
-	if userID == "all" || userID == "" || userID == "user_admin" {
+	if userID == "all" || userID == "user_admin" || userID == "admin" {
 		rows, err = s.db.Query(`SELECT id FROM virtual_files WHERE is_deleted = 1`)
 	} else {
 		rows, err = s.db.Query(`SELECT id FROM virtual_files WHERE user_id = ? AND is_deleted = 1`, userID)
@@ -3615,7 +3615,7 @@ func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownRespons
 	var rows *sql.Rows
 	var err error
 
-	if userID == "all" || userID == "" || userID == "user_admin" {
+	if userID == "all" || userID == "user_admin" || userID == "admin" {
 		query = `SELECT id, name, size_bytes, mime_type, updated_at FROM virtual_files WHERE is_dir = 0 AND is_deleted = 0 ORDER BY size_bytes DESC`
 		rows, err = s.db.Query(query)
 	} else {
@@ -4375,4 +4375,5 @@ func getSnapshotInt64(m map[string]interface{}, key string) int64 {
 func getSnapshotInt(m map[string]interface{}, key string) int {
 	return int(getSnapshotInt64(m, key))
 }
+
 

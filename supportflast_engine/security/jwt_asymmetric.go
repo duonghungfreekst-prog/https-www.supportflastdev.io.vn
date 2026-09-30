@@ -144,6 +144,18 @@ func EnsureRSAKeys() error {
 	privPath := filepath.Join(keysDir, "private.pem")
 	pubPath := filepath.Join(keysDir, "public.pem")
 
+	// Support loading from base64 environment variables for Render
+	if privEnv := os.Getenv("JWT_PRIVATE_KEY_BASE64"); privEnv != "" {
+		if privBytes, err := base64.StdEncoding.DecodeString(privEnv); err == nil {
+			os.WriteFile(privPath, privBytes, 0600)
+		}
+	}
+	if pubEnv := os.Getenv("JWT_PUBLIC_KEY_BASE64"); pubEnv != "" {
+		if pubBytes, err := base64.StdEncoding.DecodeString(pubEnv); err == nil {
+			os.WriteFile(pubPath, pubBytes, 0644)
+		}
+	}
+
 	_, privErr := os.Stat(privPath)
 	_, pubErr := os.Stat(pubPath)
 
@@ -409,3 +421,7 @@ func ConstantTimeCompareTokenHash(tokenA, tokenB string) bool {
 	hB := sha256.Sum256([]byte(tokenB))
 	return subtle.ConstantTimeCompare(hA[:], hB[:]) == 1
 }
+
+
+
+
