@@ -16,11 +16,10 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-	_ "modernc.org/sqlite"
 )
 
-// DefaultDBPath đường dẫn mặc định của cơ sở dữ liệu SQLite
-const DefaultDBPath = `f:\supportflast.dev\data\supportflast.db`
+// DefaultTiDBDriver driver mặc định là TiDB Cloud
+const DefaultTiDBDriverName = "tidb"
 
 // Hằng số tài khoản quản trị viên hệ thống khởi tạo chuẩn
 const (
@@ -40,7 +39,7 @@ var (
 )
 
 func init() {
-	activeDriver.Store("sqlite")
+	activeDriver.Store("tidb")
 }
 
 // SchemaDDL danh sách câu lệnh DDL định nghĩa bảng và chỉ mục (INDEX)
@@ -292,41 +291,7 @@ type SystemRelease struct {
 }
 
 
-// ResolveDBPath xác định đường dẫn file cơ sở dữ liệu SQLite linh hoạt
-// Ưu tiên:
-// 1. Tham số customPath (nếu được truyền vào)
-// 2. Biến môi trường DATA_DIR (filepath.Join(DATA_DIR, "supportflast.db"))
-// 3. Các thư mục ứng viên: "../data/supportflast.db", "data/supportflast.db", "f:\supportflast.dev\data\supportflast.db"
-func ResolveDBPath(customPath ...string) string {
-	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
-		return customPath[0]
-	}
-
-	if envDBPath := strings.TrimSpace(os.Getenv("DB_PATH")); envDBPath != "" {
-		return envDBPath
-	}
-
-	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
-		return filepath.Join(envDataDir, "supportflast.db")
-	}
-
-	candidates := []string{
-		filepath.Join("..", "data", "supportflast.db"),
-		filepath.Join("data", "supportflast.db"),
-		`f:\supportflast.dev\data\supportflast.db`,
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-
-	// Mặc định tạo tại ../data hoặc data
-	if info, err := os.Stat(".."); err == nil && info.IsDir() {
-		return filepath.Join("..", "data", "supportflast.db")
-	}
-	return filepath.Join("data", "supportflast.db")
-}
+// ResolveDBPath đã loại bỏ — hệ thống chỉ sử dụng TiDB Cloud
 
 // isMySQLOrTiDB kiểm tra xem driver hiện hành, kết nối db hoặc biến môi trường DB_DRIVER có phải là tidb hoặc mysql hay không (Lock-free)
 func isMySQLOrTiDB(db ...*sql.DB) bool {
@@ -340,7 +305,7 @@ func isMySQLOrTiDB(db ...*sql.DB) bool {
 	return drv == "tidb" || drv == "mysql"
 }
 
-// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql", hoặc "") (Lock-free)
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("tidb", "mysql") (Lock-free)
 func ActiveDriver() string {
 	if v, ok := activeDriver.Load().(string); ok && v != "" {
 		return v
@@ -349,10 +314,7 @@ func ActiveDriver() string {
 	if d == "tidb" || d == "mysql" {
 		return d
 	}
-	if (d == "" || d == "default") && (os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn")) {
-		return "tidb"
-	}
-	return "sqlite"
+	return "tidb"
 }
 
 // GetActiveDriver là bí danh (alias) của ActiveDriver đảm bảo tương thích ngược
@@ -365,7 +327,7 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 	dbInstance = db
-	drv := "sqlite"
+	drv := "tidb"
 	if len(driver) > 0 && strings.TrimSpace(driver[0]) != "" {
 		drv = strings.ToLower(strings.TrimSpace(driver[0]))
 	}
@@ -375,57 +337,19 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 	}
 }
 
-// InitSQLite khởi tạo kết nối cơ sở dữ liệu SQLite thread-safe
-// Nếu truyền customPath thì sử dụng đường dẫn đó (hữu ích cho unit test),
-// nếu không truyền thì tự động phân giải qua ResolveDBPath().
-func InitSQLite(customPath ...string) (*sql.DB, error) {
-	dbMutex.Lock()
-	defer dbMutex.Unlock()
+// InitSQLite đã loại bỏ — hệ thống chỉ sử dụng TiDB Cloud
 
-	if dbInstance != nil && ActiveDriver() == "sqlite" {
-		return dbInstance, nil
-	}
-
-	activeDriver.Store("sqlite")
-	dbPath := ResolveDBPath(customPath...)
-
-	db, err := openDatabaseLocked(dbPath)
+// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe tới TiDB Cloud
+func InitDB(customPath ...string) (*sql.DB, error) {
+	db, err := InitTiDB()
 	if err != nil {
 		return nil, err
 	}
-
+	dbMutex.Lock()
 	dbInstance = db
-	return dbInstance, nil
-}
-
-// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe theo cấu hình DB_DRIVER:
-// - Kiểm tra biến môi trường DB_DRIVER:
-//   * Nếu DB_DRIVER=tidb hoặc mysql: gọi InitTiDB()
-//   * Nếu DB_DRIVER=sqlite hoặc để trống: gọi InitSQLite(customPath...)
-// - Nếu có truyền customPath cụ thể (hữu ích cho unit test cục bộ), ưu tiên gọi InitSQLite(customPath...).
-func InitDB(customPath ...string) (*sql.DB, error) {
-	// Nếu truyền customPath hợp lệ (thường dùng trong unit test), ưu tiên khởi tạo SQLite theo đường dẫn đó
-	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
-		return InitSQLite(customPath[0])
-	}
-
-	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if driver == "" && (os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn")) {
-		driver = "tidb"
-	}
-	if driver == "tidb" || driver == "mysql" {
-		db, err := InitTiDB()
-		if err != nil {
-			return nil, err
-		}
-		dbMutex.Lock()
-		dbInstance = db
-		activeDriver.Store(driver)
-		dbMutex.Unlock()
-		return db, nil
-	}
-
-	return InitSQLite()
+	activeDriver.Store("tidb")
+	dbMutex.Unlock()
+	return db, nil
 }
 
 // GetDB trả về con trỏ kết nối *sql.DB thread-safe cho các module khác truy cập.
@@ -447,15 +371,8 @@ func GetDB() *sql.DB {
 	return db
 }
 
-// CheckpointWAL thực hiện checkpoint và truncate file journal WAL về database chính (chỉ áp dụng cho SQLite)
+// CheckpointWAL không áp dụng cho TiDB Cloud — giữ lại để tương thích API
 func CheckpointWAL() error {
-	dbMutex.Lock()
-	defer dbMutex.Unlock()
-
-	if dbInstance != nil && ActiveDriver() == "sqlite" {
-		_, err := dbInstance.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
-		return err
-	}
 	return nil
 }
 
@@ -466,9 +383,6 @@ func CloseDB() error {
 
 	var lastErr error
 	if dbInstance != nil {
-		if ActiveDriver() == "sqlite" {
-			_, _ = dbInstance.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
-		}
 		if err := dbInstance.Close(); err != nil {
 			lastErr = err
 		}
@@ -516,27 +430,13 @@ func SeedInitialData(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("failed to hash default admin password: %w", err)
 	}
 
-	var now string
-	var lastLoginVal interface{}
-	var query string
-
-	if isMySQLOrTiDB(db) {
-		now = time.Now().UTC().Format("2006-01-02 15:04:05")
-		lastLoginVal = nil // MySQL/TiDB DATETIME không nhận chuỗi rỗng '' trong STRICT mode
-		query = `
-			INSERT IGNORE INTO users (
-				id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	} else {
-		now = time.Now().UTC().Format(time.RFC3339)
-		lastLoginVal = ""
-		query = `
-			INSERT OR IGNORE INTO users (
-				id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	}
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	var lastLoginVal interface{} = nil
+	query := `
+		INSERT IGNORE INTO users (
+			id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
 
 	stmtInsert, err := db.Prepare(query)
 	if err != nil {
@@ -630,24 +530,13 @@ func SeedInitialApps(db *sql.DB, dataDir ...string) error {
 		return nil
 	}
 
-	var query string
-	if isMySQLOrTiDB(db) {
-		query = `
-			INSERT IGNORE INTO apps (
-				id, name, version, platform, category, ` + "`desc`" + `, file_name,
-				size_bytes, size_formatted, sha256, author, downloads,
-				status, published_at, download_url, video_url, guide, user_id
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	} else {
-		query = `
-			INSERT OR IGNORE INTO apps (
-				id, name, version, platform, category, ` + "`desc`" + `, file_name,
-				size_bytes, size_formatted, sha256, author, downloads,
-				status, published_at, download_url, video_url, guide, user_id
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	}
+	query := `
+		INSERT IGNORE INTO apps (
+			id, name, version, platform, category, ` + "`desc`" + `, file_name,
+			size_bytes, size_formatted, sha256, author, downloads,
+			status, published_at, download_url, video_url, guide, user_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -735,18 +624,10 @@ func SeedInitialKeys(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
 	}
 
-	var query string
-	if isMySQLOrTiDB(db) {
-		query = `
-			INSERT IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	} else {
-		query = `
-			INSERT OR IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		`
-	}
+	query := `
+		INSERT IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -814,15 +695,8 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 	}
 	if jsonPath == "" {
 		// Tự động chèn bản ghi phiên bản hệ thống mặc định để đảm bảo bảng system_releases luôn sẵn sàng
-		var defQuery string
-		var nowVal interface{}
-		if isMySQLOrTiDB(db) {
-			defQuery = `INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
-			nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
-		} else {
-			defQuery = `INSERT OR IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
-			nowVal = time.Now().UTC().Format(time.RFC3339)
-		}
+		defQuery := `INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
+		nowVal := time.Now().UTC().Format("2006-01-02 15:04:05")
 		_, _ = db.Exec(defQuery, "v2.1.0", "SupportFlast Polyglot Cloud Architecture", nowVal, "sf-build-2026-cloud", "Phiên bản phát hành hệ thống chính thức tự động khởi tạo", "System Auto-Bootstrap")
 		log.Println("[ENGINE] [DATABASE] Đã tự động khởi tạo phiên bản hệ thống mặc định v2.1.0 cho system_releases")
 		return nil
@@ -845,18 +719,10 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
 	}
 
-	var query string
-	if isMySQLOrTiDB(db) {
-		query = `
-			INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`
-	} else {
-		query = `
-			INSERT OR IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`
-	}
+	query := `
+		INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -914,12 +780,7 @@ func RecordAuditLog(userID, action, ipAddress, userAgent, details string) error 
 	defer stmt.Close()
 
 	id := generateLogID("aud", &auditLogSeq)
-	var now string
-	if isMySQLOrTiDB() {
-		now = time.Now().UTC().Format("2006-01-02 15:04:05")
-	} else {
-		now = time.Now().UTC().Format(time.RFC3339)
-	}
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
 
 	var uid *string
 	if strings.TrimSpace(userID) != "" {
@@ -1057,23 +918,12 @@ func RecordSecurityEvent(eventType, ipAddress, severity, details string, blocked
 	defer stmt.Close()
 
 	id := generateLogID("sec", &securityEventSeq)
-	var now string
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
 	var blockedVal interface{}
-
-	if isMySQLOrTiDB() {
-		now = time.Now().UTC().Format("2006-01-02 15:04:05")
-		if blockedUntil != nil && !blockedUntil.IsZero() {
-			blockedVal = blockedUntil.UTC().Format("2006-01-02 15:04:05")
-		} else {
-			blockedVal = nil
-		}
+	if blockedUntil != nil && !blockedUntil.IsZero() {
+		blockedVal = blockedUntil.UTC().Format("2006-01-02 15:04:05")
 	} else {
-		now = time.Now().UTC().Format(time.RFC3339)
-		if blockedUntil != nil && !blockedUntil.IsZero() {
-			blockedVal = blockedUntil.UTC().Format(time.RFC3339)
-		} else {
-			blockedVal = nil
-		}
+		blockedVal = nil
 	}
 
 	cleanIP := strings.ReplaceAll(strings.ReplaceAll(ipAddress, "\n", ""), "\r", "")
@@ -1154,33 +1004,16 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 		return false, time.Time{}, nil
 	}
 
-	nowRFC := time.Now().UTC().Format(time.RFC3339)
 	nowSQL := time.Now().UTC().Format("2006-01-02 15:04:05")
 
-	var query string
-	var args []interface{}
-	if isMySQLOrTiDB() {
-		query = `
-			SELECT blocked_until
-			FROM security_events
-			WHERE ip_address = ? AND blocked_until > ?
-			ORDER BY blocked_until DESC
-			LIMIT 1
-		`
-		args = []interface{}{cleanIP, nowSQL}
-	} else {
-		query = `
-			SELECT blocked_until
-			FROM security_events
-			WHERE ip_address = ? AND (
-				(blocked_until LIKE '%T%' AND blocked_until > ?) OR
-				(blocked_until NOT LIKE '%T%' AND blocked_until > ?)
-			)
-			ORDER BY blocked_until DESC
-			LIMIT 1
-		`
-		args = []interface{}{cleanIP, nowRFC, nowSQL}
-	}
+	query := `
+		SELECT blocked_until
+		FROM security_events
+		WHERE ip_address = ? AND blocked_until > ?
+		ORDER BY blocked_until DESC
+		LIMIT 1
+	`
+	args := []interface{}{cleanIP, nowSQL}
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
