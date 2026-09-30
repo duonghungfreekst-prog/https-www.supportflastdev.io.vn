@@ -202,7 +202,26 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		}
 	}
 	dbPath := filepath.Join(dataDir, "supportflast.db")
+	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")
 	res.MainDBPath = dbPath
+
+	// Cơ chế tự động nhận diện thông minh: Nếu cấu hình là SQLite nhưng file SQLite bị xóa trên đĩa,
+	// kiểm tra xem TiDB Cloud có sẵn sàng không để tự động bảo vệ dữ liệu người dùng
+	if driver == "sqlite" {
+		_, statMain := os.Stat(dbPath)
+		_, statStorage := os.Stat(storageDBPath)
+		if os.IsNotExist(statMain) || os.IsNotExist(statStorage) {
+			log.Println("[BOOTSTRAP] [DATABASE] Phát hiện tệp tin SQLite bị xóa hoặc chưa tồn tại. Đang kiểm tra tính sẵn sàng của TiDB Cloud...")
+			tidbCfg := database.DefaultTiDBConfig()
+			if testDB, testErr := database.OpenTiDBConnection(tidbCfg); testErr == nil {
+				_ = testDB.Close()
+				log.Println("[BOOTSTRAP] [DATABASE] TiDB Cloud đang hoạt động sẵn sàng! Tự động kích hoạt kết nối TiDB Cloud để bảo tồn 100% dữ liệu.")
+				driver = "tidb"
+			} else {
+				log.Printf("[BOOTSTRAP] [DATABASE] [INFO] TiDB Cloud không khả dụng (%v). Tiếp tục chế độ SQLite và tự động phục hồi từ bản sao lưu snapshot.", testErr)
+			}
+		}
+	}
 
 	var db *sql.DB
 	var err error
@@ -233,7 +252,6 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 
 	// 6. Tự động khởi tạo CSDL CloudPool (TiDB Cloud Serverless hoặc SQLite)
 	var storageDB *cloudpoolStorage.DB
-	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")
 	cloudpoolDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
 	if cloudpoolDriver == "" {
 		cloudpoolDriver = driver
@@ -276,6 +294,15 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	}
 
 	res.StorageDB = storageDB
+
+	// Báo cáo số lượng tài nguyên CloudPool sẵn sàng
+	if storageDB != nil {
+		var readyAccs, readyFiles int
+		_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM accounts").Scan(&readyAccs)
+		_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&readyFiles)
+		log.Printf("[BOOTSTRAP] [DATA-READY] Hệ thống đã sẵn sàng với toàn bộ %d tài khoản Google Drive và %d tài liệu/tệp tin VFS!",
+			readyAccs, readyFiles)
+	}
 
 	// 7. Tự động tạo / xác nhận tài khoản Admin mặc định ('admin' / 'Admin@2026!SupportFlast') với role admin
 	res.AdminUsername = "admin"

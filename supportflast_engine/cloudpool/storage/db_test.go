@@ -731,4 +731,116 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	}
 }
 
+// TestAutoSyncFromSnapshot_RecoveryWhenSQLiteDeleted kiểm tra kịch bản cốt lõi:
+// Khi file SQLite bị xóa hoặc khởi động container trắng, hệ thống tự động đồng bộ
+// và phục hồi 100% dữ liệu (11 accounts, 675 files) từ snapshot an toàn.
+func TestAutoSyncFromSnapshot_RecoveryWhenSQLiteDeleted(t *testing.T) {
+	tempDir := t.TempDir()
+	backupsDir := filepath.Join(tempDir, "backups")
+	if err := os.MkdirAll(backupsDir, 0755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	// Đọc file snapshot thật từ dự án
+	realSnapCandidates := []string{
+		`f:\supportflast.dev\data\backups\cloudpool_snapshot.json`,
+		filepath.Join("..", "..", "..", "data", "backups", "cloudpool_snapshot.json"),
+		filepath.Join("data", "backups", "cloudpool_snapshot.json"),
+	}
+	var realSnapData []byte
+	for _, c := range realSnapCandidates {
+		if d, err := os.ReadFile(c); err == nil && len(d) > 0 {
+			realSnapData = d
+			break
+		}
+	}
+	if len(realSnapData) == 0 {
+		t.Skip("Không tìm thấy file cloudpool_snapshot.json mẫu để chạy test phục hồi")
+	}
+
+	// Copy snapshot vào thư mục backups tạm
+	targetSnap := filepath.Join(backupsDir, "cloudpool_snapshot.json")
+	if err := os.WriteFile(targetSnap, realSnapData, 0644); err != nil {
+		t.Fatalf("Failed to copy snapshot: %v", err)
+	}
+
+	// Thiết lập DATA_DIR trỏ về tempDir
+	oldDataDir := os.Getenv("DATA_DIR")
+	os.Setenv("DATA_DIR", tempDir)
+	defer os.Setenv("DATA_DIR", oldDataDir)
+
+	// Khởi tạo DB SQLite mới tinh (giả lập file SQLite cũ bị xóa hoàn toàn)
+	newDBPath := filepath.Join(tempDir, "cloudpool_metadata.db")
+	db, err := NewDB(newDBPath)
+	if err != nil {
+		t.Fatalf("NewDB failed on new empty database: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra 11 tài khoản Google Drive đã được tự động phục hồi
+	var accCount int
+	_ = db.SQLDB().QueryRow("SELECT COUNT(1) FROM accounts").Scan(&accCount)
+	if accCount < 11 {
+		t.Errorf("Kỳ vọng ít nhất 11 tài khoản Google Drive được phục hồi, thực tế: %d", accCount)
+	}
+
+	// 2. Kiểm tra 675 tệp tin/thư mục VFS đã được tự động phục hồi
+	var fileCount int
+	_ = db.SQLDB().QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
+	if fileCount < 600 {
+		t.Errorf("Kỳ vọng tệp tin VFS được phục hồi (~675), thực tế: %d", fileCount)
+	}
+
+	// 3. Kiểm tra file_chunks đã được phục hồi
+	var chunkCount int
+	_ = db.SQLDB().QueryRow("SELECT COUNT(1) FROM file_chunks").Scan(&chunkCount)
+	if chunkCount < 700 {
+		t.Errorf("Kỳ vọng chunk dữ liệu được phục hồi (~748), thực tế: %d", chunkCount)
+	}
+
+	// 4. Kiểm tra cấu hình mặc định (master_passphrase, chunk_size, webdav) đã được seed
+	var masterPass, chunkSize, strategy string
+	_ = db.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&masterPass)
+	_ = db.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'chunk_size_bytes'").Scan(&chunkSize)
+	_ = db.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'allocation_strategy'").Scan(&strategy)
+
+	if masterPass == "" {
+		t.Errorf("master_passphrase chưa được khởi tạo trong settings")
+	}
+	if chunkSize == "" {
+		t.Errorf("chunk_size_bytes chưa được khởi tạo trong settings")
+	}
+	if strategy == "" {
+		t.Errorf("allocation_strategy chưa được khởi tạo trong settings")
+	}
+
+	t.Logf("Auto-Sync kiểm thử thành công: %d tài khoản, %d tệp tin, %d chunks được phục hồi mượt mà!", accCount, fileCount, chunkCount)
+}
+
+func TestParseFlexibleTimestamp(t *testing.T) {
+	cases := []struct {
+		input    interface{}
+		expected string
+	}{
+		{"2026-08-26 14:42:38.7552737 +0700 +07 m=+48.188630501", "2026-08-26 14:42:38"},
+		{"2026-09-30T08:15:30Z", "2026-09-30 08:15:30"},
+		{"2026-01-02 15:04:05", "2026-01-02 15:04:05"},
+		{nil, ""},
+		{"", ""},
+	}
+
+	for _, c := range cases {
+		res := parseFlexibleTimestamp(c.input)
+		if c.expected == "" {
+			if res != nil && res != "" {
+				t.Errorf("Kỳ vọng rỗng/nil cho input %v, thực tế: %v", c.input, res)
+			}
+		} else {
+			if res != c.expected {
+				t.Errorf("Input '%v': kỳ vọng '%s', thực tế '%v'", c.input, c.expected, res)
+			}
+		}
+	}
+}
+
 

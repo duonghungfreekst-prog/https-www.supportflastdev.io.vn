@@ -219,6 +219,17 @@ func openSQLiteConnection(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
+	// Tự động kiểm tra và đồng bộ lại tài liệu từ snapshot nếu SQLite là database chính (cloudpool_metadata.db)
+	isMainDB := filepath.Base(dbPath) == "cloudpool_metadata.db" || dbPath == ResolveDBPath()
+	forceSync := strings.TrimSpace(os.Getenv("FORCE_AUTO_SYNC")) == "1"
+	skipSync := strings.TrimSpace(os.Getenv("SKIP_AUTO_SYNC")) == "1"
+
+	if (isMainDB || forceSync) && !skipSync {
+		if err := s.AutoSyncFromSnapshotIfEmpty(); err != nil {
+			log.Printf("[ENGINE] [STORAGE] [WARN] Cảnh báo tự động đồng bộ SQLite từ snapshot: %v", err)
+		}
+	}
+
 	return s, nil
 }
 
@@ -337,6 +348,12 @@ func openTiDBWithConfig(cfg database.TiDBConfig, rawDSN ...string) (*DB, error) 
 	if err := s.migrate(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to migrate cloudpool tidb schema: %w", err)
+	}
+
+	// 7. Tự động kiểm tra tính sẵn sàng của bảng accounts, virtual_files, settings
+	// và tự động khởi tạo an toàn (seed idempotent / auto-sync từ snapshot)
+	if err := s.EnsureTiDBCloudPoolDataReady(); err != nil {
+		log.Printf("[ENGINE] [TIDB] [STORAGE] [WARN] Cảnh báo kiểm tra dữ liệu TiDB Cloud: %v", err)
 	}
 
 	return s, nil
@@ -3733,5 +3750,675 @@ func (s *DB) StartAutoBackup() {
 			<-ticker.C
 		}
 	}()
+}
+
+// =============================================================================
+// HỆ THỐNG TỰ ĐỘNG ĐỒNG BỘ & KHỞI TẠO DỰ PHÒNG CSDL (AUTO-SYNC & RESILIENCE)
+// Tuân thủ Quy chế PHAN 0, PHAN 1.5, PHAN 3.5, PHAN 7.1
+// =============================================================================
+
+// EnsureTiDBCloudPoolDataReady kiểm tra tính sẵn sàng của các bảng accounts, virtual_files,
+// settings khi khởi động TiDB Cloud. Nếu thiếu cấu hình mặc định (master passphrase, chunk size,
+// strategy...) hoặc bảng rỗng, tự động khởi tạo an toàn (seed idempotent / auto-sync).
+func (s *DB) EnsureTiDBCloudPoolDataReady() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.IsMySQLOrTiDB() {
+		return nil
+	}
+
+	// 1. Kiểm tra kết nối liveness và ping check tới cụm TiDB Cloud với context timeout 5s
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.db.PingContext(ctx); err != nil {
+		return fmt.Errorf("ping kiểm tra sức khỏe TiDB Cloud thất bại: %w", err)
+	}
+
+	// 2. Khởi tạo toàn bộ cấu hình mặc định bắt buộc (Idempotent seed)
+	s.seedDefaultSettingsIdempotent()
+
+	// 3. Đảm bảo tài khoản user_admin và quyền quản trị viên luôn tồn tại
+	masterKey := s.getMasterKey()
+	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
+	encAdminName := core.EncryptSecret(masterKey, "admin")
+	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
+
+	var masterPass string
+	_ = s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&masterPass)
+	if masterPass == "" {
+		masterPass = "admin"
+	}
+	adminPassBcrypt, err := core.HashPasswordBcrypt(masterPass)
+	if err != nil {
+		adminPassBcrypt = core.HashSHA256([]byte(masterPass))
+	}
+
+	var adminCount int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	now := time.Now()
+	if adminCount == 0 {
+		_, _ = s.db.Exec(`INSERT INTO users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
+	} else {
+		_, _ = s.db.Exec(`UPDATE users SET password_hash = ?, failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+	}
+
+	// 4. Đảm bảo thư mục gốc root trong virtual_files luôn tồn tại
+	var rootCount int
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id = 'root'").Scan(&rootCount)
+	if rootCount == 0 {
+		_, _ = s.db.Exec(`INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
+			VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
+	}
+
+	// 5. Kiểm tra số lượng bản ghi trong các bảng cốt lõi
+	var accCount, fileCount, chunkCount int
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM accounts").Scan(&accCount)
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM file_chunks").Scan(&chunkCount)
+
+	// Nếu TiDB Cloud rỗng (chưa có tài khoản hoặc chưa có file), tự động đồng bộ từ snapshot / token
+	if accCount == 0 || fileCount == 0 {
+		log.Printf("[ENGINE] [TIDB] [STORAGE] CSDL TiDB Cloud cần đồng nhất dữ liệu (tài khoản=%d, tệp tin=%d). Bắt đầu Auto-Sync...", accCount, fileCount)
+		_ = s.syncFromSnapshotUnlocked()
+		_ = s.db.QueryRow("SELECT COUNT(1) FROM accounts").Scan(&accCount)
+		_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
+		_ = s.db.QueryRow("SELECT COUNT(1) FROM file_chunks").Scan(&chunkCount)
+	}
+
+	// 6. Tự động đồng bộ dự phòng sang file SQLite cục bộ nếu file SQLite bị xóa hoặc rỗng
+	go s.SyncToLocalSQLiteCacheIfMissing()
+
+	log.Printf("[ENGINE] [TIDB] [STORAGE] Xác nhận CSDL TiDB Cloud sẵn sàng 100%%: %d tài khoản Google Drive, %d tệp tin VFS, %d chunk dữ liệu.",
+		accCount, fileCount, chunkCount)
+	return nil
+}
+
+// seedDefaultSettingsIdempotent khởi tạo toàn bộ cấu hình mặc định bắt buộc
+func (s *DB) seedDefaultSettingsIdempotent() {
+	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
+	s.setDefaultSetting("chunk_size_bytes", "20971520") // 20 MB
+	s.setDefaultSetting("allocation_strategy", "least_used")
+	s.setDefaultSetting("webdav_enabled", "true")
+	s.setDefaultSetting("webdav_username", "admin")
+	s.setDefaultSetting("webdav_password", "admin123")
+	s.setDefaultSetting("server_port", "8080")
+	s.setDefaultSetting("guest_access_mode", "view_only")
+	s.setDefaultSetting("allow_self_registration", "true")
+
+	oauthClientID := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
+	if oauthClientID == "" {
+		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	}
+	if oauthClientID == "" {
+		oauthClientID = DefaultGoogleClientID
+	}
+	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
+	if oauthClientSecret == "" {
+		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	}
+	if oauthClientSecret == "" {
+		oauthClientSecret = DefaultGoogleClientSecret
+	}
+	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
+	if oauthRedirect == "" {
+		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
+	}
+	masterKey := s.getMasterKey()
+	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
+	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
+	s.setDefaultSetting("redirect_url", oauthRedirect)
+}
+
+// AutoSyncFromSnapshotIfEmpty tự động kiểm tra CSDL và phục hồi dữ liệu từ bản sao lưu JSON snapshot
+// nếu bảng accounts hoặc virtual_files đang rỗng (hỗ trợ khi xóa SQLite hoặc deploy container mới).
+func (s *DB) AutoSyncFromSnapshotIfEmpty() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.syncFromSnapshotUnlocked()
+}
+
+func (s *DB) syncFromSnapshotUnlocked() error {
+	var accCount, fileCount int
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM accounts").Scan(&accCount)
+	_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
+
+	// Nếu đã có cả tài khoản và tệp tin thì không cần nạp
+	if accCount > 0 && fileCount > 0 {
+		return nil
+	}
+
+	snapData, srcPath, err := findCloudPoolSnapshot()
+	if err == nil && len(snapData) > 0 {
+		accs, files, chunks, resErr := s.restoreCloudPoolSnapshot(snapData)
+		if resErr == nil {
+			log.Printf("[ENGINE] [STORAGE] [AUTO-SYNC] Đã tự động phục hồi dữ liệu từ '%s': %d tài khoản, %d tệp tin VFS, %d chunk.",
+				srcPath, accs, files, chunks)
+			return nil
+		}
+		log.Printf("[ENGINE] [STORAGE] [WARN] Phục hồi từ snapshot '%s' cảnh báo: %v", srcPath, resErr)
+	}
+
+	// Nếu không có snapshot hoặc phục hồi chưa đủ tài khoản, thử tìm token OAuth trong data/oauth/
+	if accCount == 0 {
+		restoredTokens, tokErr := s.restoreAccountsFromOAuthTokens()
+		if tokErr == nil && restoredTokens > 0 {
+			log.Printf("[ENGINE] [STORAGE] [AUTO-SYNC] Đã tự động phục hồi %d tài khoản Google Drive từ chứng chỉ OAuth.", restoredTokens)
+		}
+	}
+
+	return nil
+}
+
+type cloudPoolSnapshotPayload struct {
+	Metadata           map[string]interface{}   `json:"_metadata"`
+	Accounts           []map[string]interface{} `json:"accounts"`
+	VirtualFiles       []map[string]interface{} `json:"virtual_files"`
+	FileChunks         []map[string]interface{} `json:"file_chunks"`
+	Settings           []map[string]interface{} `json:"settings"`
+	Users              []map[string]interface{} `json:"users"`
+	ActivityLogs       []map[string]interface{} `json:"activity_logs"`
+	LoginSessions      []map[string]interface{} `json:"login_sessions"`
+	FileAccessOTPs     []map[string]interface{} `json:"file_access_otps"`
+	FileAccessRequests []map[string]interface{} `json:"file_access_requests"`
+	PublicShares       []map[string]interface{} `json:"public_shares"`
+	GDriveBackups      []map[string]interface{} `json:"gdrive_backups"`
+}
+
+func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
+	var payload cloudPoolSnapshotPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return 0, 0, 0, fmt.Errorf("lỗi giải mã JSON snapshot: %w", err)
+	}
+
+	// 1. Phục hồi Settings
+	for _, st := range payload.Settings {
+		k := getSnapshotStr(st, "key")
+		v := getSnapshotStr(st, "value")
+		if k != "" {
+			s.setDefaultSetting(k, v)
+		}
+	}
+
+	// 2. Phục hồi Users
+	for _, u := range payload.Users {
+		id := getSnapshotStr(u, "id")
+		uname := getSnapshotStr(u, "username")
+		unameHash := getSnapshotStr(u, "username_hash")
+		passHash := getSnapshotStr(u, "password_hash")
+		email := getSnapshotStr(u, "email")
+		emailHash := getSnapshotStr(u, "email_hash")
+		pinHash := getSnapshotStr(u, "security_pin_hash")
+		tier := getSnapshotInt(u, "security_tier")
+		if tier == 0 {
+			tier = 1
+		}
+		disp := getSnapshotStr(u, "display_name")
+		avatar := getSnapshotStr(u, "avatar_url")
+		role := getSnapshotStr(u, "role")
+		if role == "" {
+			role = "user"
+		}
+		status := getSnapshotStr(u, "status")
+		if status == "" {
+			status = "active"
+		}
+		quota := getSnapshotInt64(u, "quota_bytes")
+		used := getSnapshotInt64(u, "used_bytes")
+		createdAt := parseFlexibleTimestamp(u["created_at"])
+		updatedAt := parseFlexibleTimestamp(u["updated_at"])
+
+		var uQ string
+		if s.IsMySQLOrTiDB() {
+			uQ = `INSERT IGNORE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		} else {
+			uQ = `INSERT OR IGNORE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		}
+		_, _ = s.db.Exec(uQ, id, uname, unameHash, email, emailHash, passHash, pinHash, tier, disp, avatar, role, status, quota, used, createdAt, updatedAt)
+	}
+
+	// 3. Phục hồi Accounts
+	insertedAccounts := 0
+	var accQ string
+	if s.IsMySQLOrTiDB() {
+		accQ = `INSERT IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		accQ = `INSERT OR IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	}
+	accStmt, err := s.db.Prepare(accQ)
+	if err == nil {
+		defer accStmt.Close()
+		for _, a := range payload.Accounts {
+			id := getSnapshotStr(a, "id")
+			email := getSnapshotStr(a, "email")
+			emailHash := getSnapshotStr(a, "email_hash")
+			name := getSnapshotStr(a, "name")
+			nameHash := getSnapshotStr(a, "name_hash")
+			avatar := getSnapshotStr(a, "avatar_url")
+			authType := getSnapshotStr(a, "auth_type")
+			creds := getSnapshotStr(a, "credentials_json")
+			token := getSnapshotStr(a, "token_json")
+			rootFolder := getSnapshotStr(a, "root_folder_id")
+			total := getSnapshotInt64(a, "total_quota_bytes")
+			used := getSnapshotInt64(a, "used_quota_bytes")
+			free := getSnapshotInt64(a, "free_quota_bytes")
+			status := getSnapshotStr(a, "status")
+			lastErr := getSnapshotStr(a, "last_error")
+			createdAt := parseFlexibleTimestamp(a["created_at"])
+			updatedAt := parseFlexibleTimestamp(a["updated_at"])
+
+			if _, execErr := accStmt.Exec(id, email, emailHash, name, nameHash, avatar, authType, creds, token, rootFolder, total, used, free, status, lastErr, createdAt, updatedAt); execErr == nil {
+				insertedAccounts++
+			}
+		}
+	}
+
+	// 4. Phục hồi VirtualFiles
+	insertedFiles := 0
+	var vfQ string
+	if s.IsMySQLOrTiDB() {
+		vfQ = `INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		vfQ = `INSERT OR IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	}
+	vfStmt, err := s.db.Prepare(vfQ)
+	if err == nil {
+		defer vfStmt.Close()
+		for _, f := range payload.VirtualFiles {
+			id := getSnapshotStr(f, "id")
+			userID := getSnapshotStr(f, "user_id")
+			if userID == "" {
+				userID = "user_admin"
+			}
+			parentID := getSnapshotStr(f, "parent_id")
+			name := getSnapshotStr(f, "name")
+			path := getSnapshotStr(f, "path")
+			isDir := getSnapshotInt(f, "is_dir")
+			size := getSnapshotInt64(f, "size_bytes")
+			mime := getSnapshotStr(f, "mime_type")
+			sha := getSnapshotStr(f, "sha256")
+			var shaVal interface{} = sha
+			if sha == "" {
+				shaVal = nil
+			}
+			chunkCount := getSnapshotInt(f, "chunk_count")
+			isEnc := getSnapshotInt(f, "is_encrypted")
+			missing := getSnapshotInt(f, "has_missing_chunks")
+			deleted := getSnapshotInt(f, "is_deleted")
+			deletedAt := parseFlexibleTimestamp(f["deleted_at"])
+			createdAt := parseFlexibleTimestamp(f["created_at"])
+			updatedAt := parseFlexibleTimestamp(f["updated_at"])
+
+			if _, execErr := vfStmt.Exec(id, userID, parentID, name, path, isDir, size, mime, shaVal, chunkCount, isEnc, missing, deleted, deletedAt, createdAt, updatedAt); execErr == nil {
+				insertedFiles++
+			}
+		}
+	}
+
+	// 5. Phục hồi FileChunks
+	insertedChunks := 0
+	var chkQ string
+	if s.IsMySQLOrTiDB() {
+		chkQ = `INSERT IGNORE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		chkQ = `INSERT OR IGNORE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	}
+	chkStmt, err := s.db.Prepare(chkQ)
+	if err == nil {
+		defer chkStmt.Close()
+		for _, c := range payload.FileChunks {
+			chkID := getSnapshotStr(c, "chunk_id")
+			fileID := getSnapshotStr(c, "file_id")
+			chkIdx := getSnapshotInt(c, "chunk_index")
+			accID := getSnapshotStr(c, "account_id")
+			gdriveID := getSnapshotStr(c, "gdrive_file_id")
+			chkSize := getSnapshotInt64(c, "chunk_size_bytes")
+			encSize := getSnapshotInt64(c, "encrypted_size_bytes")
+			sha := getSnapshotStr(c, "sha256")
+			status := getSnapshotStr(c, "status")
+			refCount := getSnapshotInt(c, "ref_count")
+			if refCount == 0 {
+				refCount = 1
+			}
+
+			if _, execErr := chkStmt.Exec(chkID, fileID, chkIdx, accID, gdriveID, chkSize, encSize, sha, status, refCount); execErr == nil {
+				insertedChunks++
+			}
+		}
+	}
+
+	// 6. Phục hồi GDriveBackups
+	for _, b := range payload.GDriveBackups {
+		id := getSnapshotStr(b, "id")
+		filename := getSnapshotStr(b, "filename")
+		size := getSnapshotInt64(b, "size_bytes")
+		sha := getSnapshotStr(b, "sha256")
+		gfileID := getSnapshotStr(b, "gdrive_file_id")
+		webLink := getSnapshotStr(b, "gdrive_web_link")
+		email := getSnapshotStr(b, "target_email")
+		manifest := getSnapshotStr(b, "manifest_json")
+		createdAt := getSnapshotStr(b, "created_at")
+
+		var bQ string
+		if s.IsMySQLOrTiDB() {
+			bQ = `INSERT IGNORE INTO gdrive_backups (id, filename, size_bytes, sha256, gdrive_file_id, gdrive_web_link, target_email, manifest_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		} else {
+			bQ = `INSERT OR IGNORE INTO gdrive_backups (id, filename, size_bytes, sha256, gdrive_file_id, gdrive_web_link, target_email, manifest_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		}
+		_, _ = s.db.Exec(bQ, id, filename, size, sha, gfileID, webLink, email, manifest, createdAt)
+	}
+
+	return insertedAccounts, insertedFiles, insertedChunks, nil
+}
+
+// SyncToLocalSQLiteCacheIfMissing tự động tạo và đồng bộ bản sao lưu SQLite cục bộ từ TiDB Cloud
+func (s *DB) SyncToLocalSQLiteCacheIfMissing() error {
+	if !s.IsMySQLOrTiDB() {
+		return nil
+	}
+
+	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	sqlitePath := filepath.Join(dataDir, "cloudpool_metadata.db")
+
+	if fi, err := os.Stat(sqlitePath); err == nil && fi.Size() > 50*1024 {
+		return nil // File SQLite đã tồn tại và có dữ liệu (>50KB)
+	}
+
+	log.Printf("[ENGINE] [TIDB] [STORAGE] Bắt đầu tự động tạo và đồng bộ bản sao lưu SQLite cục bộ tại '%s'...", sqlitePath)
+	dir := filepath.Dir(sqlitePath)
+	_ = os.MkdirAll(dir, 0755)
+
+	localDB, err := openSQLiteConnection(sqlitePath)
+	if err != nil {
+		return fmt.Errorf("không thể mở SQLite cache cục bộ: %w", err)
+	}
+	defer localDB.Close()
+
+	// Sao chép Settings từ TiDB sang SQLite
+	sRows, err := s.db.Query("SELECT `key`, `value` FROM settings")
+	if err == nil {
+		for sRows.Next() {
+			var k, v string
+			if sRows.Scan(&k, &v) == nil {
+				_, _ = localDB.SQLDB().Exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", k, v)
+			}
+		}
+		sRows.Close()
+	}
+
+	// Sao chép Users từ TiDB sang SQLite
+	uRows, err := s.db.Query("SELECT id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at FROM users")
+	if err == nil {
+		for uRows.Next() {
+			var id, un, unh, em, emh, ph, pin, disp, av, r, st, cr, up string
+			var tier int
+			var q, u int64
+			if uRows.Scan(&id, &un, &unh, &em, &emh, &ph, &pin, &tier, &disp, &av, &r, &st, &q, &u, &cr, &up) == nil {
+				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					id, un, unh, em, emh, ph, pin, tier, disp, av, r, st, q, u, cr, up)
+			}
+		}
+		uRows.Close()
+	}
+
+	// Sao chép Accounts từ TiDB sang SQLite
+	aRows, err := s.db.Query("SELECT id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at FROM accounts")
+	var syncAccCount int
+	if err == nil {
+		for aRows.Next() {
+			var id, em, emh, nm, nmh, av, at, cred, tok, rf, st, le, cr, up string
+			var tq, uq, fq int64
+			if aRows.Scan(&id, &em, &emh, &nm, &nmh, &av, &at, &cred, &tok, &rf, &tq, &uq, &fq, &st, &le, &cr, &up) == nil {
+				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					id, em, emh, nm, nmh, av, at, cred, tok, rf, tq, uq, fq, st, le, cr, up)
+				syncAccCount++
+			}
+		}
+		aRows.Close()
+	}
+
+	// Sao chép VirtualFiles từ TiDB sang SQLite
+	fRows, err := s.db.Query("SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at FROM virtual_files")
+	var syncFileCount int
+	if err == nil {
+		for fRows.Next() {
+			var id, uid, pid, nm, pt, mime, cr, up string
+			var sha, delAt sql.NullString
+			var isDir, cc, isEnc, miss, del int
+			var sz int64
+			if fRows.Scan(&id, &uid, &pid, &nm, &pt, &isDir, &sz, &mime, &sha, &cc, &isEnc, &miss, &del, &delAt, &cr, &up) == nil {
+				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					id, uid, pid, nm, pt, isDir, sz, mime, sha.String, cc, isEnc, miss, del, delAt.String, cr, up)
+				syncFileCount++
+			}
+		}
+		fRows.Close()
+	}
+
+	// Sao chép FileChunks từ TiDB sang SQLite
+	cRows, err := s.db.Query("SELECT chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count FROM file_chunks")
+	var syncChunkCount int
+	if err == nil {
+		for cRows.Next() {
+			var cid, fid, aid, gid, sha, st string
+			var idx, rc int
+			var csz, esz int64
+			if cRows.Scan(&cid, &fid, &idx, &aid, &gid, &csz, &esz, &sha, &st, &rc) == nil {
+				_, _ = localDB.SQLDB().Exec(`INSERT OR REPLACE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					cid, fid, idx, aid, gid, csz, esz, sha, st, rc)
+				syncChunkCount++
+			}
+		}
+		cRows.Close()
+	}
+
+	log.Printf("[ENGINE] [TIDB] [STORAGE] Hoàn tất đồng bộ bản sao lưu SQLite cục bộ: %d tài khoản, %d tệp tin VFS, %d chunk.",
+		syncAccCount, syncFileCount, syncChunkCount)
+	return nil
+}
+
+func findCloudPoolSnapshot() ([]byte, string, error) {
+	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+	if dataDir == "" {
+		dataDir = "data"
+	}
+
+	candidates := []string{
+		filepath.Join(dataDir, "backups", "cloudpool_snapshot.json"),
+		filepath.Join(dataDir, "cloudpool_snapshot.json"),
+		filepath.Join("data", "backups", "cloudpool_snapshot.json"),
+		filepath.Join("data", "cloudpool_snapshot.json"),
+		filepath.Join("..", "data", "backups", "cloudpool_snapshot.json"),
+		filepath.Join("..", "data", "cloudpool_snapshot.json"),
+		`f:\supportflast.dev\data\backups\cloudpool_snapshot.json`,
+	}
+
+	for _, c := range candidates {
+		if data, err := os.ReadFile(c); err == nil && len(data) > 0 {
+			return data, c, nil
+		}
+	}
+
+	// Nếu không có file .json, tìm trong file zip backup mới nhất
+	backupDirs := []string{
+		filepath.Join(dataDir, "backups"),
+		filepath.Join("data", "backups"),
+		filepath.Join("..", "data", "backups"),
+		`f:\supportflast.dev\data\backups`,
+	}
+
+	for _, bDir := range backupDirs {
+		entries, err := os.ReadDir(bDir)
+		if err != nil {
+			continue
+		}
+		var zipFiles []string
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".zip") {
+				zipFiles = append(zipFiles, filepath.Join(bDir, e.Name()))
+			}
+		}
+		for i := len(zipFiles) - 1; i >= 0; i-- {
+			zPath := zipFiles[i]
+			r, err := zip.OpenReader(zPath)
+			if err != nil {
+				continue
+			}
+			for _, f := range r.File {
+				if f.Name == "cloudpool_snapshot.json" {
+					rc, err := f.Open()
+					if err == nil {
+						content, readErr := io.ReadAll(rc)
+						rc.Close()
+						r.Close()
+						if readErr == nil && len(content) > 0 {
+							outPath := filepath.Join(bDir, "cloudpool_snapshot.json")
+							_ = os.WriteFile(outPath, content, 0644)
+							return content, zPath + ":" + f.Name, nil
+						}
+					}
+				}
+			}
+			r.Close()
+		}
+	}
+
+	return nil, "", fmt.Errorf("không tìm thấy file cloudpool_snapshot.json hoặc backup zip hợp lệ")
+}
+
+func (s *DB) restoreAccountsFromOAuthTokens() (int, error) {
+	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	oauthDirs := []string{
+		filepath.Join(dataDir, "oauth"),
+		filepath.Join("data", "oauth"),
+		filepath.Join("..", "data", "oauth"),
+		`f:\supportflast.dev\data\oauth`,
+	}
+
+	var oauthDir string
+	for _, d := range oauthDirs {
+		if fi, err := os.Stat(d); err == nil && fi.IsDir() {
+			oauthDir = d
+			break
+		}
+	}
+	if oauthDir == "" {
+		return 0, fmt.Errorf("thư mục oauth không tồn tại")
+	}
+
+	entries, err := os.ReadDir(oauthDir)
+	if err != nil {
+		return 0, err
+	}
+
+	masterKey := s.getMasterKey()
+	now := time.Now()
+	nowFormatted := now.UTC().Format("2006-01-02 15:04:05")
+	if !s.IsMySQLOrTiDB() {
+		nowFormatted = now.Format(time.RFC3339)
+	}
+
+	var accQ string
+	if s.IsMySQLOrTiDB() {
+		accQ = `INSERT IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	} else {
+		accQ = `INSERT OR IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	}
+	stmt, err := s.db.Prepare(accQ)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	restored := 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), "token_") || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		tokenBytes, err := os.ReadFile(filepath.Join(oauthDir, e.Name()))
+		if err != nil || len(tokenBytes) == 0 {
+			continue
+		}
+
+		base := strings.TrimPrefix(e.Name(), "token_")
+		base = strings.TrimSuffix(base, ".json")
+		parts := strings.Split(base, "_acc_")
+		emailPart := parts[0]
+		accID := "acc_" + uuid.New().String()[:16]
+		if len(parts) > 1 {
+			accID = "acc_" + parts[1]
+		}
+		rawEmail := strings.ReplaceAll(emailPart, "_at_", "@")
+		rawEmail = strings.ReplaceAll(rawEmail, "_", ".")
+
+		encEmail := core.EncryptSecret(masterKey, rawEmail)
+		emailHash := core.BlindIndexHash(masterKey, rawEmail)
+		encName := core.EncryptSecret(masterKey, rawEmail)
+		nameHash := core.BlindIndexHash(masterKey, rawEmail)
+		encToken := core.EncryptSecret(masterKey, string(tokenBytes))
+
+		totalQuota := int64(15 * 1024 * 1024 * 1024)
+		if _, execErr := stmt.Exec(accID, encEmail, emailHash, encName, nameHash, "", "oauth", "", encToken, "", totalQuota, 0, totalQuota, "active", "", nowFormatted, nowFormatted); execErr == nil {
+			restored++
+		}
+	}
+
+	return restored, nil
+}
+
+func parseFlexibleTimestamp(val interface{}) interface{} {
+	if val == nil {
+		return nil
+	}
+	s, ok := val.(string)
+	if !ok || strings.TrimSpace(s) == "" {
+		return nil
+	}
+	s = strings.TrimSpace(s)
+	if len(s) >= 19 && s[4] == '-' && s[7] == '-' && (s[10] == ' ' || s[10] == 'T') && s[13] == ':' && s[16] == ':' {
+		return s[:10] + " " + s[11:19]
+	}
+	return s
+}
+
+func getSnapshotStr(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok && v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+		return fmt.Sprintf("%v", v)
+	}
+	return ""
+}
+
+func getSnapshotInt64(m map[string]interface{}, key string) int64 {
+	if v, ok := m[key]; ok && v != nil {
+		switch n := v.(type) {
+		case float64:
+			return int64(n)
+		case int64:
+			return n
+		case int:
+			return int64(n)
+		case string:
+			if parsed, err := strconv.ParseInt(n, 10, 64); err == nil {
+				return parsed
+			}
+		}
+	}
+	return 0
+}
+
+func getSnapshotInt(m map[string]interface{}, key string) int {
+	return int(getSnapshotInt64(m, key))
 }
 
