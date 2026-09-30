@@ -194,6 +194,13 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 
 	// 5. Tự động khởi tạo CSDL (TiDB Cloud hoặc SQLite) & seed tài khoản Admin
 	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if driver == "" {
+		if os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn") {
+			driver = "tidb"
+		} else {
+			driver = "sqlite"
+		}
+	}
 	dbPath := filepath.Join(dataDir, "supportflast.db")
 	res.MainDBPath = dbPath
 

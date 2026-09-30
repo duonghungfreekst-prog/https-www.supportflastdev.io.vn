@@ -338,6 +338,9 @@ func ActiveDriver() string {
 	if d == "tidb" || d == "mysql" {
 		return d
 	}
+	if (d == "" || d == "default") && (os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn")) {
+		return "tidb"
+	}
 	return "sqlite"
 }
 
@@ -391,6 +394,9 @@ func InitDB(customPath ...string) (*sql.DB, error) {
 	}
 
 	driver := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if driver == "" && (os.Getenv("RENDER") != "" || os.Getenv("TIDB_HOST") != "" || strings.Contains(os.Getenv("DOMAIN"), "supportflastdev.io.vn")) {
+		driver = "tidb"
+	}
 	if driver == "tidb" || driver == "mysql" {
 		db, err := InitTiDB()
 		if err != nil {
