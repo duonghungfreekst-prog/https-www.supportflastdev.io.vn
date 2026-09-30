@@ -529,7 +529,7 @@ func (s *FileStreamer) fetchNativeRangeBlock(chunk models.FileChunk, blockIdx in
 	}
 
 	// Sử dụng DownloadRange để tải dải byte 2MB với timeout bảo vệ chống rò rỉ goroutine
-	dlCtx, dlCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	dlCtx, dlCancel := context.WithTimeout(s.ctx, 60*time.Second)
 	defer dlCancel()
 
 	rangeBytes, err := s.vfs.gd.DownloadRange(dlCtx, chunk.AccountID, chunk.GDriveFileID, blockStart, blockEnd)
@@ -593,7 +593,7 @@ func (s *FileStreamer) fetchAndDecryptChunk(chunk models.FileChunk) ([]byte, err
 	}
 
 	// Download from Google Drive with dedicated context to prevent browser range aborts
-	dlCtx, dlCancel := context.WithTimeout(context.Background(), 120*time.Second)
+	dlCtx, dlCancel := context.WithTimeout(s.ctx, 120*time.Second)
 	defer dlCancel()
 
 	rawBytes, err := s.vfs.gd.DownloadChunk(dlCtx, chunk.AccountID, chunk.GDriveFileID)

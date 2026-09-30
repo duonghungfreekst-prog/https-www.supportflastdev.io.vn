@@ -250,6 +250,10 @@ func shouldCompress(ct string) bool {
 // GzipMiddleware tạo middleware nén gzip tự động cho response > 1KB
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/files/stream") || strings.HasPrefix(r.URL.Path, "/api/public/share/stream") {
+			next.ServeHTTP(w, r)
+			return
+		}
 		// Bỏ qua nếu client không hỗ trợ gzip
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") ||
 			r.Method == http.MethodHead ||
