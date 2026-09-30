@@ -7920,7 +7920,7 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // 4. Lưu thay đổi / thêm ứng dụng vào SQLite qua API Go Engine
+        // 4. Lưu thay đổi / thêm ứng dụng vào TiDB Cloud qua API Go Engine
         async function saveAppEditorChanges(event) {
             event.preventDefault();
             const id = document.getElementById('app-edit-id').value.trim();
@@ -7939,7 +7939,7 @@
 
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<span>⏳</span> <span>Đang lưu vào CSDL SQLite...</span>';
+                saveBtn.innerHTML = '<span>⏳</span> <span>Đang lưu vào CSDL TiDB Cloud...</span>';
             }
 
             try {
@@ -8039,7 +8039,7 @@
                     }
 
                     closeAppEditorModal();
-                    alert(`✅ Thành công! Đã lưu cập nhật ứng dụng '${name}' vào CSDL SQLite.`);
+                    alert(`✅ Thành công! Đã lưu cập nhật ứng dụng '${name}' vào CSDL TiDB Cloud.`);
                 } else {
                     if (errEl) {
                         errEl.textContent = data.error || 'Lưu cập nhật thất bại. Vui lòng kiểm tra quyền quản trị.';
@@ -8059,9 +8059,9 @@
             }
         }
 
-        // 5. Xoá ứng dụng khỏi kho và CSDL SQLite
+        // 5. Xoá ứng dụng khỏi kho và CSDL TiDB Cloud
         async function confirmDeleteApp(appId, appName) {
-            const confirmMsg = `Bạn có chắc chắn muốn XÓA ứng dụng '${appName}' (${appId}) khỏi kho không?\n\nThao tác này sẽ xóa ứng dụng khỏi cơ sở dữ liệu SQLite vĩnh viễn.`;
+            const confirmMsg = `Bạn có chắc chắn muốn XÓA ứng dụng '${appName}' (${appId}) khỏi kho không?\n\nThao tác này sẽ xóa ứng dụng khỏi cơ sở dữ liệu TiDB Cloud vĩnh viễn.`;
             if (!confirm(confirmMsg)) return;
 
             try {
@@ -8092,7 +8092,7 @@
             }
         }
 
-        // 5.1. Tự động đồng bộ kho ứng dụng thật từ cơ sở dữ liệu SQLite (/api/apps)
+        // 5.1. Tự động đồng bộ kho ứng dụng thật từ cơ sở dữ liệu TiDB Cloud (/api/apps)
         async function loadLiveAppsFromAPI() {
             try {
                 const res = await fetch('/api/apps');
@@ -8107,7 +8107,7 @@
                             <div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px;">
                                 <div style="font-size: 2.2rem; margin-bottom: 10px;">📦</div>
                                 <div style="font-weight: 700; color: #fff; font-size: 1.05rem; margin-bottom: 6px;">Kho Ứng Dụng Sẵn Sàng Tiếp Nhận Bản Phát Hành</div>
-                                <div style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 16px auto; line-height: 1.5;">Toàn bộ dữ liệu ảo đã được xóa sạch. Hệ thống phân phối chính thức từ CSDL SQLite.</div>
+                                <div style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 16px auto; line-height: 1.5;">Toàn bộ dữ liệu ảo đã được xóa sạch. Hệ thống phân phối chính thức từ CSDL TiDB Cloud.</div>
                                 <button class="btn-primary" class="btn-primary admin-only-inline" onclick="openCreateAppModal()" style="display: none; font-size: 0.88rem; padding: 8px 18px;">
                                     <span>➕ Thêm Ứng Dụng Mới</span>
                                 </button>
@@ -8167,7 +8167,7 @@
                     }).join('');
                 }
             } catch (err) {
-                console.warn('[APPS] Lỗi đồng bộ danh sách ứng dụng từ SQLite:', err);
+                console.warn('[APPS] Lỗi đồng bộ danh sách ứng dụng từ TiDB Cloud:', err);
             }
         }
 
@@ -11143,3 +11143,4 @@
     </button>
 </body>
 </html>
+
