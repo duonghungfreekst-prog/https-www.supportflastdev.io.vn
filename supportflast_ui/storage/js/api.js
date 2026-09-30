@@ -17,6 +17,12 @@ const API = {
       if (u) {
         const parsed = JSON.parse(u);
         if (parsed) {
+          if (parsed.role === 'admin' || parsed.username === 'admin') {
+            localStorage.removeItem('cloudpool_current_user');
+            localStorage.removeItem('cloudpool_jwt_token');
+            localStorage.removeItem('cloudpool_admin_session');
+            return null;
+          }
           try { sessionStorage.setItem('cloudpool_current_user', u); } catch (_) {}
           return parsed;
         }
@@ -31,13 +37,22 @@ const API = {
     if (user) {
       try {
         const uStr = JSON.stringify(user);
-        localStorage.setItem('cloudpool_current_user', uStr);
-        sessionStorage.setItem('cloudpool_current_user', uStr);
+        const isAdmin = (user.role === 'admin' || user.username === 'admin');
+        if (isAdmin) {
+          sessionStorage.setItem('cloudpool_current_user', uStr);
+          localStorage.removeItem('cloudpool_current_user');
+          localStorage.removeItem('cloudpool_admin_session');
+        } else {
+          localStorage.setItem('cloudpool_current_user', uStr);
+          sessionStorage.setItem('cloudpool_current_user', uStr);
+        }
       } catch (_) {}
     } else {
       try {
         localStorage.removeItem('cloudpool_current_user');
         sessionStorage.removeItem('cloudpool_current_user');
+        localStorage.removeItem('cloudpool_admin_session');
+        sessionStorage.removeItem('cloudpool_admin_session');
       } catch (_) {}
     }
   },
@@ -50,11 +65,16 @@ const API = {
     }
   },
 
-  setToken(token) {
+  setToken(token, isAdmin) {
     if (token) {
       try {
-        localStorage.setItem('cloudpool_jwt_token', token);
-        sessionStorage.setItem('cloudpool_jwt_token', token);
+        if (isAdmin) {
+          sessionStorage.setItem('cloudpool_jwt_token', token);
+          localStorage.removeItem('cloudpool_jwt_token');
+        } else {
+          localStorage.setItem('cloudpool_jwt_token', token);
+          sessionStorage.setItem('cloudpool_jwt_token', token);
+        }
       } catch (_) {}
     } else {
       try {

@@ -2944,7 +2944,7 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		setAuthCookie(w, r, jwtToken, int(registry.GetSessionDuration().Seconds()))
+		registry.SetAdminSessionCookies(w, r, jwtToken)
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
@@ -3009,7 +3009,7 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 			if threshold < 3600 {
 				threshold = 3600
 			}
-			if remainingSec > 0 && remainingSec < threshold {
+			if remainingSec > 0 && remainingSec < threshold && user.Role != "admin" {
 				if newToken, err := GenerateJWTWithRole(user.ID, user.Username, user.Role); err == nil {
 					setAuthCookie(w, r, newToken, int(maxTTL))
 					response["new_token"] = newToken

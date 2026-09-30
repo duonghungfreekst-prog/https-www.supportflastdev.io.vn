@@ -144,14 +144,14 @@ const AuthManager = {
     this.setupActivityTracking();
     this.recordActivity();
 
-    // 1. Phục hồi trạng thái cho user thường hoặc admin từ cache (bền vững localStorage + sessionStorage)
+    // 1. Phục hồi trạng thái cho user thường hoặc admin từ cache
     const cachedUser = API.getCurrentUser();
     if (cachedUser && (cachedUser.id || cachedUser.username)) {
       this.currentUser = cachedUser;
       if (cachedUser.role === 'admin' || cachedUser.username === 'admin') {
-        App.isAdminUnlocked = true;
-        sessionStorage.setItem('cloudpool_admin_session', 'true');
-        localStorage.setItem('cloudpool_admin_session', 'true');
+        const hasSession = sessionStorage.getItem('cloudpool_admin_session') === 'true';
+        App.isAdminUnlocked = hasSession;
+        localStorage.removeItem('cloudpool_admin_session');
       } else {
         App.isAdminUnlocked = false;
         sessionStorage.removeItem('cloudpool_admin_session');
@@ -164,17 +164,17 @@ const AuthManager = {
     try {
       const res = await API.getMe();
       const me = (res && res.user) ? res.user : res;
-      if (res && res.new_token) {
-        API.setToken(res.new_token);
-        console.log('[AUTH] Token đã được gia hạn tự động (Silent Renewal)');
+      if (res && res.new_token && me && me.role !== 'admin') {
+        API.setToken(res.new_token, false);
       }
       if (me && (me.id || me.username) && me.role) {
         this.currentUser = me;
         API.setCurrentUser(me);
         if (me.role === 'admin' || me.username === 'admin') {
-          App.isAdminUnlocked = true;
-          sessionStorage.setItem('cloudpool_admin_session', 'true');
-          localStorage.setItem('cloudpool_admin_session', 'true');
+          // CHỈ MỞ KHÓA ADMIN NẾU TAB HIỆN TẠI ĐÃ ĐƯỢC XÁC THỰC
+          const hasSession = sessionStorage.getItem('cloudpool_admin_session') === 'true';
+          App.isAdminUnlocked = hasSession;
+          localStorage.removeItem('cloudpool_admin_session');
         } else {
           App.isAdminUnlocked = false;
           sessionStorage.removeItem('cloudpool_admin_session');

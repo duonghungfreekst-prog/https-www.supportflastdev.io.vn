@@ -6787,16 +6787,18 @@
         function recordAuthActivity() {
             const now = Date.now().toString();
             sessionStorage.setItem('auth_last_activity', now);
-            if (localStorage.getItem('cloudpool_jwt_token')) {
-                localStorage.setItem('auth_last_activity', now);
-            }
+            localStorage.setItem('sf_admin_last_activity', now);
         }
+
+        window.addEventListener('pagehide', function() {
+            try { localStorage.setItem('sf_admin_last_activity', Date.now().toString()); } catch(_) {}
+        });
 
         // Bắt sự kiện người dùng tương tác để cập nhật thời gian hoạt động cuối (throttled 15s)
         ['click', 'keydown', 'touchstart', 'mousemove', 'scroll'].forEach(function(evt) {
             window.addEventListener(evt, function() {
                 var now = Date.now();
-                var last = parseInt(sessionStorage.getItem('auth_last_activity') || localStorage.getItem('auth_last_activity') || '0', 10);
+                var last = parseInt(localStorage.getItem('sf_admin_last_activity') || sessionStorage.getItem('auth_last_activity') || '0', 10);
                 if (now - last > 15000) {
                     recordAuthActivity();
                 }
@@ -6828,6 +6830,7 @@
             localStorage.removeItem('token');
             localStorage.removeItem('cloudpool_token');
             localStorage.removeItem('auth_last_activity');
+            localStorage.removeItem('sf_admin_last_activity');
 
             // Xóa cookie JS nếu còn sót
             ['cloudpool_token', 'sf_auth_token', 'supportflast_auth_token', 'auth_token'].forEach(function(cName) {
@@ -6884,21 +6887,28 @@
             // MẶC ĐỊNH ZERO-TRUST: Luôn khởi tạo ở trạng thái Khách trước khi máy chủ xác thực
             updateAdminUI(false, null);
 
-            // 1. Kiểm tra thời gian không hoạt động (Inactivity / Idle Timeout)
-            const lastActivity = parseInt(sessionStorage.getItem('auth_last_activity') || '0', 10);
-            const hasAdminSession = sessionStorage.getItem('cloudpool_admin_session') === 'true' || 
-                                    !!sessionStorage.getItem('cloudpool_jwt_token');
-            
-            if (hasAdminSession && lastActivity > 0 && (Date.now() - lastActivity > AUTH_MAX_IDLE_MS)) {
-                console.warn('[AUTH] Phiên làm việc Quản Trị Viên đã hết hạn do không hoạt động quá 15 phút.');
+            // 1. Kiểm tra thời gian không hoạt động toàn cục (Cross-Tab Inactivity)
+            const lastAdminAct = parseInt(localStorage.getItem('sf_admin_last_activity') || sessionStorage.getItem('auth_last_activity') || '0', 10);
+            const isIdleTimeout = lastAdminAct > 0 && (Date.now() - lastAdminAct > AUTH_MAX_IDLE_MS);
+
+            // 2. Kiểm tra phiên của tab hiện tại:
+            // QUY TẮC BẢO MẬT: Tab mới mở (không có sessionStorage) HOẶC đã quá 15 phút không hoạt động
+            // thì TUYỆT ĐỐI KHÔNG TỰ ĐỘNG ĐĂNG NHẬP VÀO ADMIN TỪ COOKIE NỀN!
+            const tabHasAdminSession = sessionStorage.getItem('cloudpool_admin_session') === 'true';
+
+            if (!tabHasAdminSession || isIdleTimeout) {
+                if (isIdleTimeout) {
+                    console.warn('[AUTH] Phiên Quản Trị Viên đã hết hạn do không hoạt động quá 15 phút.');
+                }
+                // Hủy bỏ phiên và xóa sạch tàn dư
                 await purgeClientAuth();
                 updateAdminUI(false, null);
                 return;
             }
 
-            // 2. Xác thực với Máy Chủ qua Cookie SSO & Bearer Token (/api/auth/me)
+            // 3. Nếu tab này ĐÃ CÓ phiên admin hợp lệ (vừa đăng nhập trong tab này và chưa quá 15 phút):
             try {
-                const token = sessionStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_jwt_token') || '';
+                const token = sessionStorage.getItem('cloudpool_jwt_token') || '';
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
                 
@@ -6906,13 +6916,11 @@
                     const data = await res.json();
                     const user = (data && data.user) ? data.user : data;
                     if (user && (user.role === 'admin' || user.username === 'admin')) {
-                        // LƯU TRỮ AN TOÀN CHO ADMIN: CHỈ LƯU VÀO sessionStorage, TỰ HỦY KHI ĐÓNG TRÌNH DUYỆT
                         sessionStorage.setItem('cloudpool_current_user', JSON.stringify(user));
                         sessionStorage.setItem('cloudpool_admin_session', 'true');
                         if (token) sessionStorage.setItem('cloudpool_jwt_token', token);
                         recordAuthActivity();
 
-                        // Dọn dẹp sạch mọi tàn dư trong localStorage
                         localStorage.removeItem('cloudpool_current_user');
                         localStorage.removeItem('cloudpool_jwt_token');
                         localStorage.removeItem('sf_admin_token');
@@ -6933,7 +6941,6 @@
                 }
             } catch(e) {
                 console.warn('[AUTH] Không thể kết nối server xác thực, hạ cấp về trạng thái an toàn:', e);
-                // NGUYÊN TẮC ZERO-TRUST: Mọi sự cố kết nối đều KHÔNG CẤP QUYỀN ADMIN
                 await purgeClientAuth();
                 updateAdminUI(false, null);
             }
@@ -6944,7 +6951,7 @@
             const hasAdmin = document.body && document.body.classList.contains('is-admin');
             if (!hasAdmin) return;
 
-            const last = parseInt(sessionStorage.getItem('auth_last_activity') || '0', 10);
+            const last = parseInt(localStorage.getItem('sf_admin_last_activity') || sessionStorage.getItem('auth_last_activity') || '0', 10);
             if (last > 0 && (Date.now() - last > AUTH_MAX_IDLE_MS)) {
                 console.warn('[AUTH] Active Watchdog: Tự động đăng xuất Admin do không hoạt động quá 15 phút.');
                 purgeClientAuth();

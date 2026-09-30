@@ -45,12 +45,16 @@ func GenerateJWTWithRole(userID, username, role string) (string, error) {
 	if role == "" {
 		role = "user"
 	}
+	ttl := registry.GetSessionDuration()
+	if role == "admin" {
+		ttl = 15 * time.Minute // Rule 8.2.C: TTL tối đa 15 phút cho tài khoản Admin
+	}
 	claims := &security.UserClaims{
 		UserID:    cleanID,
 		Username:  username,
 		Role:      role,
 		IssuedAt:  time.Now().Unix(),
-		ExpiresAt: time.Now().Add(registry.GetSessionDuration()).Unix(),
+		ExpiresAt: time.Now().Add(ttl).Unix(),
 		Issuer:    "supportflast-auth",
 		Subject:   cleanID,
 	}

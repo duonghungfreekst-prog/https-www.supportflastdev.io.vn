@@ -439,9 +439,9 @@ func IsTokenRevoked(token string) bool {
 // TTL được đọc từ JWT_EXPIRY_MINUTES — không hardcode
 func CreateSession(u User) string {
 	ttl := GetSessionDuration()
-	// Đối với Quản Trị Viên (Admin): Giới hạn phiên tối đa 1 giờ (3600s) cho API, tự hủy khi đóng tab/trình duyệt
-	if u.Role == "admin" && ttl > time.Hour {
-		ttl = time.Hour
+	// Đối với Quản Trị Viên (Admin): Giới hạn phiên tối đa 15 phút theo Rule 8.2.C
+	if u.Role == "admin" {
+		ttl = 15 * time.Minute
 	}
 	token, err := IssueRS256Token(u, ttl)
 	if err != nil {
