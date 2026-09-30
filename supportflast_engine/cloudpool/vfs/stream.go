@@ -18,10 +18,10 @@ import (
 )
 
 const (
-	// NativeRangeBlockSize kích thước khối tải dải byte (2MB) cho các tệp native Google Drive không mã hóa.
-	// 2MB tải về chỉ mất ~150-250ms trên đường truyền thông thường, cho phép xem video/ảnh/audio ngay lập tức
-	// mà không phải tải toàn bộ tệp 500MB - 1GB vào RAM (Rule PHAN 7.1).
-	NativeRangeBlockSize int64 = 2 * 1024 * 1024 // 2 MB
+	// NativeRangeBlockSize kích thước khối tải dải byte (4MB) cho các tệp native Google Drive không mã hóa.
+	// 4MB giúp tăng gấp đôi lượng đệm video/audio, giảm 50% số lượng HTTP range request tới Google Drive,
+	// giúp tua và phát mượt mà không bị khựng, đồng thời vẫn kiểm soát nghiêm ngặt dung lượng RAM (Rule PHAN 7.1).
+	NativeRangeBlockSize int64 = 4 * 1024 * 1024 // 4 MB
 )
 
 // ChunkCacheEntry holds decrypted chunk bytes or range block bytes in memory with LRU tracking
@@ -45,8 +45,8 @@ type ChunkCache struct {
 var globalChunkCache = &ChunkCache{
 	entries:    make(map[string]*list.Element),
 	lruList:    list.New(),
-	maxEntries: 128,               // Tối đa 128 entries trong bộ nhớ đệm
-	maxBytes:   128 * 1024 * 1024, // 128MB giới hạn trần RAM nghiêm ngặt (thấp hơn nhiều ngưỡng 500MB trong Rule PHAN 7.1)
+	maxEntries: 256,               // Tối đa 256 entries trong bộ nhớ đệm
+	maxBytes:   256 * 1024 * 1024, // 256MB giới hạn trần RAM nghiêm ngặt (an toàn dưới ngưỡng 500MB trong Rule PHAN 7.1)
 }
 
 func (c *ChunkCache) Get(key string) ([]byte, bool) {
@@ -489,8 +489,8 @@ type chunkFlight struct {
 var (
 	flightMu sync.Mutex
 	inFlight = make(map[string]*chunkFlight)
-	// Semaphore to limit concurrent background prefetches to max 2 (Rule PHAN 7.1)
-	prefetchSem = make(chan struct{}, 2)
+	// Semaphore to limit concurrent background prefetches to max 4 (Rule PHAN 7.1)
+	prefetchSem = make(chan struct{}, 4)
 )
 
 // fetchNativeRangeBlock tải dải byte 2MB của tệp native Google Drive

@@ -928,6 +928,7 @@ func main() {
 	// 4. MultiTierRateLimitMiddleware: phòng thủ đa tầng (Tier 1: 120/min, Tier 3: 30/min, Tier 2: lock)
 	// 5. CloudflareSecurityMiddleware: Ray ID, GeoIP, WAF Headers
 	// 6. CSRFMiddleware: chống CSRF cho POST/PUT/DELETE (bỏ qua /api/ vì đã có JWT)
+	// 7. GzipMiddleware: tự động nén gzip cho response > 1KB (giảm tải truyền tải JSON/HTML/JS/CSS)
 	handler := middleware.Chain(mux,
 		middleware.WrapFunc(security.RequestIDMiddleware),
 		middleware.WrapFunc(security.CSRFMiddleware),
@@ -937,6 +938,7 @@ func main() {
 		middleware.WrapFunc(security.IPJailMiddleware),
 		middleware.WrapFunc(security.MultiTierRateLimitMiddleware),
 		middleware.WrapFunc(security.CloudflareSecurityMiddleware),
+		middleware.Gzip,
 	)
 
 	// 5. Cấu hình PORT & HOST tương thích Cloud Hosting (Render, Heroku, Railway, Koyeb, Fly.io, cPanel app manager, Windows Server IIS, VPS Linux, Docker)

@@ -43,6 +43,7 @@ const (
 type Manager struct {
 	db                 *storage.DB
 	services           map[string]*drive.Service
+	accounts           map[string]*models.Account
 	mu                 sync.RWMutex
 	rrIndex            int
 	dataDir            string
@@ -68,6 +69,7 @@ func NewManager(db *storage.DB) *Manager {
 	m := &Manager{
 		db:                 db,
 		services:           make(map[string]*drive.Service),
+		accounts:           make(map[string]*models.Account),
 		dataDir:            dataDir,
 		oauthDir:           oauthDir,
 		serviceAccountsDir: saDir,
@@ -402,10 +404,11 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 		_ = os.WriteFile(tokenFilePath, encData, 0600)
 	}
 
-	// Xóa cache service cũ (nếu có) để GetService lần tiếp theo tạo client mới với persistingTokenSource,
+	// Xóa cache service và account cũ (nếu có) để GetService lần tiếp theo tạo client mới với persistingTokenSource,
 	// đảm bảo token refresh được persist vào DB đúng cách.
 	m.mu.Lock()
 	delete(m.services, acc.ID)
+	delete(m.accounts, acc.ID)
 	m.mu.Unlock()
 
 	return acc, nil
@@ -486,6 +489,7 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 
 	m.mu.Lock()
 	m.services[acc.ID] = srv
+	m.accounts[acc.ID] = acc
 	m.mu.Unlock()
 
 	return acc, nil
@@ -696,19 +700,33 @@ func (pts *persistingTokenSource) Token() (*oauth2.Token, error) {
 // GetService lấy hoặc khởi tạo một drive.Service tương ứng với tài khoản
 func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Service, *models.Account, error) {
 	m.mu.RLock()
-	srv, exists := m.services[accountID]
+	srv, srvExists := m.services[accountID]
+	acc, accExists := m.accounts[accountID]
 	m.mu.RUnlock()
+
+	// FAST PATH (Zero TiDB Query): Nếu cả srv và acc đã có trong cache in-memory, trả về ngay lập tức!
+	if srvExists && accExists && srv != nil && acc != nil {
+		return srv, acc, nil
+	}
 
 	if m.db == nil {
 		return nil, nil, errors.New("storage database not configured")
 	}
 
-	acc, err := m.db.GetAccount(accountID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("account not found: %w", err)
+	// Chỉ query DB khi chưa có trong cache
+	if !accExists || acc == nil {
+		var err error
+		acc, err = m.db.GetAccount(accountID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("account not found: %w", err)
+		}
 	}
 
-	if exists && srv != nil {
+	// Nếu srv đã tồn tại từ trước nhưng acc vừa mới lấy từ DB, lưu acc vào cache rồi trả về ngay
+	if srvExists && srv != nil {
+		m.mu.Lock()
+		m.accounts[accountID] = acc
+		m.mu.Unlock()
 		return srv, acc, nil
 	}
 
@@ -780,9 +798,18 @@ func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Serv
 
 	m.mu.Lock()
 	m.services[accountID] = newSrv
+	m.accounts[accountID] = acc
 	m.mu.Unlock()
 
 	return newSrv, acc, nil
+}
+
+// InvalidateAccount xóa tài khoản khỏi bộ nhớ đệm RAM khi tài khoản bị sửa, đổi hoặc xóa
+func (m *Manager) InvalidateAccount(accountID string) {
+	m.mu.Lock()
+	delete(m.services, accountID)
+	delete(m.accounts, accountID)
+	m.mu.Unlock()
 }
 
 // RefreshAccountQuota cập nhật thông tin dung lượng từ Google Drive
@@ -820,6 +847,16 @@ func (m *Manager) RefreshAccountQuota(ctx context.Context, accountID string) err
 		if free <= 100*1024*1024 { // Ít hơn 100MB
 			status = "full"
 		}
+
+		m.mu.Lock()
+		if cachedAcc, ok := m.accounts[accountID]; ok && cachedAcc != nil {
+			cachedAcc.TotalQuotaBytes = total
+			cachedAcc.UsedQuotaBytes = used
+			cachedAcc.FreeQuotaBytes = free
+			cachedAcc.Status = status
+		}
+		m.mu.Unlock()
+
 		return m.db.UpdateAccountQuota(accountID, total, used, free, status, "")
 	}
 

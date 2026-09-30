@@ -32,6 +32,7 @@ import (
 	"supportflast_engine/cloudpool/storage"
 	"supportflast_engine/cloudpool/vfs"
 	"supportflast_engine/cloudpool/webdav"
+	"supportflast_engine/internal/middleware"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
 
@@ -273,8 +274,8 @@ func (s *Server) Start() error {
 	fileServer := http.FileServer(http.Dir(s.uiDir))
 	mux.Handle("/", fileServer)
 
-	// Wrap with Security Middleware (Rule PHAN 3.4)
-	handler := s.securityMiddleware(mux)
+	// Wrap with Security Middleware (Rule PHAN 3.4) & Gzip Middleware (>1KB)
+	handler := s.securityMiddleware(middleware.Gzip(mux))
 
 	s.server = &http.Server{
 		Addr:         fmt.Sprintf(":%d", s.port),
@@ -565,6 +566,10 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.DeleteAccount(id); err != nil {
 		writeError(w, http.StatusInternalServerError, "Lỗi xóa tài khoản", err)
 		return
+	}
+
+	if s.gd != nil {
+		s.gd.InvalidateAccount(id)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa tài khoản thành công"})

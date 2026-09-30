@@ -11,6 +11,8 @@ import (
 
 	"supportflast_engine/cloudpool/models"
 	"supportflast_engine/cloudpool/storage"
+
+	"google.golang.org/api/drive/v3"
 )
 
 func setupTestDB(t *testing.T) (*storage.DB, func()) {
@@ -390,5 +392,68 @@ func TestManager_UploadExcludedAccounts(t *testing.T) {
 	_, errBig := mgr.SelectAccount(ctx, StrategyLeastUsed, 20*1024*1024*1024)
 	if errBig == nil {
 		t.Fatalf("Kỳ vọng báo lỗi hết dung lượng khả dụng khi không tính 3 tài khoản né, nhưng lại chọn được tài khoản!")
+	}
+}
+
+func TestManager_GetServiceCacheAndInvalidate(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	mgr := NewManager(db)
+	accID := "acc_cache_test"
+	testAcc := &models.Account{
+		ID:              accID,
+		Email:           "cachetest@example.com",
+		Name:            "Cache Test",
+		AuthType:        "oauth",
+		RootFolderID:    "root_folder",
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  10 * 1024 * 1024 * 1024,
+		Status:          "active",
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	if err := db.SaveAccount(testAcc); err != nil {
+		t.Fatalf("SaveAccount failed: %v", err)
+	}
+
+	// 1. Giả lập service đã được nạp sẵn vào cache
+	fakeSrv := &drive.Service{}
+	mgr.mu.Lock()
+	mgr.services[accID] = fakeSrv
+	mgr.accounts[accID] = testAcc
+	mgr.mu.Unlock()
+
+	// 2. Gọi GetService: do đã có trong RAM cache, nó phải trả về ngay lập tức
+	srv, acc, err := mgr.GetService(context.Background(), accID)
+	if err != nil {
+		t.Fatalf("GetService failed: %v", err)
+	}
+	if srv != fakeSrv {
+		t.Errorf("expected cached fakeSrv, got %v", srv)
+	}
+	if acc == nil || acc.Email != "cachetest@example.com" {
+		t.Errorf("expected cached account, got %v", acc)
+	}
+
+	// Xóa account trong DB để kiểm chứng: nếu gọi lại GetService mà vẫn trả về kết quả
+	// chứng tỏ dữ liệu lấy 100% từ RAM cache chứ không query DB!
+	if err := db.DeleteAccount(accID); err != nil {
+		t.Fatalf("DeleteAccount from DB failed: %v", err)
+	}
+
+	srvCached, accCached, errCached := mgr.GetService(context.Background(), accID)
+	if errCached != nil || srvCached == nil || accCached == nil {
+		t.Fatalf("GetService phải lấy từ RAM cache thành công ngay cả khi DB đã bị xóa, err: %v", errCached)
+	}
+
+	// 3. Gọi InvalidateAccount: bộ nhớ đệm RAM phải bị xóa
+	mgr.InvalidateAccount(accID)
+
+	// 4. Sau khi Invalidate và account trong DB đã bị xóa, GetService phải báo lỗi account not found
+	_, _, errAfterInvalidate := mgr.GetService(context.Background(), accID)
+	if errAfterInvalidate == nil {
+		t.Fatalf("expected error after invalidate and DB deletion, but got nil")
 	}
 }

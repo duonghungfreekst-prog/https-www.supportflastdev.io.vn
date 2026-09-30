@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"supportflast_engine/cache"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
 	"supportflast_engine/database"
@@ -82,10 +83,12 @@ func ResolveDBPath(customPath ...string) string {
 }
 
 type DB struct {
-	db     *sql.DB
-	path   string
-	driver string
-	mu     sync.RWMutex
+	db      *sql.DB
+	path    string
+	driver  string
+	mu      sync.RWMutex
+	cacheMu sync.Mutex
+	cache   *cache.LRUCache
 }
 
 // Driver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql")
@@ -213,7 +216,12 @@ func openSQLiteConnection(dbPath string) (*DB, error) {
 	_ = db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys)
 	log.Printf("[ENGINE] [DATABASE] CloudPool SQLite initialized at '%s' (journal_mode=%s, foreign_keys=%d)", dbPath, strings.ToUpper(activeMode), foreignKeys)
 
-	s := &DB{db: db, path: dbPath, driver: "sqlite"}
+	s := &DB{
+		db:     db,
+		path:   dbPath,
+		driver: "sqlite",
+		cache:  cache.NewLRUCache(cache.MaxEntriesLimit, cache.DefaultCleanupInterval),
+	}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
@@ -342,6 +350,7 @@ func openTiDBWithConfig(cfg database.TiDBConfig, rawDSN ...string) (*DB, error) 
 		db:     db,
 		path:   pathStr,
 		driver: "tidb",
+		cache:  cache.NewLRUCache(cache.MaxEntriesLimit, cache.DefaultCleanupInterval),
 	}
 
 	// 6. Thực thi migrate schema cho TiDB (Bỏ qua PRAGMA của SQLite)
@@ -446,6 +455,12 @@ func (s *DB) Checkpoint() error {
 }
 
 func (s *DB) Close() error {
+	s.cacheMu.Lock()
+	if s.cache != nil {
+		s.cache.Close()
+	}
+	s.cacheMu.Unlock()
+
 	if s.db != nil {
 		if !s.IsMySQLOrTiDB() {
 			_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
@@ -1046,6 +1061,7 @@ func (s *DB) setDefaultSetting(key, val string) {
 	_ = s.db.QueryRow("SELECT COUNT(*) FROM settings WHERE `key` = ?", key).Scan(&count)
 	if count == 0 {
 		_, _ = s.db.Exec("INSERT INTO settings (`key`, `value`) VALUES (?, ?)", key, val)
+		s.InvalidateSettingsCache()
 	}
 }
 
@@ -1118,6 +1134,9 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 		acc.TotalQuotaBytes, acc.UsedQuotaBytes, acc.FreeQuotaBytes,
 		acc.Status, acc.LastError, acc.CreatedAt, acc.UpdatedAt,
 	)
+	if err == nil {
+		s.InvalidateAccountsCache()
+	}
 	return err
 }
 
@@ -1329,7 +1348,7 @@ func (s *DB) GetAccountByEmail(email string) (*models.Account, error) {
 	return &a, nil
 }
 
-func (s *DB) ListAccounts() ([]models.Account, error) {
+func (s *DB) listAccountsFromDB() ([]models.Account, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -1371,6 +1390,9 @@ func (s *DB) DeleteAccount(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("DELETE FROM accounts WHERE id = ?", id)
+	if err == nil {
+		s.InvalidateAccountsCache()
+	}
 	return err
 }
 
@@ -1379,6 +1401,9 @@ func (s *DB) UpdateAccountQuota(id string, total, used, free int64, status, last
 	defer s.mu.Unlock()
 	_, err := s.db.Exec(`UPDATE accounts SET total_quota_bytes=?, used_quota_bytes=?, free_quota_bytes=?, status=?, last_error=?, updated_at=? WHERE id=?`,
 		total, used, free, status, lastErr, time.Now(), id)
+	if err == nil {
+		s.InvalidateAccountsCache()
+	}
 	return err
 }
 
@@ -1390,6 +1415,9 @@ func (s *DB) UpdateAccountToken(accountID, tokenJSON string) error {
 	masterKey := s.getMasterKey()
 	encToken := core.EncryptSecret(masterKey, tokenJSON)
 	_, err := s.db.Exec("UPDATE accounts SET token_json = ?, updated_at = ? WHERE id = ?", encToken, time.Now(), accountID)
+	if err == nil {
+		s.InvalidateAccountsCache()
+	}
 	return err
 }
 
@@ -1451,6 +1479,10 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 		f.ID, f.UserID, f.ParentID, f.Name, f.Path, f.IsDir, f.SizeBytes,
 		f.MimeType, f.SHA256, f.ChunkCount, f.IsEncrypted, f.IsTrashed, f.DeletedAt, f.HasMissingChunks, f.CreatedAt, f.UpdatedAt,
 	)
+	if err == nil {
+		s.InvalidateVFSCache()
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -1648,7 +1680,7 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	return &f, nil
 }
 
-func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, error) {
+func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -1706,23 +1738,156 @@ func (s *DB) ListVirtualFiles(userID, parentID string) ([]models.VirtualFile, er
 		f.CreatedAt = parseFlexibleTime(rawCreated)
 		f.UpdatedAt = parseFlexibleTime(rawUpdated)
 
-		// If a child user or guest is viewing an Admin-owned file, mark it as locked with OTP requirement ONLY IF not shared
-		if userID != "user_admin" && userID != "all" && userID != "admin" && (f.UserID == "user_admin" || f.UserID == "admin" || f.UserID == "") {
-			f.IsAdminOwned = true
-			if !s.isFileOrAncestorSharedUnlocked(f.ID) {
-				f.RequiresOTP = true
-			} else {
-				f.RequiresOTP = false
-			}
-		}
-
 		list = append(list, f)
 	}
+
+	// Xử lý quyền OTP cho người dùng bị hạn chế (guest hoặc child user)
+	isRestrictedUser := userID != "user_admin" && userID != "all" && userID != "admin"
+	if !isRestrictedUser {
+		return list, nil
+	}
+
+	// Đánh dấu các file thuộc admin và kiểm tra xem thư mục có chứa tệp tin của admin không
+	hasAdminFiles := false
+	for i := range list {
+		if list[i].UserID == "user_admin" || list[i].UserID == "admin" || list[i].UserID == "" {
+			list[i].IsAdminOwned = true
+			hasAdminFiles = true
+		}
+	}
+
+	if !hasAdminFiles {
+		return list, nil
+	}
+
+	// Tối ưu hóa triệt để (Query & CTE Optimizer):
+	// Thay vì chạy N câu truy vấn đệ quy CTE (N+1 query) gây nghẽn mạng tới TiDB Cloud qua Internet,
+	// chỉ cần thực hiện 1 truy vấn duy nhất lấy danh sách active public shares:
+	shareQuery := `
+	SELECT ps.file_id, COALESCE(vf.is_dir, 0) 
+	FROM public_shares ps 
+	LEFT JOIN virtual_files vf ON ps.file_id = vf.id 
+	WHERE ps.is_active = 1 
+	  AND (ps.expires_at IS NULL OR ps.expires_at > CURRENT_TIMESTAMP) 
+	  AND (ps.max_downloads = 0 OR ps.download_count < ps.max_downloads)`
+
+	shareRows, err := s.db.Query(shareQuery)
+	if err != nil {
+		// Trong trường hợp lỗi truy vấn shares, fallback an toàn: toàn bộ file admin yêu cầu OTP
+		for i := range list {
+			if list[i].IsAdminOwned {
+				list[i].RequiresOTP = true
+			}
+		}
+		return list, nil
+	}
+	defer shareRows.Close()
+
+	sharedFileIDs := make(map[string]bool)
+	sharedFolderIDs := make(map[string]bool)
+	hasSharedFolders := false
+
+	for shareRows.Next() {
+		var sFileID string
+		var sIsDir int
+		if err := shareRows.Scan(&sFileID, &sIsDir); err == nil && sFileID != "" {
+			sharedFileIDs[sFileID] = true
+			if sIsDir == 1 {
+				sharedFolderIDs[sFileID] = true
+				hasSharedFolders = true
+			}
+		}
+	}
+
+	// Nếu không có bất kỳ active share nào (chiếm 99% thời gian trong thực tế):
+	// Toàn bộ các file admin đều yêu cầu OTP. KHÔNG CẦN GỌI BẤT KỲ TRUY VẤN ĐỆ QUY NÀO NỮA!
+	if len(sharedFileIDs) == 0 {
+		for i := range list {
+			if list[i].IsAdminOwned {
+				list[i].RequiresOTP = true
+			}
+		}
+		return list, nil
+	}
+
+	// Nếu có active shares:
+	// Kiểm tra xem chuỗi tổ tiên của thư mục parentID có được chia sẻ hay không.
+	// Vì tất cả các tệp tin trong danh sách này đều thuộc cùng parentID, ta chỉ cần kiểm tra tổ tiên 1 lần duy nhất cho toàn bộ thư mục!
+	parentChainIsShared := false
+	if hasSharedFolders && parentID != "" && parentID != "root" {
+		if sharedFolderIDs[parentID] {
+			parentChainIsShared = true
+		} else {
+			// Truy vấn đệ quy CTE duy nhất 1 lần để lấy tất cả tổ tiên của parentID
+			ancestorQuery := `
+			WITH RECURSIVE parent_ancestors AS (
+				SELECT id, parent_id FROM virtual_files WHERE id = ?
+				UNION ALL
+				SELECT vf.id, vf.parent_id FROM virtual_files vf
+				JOIN parent_ancestors pa ON vf.id = pa.parent_id
+				WHERE vf.id != 'root' AND vf.id != ''
+			)
+			SELECT id FROM parent_ancestors WHERE id != ?;`
+			if aRows, err := s.db.Query(ancestorQuery, parentID, parentID); err == nil {
+				for aRows.Next() {
+					var ancestorID string
+					if aRows.Scan(&ancestorID) == nil {
+						if sharedFolderIDs[ancestorID] {
+							parentChainIsShared = true
+							break
+						}
+					}
+				}
+				aRows.Close()
+			}
+		}
+	}
+
+	// Cập nhật RequiresOTP cho từng file
+	for i := range list {
+		if !list[i].IsAdminOwned {
+			continue
+		}
+		if parentChainIsShared || sharedFileIDs[list[i].ID] {
+			list[i].RequiresOTP = false
+		} else {
+			list[i].RequiresOTP = true
+		}
+	}
+
 	return list, nil
 }
 
 // isFileOrAncestorSharedUnlocked checks if the given file or any parent folder in its hierarchy has an active public share link
 func (s *DB) isFileOrAncestorSharedUnlocked(fileID string) bool {
+	if fileID == "" || fileID == "root" {
+		return false
+	}
+
+	// 1. Kiểm tra trực tiếp fileID có được chia sẻ hay không (tận dụng index trên file_id)
+	var directCount int
+	err := s.db.QueryRow(`
+		SELECT COUNT(*) FROM public_shares 
+		WHERE file_id = ? AND is_active = 1 
+		  AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) 
+		  AND (max_downloads = 0 OR download_count < max_downloads)`, fileID).Scan(&directCount)
+	if err == nil && directCount > 0 {
+		return true
+	}
+
+	// 2. Kiểm tra nhanh xem toàn hệ thống có thư mục nào đang được public share không
+	var folderShareCount int
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM public_shares ps
+		INNER JOIN virtual_files vf ON ps.file_id = vf.id
+		WHERE vf.is_dir = 1 AND ps.is_active = 1 
+		  AND (ps.expires_at IS NULL OR ps.expires_at > CURRENT_TIMESTAMP) 
+		  AND (ps.max_downloads = 0 OR ps.download_count < ps.max_downloads)`).Scan(&folderShareCount)
+	if err != nil || folderShareCount == 0 {
+		return false
+	}
+
+	// 3. Nếu có thư mục được chia sẻ, mới chạy CTE đệ quy kiểm tra tổ tiên
 	query := `
 	WITH RECURSIVE file_ancestors AS (
 		SELECT id, parent_id FROM virtual_files WHERE id = ?
@@ -1844,10 +2009,18 @@ func (s *DB) SoftDeleteVirtualFile(id string) error {
 		// Soft delete directory and all descendants
 		prefix := strings.TrimSuffix(vFile.Path, "/") + "/%"
 		_, err := s.db.Exec(`UPDATE virtual_files SET is_deleted = 1, deleted_at = ? WHERE id = ? OR path LIKE ?`, now, id, prefix)
+		if err == nil {
+			s.InvalidateVFSCache()
+			s.InvalidateStatsCache()
+		}
 		return err
 	}
 
 	_, err = s.db.Exec(`UPDATE virtual_files SET is_deleted = 1, deleted_at = ? WHERE id = ?`, now, id)
+	if err == nil {
+		s.InvalidateVFSCache()
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -1863,10 +2036,18 @@ func (s *DB) RestoreVirtualFile(id string) error {
 	if vFile.IsDir {
 		prefix := strings.TrimSuffix(vFile.Path, "/") + "/%"
 		_, err := s.db.Exec(`UPDATE virtual_files SET is_deleted = 0, deleted_at = NULL WHERE id = ? OR path LIKE ?`, id, prefix)
+		if err == nil {
+			s.InvalidateVFSCache()
+			s.InvalidateStatsCache()
+		}
 		return err
 	}
 
 	_, err = s.db.Exec(`UPDATE virtual_files SET is_deleted = 0, deleted_at = NULL WHERE id = ?`, id)
+	if err == nil {
+		s.InvalidateVFSCache()
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -1977,6 +2158,9 @@ func (s *DB) UpdateFileMissingChunks(fileID string, hasMissing bool) error {
 	defer s.mu.Unlock()
 
 	_, err := s.db.Exec("UPDATE virtual_files SET has_missing_chunks = ?, updated_at = ? WHERE id = ?", hasMissing, time.Now(), fileID)
+	if err == nil {
+		s.InvalidateVFSCache()
+	}
 	return err
 }
 
@@ -2059,6 +2243,10 @@ func (s *DB) DeleteVirtualFile(id string) error {
 		return fmt.Errorf("không thể xóa vĩnh viễn thư mục gốc (root folder is protected)")
 	}
 	_, err := s.db.Exec("DELETE FROM virtual_files WHERE id = ?", id)
+	if err == nil {
+		s.InvalidateVFSCache()
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -2069,6 +2257,9 @@ func (s *DB) RenameVirtualFile(id string, newName, newPath string) error {
 		return fmt.Errorf("không thể đổi tên thư mục gốc (root folder is protected)")
 	}
 	_, err := s.db.Exec("UPDATE virtual_files SET name=?, path=?, updated_at=? WHERE id=?", newName, newPath, time.Now(), id)
+	if err == nil {
+		s.InvalidateVFSCache()
+	}
 	return err
 }
 
@@ -2119,7 +2310,11 @@ func (s *DB) SaveChunks(chunks []models.FileChunk) error {
 		}
 	}
 
-	return tx.Commit()
+	err = tx.Commit()
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
+	return err
 }
 
 func (s *DB) GetChunksForFile(fileID string) ([]models.FileChunk, error) {
@@ -2186,6 +2381,9 @@ func (s *DB) ToggleAccountStatus(id, newStatus string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("UPDATE accounts SET status = ?, updated_at = ? WHERE id = ?", newStatus, time.Now(), id)
+	if err == nil {
+		s.InvalidateAccountsCache()
+	}
 	return err
 }
 
@@ -2193,6 +2391,9 @@ func (s *DB) DeleteChunksForFile(fileID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("DELETE FROM file_chunks WHERE file_id = ?", fileID)
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -2236,7 +2437,7 @@ func (s *DB) FindFileByNameInParent(parentID, name string) (*models.VirtualFile,
 // Settings & Stats
 // -------------------------------------------------------------
 
-func (s *DB) GetSettings() (*models.Settings, error) {
+func (s *DB) getSettingsFromDB() (*models.Settings, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -2494,34 +2695,51 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.InvalidateSettingsCache()
+	return nil
 }
 
-func (s *DB) GetStats() (*models.StorageStats, error) {
+func (s *DB) getStatsFromDB() (*models.StorageStats, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	var stats models.StorageStats
 
-	// Accounts aggregation
-	row := s.db.QueryRow(`SELECT 
-		COUNT(*), 
-		COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0),
-		COALESCE(SUM(total_quota_bytes), 0),
-		COALESCE(SUM(used_quota_bytes), 0),
-		COALESCE(SUM(free_quota_bytes), 0)
-		FROM accounts`)
-	_ = row.Scan(&stats.TotalAccounts, &stats.ActiveAccounts, &stats.TotalCapacityBytes, &stats.TotalUsedBytes, &stats.TotalFreeBytes)
+	// Tối ưu hóa triệt để (Query Optimizer):
+	// Gộp toàn bộ 5 truy vấn riêng lẻ thành 1 câu truy vấn duy nhất (Single Round-Trip),
+	// loại bỏ hoàn toàn độ trễ mạng tích lũy (5 x 50ms = 250ms -> 1 x 50ms) tới TiDB Cloud Singapore.
+	query := `SELECT 
+		COALESCE((SELECT COUNT(*) FROM accounts), 0),
+		COALESCE((SELECT SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) FROM accounts), 0),
+		COALESCE((SELECT SUM(total_quota_bytes) FROM accounts), 0),
+		COALESCE((SELECT SUM(used_quota_bytes) FROM accounts), 0),
+		COALESCE((SELECT SUM(free_quota_bytes) FROM accounts), 0),
+		COALESCE((SELECT COUNT(*) FROM virtual_files WHERE is_dir = 0 AND id != 'root'), 0),
+		COALESCE((SELECT COUNT(*) FROM virtual_files WHERE is_dir = 1 AND id != 'root'), 0),
+		COALESCE((SELECT COUNT(*) FROM file_chunks), 0),
+		COALESCE((SELECT COUNT(*) FROM users), 0)`
+
+	err := s.db.QueryRow(query).Scan(
+		&stats.TotalAccounts,
+		&stats.ActiveAccounts,
+		&stats.TotalCapacityBytes,
+		&stats.TotalUsedBytes,
+		&stats.TotalFreeBytes,
+		&stats.TotalFilesCount,
+		&stats.TotalFoldersCount,
+		&stats.TotalChunksCount,
+		&stats.TotalUsersCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch storage stats: %w", err)
+	}
 
 	if stats.TotalCapacityBytes > 0 {
 		stats.OverallUsagePercent = float64(stats.TotalUsedBytes) / float64(stats.TotalCapacityBytes) * 100.0
 	}
-
-	// Files & Users aggregation
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 0 AND id != 'root'").Scan(&stats.TotalFilesCount)
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_dir = 1 AND id != 'root'").Scan(&stats.TotalFoldersCount)
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM file_chunks").Scan(&stats.TotalChunksCount)
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&stats.TotalUsersCount)
 
 	return &stats, nil
 }
@@ -2594,6 +2812,9 @@ func (s *DB) CreateUser(u *models.User) error {
 	_, err := s.db.Exec(`INSERT INTO users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, quota_bytes, used_bytes, created_at, updated_at) 
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		u.ID, encUsername, usernameHash, encEmail, emailHash, u.PasswordHash, u.SecurityPinHash, u.SecurityTier, encDisplay, encAvatar, u.Role, u.QuotaBytes, u.UsedBytes, u.CreatedAt, u.UpdatedAt)
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -2679,6 +2900,9 @@ func (s *DB) DeleteUser(id string) error {
 	masterKey := s.getMasterKey()
 	adminHash := core.BlindIndexHash(masterKey, "admin")
 	_, err := s.db.Exec("DELETE FROM users WHERE id = ? AND username_hash != ?", id, adminHash)
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -2686,6 +2910,9 @@ func (s *DB) UpdateUserQuota(id string, quotaBytes int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("UPDATE users SET quota_bytes = ?, updated_at = ? WHERE id = ?", quotaBytes, time.Now(), id)
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -2752,6 +2979,9 @@ func (s *DB) UpdateUserUsage(id string, usedDelta int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("UPDATE users SET used_bytes = used_bytes + ?, updated_at = ? WHERE id = ?", usedDelta, time.Now(), id)
+	if err == nil {
+		s.InvalidateStatsCache()
+	}
 	return err
 }
 
@@ -3329,6 +3559,9 @@ func (s *DB) CreatePublicShare(share *models.PublicShare) error {
 	_, err := s.db.Exec(`INSERT INTO public_shares (id, file_id, created_by, password_hash, max_downloads, download_count, expires_at, created_at, is_active)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		share.ID, share.FileID, share.CreatedBy, share.PasswordHash, share.MaxDownloads, share.DownloadCount, share.ExpiresAt, share.CreatedAt, 1)
+	if err == nil {
+		s.InvalidateVFSCache()
+	}
 	return err
 }
 
@@ -3570,6 +3803,9 @@ func (s *DB) RevokePublicShare(id string) error {
 	defer s.mu.Unlock()
 
 	_, err := s.db.Exec(`DELETE FROM public_shares WHERE id = ?`, id)
+	if err == nil {
+		s.InvalidateVFSCache()
+	}
 	return err
 }
 
@@ -4153,6 +4389,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 		_, _ = s.db.Exec(bQ, id, filename, size, sha, gfileID, webLink, email, manifest, createdAt)
 	}
 
+	s.ClearCache()
 	return insertedAccounts, insertedFiles, insertedChunks, nil
 }
 

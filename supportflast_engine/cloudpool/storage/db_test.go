@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1218,5 +1219,387 @@ func TestListVirtualFilesGuestPolicy(t *testing.T) {
 	}
 }
 
+func TestQueryOptimizer_ListVirtualFiles_InheritedShare(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_cte_optimizer.db")
 
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
 
+	// 1. Tạo cấu trúc thư mục phân cấp:
+	// root
+	//  ├── folder_shared (được public share)
+	//  │    ├── sub_folder
+	//  │    │    └── deep_file.pdf
+	//  │    └── file_in_shared.pdf
+	//  └── folder_unshared (không được share)
+	//       └── file_in_unshared.pdf
+
+	folderShared := &models.VirtualFile{
+		ID:        "folder_shared_id",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "SharedFolder",
+		Path:      "/SharedFolder",
+		IsDir:     true,
+		SizeBytes: 0,
+		MimeType:  "inode/directory",
+	}
+	if err := db.SaveVirtualFile(folderShared); err != nil {
+		t.Fatalf("SaveVirtualFile folderShared failed: %v", err)
+	}
+
+	subFolder := &models.VirtualFile{
+		ID:        "sub_folder_id",
+		UserID:    "user_admin",
+		ParentID:  folderShared.ID,
+		Name:      "SubFolder",
+		Path:      "/SharedFolder/SubFolder",
+		IsDir:     true,
+		SizeBytes: 0,
+		MimeType:  "inode/directory",
+	}
+	if err := db.SaveVirtualFile(subFolder); err != nil {
+		t.Fatalf("SaveVirtualFile subFolder failed: %v", err)
+	}
+
+	deepFile := &models.VirtualFile{
+		ID:        "deep_file_id",
+		UserID:    "user_admin",
+		ParentID:  subFolder.ID,
+		Name:      "deep_file.pdf",
+		Path:      "/SharedFolder/SubFolder/deep_file.pdf",
+		IsDir:     false,
+		SizeBytes: 4096,
+		MimeType:  "application/pdf",
+	}
+	if err := db.SaveVirtualFile(deepFile); err != nil {
+		t.Fatalf("SaveVirtualFile deepFile failed: %v", err)
+	}
+
+	fileInShared := &models.VirtualFile{
+		ID:        "file_in_shared_id",
+		UserID:    "user_admin",
+		ParentID:  folderShared.ID,
+		Name:      "file_in_shared.pdf",
+		Path:      "/SharedFolder/file_in_shared.pdf",
+		IsDir:     false,
+		SizeBytes: 1024,
+		MimeType:  "application/pdf",
+	}
+	if err := db.SaveVirtualFile(fileInShared); err != nil {
+		t.Fatalf("SaveVirtualFile fileInShared failed: %v", err)
+	}
+
+	folderUnshared := &models.VirtualFile{
+		ID:        "folder_unshared_id",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "UnsharedFolder",
+		Path:      "/UnsharedFolder",
+		IsDir:     true,
+		SizeBytes: 0,
+		MimeType:  "inode/directory",
+	}
+	if err := db.SaveVirtualFile(folderUnshared); err != nil {
+		t.Fatalf("SaveVirtualFile folderUnshared failed: %v", err)
+	}
+
+	fileInUnshared := &models.VirtualFile{
+		ID:        "file_in_unshared_id",
+		UserID:    "user_admin",
+		ParentID:  folderUnshared.ID,
+		Name:      "file_in_unshared.pdf",
+		Path:      "/UnsharedFolder/file_in_unshared.pdf",
+		IsDir:     false,
+		SizeBytes: 2048,
+		MimeType:  "application/pdf",
+	}
+	if err := db.SaveVirtualFile(fileInUnshared); err != nil {
+		t.Fatalf("SaveVirtualFile fileInUnshared failed: %v", err)
+	}
+
+	// 2. Chia sẻ public share cho folderShared
+	share := &models.PublicShare{
+		ID:        "share_folder_token",
+		FileID:    folderShared.ID,
+		FileName:  folderShared.Name,
+		CreatedBy: "user_admin",
+		IsActive:  true,
+	}
+	if err := db.CreatePublicShare(share); err != nil {
+		t.Fatalf("CreatePublicShare failed: %v", err)
+	}
+
+	// 3. Kiểm tra ListVirtualFiles cho guest tại folderShared: file con & subfolder phải thừa kế RequiresOTP = false
+	filesInShared, err := db.ListVirtualFiles("guest", folderShared.ID)
+	if err != nil {
+		t.Fatalf("ListVirtualFiles at folderShared failed: %v", err)
+	}
+	if len(filesInShared) != 2 {
+		t.Fatalf("Kỳ vọng 2 mục trong folderShared, thực tế: %d", len(filesInShared))
+	}
+	for _, f := range filesInShared {
+		if !f.IsAdminOwned {
+			t.Errorf("File %s phải có IsAdminOwned = true", f.Name)
+		}
+		if f.RequiresOTP {
+			t.Errorf("File %s nằm trong thư mục đã share công khai nên RequiresOTP phải là false (thực tế: true)", f.Name)
+		}
+	}
+
+	// 4. Kiểm tra ListVirtualFiles cho guest tại subFolder: tệp tin cháu deepFile phải thừa kế RequiresOTP = false
+	filesInSub, err := db.ListVirtualFiles("guest", subFolder.ID)
+	if err != nil {
+		t.Fatalf("ListVirtualFiles at subFolder failed: %v", err)
+	}
+	if len(filesInSub) != 1 {
+		t.Fatalf("Kỳ vọng 1 mục trong subFolder, thực tế: %d", len(filesInSub))
+	}
+	if filesInSub[0].RequiresOTP {
+		t.Errorf("deep_file nằm trong thư mục cháu của thư mục được share nên RequiresOTP phải là false")
+	}
+
+	// 5. Kiểm tra ListVirtualFiles cho guest tại folderUnshared: tệp tin chưa share phải có RequiresOTP = true
+	filesInUnshared, err := db.ListVirtualFiles("guest", folderUnshared.ID)
+	if err != nil {
+		t.Fatalf("ListVirtualFiles at folderUnshared failed: %v", err)
+	}
+	if len(filesInUnshared) != 1 {
+		t.Fatalf("Kỳ vọng 1 mục trong folderUnshared, thực tế: %d", len(filesInUnshared))
+	}
+	if !filesInUnshared[0].RequiresOTP {
+		t.Errorf("file_in_unshared chưa được share nên RequiresOTP phải là true")
+	}
+
+	// 6. Kiểm tra hàm IsFileOrAncestorShared trực tiếp
+	if !db.IsFileOrAncestorShared(deepFile.ID) {
+		t.Errorf("IsFileOrAncestorShared(deepFile.ID) phải trả về true")
+	}
+	if db.IsFileOrAncestorShared(fileInUnshared.ID) {
+		t.Errorf("IsFileOrAncestorShared(fileInUnshared.ID) phải trả về false")
+	}
+}
+
+func TestQueryOptimizer_GetStats(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_stats_optimizer.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra GetStats trên DB rỗng
+	stats, err := db.GetStats()
+	if err != nil {
+		t.Fatalf("GetStats on empty DB failed: %v", err)
+	}
+	if stats.TotalAccounts != 0 || stats.TotalFilesCount != 0 || stats.TotalFoldersCount != 0 {
+		t.Errorf("Kỳ vọng các chỉ số ban đầu bằng 0, thực tế: %+v", stats)
+	}
+
+	initialUsers := stats.TotalUsersCount
+
+	// 2. Thêm dữ liệu mẫu: 2 tài khoản, 2 file, 1 folder, 2 chunks, 1 user
+	acc1 := &models.Account{
+		ID:              "acc_test_1",
+		Email:           "acc1@example.com",
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  5 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  10 * 1024 * 1024 * 1024,
+		Status:          "active",
+	}
+	acc2 := &models.Account{
+		ID:              "acc_test_2",
+		Email:           "acc2@example.com",
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		UsedQuotaBytes:  3 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  12 * 1024 * 1024 * 1024,
+		Status:          "active",
+	}
+	_ = db.SaveAccount(acc1)
+	_ = db.SaveAccount(acc2)
+
+	folder1 := &models.VirtualFile{
+		ID:       "folder_stat_1",
+		UserID:   "user_admin",
+		ParentID: "root",
+		Name:     "StatFolder",
+		IsDir:    true,
+	}
+	file1 := &models.VirtualFile{
+		ID:       "file_stat_1",
+		UserID:   "user_admin",
+		ParentID: "root",
+		Name:     "stat1.txt",
+		IsDir:    false,
+	}
+	file2 := &models.VirtualFile{
+		ID:       "file_stat_2",
+		UserID:   "user_admin",
+		ParentID: folder1.ID,
+		Name:     "stat2.txt",
+		IsDir:    false,
+	}
+	_ = db.SaveVirtualFile(folder1)
+	_ = db.SaveVirtualFile(file1)
+	_ = db.SaveVirtualFile(file2)
+
+	// Thêm chunks
+	chunk1 := models.FileChunk{
+		ChunkID:        "chunk_stat_1",
+		FileID:         file1.ID,
+		AccountID:      acc1.ID,
+		ChunkIndex:     0,
+		ChunkSizeBytes: 1024,
+		Status:         "uploaded",
+	}
+	chunk2 := models.FileChunk{
+		ChunkID:        "chunk_stat_2",
+		FileID:         file2.ID,
+		AccountID:      acc2.ID,
+		ChunkIndex:     0,
+		ChunkSizeBytes: 2048,
+		Status:         "uploaded",
+	}
+	if err := db.SaveChunks([]models.FileChunk{chunk1, chunk2}); err != nil {
+		t.Fatalf("SaveChunks failed: %v", err)
+	}
+
+	// Thêm 1 user
+	usr := &models.User{
+		ID:       "usr_stat_1",
+		Username: "user_test_stats",
+		Role:     "user",
+		Status:   "active",
+	}
+	_ = db.CreateUser(usr)
+
+	// 3. Gọi lại GetStats() và đối chiếu
+	statsAfter, err := db.GetStats()
+	if err != nil {
+		t.Fatalf("GetStats after adding data failed: %v", err)
+	}
+
+	if statsAfter.TotalAccounts != 2 {
+		t.Errorf("TotalAccounts kỳ vọng 2, thực tế: %d", statsAfter.TotalAccounts)
+	}
+	if statsAfter.ActiveAccounts != 2 {
+		t.Errorf("ActiveAccounts kỳ vọng 2, thực tế: %d", statsAfter.ActiveAccounts)
+	}
+	if statsAfter.TotalFilesCount != 2 {
+		t.Errorf("TotalFilesCount kỳ vọng 2, thực tế: %d", statsAfter.TotalFilesCount)
+	}
+	if statsAfter.TotalFoldersCount != 1 {
+		t.Errorf("TotalFoldersCount kỳ vọng 1, thực tế: %d", statsAfter.TotalFoldersCount)
+	}
+	if statsAfter.TotalChunksCount != 2 {
+		t.Errorf("TotalChunksCount kỳ vọng 2, thực tế: %d", statsAfter.TotalChunksCount)
+	}
+	if statsAfter.TotalUsersCount != initialUsers+1 {
+		t.Errorf("TotalUsersCount kỳ vọng %d, thực tế: %d", initialUsers+1, statsAfter.TotalUsersCount)
+	}
+	expectedCapacity := int64(30 * 1024 * 1024 * 1024)
+	if statsAfter.TotalCapacityBytes != expectedCapacity {
+		t.Errorf("TotalCapacityBytes kỳ vọng %d, thực tế: %d", expectedCapacity, statsAfter.TotalCapacityBytes)
+	}
+}
+
+func TestQueryOptimizer_LargeDirectory_NoNPlusOne(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_large_dir.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	parentFolder := &models.VirtualFile{
+		ID:        "folder_large_batch",
+		UserID:    "user_admin",
+		ParentID:  "root",
+		Name:      "LargeBatchFolder",
+		Path:      "/LargeBatchFolder",
+		IsDir:     true,
+		SizeBytes: 0,
+		MimeType:  "inode/directory",
+	}
+	if err := db.SaveVirtualFile(parentFolder); err != nil {
+		t.Fatalf("SaveVirtualFile parentFolder failed: %v", err)
+	}
+
+	// Tạo 100 file thuộc sở hữu của admin trong folder này
+	for i := 1; i <= 100; i++ {
+		f := &models.VirtualFile{
+			ID:        fmt.Sprintf("batch_file_%03d", i),
+			UserID:    "user_admin",
+			ParentID:  parentFolder.ID,
+			Name:      fmt.Sprintf("document_%03d.pdf", i),
+			Path:      fmt.Sprintf("/LargeBatchFolder/document_%03d.pdf", i),
+			IsDir:     false,
+			SizeBytes: int64(i * 1024),
+			MimeType:  "application/pdf",
+		}
+		if err := db.SaveVirtualFile(f); err != nil {
+			t.Fatalf("SaveVirtualFile file %d failed: %v", i, err)
+		}
+	}
+
+	// 1. Khi chưa có share nào: 100 file đều phải RequiresOTP = true
+	start := time.Now()
+	list, err := db.ListVirtualFiles("guest", parentFolder.ID)
+	durationNoShare := time.Since(start)
+	if err != nil {
+		t.Fatalf("ListVirtualFiles failed: %v", err)
+	}
+	if len(list) != 100 {
+		t.Fatalf("Kỳ vọng 100 files, thực tế: %d", len(list))
+	}
+	for _, f := range list {
+		if !f.IsAdminOwned {
+			t.Errorf("File %s phải có IsAdminOwned = true", f.ID)
+		}
+		if !f.RequiresOTP {
+			t.Errorf("File %s phải có RequiresOTP = true khi chưa share", f.ID)
+		}
+	}
+	t.Logf("ListVirtualFiles với 100 files (0 shares): %v", durationNoShare)
+
+	// 2. Chia sẻ 1 file duy nhất trong số 100 files (batch_file_042)
+	share := &models.PublicShare{
+		ID:        "share_file_42",
+		FileID:    "batch_file_042",
+		FileName:  "document_042.pdf",
+		CreatedBy: "user_admin",
+		IsActive:  true,
+	}
+	if err := db.CreatePublicShare(share); err != nil {
+		t.Fatalf("CreatePublicShare failed: %v", err)
+	}
+
+	start = time.Now()
+	list2, err := db.ListVirtualFiles("guest", parentFolder.ID)
+	durationWithShare := time.Since(start)
+	if err != nil {
+		t.Fatalf("ListVirtualFiles round 2 failed: %v", err)
+	}
+	t.Logf("ListVirtualFiles với 100 files (1 active share): %v", durationWithShare)
+
+	for _, f := range list2 {
+		if f.ID == "batch_file_042" {
+			if f.RequiresOTP {
+				t.Errorf("batch_file_042 đã được share nên RequiresOTP phải là false")
+			}
+		} else {
+			if !f.RequiresOTP {
+				t.Errorf("File %s chưa được share nên RequiresOTP phải là true", f.ID)
+			}
+		}
+	}
+}
