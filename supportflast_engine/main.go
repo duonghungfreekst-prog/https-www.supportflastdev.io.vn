@@ -851,8 +851,9 @@ func main() {
 	mux.HandleFunc("/api/stats/", cloudpoolApi.StatsHandler)
 	mux.HandleFunc("/api/shares", cloudpoolApi.SharesHandler)
 	mux.HandleFunc("/api/shares/", cloudpoolApi.SharesHandler)
-	mux.HandleFunc("/api/sql", cloudpoolApi.SQLStudioHandler)
-	mux.HandleFunc("/api/sql/", cloudpoolApi.SQLStudioHandler)
+	// SQL Studio đã bị gỡ bỏ do chuyển sang TiDB
+	// mux.HandleFunc("/api/sql", cloudpoolApi.SQLStudioHandler)
+	// mux.HandleFunc("/api/sql/", cloudpoolApi.SQLStudioHandler)
 	mux.HandleFunc("/api/settings", cloudpoolApi.SettingsHandler)
 	mux.HandleFunc("/api/settings/", cloudpoolApi.SettingsHandler)
 	mux.HandleFunc("/api/remote", cloudpoolApi.RemoteHandler)
