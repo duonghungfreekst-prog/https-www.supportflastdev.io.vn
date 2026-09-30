@@ -37,6 +37,28 @@ const API = {
   async logout() {
     this.setCurrentUser(null);
     this.setToken(null);
+    const keys = [
+      'cloudpool_jwt_token',
+      'cloudpool_current_user',
+      'sf_admin_token',
+      'token',
+      'cloudpool_token',
+      'auth_last_activity',
+      'cloudpool_admin_session'
+    ];
+    keys.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+      try { sessionStorage.removeItem(k); } catch (_) {}
+    });
+    try {
+      document.cookie.split(";").forEach(c => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
+        if (name) {
+          document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        }
+      });
+    } catch (_) {}
     return this.request('/api/auth/logout', { method: 'POST' }).catch(() => {});
   },
 

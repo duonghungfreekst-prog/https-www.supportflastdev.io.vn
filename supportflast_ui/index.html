@@ -6765,6 +6765,49 @@
         /* HỆ THỐNG XÁC THỰC QUẢN TRỊ VIÊN & PHÂN QUYỀN HIỂN THỊ NAVBAR */
         /* Quy định: 'Kho Lưu Trữ' CHỈ HIỂN THỊ VỚI ADMIN */
         /* ============================================================= */
+        const AUTH_MAX_IDLE_MS = 2 * 60 * 60 * 1000; // 2 giờ không hoạt động sẽ tự động hết hạn phiên Quản Trị Viên
+
+        function recordAuthActivity() {
+            if (localStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_current_user')) {
+                localStorage.setItem('auth_last_activity', Date.now().toString());
+            }
+        }
+
+        // Bắt sự kiện người dùng tương tác để cập nhật thời gian hoạt động cuối (throttled 30s)
+        ['click', 'keydown', 'touchstart'].forEach(function(evt) {
+            window.addEventListener(evt, function() {
+                var now = Date.now();
+                var last = parseInt(localStorage.getItem('auth_last_activity') || '0', 10);
+                if (now - last > 30000) {
+                    recordAuthActivity();
+                }
+            }, { passive: true });
+        });
+
+        async function purgeClientAuth() {
+            try {
+                const token = localStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('sf_admin_token') || '';
+                await fetch('/api/auth/logout', { 
+                    method: 'POST',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                    credentials: 'include'
+                }).catch(() => {});
+            } catch(_) {}
+
+            localStorage.removeItem('cloudpool_current_user');
+            localStorage.removeItem('cloudpool_jwt_token');
+            localStorage.removeItem('sf_admin_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('cloudpool_token');
+            localStorage.removeItem('auth_last_activity');
+            sessionStorage.removeItem('cloudpool_admin_session');
+            sessionStorage.clear();
+
+            document.cookie = 'cloudpool_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax;';
+            document.cookie = 'sf_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax;';
+            document.cookie = 'supportflast_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax;';
+        }
+
         function getStoredUser() {
             try {
                 const u = localStorage.getItem('cloudpool_current_user');
@@ -6775,6 +6818,17 @@
         }
 
         async function verifyAdminAuth() {
+            // 1. Kiểm tra thời gian không hoạt động (Inactivity / Idle Timeout)
+            const lastActivity = parseInt(localStorage.getItem('auth_last_activity') || '0', 10);
+            const hasExistingSession = !!(localStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_current_user'));
+            
+            if (hasExistingSession && lastActivity > 0 && (Date.now() - lastActivity > AUTH_MAX_IDLE_MS)) {
+                console.warn('[AUTH] Phiên làm việc Quản Trị Viên đã hết hạn do không hoạt động quá 2 giờ.');
+                await purgeClientAuth();
+                updateAdminUI(false, null);
+                return;
+            }
+
             // Kiểm tra cache local trước để cập nhật UI ngay lập tức
             const cachedUser = getStoredUser();
             if (cachedUser && (cachedUser.role === 'admin' || cachedUser.username === 'admin')) {
@@ -6794,22 +6848,22 @@
                     if (user && (user.role === 'admin' || user.username === 'admin')) {
                         localStorage.setItem('cloudpool_current_user', JSON.stringify(user));
                         sessionStorage.setItem('cloudpool_admin_session', 'true');
+                        recordAuthActivity();
                         updateAdminUI(true, user);
                         return;
                     } else {
+                        await purgeClientAuth();
                         updateAdminUI(false, user);
                         return;
                     }
                 } else {
-                    localStorage.removeItem('cloudpool_current_user');
-                    localStorage.removeItem('cloudpool_jwt_token');
-                    sessionStorage.removeItem('cloudpool_admin_session');
+                    await purgeClientAuth();
                     updateAdminUI(false, null);
                     return;
                 }
             } catch(e) {
                 console.warn('[AUTH] Không thể kết nối server xác thực, duy trì trạng thái an toàn:', e);
-                if (cachedUser && (cachedUser.role === 'admin' || cachedUser.username === 'admin')) {
+                if (cachedUser && (cachedUser.role === 'admin' || cachedUser.username === 'admin') && lastActivity > 0 && (Date.now() - lastActivity < AUTH_MAX_IDLE_MS)) {
                     updateAdminUI(true, cachedUser);
                 } else {
                     updateAdminUI(false, null);
@@ -6903,13 +6957,10 @@
 
         async function handleUserLogout() {
             if (confirm('Bạn có chắc chắn muốn đăng xuất tài khoản Quản Trị Viên không?')) {
-                try {
-                    await fetch('/api/auth/logout', { method: 'POST' });
-                } catch(e) {}
-                localStorage.removeItem('cloudpool_current_user');
-                sessionStorage.removeItem('cloudpool_admin_session');
+                await purgeClientAuth();
                 updateAdminUI(false, null);
                 alert('Đã đăng xuất tài khoản Quản Trị Viên an toàn.');
+                window.location.reload();
             }
         }
 
@@ -7314,6 +7365,7 @@
                                 if (loginData.token) localStorage.setItem('cloudpool_jwt_token', loginData.token);
                                 localStorage.setItem('cloudpool_current_user', JSON.stringify(loginData.user));
                                 sessionStorage.setItem('cloudpool_admin_session', 'true');
+                                recordAuthActivity();
                                 updateAdminUI(true, loginData.user);
                                 document.getElementById('admin-login-modal').style.display = 'none';
                                 alert(`Chào mừng ${loginData.user.display_name || loginData.user.username}! Bạn đã đăng ký và đăng nhập thành công.`);
@@ -7416,6 +7468,7 @@
                     if (data.token) localStorage.setItem('cloudpool_jwt_token', data.token);
                     localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
                     sessionStorage.setItem('cloudpool_admin_session', 'true');
+                    recordAuthActivity();
                     updateAdminUI(true, data.user);
                     document.getElementById('admin-login-modal').style.display = 'none';
                     alert(`Đăng nhập thành công! Chào mừng ${data.user.display_name || data.user.username} đã kích hoạt quyền Quản Trị Viên.`);

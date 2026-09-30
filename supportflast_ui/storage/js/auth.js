@@ -59,9 +59,43 @@ const AuthManager = {
     }
   },
 
+  recordActivity() {
+    try {
+      localStorage.setItem('auth_last_activity', Date.now().toString());
+    } catch (_) {}
+  },
+
+  setupActivityTracking() {
+    let lastRecorded = 0;
+    const update = () => {
+      const now = Date.now();
+      if (now - lastRecorded > 30000) { // Throttle 30s
+        lastRecorded = now;
+        this.recordActivity();
+      }
+    };
+    ['click', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, update, { passive: true });
+    });
+  },
+
   async init() {
     this.bindEvents();
     this.fetchTurnstileConfig();
+
+    // 0. Kiểm tra phiên không hoạt động (Idle session timeout: 2 giờ)
+    const AUTH_MAX_IDLE_MS = 2 * 60 * 60 * 1000;
+    const lastAct = parseInt(localStorage.getItem('auth_last_activity') || '0', 10);
+    const hasToken = !!API.getToken() || !!localStorage.getItem('cloudpool_current_user');
+    if (hasToken && lastAct > 0 && (Date.now() - lastAct) > AUTH_MAX_IDLE_MS) {
+      console.warn('[AUTH] Phiên đăng nhập đã hết hạn do không hoạt động quá 2 giờ.');
+      await this.logout();
+      return;
+    }
+    this.setupActivityTracking();
+    if (hasToken) {
+      this.recordActivity();
+    }
 
     // 1. Phục hồi ngay lập tức trạng thái đăng nhập từ localStorage để chống nhấp nháy UI (Zero-flicker on F5)
     const cachedUser = API.getCurrentUser();
@@ -168,6 +202,7 @@ const AuthManager = {
           if (res.token) {
             API.setToken(res.token);
           }
+          this.recordActivity();
           this.closeAuthModal();
           this.updateUserUI();
 
@@ -334,11 +369,33 @@ const AuthManager = {
   async logout() {
     this.currentUser = null;
     API.setCurrentUser(null);
+    API.setToken(null);
     App.isAdminUnlocked = false;
     sessionStorage.removeItem('cloudpool_admin_session');
-    localStorage.removeItem('cloudpool_current_user');
+    const keys = [
+      'cloudpool_jwt_token',
+      'cloudpool_current_user',
+      'sf_admin_token',
+      'token',
+      'cloudpool_token',
+      'auth_last_activity',
+      'cloudpool_admin_session'
+    ];
+    keys.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+      try { sessionStorage.removeItem(k); } catch (_) {}
+    });
     try {
       await API.logout();
+    } catch (_) {}
+    try {
+      document.cookie.split(";").forEach(c => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
+        if (name) {
+          document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        }
+      });
     } catch (_) {}
     this.updateUserUI();
     App.applyAdminState();
