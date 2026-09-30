@@ -135,7 +135,7 @@ const AuthManager = {
         bc.onmessage = (ev) => {
           if (ev && ev.data && ev.data.action === 'logout') {
             console.warn('[AUTH] Nhận tín hiệu đăng xuất từ tab khác, đồng bộ đăng xuất.');
-            this.logout();
+            this.logout(true);
           }
         };
       }
@@ -466,9 +466,9 @@ const AuthManager = {
     if (modal) modal.classList.remove('active');
   },
 
-  async logout() {
+  async logout(skipBroadcast = false) {
     try {
-      await API.logout();
+      await API.logout(skipBroadcast);
     } catch (_) {}
     this.currentUser = null;
     API.setCurrentUser(null);
@@ -693,3 +693,5 @@ const AuthManager = {
     }
   }
 };
+
+
