@@ -219,19 +219,51 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu thất bại: %w", err)
 	}
 
-	// 6. Tự động khởi tạo CSDL SQLite CloudPool 'data/cloudpool_metadata.db'
+	// 6. Tự động khởi tạo CSDL CloudPool (TiDB Cloud Serverless hoặc SQLite)
+	var storageDB *cloudpoolStorage.DB
 	storageDBPath := filepath.Join(dataDir, "cloudpool_metadata.db")
-	res.CloudPoolDBPath = storageDBPath
-	if _, err := os.Stat(storageDBPath); os.IsNotExist(err) {
-		log.Printf("[BOOTSTRAP] [STORAGE] Chưa có CSDL CloudPool '%s'. Đang tự động khởi tạo schema...", storageDBPath)
+	cloudpoolDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
+	if cloudpoolDriver == "" {
+		cloudpoolDriver = driver
 	}
 
-	storageDB, err := cloudpoolStorage.NewDB(storageDBPath)
-	if err != nil {
-		return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool 'cloudpool_metadata.db' thất bại: %w", err)
+	if cloudpoolDriver == "tidb" || cloudpoolDriver == "mysql" {
+		tidbCfg := database.DefaultTiDBConfig()
+		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage kết nối trực tiếp TiDB Cloud (%s:%d/%s)...",
+			tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
+
+		var tidbErr error
+		storageDB, tidbErr = cloudpoolStorage.NewTiDB(tidbCfg)
+		if tidbErr != nil {
+			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Kết nối TiDB Cloud cho CloudPool thất bại: %v. Tự động fallback an toàn sang SQLite...", tidbErr)
+			if _, errStat := os.Stat(storageDBPath); os.IsNotExist(errStat) {
+				log.Printf("[BOOTSTRAP] [STORAGE] Chưa có CSDL CloudPool '%s'. Đang tự động khởi tạo schema...", storageDBPath)
+			}
+			storageDB, err = cloudpoolStorage.NewDB(storageDBPath)
+			if err != nil {
+				return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool fallback SQLite thất bại: %w", err)
+			}
+			res.CloudPoolDBPath = storageDBPath
+			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Metadata (Fallback SQLite) đã khởi tạo tại '%s'", storageDBPath)
+		} else {
+			cloudpoolURL := fmt.Sprintf("tidb://%s:%d/%s", tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
+			res.CloudPoolDBPath = cloudpoolURL
+			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối và migrate toàn diện trên TiDB Cloud Serverless (%s)!", cloudpoolURL)
+		}
+	} else {
+		res.CloudPoolDBPath = storageDBPath
+		if _, errStat := os.Stat(storageDBPath); os.IsNotExist(errStat) {
+			log.Printf("[BOOTSTRAP] [STORAGE] Chưa có CSDL CloudPool '%s'. Đang tự động khởi tạo schema...", storageDBPath)
+		}
+
+		storageDB, err = cloudpoolStorage.NewDB(storageDBPath)
+		if err != nil {
+			return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu CloudPool 'cloudpool_metadata.db' thất bại: %w", err)
+		}
+		log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Metadata đã khởi tạo và migrate thành công tại '%s'", storageDBPath)
 	}
+
 	res.StorageDB = storageDB
-	log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Metadata đã khởi tạo và migrate thành công tại '%s'", storageDBPath)
 
 	// 7. Tự động tạo / xác nhận tài khoản Admin mặc định ('admin' / 'Admin@2026!SupportFlast') với role admin
 	res.AdminUsername = "admin"

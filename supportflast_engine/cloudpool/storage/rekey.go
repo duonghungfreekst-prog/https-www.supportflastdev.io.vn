@@ -1,4 +1,4 @@
-﻿package storage
+package storage
 
 import (
 	"fmt"
@@ -50,7 +50,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	}
 
 	// 1. Settings (google_client_id, google_client_secret, master_passphrase)
-	setRows, err := tx.Query("SELECT key, value FROM settings WHERE key IN ('google_client_id', 'google_client_secret')")
+	setRows, err := tx.Query("SELECT `key`, `value` FROM settings WHERE `key` IN ('google_client_id', 'google_client_secret')")
 	if err == nil {
 		type setRec struct{ key, val string }
 		var sRecs []setRec
@@ -68,15 +68,21 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 				if err != nil {
 					return err
 				}
-				if _, err := tx.Exec("UPDATE settings SET value = ? WHERE key = ?", newEnc, sr.key); err != nil {
-					log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i cáº­p nháº­t setting '%s': %v", sr.key, err)
+				if _, err := tx.Exec("UPDATE settings SET `value` = ? WHERE `key` = ?", newEnc, sr.key); err != nil {
+					log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi cập nhật setting '%s': %v", sr.key, err)
 					return err
 				}
 			}
 		}
 	}
-	if _, err := tx.Exec("INSERT INTO settings (key, value) VALUES ('master_passphrase', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", newPassphrase); err != nil {
-		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lá»—i cáº­p nháº­t master_passphrase: %v", err)
+	var insSettingQuery string
+	if s.IsMySQLOrTiDB() {
+		insSettingQuery = "INSERT INTO settings (`key`, `value`) VALUES ('master_passphrase', ?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)"
+	} else {
+		insSettingQuery = "INSERT INTO settings (key, value) VALUES ('master_passphrase', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"
+	}
+	if _, err := tx.Exec(insSettingQuery, newPassphrase); err != nil {
+		log.Printf("[ENGINE] [ERROR] RekeyDatabase: lỗi cập nhật master_passphrase: %v", err)
 		return err
 	}
 

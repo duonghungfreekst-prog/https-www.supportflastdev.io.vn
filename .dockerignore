@@ -61,10 +61,30 @@ coverage.out
 engine.log
 logs/
 
-# SQLite WAL & Journal Temp Files (Tránh lock database khi copy image)
+# Bảo mật, Khóa & Thông tin nhạy cảm (Rule PHAN 3.3)
+.env
+.env.*
+*.pem
+*.key
+data/certs/
+data/oauth/
+data/service_accounts/
+tools/*_token.txt
+tools/cloudflare_token.txt
+
+# Cơ sở dữ liệu SQLite & File tạm runtime (Tuyệt đối không bake CSDL tĩnh vào container image)
+*.db
+*.sqlite*
+data/*.db
+data/*.sqlite*
 *.db-shm
 *.db-wal
 *.db-journal
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
+data/backups/
+data/test_db/
 
 # Windows Batch scripts & PowerShell (Không cần thiết trong Linux container)
 *.bat

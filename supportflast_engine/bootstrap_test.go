@@ -306,3 +306,57 @@ func TestAutoBootstrapping_StandaloneWithoutEnvExample(t *testing.T) {
 		t.Errorf("Khóa RSA không hợp lệ: %v", err)
 	}
 }
+
+func TestAutoBootstrapping_TiDBFallbackToSQLite(t *testing.T) {
+	// Kiểm tra trường hợp cấu hình DB_DRIVER=tidb nhưng chạy ở môi trường local không có kết nối TiDB
+	// Hệ thống phải tự động fallback an toàn 100% sang SQLite cho cả Main DB và CloudPool DB
+	sandboxDir, cleanup := createTestSandbox(t)
+	defer cleanup()
+
+	testDataDir := filepath.Join(sandboxDir, "data")
+	testStorageDir := filepath.Join(sandboxDir, "storage")
+	testEnvDir := sandboxDir
+
+	os.Setenv("DB_DRIVER", "tidb")
+	os.Setenv("TIDB_HOST", "127.0.0.1")
+	os.Setenv("TIDB_PORT", "65534") // Cổng không có dịch vụ để kích hoạt fallback
+	os.Setenv("TIDB_CONNECT_TIMEOUT", "500ms")
+	os.Setenv("TIDB_PING_TIMEOUT", "500ms")
+	defer func() {
+		os.Unsetenv("DB_DRIVER")
+		os.Unsetenv("TIDB_HOST")
+		os.Unsetenv("TIDB_PORT")
+		os.Unsetenv("TIDB_CONNECT_TIMEOUT")
+		os.Unsetenv("TIDB_PING_TIMEOUT")
+	}()
+
+	res, err := BootstrapWithDirs(testDataDir, testStorageDir, testEnvDir)
+	if err != nil {
+		t.Fatalf("Bootstrap thất bại khi fallback từ TiDB sang SQLite: %v", err)
+	}
+	defer res.StorageDB.Close()
+
+	// 1. Kiểm tra CloudPool Storage DB đã khởi tạo thành công qua fallback SQLite
+	if res.StorageDB == nil {
+		t.Fatalf("StorageDB không được là nil sau khi fallback")
+	}
+	if res.StorageDB.Driver() != "sqlite" {
+		t.Errorf("Kỳ vọng Driver là 'sqlite' sau khi fallback, thực tế: '%s'", res.StorageDB.Driver())
+	}
+
+	// 2. Kiểm tra file CSDL SQLite của CloudPool đã được tạo trên đĩa
+	storageDBPath := filepath.Join(testDataDir, "cloudpool_metadata.db")
+	if _, err := os.Stat(storageDBPath); os.IsNotExist(err) {
+		t.Errorf("File CSDL CloudPool '%s' không tồn tại sau khi fallback sang SQLite", storageDBPath)
+	}
+
+	// 3. Kiểm tra tính sẵn sàng của CloudPool: Lưu và đọc cài đặt hoạt động tốt
+	stats, err := res.StorageDB.GetStats()
+	if err != nil {
+		t.Fatalf("GetStats thất bại trên CloudPool Storage sau fallback: %v", err)
+	}
+	if stats == nil {
+		t.Fatalf("GetStats trả về nil")
+	}
+}
+

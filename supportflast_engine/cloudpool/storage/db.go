@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -14,7 +15,9 @@ import (
 
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
+	"supportflast_engine/database"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
@@ -77,12 +80,90 @@ func ResolveDBPath(customPath ...string) string {
 }
 
 type DB struct {
-	db   *sql.DB
-	path string
-	mu   sync.RWMutex
+	db     *sql.DB
+	path   string
+	driver string
+	mu     sync.RWMutex
 }
 
+// Driver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql")
+func (s *DB) Driver() string {
+	if s.driver == "" {
+		return "sqlite"
+	}
+	return s.driver
+}
+
+// IsMySQLOrTiDB kiểm tra xem kết nối hiện tại có phải là TiDB hoặc MySQL hay không
+func (s *DB) IsMySQLOrTiDB() bool {
+	drv := s.Driver()
+	return drv == "tidb" || drv == "mysql"
+}
+
+// IsSQLite kiểm tra xem kết nối hiện tại có phải là SQLite hay không
+func (s *DB) IsSQLite() bool {
+	return !s.IsMySQLOrTiDB()
+}
+
+// SQLDB trả về con trỏ *sql.DB bên dưới để sử dụng trực tiếp nếu cần
+func (s *DB) SQLDB() *sql.DB {
+	return s.db
+}
+
+// NewDB khởi tạo đối tượng DB cho CloudPool.
+// Để đảm bảo tương thích ngược 100%:
+// - Nếu dbPath được truyền vào cụ thể, hàm sẽ mở cơ sở dữ liệu SQLite theo đường dẫn đó.
+// - Nếu dbPath rỗng, hàm sẽ kiểm tra các biến môi trường CLOUDPOOL_DB_DRIVER hoặc DB_DRIVER.
+//   Nếu được chỉ định là "tidb" hoặc "mysql", tự động kết nối tới TiDB Cloud.
+//   Ngược lại, mặc định mở SQLite tại ResolveDBPath().
 func NewDB(dbPath string) (*DB, error) {
+	if strings.TrimSpace(dbPath) == "" {
+		envDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
+		if envDriver == "" {
+			envDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+		}
+		if envDriver == "tidb" || envDriver == "mysql" {
+			return NewDBWithConfig(envDriver, "", "")
+		}
+	}
+	return NewDBWithConfig("sqlite", "", dbPath)
+}
+
+// NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu đa nền tảng (hỗ trợ cả SQLite và MySQL/TiDB Cloud)
+// - driver: "sqlite", "tidb", "mysql" (nếu để trống, tự động nhận diện từ CLOUDPOOL_DB_DRIVER hoặc DB_DRIVER)
+// - dsn: Chuỗi kết nối DSN (sử dụng khi kết nối TiDB/MySQL; nếu để trống sẽ tự động lấy từ ENV hoặc TiDBConfig)
+// - dbPath: Đường dẫn file CSDL (sử dụng khi driver là "sqlite"; nếu để trống sẽ phân giải qua ResolveDBPath)
+func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
+	normDriver := strings.ToLower(strings.TrimSpace(driver))
+	if normDriver == "" {
+		normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
+		if normDriver == "" {
+			normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+		}
+		if normDriver == "" {
+			normDriver = "sqlite"
+		}
+	}
+
+	switch normDriver {
+	case "tidb", "mysql":
+		return openTiDBConnection(normDriver, dsn)
+	default:
+		return openSQLiteConnection(dbPath)
+	}
+}
+
+// NewTiDB khởi tạo đối tượng CloudPool DB kết nối trực tiếp tới TiDB Cloud qua cấu hình TiDBConfig
+func NewTiDB(cfg database.TiDBConfig) (*DB, error) {
+	return openTiDBWithConfig(cfg)
+}
+
+// NewTiDBFromDSN khởi tạo đối tượng CloudPool DB từ chuỗi DSN TiDB/MySQL
+func NewTiDBFromDSN(dsn string) (*DB, error) {
+	return openTiDBConnection("tidb", dsn)
+}
+
+func openSQLiteConnection(dbPath string) (*DB, error) {
 	if strings.TrimSpace(dbPath) == "" {
 		dbPath = ResolveDBPath()
 	}
@@ -130,10 +211,130 @@ func NewDB(dbPath string) (*DB, error) {
 	_ = db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys)
 	log.Printf("[ENGINE] [DATABASE] CloudPool SQLite initialized at '%s' (journal_mode=%s, foreign_keys=%d)", dbPath, strings.ToUpper(activeMode), foreignKeys)
 
-	s := &DB{db: db, path: dbPath}
+	s := &DB{db: db, path: dbPath, driver: "sqlite"}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	}
+
+	return s, nil
+}
+
+func openTiDBConnection(driverName, dsn string) (*DB, error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		dsn = strings.TrimSpace(os.Getenv("CLOUDPOOL_TIDB_DSN"))
+	}
+	if dsn == "" {
+		dsn = strings.TrimSpace(os.Getenv("TIDB_DSN"))
+	}
+
+	cfg := database.DefaultTiDBConfig()
+	if dsn != "" {
+		cfg.DSN = dsn
+	}
+	return openTiDBWithConfig(cfg, dsn)
+}
+
+func openTiDBWithConfig(cfg database.TiDBConfig, rawDSN ...string) (*DB, error) {
+	// 1. Đảm bảo cấu hình TLS 1.2+ đã được đăng ký với driver mysql (Rule 3.4 & TiDB Cloud Enforce)
+	tlsConfigName := cfg.TLSConfigName
+	if tlsConfigName == "" {
+		if cfg.TLS != "" && cfg.TLS != "true" && cfg.TLS != "false" && cfg.TLS != "skip-verify" {
+			tlsConfigName = cfg.TLS
+		} else {
+			tlsConfigName = database.DefaultTiDBTLSConfig
+		}
+	}
+	if cfg.MinTLSVersion < 0x0303 { // tls.VersionTLS12
+		cfg.MinTLSVersion = 0x0303
+	}
+
+	if !database.IsTLSRegistered(tlsConfigName) || cfg.CustomCAPath != "" || cfg.InsecureSkipVerify {
+		if err := database.RegisterTiDBTLSConfig(tlsConfigName, cfg.MinTLSVersion, cfg.CustomCAPath, cfg.InsecureSkipVerify); err != nil {
+			return nil, fmt.Errorf("lỗi khởi tạo cấu hình TLS cho CloudPool TiDB: %w", err)
+		}
+	}
+
+	// 2. Tạo hoặc sử dụng DSN
+	var dsn string
+	var err error
+	if len(rawDSN) > 0 && strings.TrimSpace(rawDSN[0]) != "" {
+		dsn = strings.TrimSpace(rawDSN[0])
+	} else if strings.TrimSpace(cfg.DSN) != "" {
+		dsn = strings.TrimSpace(cfg.DSN)
+	} else {
+		dsn, err = database.BuildTiDBDSN(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi tạo DSN TiDB cho CloudPool: %w", err)
+		}
+	}
+
+	// 3. Mở kết nối với driver "mysql"
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open mysql/tidb connection: %w", err)
+	}
+
+	// 4. Áp dụng cấu hình Connection Pool của TiDB Cloud (Rule PHAN 7.1 & Yêu cầu 5)
+	// Bỏ qua hoàn toàn các lệnh PRAGMA của SQLite!
+	maxOpen := cfg.MaxOpenConns
+	if maxOpen <= 0 {
+		maxOpen = database.DefaultTiDBMaxOpenConns
+	}
+	maxIdle := cfg.MaxIdleConns
+	if maxIdle <= 0 {
+		maxIdle = database.DefaultTiDBMaxIdleConns
+	}
+	connMaxLifetime := cfg.ConnMaxLifetime
+	if connMaxLifetime <= 0 {
+		connMaxLifetime = database.DefaultTiDBConnMaxLifetime
+	}
+	connMaxIdleTime := cfg.ConnMaxIdleTime
+	if connMaxIdleTime <= 0 {
+		connMaxIdleTime = database.DefaultTiDBConnMaxIdleTime
+	}
+
+	db.SetMaxOpenConns(maxOpen)
+	db.SetMaxIdleConns(maxIdle)
+	db.SetConnMaxLifetime(connMaxLifetime)
+	db.SetConnMaxIdleTime(connMaxIdleTime)
+
+	// 5. Ping kiểm tra kết nối với timeout
+	pingTimeout := cfg.PingTimeout
+	if pingTimeout <= 0 {
+		pingTimeout = database.DefaultTiDBPingTimeout
+	}
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), pingTimeout)
+	defer pingCancel()
+
+	if err := db.PingContext(pingCtx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping check kết nối tới TiDB Cloud thất bại: %w", err)
+	}
+
+	endpoint := cfg.Host
+	if endpoint == "" {
+		endpoint = "tidb-cloud"
+	}
+	log.Printf("[ENGINE] [DATABASE] CloudPool TiDB/MySQL initialized at '%s' (MaxOpenConns=%d, MaxIdleConns=%d, Lifetime=%v)",
+		endpoint, maxOpen, maxIdle, connMaxLifetime)
+
+	pathStr := endpoint
+	if cfg.Host != "" && cfg.Port > 0 {
+		pathStr = fmt.Sprintf("%s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
+	}
+
+	s := &DB{
+		db:     db,
+		path:   pathStr,
+		driver: "tidb",
+	}
+
+	// 6. Thực thi migrate schema cho TiDB (Bỏ qua PRAGMA của SQLite)
+	if err := s.migrate(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to migrate cloudpool tidb schema: %w", err)
 	}
 
 	return s, nil
@@ -218,7 +419,7 @@ func (s *DB) Path() string {
 }
 
 func (s *DB) Checkpoint() error {
-	if s.db != nil {
+	if s.db != nil && !s.IsMySQLOrTiDB() {
 		_, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
 		return err
 	}
@@ -227,13 +428,313 @@ func (s *DB) Checkpoint() error {
 
 func (s *DB) Close() error {
 	if s.db != nil {
-		_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
+		if !s.IsMySQLOrTiDB() {
+			_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
+		}
 		return s.db.Close()
 	}
 	return nil
 }
 
 func (s *DB) migrate() error {
+	if s.IsMySQLOrTiDB() {
+		return s.migrateTiDB()
+	}
+	return s.migrateSQLite()
+}
+
+func (s *DB) migrateTiDB() error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS accounts (
+			id VARCHAR(64) NOT NULL,
+			email VARCHAR(191) NOT NULL,
+			email_hash VARCHAR(191) NOT NULL,
+			name VARCHAR(191) DEFAULT NULL,
+			name_hash VARCHAR(191) DEFAULT NULL,
+			avatar_url VARCHAR(1024) DEFAULT NULL,
+			auth_type VARCHAR(64) NOT NULL,
+			credentials_json LONGTEXT DEFAULT NULL,
+			token_json LONGTEXT DEFAULT NULL,
+			root_folder_id VARCHAR(255) DEFAULT NULL,
+			total_quota_bytes BIGINT NOT NULL DEFAULT 0,
+			used_quota_bytes BIGINT NOT NULL DEFAULT 0,
+			free_quota_bytes BIGINT NOT NULL DEFAULT 0,
+			status VARCHAR(32) NOT NULL DEFAULT 'active',
+			last_error TEXT DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uk_accounts_email_hash (email_hash),
+			INDEX idx_accounts_email (email),
+			INDEX idx_accounts_status (status),
+			INDEX idx_accounts_name_hash (name_hash)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS users (
+			id VARCHAR(64) NOT NULL,
+			username VARCHAR(191) NOT NULL,
+			username_hash VARCHAR(191) NOT NULL,
+			email VARCHAR(191) DEFAULT '',
+			email_hash VARCHAR(191) DEFAULT '',
+			password_hash VARCHAR(255) NOT NULL,
+			security_pin_hash VARCHAR(255) DEFAULT '',
+			security_tier INT NOT NULL DEFAULT 1,
+			display_name VARCHAR(255) DEFAULT NULL,
+			avatar_url VARCHAR(1024) DEFAULT '',
+			role VARCHAR(32) NOT NULL DEFAULT 'user',
+			status VARCHAR(32) NOT NULL DEFAULT 'active',
+			quota_bytes BIGINT NOT NULL DEFAULT 0,
+			used_bytes BIGINT NOT NULL DEFAULT 0,
+			failed_login_count INT NOT NULL DEFAULT 0,
+			locked_until DATETIME DEFAULT NULL,
+			last_login_at DATETIME DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			UNIQUE KEY uk_users_username_hash (username_hash),
+			INDEX idx_users_email_hash (email_hash),
+			INDEX idx_users_role (role),
+			INDEX idx_users_status (status)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS virtual_files (
+			id VARCHAR(64) NOT NULL,
+			user_id VARCHAR(64) NOT NULL DEFAULT 'user_admin',
+			parent_id VARCHAR(64) NOT NULL DEFAULT '',
+			name VARCHAR(255) NOT NULL,
+			path VARCHAR(512) NOT NULL,
+			is_dir TINYINT(1) NOT NULL DEFAULT 0,
+			size_bytes BIGINT NOT NULL DEFAULT 0,
+			mime_type VARCHAR(128) DEFAULT NULL,
+			sha256 VARCHAR(64) DEFAULT NULL,
+			chunk_count INT NOT NULL DEFAULT 0,
+			is_encrypted TINYINT(1) NOT NULL DEFAULT 1,
+			has_missing_chunks TINYINT(1) NOT NULL DEFAULT 0,
+			is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+			deleted_at DATETIME DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			INDEX idx_vfiles_parent (parent_id),
+			INDEX idx_vfiles_path (path(255)),
+			INDEX idx_vfiles_user (user_id),
+			INDEX idx_vfiles_deleted (is_deleted),
+			INDEX idx_vfiles_missing_chunks (has_missing_chunks),
+			INDEX idx_vfiles_parent_deleted (parent_id, is_deleted)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS file_chunks (
+			chunk_id VARCHAR(128) NOT NULL,
+			file_id VARCHAR(64) NOT NULL,
+			chunk_index INT NOT NULL,
+			account_id VARCHAR(64) NOT NULL,
+			gdrive_file_id VARCHAR(255) NOT NULL,
+			chunk_size_bytes BIGINT NOT NULL DEFAULT 0,
+			encrypted_size_bytes BIGINT NOT NULL DEFAULT 0,
+			sha256 VARCHAR(64) DEFAULT NULL,
+			status VARCHAR(32) NOT NULL DEFAULT 'uploaded',
+			ref_count INT NOT NULL DEFAULT 1,
+			PRIMARY KEY (chunk_id),
+			INDEX idx_chunks_file (file_id, chunk_index),
+			INDEX idx_chunks_account (account_id),
+			INDEX idx_chunks_gdrive (gdrive_file_id(191)),
+			INDEX idx_chunks_sha256 (sha256, status),
+			CONSTRAINT fk_chunks_file FOREIGN KEY (file_id) REFERENCES virtual_files(id) ON DELETE CASCADE,
+			CONSTRAINT fk_chunks_account FOREIGN KEY (account_id) REFERENCES accounts(id)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS activity_logs (
+			id VARCHAR(64) NOT NULL,
+			user_id VARCHAR(64) DEFAULT NULL,
+			username VARCHAR(255) DEFAULT NULL,
+			action VARCHAR(64) DEFAULT NULL,
+			target VARCHAR(512) DEFAULT NULL,
+			ip_address VARCHAR(64) DEFAULT NULL,
+			details TEXT DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			INDEX idx_logs_user (user_id),
+			INDEX idx_logs_created (created_at)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS login_sessions (
+			id VARCHAR(64) NOT NULL,
+			user_id VARCHAR(64) DEFAULT NULL,
+			username VARCHAR(255) DEFAULT NULL,
+			ip_address VARCHAR(64) DEFAULT NULL,
+			device_info VARCHAR(255) DEFAULT NULL,
+			location_info VARCHAR(255) DEFAULT NULL,
+			status VARCHAR(32) DEFAULT NULL,
+			user_agent TEXT DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			INDEX idx_sessions_user (user_id),
+			INDEX idx_sessions_created (created_at)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS settings (
+			` + "`key`" + ` VARCHAR(128) NOT NULL,
+			` + "`value`" + ` LONGTEXT DEFAULT NULL,
+			PRIMARY KEY (` + "`key`" + `)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS file_access_otps (
+			id VARCHAR(64) NOT NULL,
+			file_id VARCHAR(64) NOT NULL,
+			file_name VARCHAR(255) NOT NULL,
+			target_user_id VARCHAR(64) NOT NULL DEFAULT 'all',
+			otp_code VARCHAR(64) NOT NULL,
+			created_by VARCHAR(64) NOT NULL DEFAULT 'user_admin',
+			is_used INT NOT NULL DEFAULT 0,
+			used_by VARCHAR(64) NOT NULL DEFAULT '',
+			used_at DATETIME DEFAULT NULL,
+			expires_at DATETIME NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			INDEX idx_file_otps (file_id, otp_code, is_used)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS file_access_requests (
+			id VARCHAR(64) NOT NULL,
+			file_id VARCHAR(64) NOT NULL,
+			file_name VARCHAR(255) NOT NULL,
+			user_id VARCHAR(64) NOT NULL,
+			username VARCHAR(255) NOT NULL,
+			user_display_name VARCHAR(255) NOT NULL,
+			status VARCHAR(32) NOT NULL DEFAULT 'pending',
+			otp_code VARCHAR(64) NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY (id),
+			INDEX idx_access_req_user (user_id, status)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS public_shares (
+			id VARCHAR(64) NOT NULL,
+			file_id VARCHAR(64) NOT NULL,
+			created_by VARCHAR(64) NOT NULL DEFAULT 'user_admin',
+			password_hash VARCHAR(255) NOT NULL DEFAULT '',
+			max_downloads INT NOT NULL DEFAULT 0,
+			download_count INT NOT NULL DEFAULT 0,
+			expires_at DATETIME DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			is_active INT NOT NULL DEFAULT 1,
+			PRIMARY KEY (id),
+			INDEX idx_public_shares (id, is_active)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+
+		`CREATE TABLE IF NOT EXISTS gdrive_backups (
+			id VARCHAR(64) NOT NULL,
+			filename VARCHAR(255) NOT NULL,
+			size_bytes BIGINT NOT NULL,
+			sha256 VARCHAR(64) NOT NULL,
+			gdrive_file_id VARCHAR(255) NOT NULL,
+			gdrive_web_link VARCHAR(512) NOT NULL,
+			target_email VARCHAR(191) NOT NULL,
+			manifest_json LONGTEXT DEFAULT NULL,
+			created_at VARCHAR(64) NOT NULL,
+			PRIMARY KEY (id),
+			INDEX idx_gdrive_backups_email (target_email)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+	}
+
+	for _, q := range queries {
+		if _, err := s.db.Exec(q); err != nil {
+			return fmt.Errorf("lỗi thực thi DDL TiDB: %w", err)
+		}
+	}
+
+	// Encrypt any existing plaintext credentials/tokens in database
+	s.migrateEncryptAllPlaintextSecrets()
+
+	// Ensure default admin user exists with valid password hash and Blind Indexing
+	masterKey := s.getMasterKey()
+	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
+	encAdminName := core.EncryptSecret(masterKey, "admin")
+	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
+
+	// Fetch master_passphrase from settings if already configured
+	var masterPass string
+	_ = s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&masterPass)
+	if masterPass == "" {
+		masterPass = "admin"
+	}
+
+	// Generate bcrypt password hash for admin
+	adminPassBcrypt, err := core.HashPasswordBcrypt(masterPass)
+	if err != nil {
+		adminPassBcrypt = core.HashSHA256([]byte(masterPass))
+	}
+
+	var adminCount int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	if adminCount == 0 {
+		now := time.Now()
+		_, _ = s.db.Exec(`INSERT INTO users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
+	} else {
+		_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+	}
+
+	// Always clear any lockout on restart for admin
+	_, _ = s.db.Exec(`UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
+
+	// Also repair any other users that have empty password_hash
+	defaultUserPassHash := core.HashSHA256([]byte("123456"))
+	_, _ = s.db.Exec(`UPDATE users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
+
+	// Insert default settings if not exist
+	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
+	s.setDefaultSetting("chunk_size_bytes", "20971520") // 20 MB
+	s.setDefaultSetting("allocation_strategy", "least_used")
+	s.setDefaultSetting("webdav_enabled", "true")
+	s.setDefaultSetting("webdav_username", "admin")
+	s.setDefaultSetting("webdav_password", "admin123")
+	s.setDefaultSetting("server_port", "8080")
+	s.setDefaultSetting("guest_access_mode", "view_only")
+	s.setDefaultSetting("allow_self_registration", "true")
+
+	oauthClientID := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
+	if oauthClientID == "" {
+		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	}
+	if oauthClientID == "" {
+		oauthClientID = DefaultGoogleClientID
+	}
+	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
+	if oauthClientSecret == "" {
+		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	}
+	if oauthClientSecret == "" {
+		oauthClientSecret = DefaultGoogleClientSecret
+	}
+	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
+	if oauthRedirect == "" {
+		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
+	}
+	masterKey = s.getMasterKey()
+	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
+	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
+	s.setDefaultSetting("redirect_url", oauthRedirect)
+
+	// Ensure root directory entry exists
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
+	if count == 0 {
+		now := time.Now()
+		_, _ = s.db.Exec(`INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
+			VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
+	}
+
+	// Clean up any emoji duplicate prefixes in virtual folder names
+	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
+	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
+
+	return nil
+}
+
+func (s *DB) migrateSQLite() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS accounts (
 			id TEXT PRIMARY KEY,
@@ -535,9 +1036,9 @@ func (s *DB) migrate() error {
 
 func (s *DB) setDefaultSetting(key, val string) {
 	var count int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM settings WHERE key = ?", key).Scan(&count)
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM settings WHERE `key` = ?", key).Scan(&count)
 	if count == 0 {
-		_, _ = s.db.Exec("INSERT INTO settings (key, value) VALUES (?, ?)", key, val)
+		_, _ = s.db.Exec("INSERT INTO settings (`key`, `value`) VALUES (?, ?)", key, val)
 	}
 }
 
@@ -565,7 +1066,27 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 	emailHash := core.BlindIndexHash(masterKey, acc.Email)
 	nameHash := core.BlindIndexHash(masterKey, acc.Name)
 
-	query := `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
+	var query string
+	if s.IsMySQLOrTiDB() {
+		query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			email=VALUES(email),
+			email_hash=VALUES(email_hash),
+			name=VALUES(name),
+			name_hash=VALUES(name_hash),
+			avatar_url=VALUES(avatar_url),
+			credentials_json=VALUES(credentials_json),
+			token_json=VALUES(token_json),
+			root_folder_id=VALUES(root_folder_id),
+			total_quota_bytes=VALUES(total_quota_bytes),
+			used_quota_bytes=VALUES(used_quota_bytes),
+			free_quota_bytes=VALUES(free_quota_bytes),
+			status=VALUES(status),
+			last_error=VALUES(last_error),
+			updated_at=VALUES(updated_at)`
+	} else {
+		query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			email=excluded.email,
@@ -582,6 +1103,7 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 			status=excluded.status,
 			last_error=excluded.last_error,
 			updated_at=excluded.updated_at`
+	}
 
 	_, err := s.db.Exec(query,
 		acc.ID, encEmail, emailHash, encName, nameHash, encAvatar, acc.AuthType,
@@ -594,7 +1116,7 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 
 func (s *DB) getMasterKey() [32]byte {
 	var val string
-	_ = s.db.QueryRow("SELECT value FROM settings WHERE key = 'master_passphrase'").Scan(&val)
+	_ = s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&val)
 	if val == "" {
 		val = "cloudpool_secure_master_key_2026"
 	}
@@ -715,7 +1237,7 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 	}
 
 	// 3. Migrate Settings (GoogleClientSecret, GoogleClientID)
-	setRows, err := s.db.Query("SELECT key, value FROM settings WHERE key IN ('google_client_secret', 'google_client_id')")
+	setRows, err := s.db.Query("SELECT `key`, `value` FROM settings WHERE `key` IN ('google_client_secret', 'google_client_id')")
 	if err == nil {
 		defer setRows.Close()
 		var updates map[string]string = make(map[string]string)
@@ -728,7 +1250,7 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 			}
 		}
 		for k, newV := range updates {
-			_, _ = s.db.Exec("UPDATE settings SET value = ? WHERE key = ?", newV, k)
+			_, _ = s.db.Exec("UPDATE settings SET `value` = ? WHERE `key` = ?", newV, k)
 		}
 	}
 }
@@ -872,7 +1394,26 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 		f.UserID = "user_admin"
 	}
 
-	query := `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at)
+	var query string
+	if s.IsMySQLOrTiDB() {
+		query = `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			user_id=VALUES(user_id),
+			parent_id=VALUES(parent_id),
+			name=VALUES(name),
+			path=VALUES(path),
+			size_bytes=VALUES(size_bytes),
+			mime_type=VALUES(mime_type),
+			sha256=VALUES(sha256),
+			chunk_count=VALUES(chunk_count),
+			is_encrypted=VALUES(is_encrypted),
+			is_deleted=VALUES(is_deleted),
+			deleted_at=VALUES(deleted_at),
+			has_missing_chunks=VALUES(has_missing_chunks),
+			updated_at=VALUES(updated_at)`
+	} else {
+		query = `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			user_id=excluded.user_id,
@@ -888,6 +1429,7 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 			deleted_at=excluded.deleted_at,
 			has_missing_chunks=excluded.has_missing_chunks,
 			updated_at=excluded.updated_at`
+	}
 
 	_, err := s.db.Exec(query,
 		f.ID, f.UserID, f.ParentID, f.Name, f.Path, f.IsDir, f.SizeBytes,
@@ -1323,14 +1865,28 @@ func (s *DB) SaveChunks(chunks []models.FileChunk) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`INSERT INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status)
+	var insertQuery string
+	if s.IsMySQLOrTiDB() {
+		insertQuery = `INSERT INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			gdrive_file_id=VALUES(gdrive_file_id),
+			chunk_size_bytes=VALUES(chunk_size_bytes),
+			encrypted_size_bytes=VALUES(encrypted_size_bytes),
+			sha256=VALUES(sha256),
+			status=VALUES(status)`
+	} else {
+		insertQuery = `INSERT INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(chunk_id) DO UPDATE SET
 			gdrive_file_id=excluded.gdrive_file_id,
 			chunk_size_bytes=excluded.chunk_size_bytes,
 			encrypted_size_bytes=excluded.encrypted_size_bytes,
 			sha256=excluded.sha256,
-			status=excluded.status`)
+			status=excluded.status`
+	}
+
+	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
 		return err
 	}
@@ -1460,7 +2016,7 @@ func (s *DB) GetSettings() (*models.Settings, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query("SELECT key, value FROM settings")
+	rows, err := s.db.Query("SELECT `key`, `value` FROM settings")
 	if err != nil {
 		return nil, err
 	}
@@ -1579,7 +2135,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 
 	// 1. Lấy passphrase hiện tại trong DB làm oldKey
 	var oldPass string
-	_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'master_passphrase'").Scan(&oldPass)
+	_ = tx.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&oldPass)
 	if oldPass == "" {
 		oldPass = "cloudpool_secure_master_key_2026"
 	}
@@ -1595,7 +2151,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 	clientID := set.GoogleClientID
 	if clientID == "" || clientID == "********" {
 		var oldVal string
-		_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'google_client_id'").Scan(&oldVal)
+		_ = tx.QueryRow("SELECT `value` FROM settings WHERE `key` = 'google_client_id'").Scan(&oldVal)
 		pt := core.DecryptSecret(oldKey, oldVal)
 		if pt == "" {
 			pt = core.DecryptSecret(masterKey, oldVal)
@@ -1623,7 +2179,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 	clientSecret := set.GoogleClientSecret
 	if clientSecret == "" || clientSecret == "********" {
 		var oldVal string
-		_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'google_client_secret'").Scan(&oldVal)
+		_ = tx.QueryRow("SELECT `value` FROM settings WHERE `key` = 'google_client_secret'").Scan(&oldVal)
 		pt := core.DecryptSecret(oldKey, oldVal)
 		if pt == "" {
 			pt = core.DecryptSecret(masterKey, oldVal)
@@ -1652,7 +2208,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 	turnstileSecret := set.TurnstileSecretKey
 	if turnstileSecret == "" || turnstileSecret == "********" {
 		var oldTurnstileSecret string
-		_ = tx.QueryRow("SELECT value FROM settings WHERE key = 'turnstile_secret_key'").Scan(&oldTurnstileSecret)
+		_ = tx.QueryRow("SELECT `value` FROM settings WHERE `key` = 'turnstile_secret_key'").Scan(&oldTurnstileSecret)
 		pt := core.DecryptSecret(oldKey, oldTurnstileSecret)
 		if pt == "" {
 			pt = core.DecryptSecret(masterKey, oldTurnstileSecret)
@@ -1703,7 +2259,13 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 	}
 
 	for k, v := range pairs {
-		if _, err := tx.Exec("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", k, v); err != nil {
+		var q string
+		if s.IsMySQLOrTiDB() {
+			q = "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)"
+		} else {
+			q = "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON CONFLICT(`key`) DO UPDATE SET `value`=excluded.value"
+		}
+		if _, err := tx.Exec(q, k, v); err != nil {
 			return err
 		}
 	}
@@ -1986,6 +2548,51 @@ func (s *DB) GetDatabaseTables() ([]TableInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	if s.IsMySQLOrTiDB() {
+		rows, err := s.db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name ASC")
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		tables := make([]TableInfo, 0)
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err == nil {
+				var count int64
+				_ = s.db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM `%s`", name)).Scan(&count)
+
+				tInfo := TableInfo{
+					Name:     name,
+					RowCount: count,
+					Columns:  make([]TableColumnInfo, 0),
+				}
+
+				colRows, err := s.db.Query("SELECT ordinal_position, column_name, column_type, is_nullable, column_default, column_key FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position ASC", name)
+				if err == nil {
+					for colRows.Next() {
+						var cid int
+						var cname, ctype, isNullable, colKey string
+						var dflt sql.NullString
+						if err := colRows.Scan(&cid, &cname, &ctype, &isNullable, &dflt, &colKey); err == nil {
+							tInfo.Columns = append(tInfo.Columns, TableColumnInfo{
+								CID:        cid,
+								Name:       cname,
+								Type:       ctype,
+								NotNull:    strings.ToUpper(isNullable) == "NO",
+								DefaultVal: dflt.String,
+								IsPK:       strings.ToUpper(colKey) == "PRI",
+							})
+						}
+					}
+					colRows.Close()
+				}
+				tables = append(tables, tInfo)
+			}
+		}
+		return tables, nil
+	}
+
 	rows, err := s.db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC")
 	if err != nil {
 		return nil, err
@@ -2121,6 +2728,9 @@ func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 func (s *DB) OptimizeDatabase() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.IsMySQLOrTiDB() {
+		return nil
+	}
 	_, err := s.db.Exec("VACUUM; PRAGMA optimize;")
 	return err
 }
@@ -2128,6 +2738,14 @@ func (s *DB) OptimizeDatabase() error {
 func (s *DB) CheckDatabaseIntegrity() (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if s.IsMySQLOrTiDB() {
+		var pingCheck int = 1
+		err := s.db.QueryRow("SELECT 1;").Scan(&pingCheck)
+		if err != nil {
+			return "fail", err
+		}
+		return "ok", nil
+	}
 	var result string
 	err := s.db.QueryRow("PRAGMA integrity_check;").Scan(&result)
 	return result, err
@@ -2136,6 +2754,9 @@ func (s *DB) CheckDatabaseIntegrity() (string, error) {
 func (s *DB) BackupDatabase(destPath string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if s.IsMySQLOrTiDB() {
+		return fmt.Errorf("tính năng VACUUM INTO chỉ khả dụng trên SQLite; đối với TiDB vui lòng sử dụng TiDB Backup & Restore (BR) hoặc mysqldump")
+	}
 	cleanDest := filepath.ToSlash(destPath)
 	_, err := s.db.Exec(fmt.Sprintf("VACUUM INTO '%s';", strings.ReplaceAll(cleanDest, "'", "''")))
 	return err
@@ -2645,14 +3266,21 @@ func (s *DB) GetAllFilesInFolderTree(rootFolderID string) ([]FileInTree, error) 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `
+	var concatExpr string
+	if s.IsMySQLOrTiDB() {
+		concatExpr = "CONCAT(ft.rel_path, '/', vf.name)"
+	} else {
+		concatExpr = "ft.rel_path || '/' || vf.name"
+	}
+
+	query := fmt.Sprintf(`
 	WITH RECURSIVE folder_tree AS (
 		SELECT id, name, parent_id, is_dir, size_bytes, mime_type, '' AS rel_path
 		FROM virtual_files
 		WHERE id = ? AND is_deleted = 0
 		UNION ALL
 		SELECT vf.id, vf.name, vf.parent_id, vf.is_dir, vf.size_bytes, vf.mime_type,
-		       CASE WHEN ft.rel_path = '' THEN vf.name ELSE ft.rel_path || '/' || vf.name END
+		       CASE WHEN ft.rel_path = '' THEN vf.name ELSE %s END
 		FROM virtual_files vf
 		JOIN folder_tree ft ON vf.parent_id = ft.id
 		WHERE vf.is_deleted = 0
@@ -2660,7 +3288,7 @@ func (s *DB) GetAllFilesInFolderTree(rootFolderID string) ([]FileInTree, error) 
 	SELECT id, name, parent_id, is_dir, size_bytes, mime_type, rel_path
 	FROM folder_tree
 	WHERE is_dir = 0;
-	`
+	`, concatExpr)
 	rows, err := s.db.Query(query, rootFolderID)
 	if err != nil {
 		return nil, err
@@ -2853,6 +3481,10 @@ func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownRespons
 
 // StartAutoBackup initiates a background routine that backs up the database every 12 hours (Rule PHAN 7.3)
 func (s *DB) StartAutoBackup() {
+	if s.IsMySQLOrTiDB() {
+		log.Println("[ENGINE] [STORAGE] TiDB/MySQL driver detected: local auto-backup skipped (managed by cloud service)")
+		return
+	}
 	go func() {
 		backupDir := filepath.Join(filepath.Dir(s.path), "backups")
 		os.MkdirAll(backupDir, 0755)

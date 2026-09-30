@@ -358,3 +358,51 @@ func TestCloudPool_JournalModeFallback(t *testing.T) {
 	}
 }
 
+func TestTiDBAndMySQLCompatibilityHelpers(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_compat.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Kiểm tra driver mặc định là sqlite
+	if db.Driver() != "sqlite" {
+		t.Fatalf("Expected driver 'sqlite', got '%s'", db.Driver())
+	}
+	if !db.IsSQLite() {
+		t.Fatalf("Expected IsSQLite() == true")
+	}
+	if db.IsMySQLOrTiDB() {
+		t.Fatalf("Expected IsMySQLOrTiDB() == false")
+	}
+
+	// 2. Chuyển tạm thời driver sang tidb để kiểm tra các helper rẽ nhánh
+	db.driver = "tidb"
+	if db.Driver() != "tidb" {
+		t.Fatalf("Expected driver 'tidb', got '%s'", db.Driver())
+	}
+	if db.IsSQLite() {
+		t.Fatalf("Expected IsSQLite() == false when driver is tidb")
+	}
+	if !db.IsMySQLOrTiDB() {
+		t.Fatalf("Expected IsMySQLOrTiDB() == true when driver is tidb")
+	}
+
+	// 3. Kiểm tra OptimizeDatabase và CheckDatabaseIntegrity trên chế độ TiDB/MySQL
+	if err := db.OptimizeDatabase(); err != nil {
+		t.Fatalf("OptimizeDatabase failed on TiDB mode: %v", err)
+	}
+
+	status, err := db.CheckDatabaseIntegrity()
+	if err != nil || status != "ok" {
+		t.Fatalf("CheckDatabaseIntegrity failed on TiDB mode: status=%s, err=%v", status, err)
+	}
+
+	// 4. Khôi phục lại driver sqlite để đóng DB an toàn
+	db.driver = "sqlite"
+}
+
+
