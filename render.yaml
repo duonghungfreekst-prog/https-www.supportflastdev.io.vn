@@ -85,6 +85,11 @@ services:
         value: https://supportflastdev.io.vn/api/accounts/oauth/callback
       - key: CLOUDPOOL_MASTER_KEY
         sync: false
+      # Giới hạn bộ nhớ Go Monolith chống OOM trên Render Free Tier (512MB RAM - Rule 7.1)
+      - key: GOMEMLIMIT
+        value: 384MiB
+      - key: GOGC
+        value: "80"
       # Kết nối nội bộ tới Python AI Service
       - key: AI_ENGINE_URL
         fromService:

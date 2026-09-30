@@ -1,4 +1,4 @@
-﻿package vfs
+package vfs
 
 import (
 	"context"
@@ -127,16 +127,19 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		err            error
 	}
 
-	// Bounded worker pool tối ưu đa luồng theo CPU cores (Rule PHAN 7.1)
-	numWorkers := runtime.NumCPU() * 2
-	if numWorkers < 4 {
-		numWorkers = 4
+	// Bounded worker pool kiểm soát bộ nhớ RAM nghiêm ngặt (Rule PHAN 7.1)
+	// Tránh OOM Crash trên môi trường Cloud Container (Render/Docker) vốn giới hạn 512MB RAM.
+	// Với chunkSize 20MB, việc để numWorkers=8 và jobChan buffer=16 sẽ chiếm tới 640MB RAM -> OOM (502).
+	// Giới hạn numWorkers từ 2-3 và channel buffer là 2 slot đảm bảo tổng RAM in-flight luôn <= 80MB.
+	numWorkers := runtime.NumCPU()
+	if numWorkers < 2 {
+		numWorkers = 2
 	}
-	if numWorkers > 8 {
-		numWorkers = 8
+	if numWorkers > 3 {
+		numWorkers = 3
 	}
 
-	jobChan := make(chan *uploadJob, numWorkers*2)
+	jobChan := make(chan *uploadJob, 2)
 	var wg sync.WaitGroup
 	var uploadErr error
 	var errMu sync.Mutex

@@ -113,8 +113,18 @@ func (s *Server) getOrRestoreChunkedSession(uploadID string) (*ChunkedUploadSess
 	}
 
 	chunkedSessions.Store(uploadID, &session)
-	log.Printf("[ENGINE] [RESTORE] Đã khôi phục thành công phiên tải lên từ đĩa: %s (file: %s, chunks: %d/%d)",
-		uploadID, session.FileName, len(session.Received), session.TotalChunks)
+	log.Printf("[ENGINE] [RESTORE] Đã khôi phục thành công phiên tải lên từ đĩa: %s (file: %s, chunks: %d/%d, status: %s)",
+		uploadID, session.FileName, len(session.Received), session.TotalChunks, session.Status)
+
+	// Nếu phiên có trạng thái assembling nhưng server vừa khởi động lại, kiểm tra xem tệp đã hoàn tất trên VFS chưa
+	if session.Status == "assembling" && s.db != nil {
+		if existing, err := s.db.FindFileByNameInParent(session.ParentID, session.FileName); err == nil && existing != nil {
+			session.Status = "completed"
+			session.ResultFile = existing
+			log.Printf("[ENGINE] [RESTORE] Tệp %s của phiên %s đã hoàn tất trên VFS, chuyển trạng thái sang completed", session.FileName, uploadID)
+		}
+	}
+
 	return &session, true
 }
 
@@ -1052,6 +1062,9 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 	// === All chunks received → assemble and upload asynchronously via background goroutine ===
 	session.mu.Lock()
 	session.Status = "assembling"
+	if sBytes, err := json.Marshal(session); err == nil && session.TempDir != "" {
+		_ = os.WriteFile(filepath.Join(session.TempDir, "session.json"), sBytes, 0600)
+	}
 	session.mu.Unlock()
 
 	log.Printf("[ENGINE] Chunked upload %s: all %d chunks received, starting async assembly for file %s",
@@ -1111,12 +1124,18 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 			default:
 				sess.ErrorMsg = "Lỗi ghép và mã hóa tệp lên đám mây. Vui lòng thử lại sau."
 			}
+			if sBytes, sErr := json.Marshal(sess); sErr == nil && sess.TempDir != "" {
+				_ = os.WriteFile(filepath.Join(sess.TempDir, "session.json"), sBytes, 0600)
+			}
 			return
 		}
 
 		vfile.Replaced = wasReplaced
 		sess.ResultFile = vfile
 		sess.Status = "completed"
+		if sBytes, sErr := json.Marshal(sess); sErr == nil && sess.TempDir != "" {
+			_ = os.WriteFile(filepath.Join(sess.TempDir, "session.json"), sBytes, 0600)
+		}
 		log.Printf("[ENGINE] [ASYNC-UPLOAD] Chunked upload %s finished successfully: file=%s, id=%s", uID, sess.FileName, vfile.ID)
 	}(uploadID, session)
 

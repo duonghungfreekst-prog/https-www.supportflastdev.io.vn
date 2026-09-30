@@ -18,6 +18,11 @@ fi
 # 2. Đảm bảo HOST luôn lắng nghe 0.0.0.0 trong container
 export HOST="${HOST:-0.0.0.0}"
 
+# 2.1 Bảo vệ bộ nhớ Go Engine chống OOM trên môi trường Cloud (Rule 7.1)
+export GOMEMLIMIT="${GOMEMLIMIT:-384MiB}"
+export GOGC="${GOGC:-80}"
+echo "[ENTRYPOINT] Memory limits: GOMEMLIMIT=${GOMEMLIMIT} | GOGC=${GOGC}"
+
 # 3. Đảm bảo cấu trúc thư mục dữ liệu và phân quyền khả dụng
 DATA_DIR="${DATA_DIR:-/app/data}"
 STORAGE_DIR="${STORAGE_DIR:-/app/storage}"

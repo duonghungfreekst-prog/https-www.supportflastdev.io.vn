@@ -729,30 +729,61 @@ const API = {
       }
       const pollStart = Date.now();
       const maxPollTime = 30 * 60 * 1000; // 30 phút tối đa cho file cực lớn
+      let consecutiveErrors = 0;
+      const maxRetries = 25;
+
       while (Date.now() - pollStart < maxPollTime) {
-        await new Promise(r => setTimeout(r, 1500));
-        const statusRes = await fetch(`/api/files/upload-status?upload_id=${encodeURIComponent(upload_id)}`, {
-          method: 'GET',
-          headers: authHeaders,
-          credentials: 'include'
-        });
-        if (!statusRes.ok) {
-          const errData = await statusRes.json().catch(() => ({}));
-          throw new Error(errData.error || 'Lỗi kiểm tra tiến trình hoàn tất');
-        }
-        const statusData = await statusRes.json();
-        if (statusData.status === 'completed' && statusData.file) {
-          if (onProgress) {
-            onProgress(100, 'Hoàn tất ✓');
+        const pollDelay = Math.min(2000 + consecutiveErrors * 500, 5000);
+        await new Promise(r => setTimeout(r, pollDelay));
+
+        try {
+          const statusRes = await fetch(`/api/files/upload-status?upload_id=${encodeURIComponent(upload_id)}`, {
+            method: 'GET',
+            headers: authHeaders,
+            credentials: 'include'
+          });
+
+          if (!statusRes.ok) {
+            if (statusRes.status >= 500 && statusRes.status <= 504 || statusRes.status === 524 || statusRes.status === 429) {
+              consecutiveErrors++;
+              if (consecutiveErrors <= maxRetries) {
+                const elapsedSec = Math.round((Date.now() - pollStart) / 1000);
+                if (onProgress) {
+                  onProgress(94, `Máy chủ đang xử lý dữ liệu lớn (${elapsedSec}s)...`);
+                }
+                continue;
+              }
+            }
+            const errData = await statusRes.json().catch(() => ({}));
+            throw new Error(errData.error || `Lỗi kiểm tra tiến trình (${statusRes.status})`);
           }
-          return statusData.file;
-        }
-        if (statusData.status === 'error') {
-          throw new Error(statusData.error || 'Ghép tệp và đồng bộ Google Drive thất bại');
-        }
-        if (onProgress) {
-          const elapsedSec = Math.round((Date.now() - pollStart) / 1000);
-          onProgress(95, `Đang mã hóa & đồng bộ Google Drive (${elapsedSec}s)...`);
+
+          consecutiveErrors = 0;
+          const statusData = await statusRes.json();
+          if (statusData.status === 'completed' && statusData.file) {
+            if (onProgress) {
+              onProgress(100, 'Hoàn tất ✓');
+            }
+            return statusData.file;
+          }
+          if (statusData.status === 'error') {
+            throw new Error(statusData.error || 'Ghép tệp và đồng bộ Google Drive thất bại');
+          }
+          if (onProgress) {
+            const elapsedSec = Math.round((Date.now() - pollStart) / 1000);
+            onProgress(95, `Đang mã hóa & đồng bộ Google Drive (${elapsedSec}s)...`);
+          }
+        } catch (fetchErr) {
+          if (fetchErr.message && (fetchErr.message.includes('fetch') || fetchErr.message.includes('network') || fetchErr.message.includes('Failed to fetch'))) {
+            consecutiveErrors++;
+            if (consecutiveErrors <= maxRetries) {
+              if (onProgress) {
+                onProgress(94, `Mạng chập chờn, đang thử kết nối lại (${consecutiveErrors}/${maxRetries})...`);
+              }
+              continue;
+            }
+          }
+          throw fetchErr;
         }
       }
       throw new Error('Quá thời gian chờ xử lý tệp tin trên máy chủ.');

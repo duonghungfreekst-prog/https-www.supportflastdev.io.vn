@@ -1113,17 +1113,21 @@ const UploadManager = {
   },
 
   /**
-   * Polling trạng thái ghép tệp trên server
+   * Polling trạng thái ghép tệp trên server với khả năng chịu lỗi mạng/gateway cao (502, 503, 504, timeout)
    */
   async pollChunkAssembly(task) {
     const authHeaders = this.getAuthHeaders();
     const pollStart = Date.now();
     const maxPollTime = 30 * 60 * 1000; // Tối đa 30 phút cho file cực lớn
+    let consecutiveGatewayErrors = 0;
+    const maxGatewayRetries = 25; // Cho phép thử lại tới 25 lần khi gặp 502/503/504 hoặc rớt mạng tạm thời
 
     while (Date.now() - pollStart < maxPollTime) {
       if (task.status === 'paused' || task.status === 'canceled') return;
 
-      await new Promise((r) => setTimeout(r, 1500));
+      // Khoảng nghỉ giữa các lần kiểm tra: tăng dần nhẹ để giảm tải server
+      const pollDelay = Math.min(2000 + consecutiveGatewayErrors * 500, 5000);
+      await new Promise((r) => setTimeout(r, pollDelay));
       if (task.status === 'paused' || task.status === 'canceled') return;
 
       const controller = new AbortController();
@@ -1138,8 +1142,39 @@ const UploadManager = {
         });
 
         if (!res.ok) {
+          // 1. Kiểm tra nếu là lỗi Gateway / Proxy (502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout, 524 Cloudflare, 429)
+          if (res.status === 502 || res.status === 503 || res.status === 504 || res.status === 524 || res.status === 429) {
+            consecutiveGatewayErrors++;
+            console.warn(`[UploadManager] Gặp phản hồi gateway ${res.status}, thử lại ${consecutiveGatewayErrors}/${maxGatewayRetries}...`);
+
+            // Kiểm tra ngầm xem thực chất tệp đã hoàn tất xuất hiện trên VFS chưa
+            if (consecutiveGatewayErrors % 2 === 0) {
+              try {
+                const folderId = task.resolvedFolderId || task.targetFolderId || 'root';
+                const files = (await API.listFiles(folderId)) || [];
+                const found = files.find((f) => f.name === task.name && !f.is_dir);
+                if (found) {
+                  task.progress = 100;
+                  task.status = 'completed';
+                  task.statusText = 'Hoàn tất ✓ (đã lưu trên hệ thống)';
+                  return;
+                }
+              } catch (_) {}
+            }
+
+            if (consecutiveGatewayErrors <= maxGatewayRetries) {
+              const elapsed = Math.round((Date.now() - pollStart) / 1000);
+              task.statusText = `Máy chủ đang ghép & đồng bộ Cloud (${elapsed}s)... (đang kết nối lại ${consecutiveGatewayErrors}/${maxGatewayRetries})`;
+              this.updateTaskUI(task);
+              continue;
+            }
+
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Máy chủ bận hoặc phản hồi lỗi (${res.status}) sau nhiều lần thử lại.`);
+          }
+
+          // 2. Nếu là 404: Phiên có thể đã xong và dọn dẹp, kiểm tra VFS
           if (res.status === 404) {
-            // Máy chủ có thể đã hoàn tất ghép tệp và dọn dẹp phiên, kiểm tra xem tệp đã có trên VFS chưa
             try {
               const folderId = task.resolvedFolderId || task.targetFolderId || 'root';
               const files = (await API.listFiles(folderId)) || [];
@@ -1152,9 +1187,13 @@ const UploadManager = {
               }
             } catch (_) {}
           }
+
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Lỗi kiểm tra tiến trình (${res.status})`);
         }
+
+        // Đã nhận phản hồi thành công từ server -> reset bộ đếm lỗi gateway
+        consecutiveGatewayErrors = 0;
 
         const data = await res.json();
         if (data.status === 'completed') {
@@ -1173,6 +1212,16 @@ const UploadManager = {
         this.updateTaskUI(task);
       } catch (err) {
         if (err.name === 'AbortError') return;
+        // Nếu là lỗi rớt mạng tạm thời trong khi fetch
+        if (err.message && (err.message.includes('fetch') || err.message.includes('network') || err.message.includes('Failed to fetch'))) {
+          consecutiveGatewayErrors++;
+          if (consecutiveGatewayErrors <= maxGatewayRetries) {
+            console.warn(`[UploadManager] Lỗi mạng khi kiểm tra tiến trình, thử lại ${consecutiveGatewayErrors}/${maxGatewayRetries}...`);
+            task.statusText = `Mạng chập chờn, đang thử kết nối lại (${consecutiveGatewayErrors}/${maxGatewayRetries})...`;
+            this.updateTaskUI(task);
+            continue;
+          }
+        }
         throw err;
       } finally {
         task.pollController = null;
@@ -1355,7 +1404,7 @@ const UploadManager = {
   /**
    * Thử lại tệp bị lỗi
    */
-  retry(taskId) {
+  async retry(taskId) {
     const task = this.tasks.find((t) => t.id === taskId);
     if (!task) return;
 
@@ -1363,6 +1412,29 @@ const UploadManager = {
       this.promptFileRebind(task);
       return;
     }
+
+    // Nếu trước đó gặp lỗi tiến trình hoặc lỗi gateway 502/504, kiểm tra nhanh xem tệp đã hoàn tất trên VFS chưa
+    try {
+      const folderId = task.resolvedFolderId || task.targetFolderId || 'root';
+      const files = (await API.listFiles(folderId)) || [];
+      const found = files.find((f) => f.name === task.name && !f.is_dir);
+      if (found) {
+        task.status = 'completed';
+        task.progress = 100;
+        task.uploadedBytes = task.size;
+        task.statusText = 'Hoàn tất ✓ (đã lưu trên hệ thống)';
+        task.errorMsg = '';
+        this.updateTaskUI(task);
+        this.updateOverallStats();
+        this.saveToStorage();
+        this.hideRecoveryBannerIfNone();
+        Toast.success(`Tải lên thành công "${task.name}"`);
+        if (typeof FilesManager !== 'undefined' && FilesManager.loadFiles) {
+          FilesManager.loadFiles(folderId);
+        }
+        return;
+      }
+    } catch (_) {}
 
     // Nếu lỗi do phiên không tồn tại, hết hạn, hoặc 404: reset uploadId để tạo phiên mới tinh!
     const isSessionExpired =

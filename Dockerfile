@@ -107,6 +107,8 @@ ENV PORT=8080 \
     STATIC_DIR=/app/supportflast_ui \
     JWT_KEYS_DIR=/app/data/keys \
     AI_ENGINE_URL=http://supportflast-ai:8000 \
+    GOMEMLIMIT=384MiB \
+    GOGC=80 \
     TZ=Asia/Ho_Chi_Minh
 
 # Expose duy nhất 1 cổng dịch vụ 8080 (Go Monolith tích hợp toàn bộ Hub, Storage, WebDAV, Tools, SIEM)
