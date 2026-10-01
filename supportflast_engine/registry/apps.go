@@ -154,23 +154,26 @@ var (
 )
 
 func getKeysFilePath() string {
-	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
-		return filepath.Join(envDataDir, "keys.json")
-	}
-	// Fallback: tìm theo đường dẫn tương đối khi không có DATA_DIR (mà không dùng đường dẫn Windows hardcode)
 	candidates := []string{
-		filepath.Join("..", "..", "data", "keys.json"),
-		filepath.Join("..", "data", "keys.json"),
 		filepath.Join("data", "keys.json"),
+		filepath.Join("supportflast_engine", "data", "keys.json"),
+		filepath.Join("..", "data", "keys.json"),
+		filepath.Join("..", "..", "data", "keys.json"),
+	}
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		candidates = append([]string{filepath.Join(envDataDir, "keys.json")}, candidates...)
 	}
 	for _, c := range candidates {
 		if _, err := os.Stat(c); err == nil {
 			return c
 		}
 	}
-	// Tự tạo thư mục data/ nếu chưa tồn tại
-	os.MkdirAll(filepath.Join("..", "data"), 0755)
-	return filepath.Join("..", "data", "keys.json")
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		_ = os.MkdirAll(envDataDir, 0755)
+		return filepath.Join(envDataDir, "keys.json")
+	}
+	_ = os.MkdirAll("data", 0755)
+	return filepath.Join("data", "keys.json")
 }
 
 func getStorageDir() string {
@@ -441,17 +444,77 @@ func SaveApps(apps []AppItem) error {
 	return nil
 }
 
-// LoadKeys tải danh sách API Keys
+// LoadKeys tải danh sách API Keys kết hợp từ TiDB Cloud và keys.json
 func LoadKeys() []KeyItem {
 	keysMutex.RLock()
 	defer keysMutex.RUnlock()
 
+	keyMap := make(map[string]KeyItem)
+
+	// 1. Nạp từ keys.json cục bộ (chứa plaintext token đầy đủ)
 	data, err := os.ReadFile(getKeysFilePath())
-	if err != nil {
-		return []KeyItem{}
+	if err == nil {
+		var localKeys []KeyItem
+		if err := json.Unmarshal(data, &localKeys); err == nil {
+			for _, k := range localKeys {
+				if k.ID != "" {
+					keyMap[k.ID] = k
+				}
+				if k.Prefix != "" {
+					keyMap[k.Prefix] = k
+				}
+			}
+		}
 	}
+
+	// 2. Nạp từ CSDL TiDB Cloud trung tâm
+	if db := database.GetDB(); db != nil {
+		rows, err := db.Query("SELECT id, name, prefix, status, created_at, permissions FROM api_keys ORDER BY created_at DESC")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var id, name, prefix, status, createdAt string
+				var perms sql.NullString
+				if err := rows.Scan(&id, &name, &prefix, &status, &createdAt, &perms); err == nil {
+					existing, exists := keyMap[id]
+					if !exists {
+						existing, exists = keyMap[prefix]
+					}
+					var pList []string
+					if perms.Valid && perms.String != "" {
+						_ = json.Unmarshal([]byte(perms.String), &pList)
+					}
+					if len(pList) == 0 {
+						pList = []string{"apps:publish", "apps:read"}
+					}
+
+					keyVal := ""
+					if exists {
+						keyVal = existing.Key
+					}
+
+					keyMap[id] = KeyItem{
+						ID:          id,
+						Name:        name,
+						Key:         keyVal,
+						Prefix:      prefix,
+						CreatedAt:   createdAt,
+						Status:      status,
+						Permissions: pList,
+					}
+				}
+			}
+		}
+	}
+
+	seen := make(map[string]bool)
 	var keys []KeyItem
-	json.Unmarshal(data, &keys)
+	for _, k := range keyMap {
+		if !seen[k.ID] {
+			seen[k.ID] = true
+			keys = append(keys, k)
+		}
+	}
 	return keys
 }
 
@@ -488,10 +551,22 @@ func VerifyAPIKey(token string) bool {
 				continue // Token đã hết hạn
 			}
 		}
-		if subtle.ConstantTimeCompare([]byte(k.Key), []byte(token)) == 1 {
+		if k.Key != "" && subtle.ConstantTimeCompare([]byte(k.Key), []byte(token)) == 1 {
 			return true
 		}
 	}
+
+	// Fallback kiểm tra hash SHA-256 trong CSDL TiDB Cloud
+	if db := database.GetDB(); db != nil {
+		h := sha256.Sum256([]byte(token))
+		hashHex := hex.EncodeToString(h[:])
+		var status string
+		err := db.QueryRow("SELECT status FROM api_keys WHERE key_hash = ?", hashHex).Scan(&status)
+		if err == nil && status == "active" {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -578,6 +653,23 @@ func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 
 	keys := append(validKeys, item)
 	SaveKeys(keys)
+
+	// Đồng bộ khóa API mới vào TiDB Cloud
+	if db := database.GetDB(); db != nil {
+		h := sha256.Sum256([]byte(item.Key))
+		hashHex := hex.EncodeToString(h[:])
+		permsJSON, _ := json.Marshal(item.Permissions)
+		_, err := db.Exec(`
+			INSERT INTO api_keys (id, name, key_hash, prefix, status, permissions, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), permissions=VALUES(permissions)`,
+			item.ID, item.Name, hashHex, item.Prefix, item.Status, string(permsJSON), time.Now(),
+		)
+		if err != nil {
+			log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào TiDB thất bại: %v", err)
+		}
+	}
+
 	return item, nil
 }
 
@@ -1068,16 +1160,28 @@ func RevokeKey(id string) error {
 	found := false
 	var updated []KeyItem
 	for _, k := range keys {
-		if k.ID == id {
+		if k.ID == id || k.Prefix == id {
 			found = true
 			continue // Xóa khỏi danh sách active keys
 		}
 		updated = append(updated, k)
 	}
+	_ = SaveKeys(updated)
+
+	// Cập nhật trạng thái thu hồi trong TiDB Cloud
+	if db := database.GetDB(); db != nil {
+		res, err := db.Exec("UPDATE api_keys SET status = 'revoked' WHERE id = ? OR prefix = ?", id, id)
+		if err == nil {
+			if affected, _ := res.RowsAffected(); affected > 0 {
+				found = true
+			}
+		}
+	}
+
 	if !found {
 		return fmt.Errorf("không tìm thấy API Key với mã ID: %s", id)
 	}
-	return SaveKeys(updated)
+	return nil
 }
 
 // KeyRevokeHandler tiếp nhận yêu cầu thu hồi API Key — BẮT BUỘC quyền Admin
