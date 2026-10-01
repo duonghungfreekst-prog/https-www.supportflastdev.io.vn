@@ -16,6 +16,10 @@ func tryRustDecrypt(key [32]byte, encryptedData []byte) ([]byte, bool) {
 	return nil, false
 }
 
+func tryRustDecryptInPlace(key [32]byte, encryptedData []byte) ([]byte, bool) {
+	return nil, false
+}
+
 func tryRustHashChunk(data []byte) (string, bool) {
 	return "", false
 }
