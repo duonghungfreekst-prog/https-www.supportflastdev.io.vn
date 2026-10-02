@@ -3923,104 +3923,238 @@
         /* GOOGLE AI PRO & GEMINI PROMO SHOWCASE CSS (GLASSMORPHISM & NEON GLOW)     */
         /* ========================================================================== */
 
-        /* Top Announcement Ribbon - ĐẬM NÉT, RỰC RỠ, SIÊU SÁNG */
-        .gemini-top-ribbon {
+        /* ==========================================================================
+           TOP MEGA ANNOUNCEMENT BAR - ĐỈNH CAO THỊ GIÁC (CYBER LUXURY NEO-GLOW)
+           ========================================================================== */
+        .gemini-top-ribbon-mega {
+            position: relative;
             width: 100%;
-            background: linear-gradient(90deg, rgba(28, 25, 75, 0.96) 0%, rgba(15, 23, 42, 0.98) 50%, rgba(46, 16, 68, 0.96) 100%);
-            border-top: 1.5px solid rgba(0, 229, 255, 0.6);
-            border-bottom: 2.5px solid #00e5ff;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 14px 24px;
+            min-height: 72px;
+            background: linear-gradient(90deg, #13092e 0%, #080c1d 30%, #0d1b3e 70%, #200826 100%);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-top: 1.5px solid rgba(0, 240, 255, 0.7);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 229, 255, 0.35), inset 0 1px 3px rgba(255, 255, 255, 0.35);
+            padding: 16px 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.05rem;
-            color: #ffffff;
             z-index: 1000;
-            position: relative;
-            box-shadow: 0 6px 30px rgba(0, 229, 255, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+            overflow: hidden;
         }
+
+        /* Dải LED quang phổ Neon mép dưới */
+        .ribbon-neon-led-track {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ff007f, #00e5ff, #ffd700, #0068ff, #ff007f);
+            background-size: 300% 100%;
+            animation: ledRainbowStream 4s linear infinite;
+            box-shadow: 0 -2px 14px rgba(0, 229, 255, 0.95), 0 2px 10px rgba(255, 215, 0, 0.9);
+        }
+        @keyframes ledRainbowStream {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 300% 50%; }
+        }
+
+        /* Vệt sáng quét ngang thân banner */
+        .ribbon-light-shimmer {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), rgba(0, 229, 255, 0.15), transparent);
+            transform: skewX(-25deg);
+            animation: bannerLightSweep 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            pointer-events: none;
+        }
+        @keyframes bannerLightSweep {
+            0% { left: -100%; }
+            40%, 100% { left: 160%; }
+        }
+
         .gemini-top-ribbon-inner {
-            max-width: 1440px;
+            max-width: 1560px;
+            width: 100%;
             margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
+            gap: 22px;
             flex-wrap: wrap;
-            text-align: center;
+            position: relative;
+            z-index: 2;
         }
-        .gemini-ribbon-text {
-            font-size: 1.05rem;
-            font-weight: 500;
-            color: #ffffff;
-            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
-            letter-spacing: 0.2px;
-        }
-        .gemini-ribbon-badge {
-            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+
+        /* 1. HUY HIỆU SẤM SÉT RỰC LỬA */
+        .mega-ribbon-badge {
+            background: linear-gradient(135deg, #FF2E63 0%, #FF5722 50%, #FF9800 100%);
             color: #ffffff;
             font-weight: 900;
-            font-size: 0.82rem;
-            padding: 6px 16px;
+            font-size: 0.88rem;
+            padding: 8px 18px;
             border-radius: 999px;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
             text-transform: uppercase;
-            box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.6);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            flex-shrink: 0;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            animation: pulse-gemini 2s infinite ease-in-out;
-        }
-        .gemini-top-ribbon-inner .ribbon-highlight-ai {
-            color: #fde047;
-            font-weight: 800;
-            text-shadow: 0 0 12px rgba(253, 224, 71, 0.6);
-            font-size: 1.08rem;
-        }
-        .gemini-top-ribbon-inner .ribbon-highlight-drive {
-            color: #38bdf8;
-            font-weight: 800;
-            text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
-            font-size: 1.08rem;
-        }
-        .gemini-ribbon-link {
+            box-shadow: 0 0 25px rgba(255, 87, 34, 0.95), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+            border: 1.5px solid rgba(255, 255, 255, 0.85);
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: linear-gradient(135deg, #0068ff 0%, #00b4d8 100%);
-            border: 1.5px solid rgba(255, 255, 255, 0.7);
+            flex-shrink: 0;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+            animation: badgeFirePulse 2s infinite ease-in-out;
+        }
+        @keyframes badgeFirePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(255, 87, 34, 0.85); }
+            50% { transform: scale(1.05); box-shadow: 0 0 32px rgba(255, 46, 99, 1); }
+        }
+        .lightning-icon {
+            font-size: 1.25rem;
+            color: #FFF200;
+            filter: drop-shadow(0 0 6px #FFEE00);
+            display: inline-block;
+            animation: lightningFlicker 1.8s infinite steps(2, start);
+        }
+        @keyframes lightningFlicker {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            40% { transform: scale(1.25) rotate(-10deg); opacity: 0.85; filter: drop-shadow(0 0 12px #FFF200); }
+            45% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* 2. NỘI DUNG CHỮ TO ĐẬM & TỪ KHÓA VÀNG KIM NEON */
+        .mega-ribbon-headline {
+            font-size: 1.18rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+            letter-spacing: 0.3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .headline-lead {
+            color: #f1f5f9;
+        }
+        .sparkle-separator {
+            color: #00f2fe;
+            font-size: 1.1rem;
+            filter: drop-shadow(0 0 8px #00f2fe);
+            margin: 0 4px;
+        }
+        .neon-gold-keyword {
+            background: linear-gradient(180deg, #FFFFFF 0%, #FFE259 40%, #FFA751 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            font-size: 1.25rem;
+            letter-spacing: 0.4px;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.85)) drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+            position: relative;
+        }
+        .neon-gold-keyword.drive-keyword {
+            background: linear-gradient(180deg, #FFFFFF 0%, #FFF176 35%, #FFB300 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 12px rgba(255, 179, 0, 0.95)) drop-shadow(0 2px 4px rgba(0,0,0,0.9));
+        }
+
+        /* 3. NÚT ZALO KHỐI NỔI 3D TO BẢN (PULSE BEACON GLOW) */
+        .btn-zalo-3d-mega {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(180deg, #1A8CFF 0%, #0068FF 55%, #004ECC 100%);
+            border: 2px solid rgba(255, 255, 255, 0.95);
             color: #ffffff !important;
             font-weight: 900;
-            font-size: 0.95rem;
-            padding: 9px 22px;
+            font-size: 1.08rem;
+            padding: 13px 30px;
             border-radius: 999px;
             text-decoration: none;
-            box-shadow: 0 4px 20px rgba(0, 104, 255, 0.6), 0 0 15px rgba(0, 229, 255, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            animation: zaloPulseGlow 2.2s infinite;
+            letter-spacing: 0.4px;
             flex-shrink: 0;
-            letter-spacing: 0.3px;
+            box-shadow: 0 7px 0 #00378f, 0 12px 28px rgba(0, 104, 255, 0.85), 0 0 35px rgba(0, 140, 255, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.85);
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            overflow: visible;
         }
-        .gemini-ribbon-link:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 8px 30px rgba(0, 229, 255, 0.9), inset 0 1px 2px rgba(255, 255, 255, 0.7);
-            background: linear-gradient(135deg, #0077ff 0%, #00e5ff 100%);
+        .btn-zalo-3d-mega:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 10px 0 #00378f, 0 16px 36px rgba(0, 104, 255, 0.95), 0 0 45px rgba(0, 229, 255, 0.9), inset 0 2px 4px rgba(255, 255, 255, 1);
+            background: linear-gradient(180deg, #3399FF 0%, #0073FF 55%, #0055DD 100%);
         }
-        @keyframes zaloPulseGlow {
-            0% {
-                box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.75), 0 4px 20px rgba(0, 104, 255, 0.6);
-            }
-            70% {
-                box-shadow: 0 0 0 14px rgba(0, 229, 255, 0), 0 4px 20px rgba(0, 104, 255, 0.6);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(0, 229, 255, 0), 0 4px 20px rgba(0, 104, 255, 0.6);
-            }
+        .btn-zalo-3d-mega:active {
+            transform: translateY(5px) scale(0.98);
+            box-shadow: 0 2px 0 #00378f, 0 6px 15px rgba(0, 104, 255, 0.8), inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Sóng xung Radar đôi (Dual Pulse Beacon Rings) */
+        .beacon-pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        .beacon-pulse-ring.ring-1 {
+            border: 2.5px solid rgba(0, 140, 255, 0.9);
+            animation: beaconPulseAnim 2.2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+        }
+        .beacon-pulse-ring.ring-2 {
+            border: 2.5px solid rgba(0, 229, 255, 0.8);
+            animation: beaconPulseAnim 2.2s cubic-bezier(0.24, 0, 0.38, 1) infinite 0.7s;
+        }
+        @keyframes beaconPulseAnim {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+            70% { transform: translate(-50%, -50%) scale(1.35, 1.6); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1.35, 1.6); opacity: 0; }
+        }
+
+        /* Vệt sáng kim cương quét chéo mặt nút */
+        .btn-shimmer-sheen {
+            position: absolute;
+            top: 0;
+            left: -80%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            transform: skewX(-30deg);
+            animation: btnShimmerSweep 2.8s ease-in-out infinite;
+            pointer-events: none;
+            border-radius: 999px;
+        }
+        @keyframes btnShimmerSweep {
+            0% { left: -80%; }
+            40%, 100% { left: 140%; }
+        }
+
+        .zalo-chat-icon {
+            font-size: 1.3rem;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+        }
+        .zalo-text-block strong {
+            color: #FFF200;
+            text-shadow: 0 0 8px rgba(255, 242, 0, 0.8);
+        }
+        .zalo-arrow-icon {
+            font-size: 1.15rem;
+            transition: transform 0.2s ease;
+        }
+        .btn-zalo-3d-mega:hover .zalo-arrow-icon {
+            transform: translateX(4px);
         }
 
         /* Showcase Section */
@@ -4533,22 +4667,32 @@
                 width: 48px;
                 height: 48px;
             }
-            .gemini-top-ribbon {
-                padding: 12px 14px;
+            .gemini-top-ribbon-mega {
+                padding: 14px 16px;
+                min-height: auto;
             }
             .gemini-top-ribbon-inner {
                 gap: 12px;
                 flex-direction: column;
+                text-align: center;
             }
-            .gemini-ribbon-text {
-                font-size: 0.95rem;
+            .mega-ribbon-headline {
+                font-size: 1rem;
                 line-height: 1.5;
+                flex-direction: column;
+                gap: 4px;
             }
-            .gemini-ribbon-link {
+            .sparkle-separator {
+                display: none;
+            }
+            .neon-gold-keyword {
+                font-size: 1.1rem;
+            }
+            .btn-zalo-3d-mega {
                 width: 100%;
                 justify-content: center;
-                padding: 10px 18px;
-                font-size: 0.95rem;
+                padding: 14px 20px;
+                font-size: 1.05rem;
             }
         }
     </style>
@@ -4685,17 +4829,41 @@
                 </div>
         </nav>
 
-        <!-- THANH THÔNG BÁO ƯU ĐÃI NỔI BẬT ĐẦU TRANG (GEMINI TOP RIBBON) -->
-        <div class="gemini-top-ribbon">
+        <!-- ============================================================== -->
+        <!-- TOP MEGA ANNOUNCEMENT BAR ĐỈNH CAO: SIÊU TO, ĐẬM, RỰC RỠ NEON -->
+        <!-- ============================================================== -->
+        <aside class="gemini-top-ribbon-mega" role="banner" aria-label="Thông báo ưu đãi Google AI Pro">
+            <div class="ribbon-light-shimmer"></div>
             <div class="gemini-top-ribbon-inner">
-                <span class="gemini-ribbon-badge">⚡ ƯU ĐÃI ĐẶC QUYỀN</span>
-                <span class="gemini-ribbon-text">Nâng cấp <strong class="ribbon-highlight-ai">Google AI Pro &amp; Gemini Advanced</strong> • Tặng kèm <strong class="ribbon-highlight-drive">5TB Google Drive</strong> tốc độ cao!</span>
-                <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-ribbon-link" title="Nhấp mở Zalo: 0342.041.517 nhận báo giá ngay">
-                    <span>💬 NHẮN ZALO NHẬN BÁO GIÁ: 0342.041.517</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <!-- 1. HUY HIỆU SẤM SÉT RỰC LỬA -->
+                <div class="mega-ribbon-badge">
+                    <span class="lightning-icon">⚡</span>
+                    <span>ƯU ĐÃI ĐẶC QUYỀN HÔM NAY</span>
+                </div>
+
+                <!-- 2. NỘI DUNG CHỮ TO ĐẬM & TỪ KHÓA VÀNG KIM NEON -->
+                <div class="mega-ribbon-headline">
+                    <span class="headline-lead">Nâng cấp</span>
+                    <span class="neon-gold-keyword">Google AI Pro &amp; Gemini Advanced</span>
+                    <span class="sparkle-separator">✦</span>
+                    <span class="headline-lead">Tặng kèm</span>
+                    <span class="neon-gold-keyword drive-keyword">5TB Google Drive Tốc Độ Cao!</span>
+                </div>
+
+                <!-- 3. NÚT ZALO KHỐI NỔI 3D TO BẢN (PULSE BEACON GLOW) -->
+                <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" 
+                   class="btn-zalo-3d-mega" title="Bấm mở Zalo 0342.041.517 nhận tư vấn & báo giá ưu đãi">
+                    <span class="beacon-pulse-ring ring-1"></span>
+                    <span class="beacon-pulse-ring ring-2"></span>
+                    <span class="btn-shimmer-sheen"></span>
+                    <span class="zalo-chat-icon">💬</span>
+                    <span class="zalo-text-block">NHẮN ZALO BÁO GIÁ: <strong>0342.041.517</strong></span>
+                    <span class="zalo-arrow-icon">➔</span>
                 </a>
             </div>
-        </div>
+            <!-- Dải LED Neon quang phổ đa sắc ở đáy -->
+            <div class="ribbon-neon-led-track"></div>
+        </aside>
 
         <!-- ============================================== -->
         <!-- VIEW 1: TRANG CHỦ (HERO & TỔNG QUAN) -->
