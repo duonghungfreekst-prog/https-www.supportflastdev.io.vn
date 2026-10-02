@@ -274,7 +274,12 @@ func SaveApp(a AppItem) error {
 
 	var userIDParam interface{} = nil
 	if a.UserID != "" {
-		userIDParam = a.UserID
+		// Kiểm tra xem userID có tồn tại trong bảng users hay không để tránh FOREIGN KEY constraint failed
+		var userExists int
+		_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ?", a.UserID).Scan(&userExists)
+		if userExists > 0 {
+			userIDParam = a.UserID
+		}
 	}
 
 	var query string
@@ -654,19 +659,30 @@ func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 	keys := append(validKeys, item)
 	SaveKeys(keys)
 
-	// Đồng bộ khóa API mới vào TiDB Cloud
+	// Đồng bộ khóa API mới vào CSDL (hỗ trợ cả SQLite và TiDB)
 	if db := database.GetDB(); db != nil {
 		h := sha256.Sum256([]byte(item.Key))
 		hashHex := hex.EncodeToString(h[:])
 		permsJSON, _ := json.Marshal(item.Permissions)
-		_, err := db.Exec(`
-			INSERT INTO api_keys (id, name, key_hash, prefix, status, permissions, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-			ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), permissions=VALUES(permissions)`,
-			item.ID, item.Name, hashHex, item.Prefix, item.Status, string(permsJSON), time.Now(),
-		)
-		if err != nil {
-			log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào TiDB thất bại: %v", err)
+		if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+			_, err := db.Exec(`
+				INSERT INTO api_keys (id, name, key_hash, prefix, status, permissions, created_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)
+				ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), permissions=VALUES(permissions)`,
+				item.ID, item.Name, hashHex, item.Prefix, item.Status, string(permsJSON), time.Now(),
+			)
+			if err != nil {
+				log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào TiDB thất bại: %v", err)
+			}
+		} else {
+			_, err := db.Exec(`
+				INSERT OR REPLACE INTO api_keys (id, name, key_hash, prefix, status, permissions, created_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				item.ID, item.Name, hashHex, item.Prefix, item.Status, string(permsJSON), time.Now(),
+			)
+			if err != nil {
+				log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào SQLite thất bại: %v", err)
+			}
 		}
 	}
 

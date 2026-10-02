@@ -5,10 +5,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestGitStatusHandler(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/git/status", nil)
+	adminUser := User{
+		ID:       "usr-admin-001",
+		Username: "admin",
+		Role:     "admin",
+	}
+	adminToken, err := IssueRS256Token(adminUser, time.Hour)
+	if err != nil {
+		t.Fatalf("Failed to generate admin token: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+adminToken)
 	w := httptest.NewRecorder()
 
 	GitStatusHandler(w, req)

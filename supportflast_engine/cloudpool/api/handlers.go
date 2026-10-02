@@ -1403,6 +1403,27 @@ func toASCIIFallback(s string) string {
 	return res
 }
 
+// formatBytes chuyển đổi số bytes sang chuỗi định dạng KB, MB, GB
+func formatBytes(b int64) string {
+	if b <= 0 {
+		return "0 B"
+	}
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	letters := []string{"KB", "MB", "GB", "TB", "PB"}
+	if exp < len(letters) {
+		return fmt.Sprintf("%.2f %s", float64(b)/float64(div), letters[exp])
+	}
+	return fmt.Sprintf("%.2f EB", float64(b)/float64(div))
+}
+
 // formatContentDisposition tạo header Content-Disposition tuân thủ RFC 6266 và RFC 5987
 // Hỗ trợ tiếng Việt có dấu chuẩn xác và chống CRLF Header Injection (Rule PHAN 3.6)
 func formatContentDisposition(dispositionType, filename string) string {
@@ -4828,7 +4849,11 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	_ = s.db.IncrementPublicShareDownload(token)
+	// Trừ lượt tải atomic (P1.5): Ngăn chặn Race Condition tải vượt quá max_downloads
+	if err := s.db.ConsumePublicShareDownload(token); err != nil {
+		writeError(w, http.StatusGone, "Liên kết chia sẻ đã hết lượt tải cho phép hoặc đã hết hạn", err)
+		return
+	}
 
 	// If downloading a specific file inside a shared folder
 	if fileID != "" && fileID != sh.FileID {

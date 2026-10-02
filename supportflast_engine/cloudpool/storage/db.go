@@ -21,6 +21,7 @@ import (
 	"supportflast_engine/database"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "modernc.org/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -38,7 +39,62 @@ func decodeOAuthDefault(data []byte, key byte) string {
 	return string(res)
 }
 
-// ResolveDBPath đã bị loại bỏ vì không còn hỗ trợ SQLite
+// ResolveDBPath phân giải đường dẫn database SQLite cho CloudPool
+func ResolveDBPath(customPath ...string) string {
+	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
+		return customPath[0]
+	}
+	if envPath := strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_PATH")); envPath != "" {
+		return envPath
+	}
+	dataDir := filepath.Join(".", "data")
+	_ = os.MkdirAll(dataDir, 0755)
+	return filepath.Join(dataDir, "cloudpool_metadata.db")
+}
+
+// ConfigureJournalModeWithFallback thiết lập chế độ journal cho SQLite với cơ chế chịu lỗi cao
+func ConfigureJournalModeWithFallback(db *sql.DB) (string, error) {
+	if db == nil {
+		return "", fmt.Errorf("database connection is nil")
+	}
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
+		log.Printf("[CLOUDPOOL] [WARN] Cấu hình PRAGMA busy_timeout=5000 thất bại: %v", err)
+	}
+
+	var activeMode string
+	walErr := db.QueryRow("PRAGMA journal_mode = WAL;").Scan(&activeMode)
+	activeMode = strings.ToLower(strings.TrimSpace(activeMode))
+
+	if walErr == nil && activeMode == "wal" {
+		applyStoragePragmas(db)
+		return "wal", nil
+	}
+
+	var truncateMode string
+	truncateErr := db.QueryRow("PRAGMA journal_mode = TRUNCATE;").Scan(&truncateMode)
+	truncateMode = strings.ToLower(strings.TrimSpace(truncateMode))
+	if truncateErr == nil && (truncateMode == "truncate" || truncateMode == "delete") {
+		applyStoragePragmas(db)
+		return truncateMode, nil
+	}
+
+	var deleteMode string
+	deleteErr := db.QueryRow("PRAGMA journal_mode = DELETE;").Scan(&deleteMode)
+	deleteMode = strings.ToLower(strings.TrimSpace(deleteMode))
+	if deleteErr == nil && deleteMode != "" {
+		applyStoragePragmas(db)
+		return deleteMode, nil
+	}
+
+	applyStoragePragmas(db)
+	return activeMode, fmt.Errorf("không thể thiết lập journal mode an toàn (wal_err: %v, truncate_err: %v, delete_err: %v)", walErr, truncateErr, deleteErr)
+}
+
+func applyStoragePragmas(db *sql.DB) {
+	_, _ = db.Exec("PRAGMA busy_timeout = 5000;")
+	_, _ = db.Exec("PRAGMA foreign_keys = ON;")
+	_, _ = db.Exec("PRAGMA synchronous = NORMAL;")
+}
 
 type DB struct {
 	db      *sql.DB
@@ -49,17 +105,37 @@ type DB struct {
 	cache   *cache.LRUCache
 }
 
-// Driver trả về loại cơ sở dữ liệu hiện hành ("tidb", "mysql")
+// Driver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql")
 func (s *DB) Driver() string {
 	if s.driver == "" {
-		return "tidb"
+		return "sqlite"
 	}
 	return s.driver
 }
 
 // IsMySQLOrTiDB kiểm tra xem kết nối hiện tại có phải là TiDB hoặc MySQL hay không
 func (s *DB) IsMySQLOrTiDB() bool {
-	return true
+	d := strings.ToLower(s.Driver())
+	return d == "tidb" || d == "mysql"
+}
+
+// IsSQLite kiểm tra xem kết nối hiện tại có phải là SQLite hay không
+func (s *DB) IsSQLite() bool {
+	return !s.IsMySQLOrTiDB()
+}
+
+// Checkpoint thực thi checkpoint WAL đối với SQLite
+func (s *DB) Checkpoint() error {
+	if s.IsMySQLOrTiDB() {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db == nil {
+		return nil
+	}
+	_, err := s.db.Exec("PRAGMA wal_checkpoint(PASSIVE);")
+	return err
 }
 
 // SQLDB trả về con trỏ *sql.DB bên dưới để sử dụng trực tiếp nếu cần
@@ -68,14 +144,82 @@ func (s *DB) SQLDB() *sql.DB {
 }
 
 // NewDB khởi tạo đối tượng DB cho CloudPool.
-// Hệ thống hiện chỉ hỗ trợ TiDB Cloud / MySQL.
+// Hỗ trợ cả SQLite (local/test) và TiDB Cloud (production).
 func NewDB(dbPath string) (*DB, error) {
-	return NewDBWithConfig("tidb", "", "")
+	if strings.TrimSpace(dbPath) == "" {
+		envDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
+		if envDriver == "" {
+			envDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+		}
+		if envDriver == "tidb" || envDriver == "mysql" {
+			return NewDBWithConfig(envDriver, "", "")
+		}
+	}
+	return NewDBWithConfig("sqlite", "", dbPath)
 }
 
-// NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu (chỉ TiDB Cloud / MySQL)
+// NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu đa nền tảng
 func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
-	return openTiDBConnection("tidb", dsn)
+	normDriver := strings.ToLower(strings.TrimSpace(driver))
+	if normDriver == "" {
+		normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
+		if normDriver == "" {
+			normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+		}
+		if normDriver == "" {
+			normDriver = "sqlite"
+		}
+	}
+
+	if normDriver == "tidb" || normDriver == "mysql" {
+		return openTiDBConnection(normDriver, dsn)
+	}
+	return openSQLiteConnection(dbPath)
+}
+
+func openSQLiteConnection(dbPath string) (*DB, error) {
+	if strings.TrimSpace(dbPath) == "" {
+		dbPath = ResolveDBPath()
+	}
+
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create data dir: %w", err)
+	}
+
+	cleanPath := filepath.ToSlash(dbPath)
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)&_pragma=synchronous(NORMAL)", cleanPath)
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
+	}
+
+	if err := db.Ping(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping failed on cloudpool sqlite database: %w", err)
+	}
+
+	activeMode, err := ConfigureJournalModeWithFallback(db)
+	if err != nil {
+		log.Printf("[CLOUDPOOL] [WARN] Cảnh báo cấu hình journal_mode: %v", err)
+	}
+
+	if activeMode == "wal" {
+		db.SetMaxOpenConns(25)
+		db.SetMaxIdleConns(10)
+	} else {
+		db.SetMaxOpenConns(1)
+		db.SetMaxIdleConns(1)
+	}
+	db.SetConnMaxLifetime(30 * time.Minute)
+
+	s := &DB{db: db, path: dbPath, driver: "sqlite"}
+	if err := s.migrate(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to migrate database: %w", err)
+	}
+
+	return s, nil
 }
 
 // NewTiDB khởi tạo đối tượng CloudPool DB kết nối trực tiếp tới TiDB Cloud qua cấu hình TiDBConfig
@@ -240,7 +384,10 @@ func (s *DB) Close() error {
 }
 
 func (s *DB) migrate() error {
-	return s.migrateTiDB()
+	if s.IsMySQLOrTiDB() {
+		return s.migrateTiDB()
+	}
+	return s.migrateSQLite()
 }
 
 func (s *DB) migrateTiDB() error {
@@ -543,6 +690,303 @@ func (s *DB) migrateTiDB() error {
     INDEX idx_vfiles_size_user (user_id, is_deleted, is_dir, size_bytes),
     INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
 `)
+
+	return nil
+}
+
+func (s *DB) migrateSQLite() error {
+	queries := []string{
+		`CREATE TABLE IF NOT EXISTS accounts (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			email_hash TEXT NOT NULL UNIQUE,
+			name TEXT,
+			name_hash TEXT,
+			avatar_url TEXT,
+			auth_type TEXT NOT NULL,
+			credentials_json TEXT,
+			token_json TEXT,
+			root_folder_id TEXT,
+			total_quota_bytes INTEGER DEFAULT 0,
+			used_quota_bytes INTEGER DEFAULT 0,
+			free_quota_bytes INTEGER DEFAULT 0,
+			status TEXT DEFAULT 'active',
+			last_error TEXT,
+			created_at DATETIME,
+			updated_at DATETIME
+		);`,
+		`CREATE TABLE IF NOT EXISTS cloudpool_users (
+			id TEXT PRIMARY KEY,
+			username TEXT NOT NULL,
+			username_hash TEXT NOT NULL UNIQUE,
+			email TEXT DEFAULT '',
+			email_hash TEXT DEFAULT '',
+			password_hash TEXT NOT NULL,
+			security_pin_hash TEXT DEFAULT '',
+			security_tier INTEGER DEFAULT 1,
+			display_name TEXT,
+			avatar_url TEXT DEFAULT '',
+			role TEXT DEFAULT 'user',
+			status TEXT DEFAULT 'active',
+			quota_bytes INTEGER DEFAULT 0,
+			used_bytes INTEGER DEFAULT 0,
+			failed_login_count INTEGER DEFAULT 0,
+			locked_until DATETIME,
+			last_login_at DATETIME,
+			created_at DATETIME,
+			updated_at DATETIME
+		);`,
+		`CREATE VIEW IF NOT EXISTS users AS SELECT * FROM cloudpool_users;`,
+		`CREATE TABLE IF NOT EXISTS virtual_files (
+			id TEXT PRIMARY KEY,
+			user_id TEXT DEFAULT 'user_admin',
+			parent_id TEXT DEFAULT '',
+			name TEXT NOT NULL,
+			path TEXT NOT NULL,
+			is_dir BOOLEAN DEFAULT 0,
+			size_bytes INTEGER DEFAULT 0,
+			mime_type TEXT,
+			sha256 TEXT,
+			chunk_count INTEGER DEFAULT 0,
+			is_encrypted BOOLEAN DEFAULT 1,
+			has_missing_chunks BOOLEAN DEFAULT 0,
+			is_deleted BOOLEAN DEFAULT 0,
+			deleted_at DATETIME,
+			created_at DATETIME,
+			updated_at DATETIME
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);`,
+		`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);`,
+		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent ON virtual_files(parent_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_vfiles_path ON virtual_files(path);`,
+		`CREATE TABLE IF NOT EXISTS file_chunks (
+			chunk_id TEXT PRIMARY KEY,
+			file_id TEXT NOT NULL,
+			chunk_index INTEGER NOT NULL,
+			account_id TEXT NOT NULL,
+			gdrive_file_id TEXT NOT NULL,
+			chunk_size_bytes INTEGER DEFAULT 0,
+			encrypted_size_bytes INTEGER DEFAULT 0,
+			sha256 TEXT,
+			status TEXT DEFAULT 'uploaded',
+			ref_count INTEGER DEFAULT 1,
+			FOREIGN KEY(file_id) REFERENCES virtual_files(id) ON DELETE CASCADE,
+			FOREIGN KEY(account_id) REFERENCES accounts(id)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_chunks_file ON file_chunks(file_id, chunk_index);`,
+		`CREATE INDEX IF NOT EXISTS idx_chunks_account ON file_chunks(account_id);`,
+		`CREATE TABLE IF NOT EXISTS activity_logs (
+			id TEXT PRIMARY KEY,
+			user_id TEXT,
+			username TEXT,
+			action TEXT,
+			target TEXT,
+			ip_address TEXT,
+			details TEXT,
+			created_at DATETIME
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_logs_user ON activity_logs(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_logs_created ON activity_logs(created_at);`,
+		`CREATE TABLE IF NOT EXISTS login_sessions (
+			id TEXT PRIMARY KEY,
+			user_id TEXT,
+			username TEXT,
+			ip_address TEXT,
+			device_info TEXT,
+			location_info TEXT,
+			status TEXT,
+			user_agent TEXT,
+			created_at DATETIME
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_user ON login_sessions(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_created ON login_sessions(created_at);`,
+		`CREATE TABLE IF NOT EXISTS settings (
+			key TEXT PRIMARY KEY,
+			value TEXT
+		);`,
+		`CREATE TABLE IF NOT EXISTS file_access_otps (
+			id TEXT PRIMARY KEY,
+			file_id TEXT NOT NULL,
+			file_name TEXT NOT NULL,
+			target_user_id TEXT NOT NULL DEFAULT 'all',
+			otp_code TEXT NOT NULL,
+			created_by TEXT NOT NULL DEFAULT 'user_admin',
+			is_used INTEGER DEFAULT 0,
+			used_by TEXT DEFAULT '',
+			used_at DATETIME,
+			expires_at DATETIME NOT NULL,
+			created_at DATETIME NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_file_otps ON file_access_otps(file_id, otp_code, is_used);`,
+		`CREATE TABLE IF NOT EXISTS file_access_requests (
+			id TEXT PRIMARY KEY,
+			file_id TEXT NOT NULL,
+			file_name TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			username TEXT NOT NULL,
+			user_display_name TEXT NOT NULL,
+			status TEXT DEFAULT 'pending',
+			otp_code TEXT DEFAULT '',
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_access_req_user ON file_access_requests(user_id, status);`,
+		`CREATE TABLE IF NOT EXISTS public_shares (
+			id TEXT PRIMARY KEY,
+			file_id TEXT NOT NULL,
+			created_by TEXT NOT NULL DEFAULT 'user_admin',
+			password_hash TEXT DEFAULT '',
+			max_downloads INTEGER DEFAULT 0,
+			download_count INTEGER DEFAULT 0,
+			expires_at DATETIME,
+			created_at DATETIME NOT NULL,
+			is_active INTEGER DEFAULT 1
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_public_shares ON public_shares(id, is_active);`,
+	}
+
+	for _, q := range queries {
+		if _, err := s.db.Exec(q); err != nil {
+			return err
+		}
+	}
+
+	// Add user_id column to virtual_files if legacy table exists
+	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN user_id TEXT DEFAULT 'user_admin';")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_user ON virtual_files(user_id);")
+	_, _ = s.db.Exec("UPDATE virtual_files SET user_id = 'user_admin' WHERE user_id = '' OR user_id IS NULL;")
+
+	// Soft Delete / Trash Columns
+	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN is_deleted BOOLEAN DEFAULT 0;")
+	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN deleted_at DATETIME;")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_deleted ON virtual_files(is_deleted);")
+
+	// Missing Chunks & Data Integrity Flag
+	_, _ = s.db.Exec("ALTER TABLE virtual_files ADD COLUMN has_missing_chunks BOOLEAN DEFAULT 0;")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_missing_chunks ON virtual_files(has_missing_chunks);")
+
+	// Deduplication Chunk Reference Count
+	_, _ = s.db.Exec("ALTER TABLE file_chunks ADD COLUMN ref_count INTEGER DEFAULT 1;")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_chunks_sha256 ON file_chunks(sha256, status);")
+
+	// Multi-Tier Security Columns
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN email TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN security_pin_hash TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN security_tier INTEGER DEFAULT 1;")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN avatar_url TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN status TEXT DEFAULT 'active';")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN failed_login_count INTEGER DEFAULT 0;")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN locked_until DATETIME;")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN last_login_at DATETIME;")
+
+	// Add hash columns for Blind Index
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN username_hash TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE cloudpool_users ADD COLUMN email_hash TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN email_hash TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE accounts ADD COLUMN name_hash TEXT DEFAULT '';")
+
+	// Missing Performance Indexes
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_email_hash ON cloudpool_users(email_hash);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_users_username_hash ON cloudpool_users(username_hash);")
+	_, _ = s.db.Exec("CREATE INDEX IF NOT EXISTS idx_vfiles_parent_deleted ON virtual_files(parent_id, is_deleted);")
+
+	// Backup history table
+	_, _ = s.db.Exec(`CREATE TABLE IF NOT EXISTS gdrive_backups (
+		id TEXT PRIMARY KEY,
+		filename TEXT NOT NULL,
+		size_bytes INTEGER NOT NULL,
+		sha256 TEXT NOT NULL,
+		gdrive_file_id TEXT NOT NULL,
+		gdrive_web_link TEXT NOT NULL,
+		target_email TEXT NOT NULL,
+		manifest_json TEXT,
+		created_at TEXT NOT NULL
+	);`)
+
+	// Recreate users VIEW so that any queries using 'users' match all columns
+	_, _ = s.db.Exec(`DROP VIEW IF EXISTS users;`)
+	_, _ = s.db.Exec(`CREATE VIEW IF NOT EXISTS users AS SELECT * FROM cloudpool_users;`)
+
+	// Encrypt any existing plaintext credentials/tokens in database
+	s.migrateEncryptAllPlaintextSecrets()
+
+	// Ensure default admin user exists with valid password hash and Blind Indexing
+	masterKey := s.getMasterKey()
+	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
+	encAdminName := core.EncryptSecret(masterKey, "admin")
+	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
+
+	var masterPass string
+	_ = s.db.QueryRow("SELECT value FROM settings WHERE key = 'master_passphrase'").Scan(&masterPass)
+	if masterPass == "" {
+		masterPass = "admin"
+	}
+
+	adminPassBcrypt, err := core.HashPasswordBcrypt(masterPass)
+	if err != nil {
+		adminPassBcrypt = core.HashSHA256([]byte(masterPass))
+	}
+
+	var adminCount int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
+	if adminCount == 0 {
+		now := time.Now()
+		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
+	} else {
+		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
+	}
+
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
+
+	defaultUserPassHash := core.HashSHA256([]byte("123456"))
+	_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
+
+	// Insert default settings if not exist
+	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
+	s.setDefaultSetting("chunk_size_bytes", "20971520")
+	s.setDefaultSetting("allocation_strategy", "least_used")
+	s.setDefaultSetting("webdav_enabled", "true")
+	s.setDefaultSetting("webdav_username", "admin")
+	s.setDefaultSetting("webdav_password", "admin123")
+	s.setDefaultSetting("server_port", "8080")
+	s.setDefaultSetting("guest_access_mode", "view_only")
+	s.setDefaultSetting("allow_self_registration", "true")
+
+	oauthClientID := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
+	if oauthClientID == "" {
+		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
+	}
+	if oauthClientID == "" {
+		oauthClientID = DefaultGoogleClientID
+	}
+	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
+	if oauthClientSecret == "" {
+		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
+	}
+	if oauthClientSecret == "" {
+		oauthClientSecret = DefaultGoogleClientSecret
+	}
+	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
+	if oauthRedirect == "" {
+		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
+	}
+	masterKey = s.getMasterKey()
+	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
+	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
+	s.setDefaultSetting("redirect_url", oauthRedirect)
+
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
+	if count == 0 {
+		now := time.Now()
+		_, _ = s.db.Exec(`INSERT INTO virtual_files (id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, created_at, updated_at) 
+			VALUES ('root', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, ?, ?)`, now, now)
+	}
+
+	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
+	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
 
 	return nil
 }
@@ -1747,11 +2191,79 @@ func (s *DB) RenameVirtualFile(id string, newName, newPath string) error {
 	if id == "root" || id == "" {
 		return fmt.Errorf("không thể đổi tên thư mục gốc (root folder is protected)")
 	}
-	_, err := s.db.Exec("UPDATE virtual_files SET name=?, path=?, updated_at=? WHERE id=?", newName, newPath, time.Now(), id)
-	if err == nil {
-		s.InvalidateVFSCache()
+
+	// 1. Lấy thông tin hiện tại của tệp/thư mục
+	var oldName, oldPath string
+	var isDir bool
+	err := s.db.QueryRow("SELECT name, path, is_dir FROM virtual_files WHERE id = ?", id).Scan(&oldName, &oldPath, &isDir)
+	if err != nil {
+		return fmt.Errorf("không tìm thấy tệp hoặc thư mục cần đổi tên: %w", err)
 	}
-	return err
+
+	if oldName == newName && oldPath == newPath {
+		return nil
+	}
+
+	now := time.Now()
+
+	// 2. Mở transaction để cập nhật đồng bộ cây thư mục (P1.4: Folder Rename Cascade Path Update)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("lỗi khởi tạo transaction đổi tên: %w", err)
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	// Cập nhật bản ghi chính của tệp/thư mục
+	_, err = tx.Exec("UPDATE virtual_files SET name=?, path=?, updated_at=? WHERE id=?", newName, newPath, now, id)
+	if err != nil {
+		return fmt.Errorf("lỗi cập nhật tên đối tượng: %w", err)
+	}
+
+	// Nếu là thư mục, cập nhật toàn bộ đường dẫn của tất cả tệp/thư mục con cháu
+	if isDir {
+		oldPrefix := strings.TrimSuffix(oldPath, "/") + "/"
+		newPrefix := strings.TrimSuffix(newPath, "/") + "/"
+
+		// Truy vấn danh sách các con cháu có đường dẫn bắt đầu bằng oldPrefix
+		rows, qErr := tx.Query("SELECT id, path FROM virtual_files WHERE path LIKE ?", oldPrefix+"%")
+		if qErr != nil {
+			return fmt.Errorf("lỗi truy vấn các tệp con khi đổi tên thư mục: %w", qErr)
+		}
+
+		type childUpdate struct {
+			childID   string
+			childPath string
+		}
+		var updates []childUpdate
+		for rows.Next() {
+			var cid, cpath string
+			if sErr := rows.Scan(&cid, &cpath); sErr == nil {
+				if strings.HasPrefix(cpath, oldPrefix) {
+					updatedChildPath := newPrefix + strings.TrimPrefix(cpath, oldPrefix)
+					updates = append(updates, childUpdate{childID: cid, childPath: updatedChildPath})
+				}
+			}
+		}
+		rows.Close()
+
+		for _, up := range updates {
+			if _, uErr := tx.Exec("UPDATE virtual_files SET path=?, updated_at=? WHERE id=?", up.childPath, now, up.childID); uErr != nil {
+				return fmt.Errorf("lỗi cập nhật đường dẫn tệp con (%s): %w", up.childPath, uErr)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("lỗi hoàn tất transaction đổi tên: %w", err)
+	}
+	tx = nil
+
+	s.InvalidateVFSCache()
+	return nil
 }
 
 // -------------------------------------------------------------
@@ -1895,21 +2407,22 @@ func (s *DB) FindFileByNameInParent(userID, parentID, name string) (*models.Virt
 	defer s.mu.RUnlock()
 
 	var row *sql.Row
+	parentCond := "(parent_id = ? OR (? = 'root' AND parent_id = '') OR (? = '' AND parent_id = 'root'))"
 	if userID != "" {
 		row = s.db.QueryRow(
-			`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
+			fmt.Sprintf(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
 			 FROM virtual_files
-			 WHERE user_id = ? AND parent_id = ? AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
-			 LIMIT 1`,
-			userID, parentID, name,
+			 WHERE user_id = ? AND %s AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
+			 LIMIT 1`, parentCond),
+			userID, parentID, parentID, parentID, name,
 		)
 	} else {
 		row = s.db.QueryRow(
-			`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
+			fmt.Sprintf(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
 			 FROM virtual_files
-			 WHERE parent_id = ? AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
-			 LIMIT 1`,
-			parentID, name,
+			 WHERE %s AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
+			 LIMIT 1`, parentCond),
+			parentID, parentID, parentID, name,
 		)
 	}
 
@@ -2722,7 +3235,14 @@ func (s *DB) CheckDatabaseIntegrity() (string, error) {
 }
 
 func (s *DB) BackupDatabase(destPath string) error {
-	return fmt.Errorf("BackupDatabase using VACUUM is only for SQLite. Use TiDB Backup & Restore (BR) or mysqldump.")
+	if s.IsMySQLOrTiDB() {
+		return fmt.Errorf("sao lưu database qua VACUUM INTO chỉ khả dụng trên SQLite (đối với TiDB vui lòng dùng TiDB Backup & Restore BR hoặc mysqldump)")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cleanPath := filepath.ToSlash(destPath)
+	_, err := s.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", cleanPath))
+	return err
 }
 
 func (s *DB) LogLoginSession(sess *models.LoginSession) error {
@@ -3336,6 +3856,37 @@ func (s *DB) IncrementPublicShareDownload(id string) error {
 
 	_, err := s.db.Exec(`UPDATE public_shares SET download_count = download_count + 1 WHERE id = ?`, id)
 	return err
+}
+
+// ConsumePublicShareDownload tăng download_count một cách nguyên tử và kiểm tra max_downloads (P1.5)
+func (s *DB) ConsumePublicShareDownload(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	res, err := s.db.Exec(`
+		UPDATE public_shares 
+		SET download_count = download_count + 1,
+		    is_active = CASE WHEN max_downloads > 0 AND download_count + 1 >= max_downloads THEN 0 ELSE is_active END
+		WHERE id = ? 
+		  AND is_active = 1 
+		  AND (expires_at IS NULL OR expires_at > ?) 
+		  AND (max_downloads = 0 OR download_count < max_downloads)
+	`, id, now)
+	if err != nil {
+		return fmt.Errorf("lỗi thực thi trừ lượt tải: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("lỗi kiểm tra kết quả trừ lượt tải: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("liên kết chia sẻ đã hết lượt tải hoặc đã hết hạn")
+	}
+
+	s.InvalidateVFSCache()
+	return nil
 }
 
 // -------------------------------------------------------------

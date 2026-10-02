@@ -39,7 +39,12 @@ var (
 )
 
 func init() {
-	activeDriver.Store("tidb")
+	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if d == "tidb" || d == "mysql" {
+		activeDriver.Store("tidb")
+	} else {
+		activeDriver.Store("sqlite")
+	}
 }
 
 // SchemaDDL danh sách câu lệnh DDL định nghĩa bảng và chỉ mục (INDEX)
@@ -305,7 +310,7 @@ func isMySQLOrTiDB(db ...*sql.DB) bool {
 	return drv == "tidb" || drv == "mysql"
 }
 
-// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("tidb", "mysql") (Lock-free)
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql") (Lock-free)
 func ActiveDriver() string {
 	if v, ok := activeDriver.Load().(string); ok && v != "" {
 		return v
@@ -314,7 +319,7 @@ func ActiveDriver() string {
 	if d == "tidb" || d == "mysql" {
 		return d
 	}
-	return "tidb"
+	return "sqlite"
 }
 
 // GetActiveDriver là bí danh (alias) của ActiveDriver đảm bảo tương thích ngược
@@ -337,19 +342,24 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 	}
 }
 
-// InitSQLite đã loại bỏ — hệ thống chỉ sử dụng TiDB Cloud
-
-// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe tới TiDB Cloud
+// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (TiDB Cloud hoặc SQLite)
 func InitDB(customPath ...string) (*sql.DB, error) {
-	db, err := InitTiDB()
-	if err != nil {
-		return nil, err
+	drv := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
+		return InitSQLite(customPath[0])
 	}
-	dbMutex.Lock()
-	dbInstance = db
-	activeDriver.Store("tidb")
-	dbMutex.Unlock()
-	return db, nil
+	if drv == "tidb" || drv == "mysql" {
+		db, err := InitTiDB()
+		if err != nil {
+			return nil, err
+		}
+		dbMutex.Lock()
+		dbInstance = db
+		activeDriver.Store("tidb")
+		dbMutex.Unlock()
+		return db, nil
+	}
+	return InitSQLite()
 }
 
 // GetDB trả về con trỏ kết nối *sql.DB thread-safe cho các module khác truy cập.
@@ -395,6 +405,13 @@ func CloseDB() error {
 	return lastErr
 }
 
+func insertIgnoreClause(db ...*sql.DB) string {
+	if isMySQLOrTiDB(db...) {
+		return "INSERT IGNORE INTO"
+	}
+	return "INSERT OR IGNORE INTO"
+}
+
 // SeedInitialData kiểm tra bảng users. Nếu rỗng, tạo sẵn tài khoản Admin chuẩn:
 // username='admin', email='admin@supportflastdev.io.vn', password_hash (BCrypt cost 12),
 // role='admin', display_name='Quản Trị Viên Hệ Thống'.
@@ -432,11 +449,11 @@ func SeedInitialData(db *sql.DB, dataDir ...string) error {
 
 	now := time.Now().UTC().Format("2006-01-02 15:04:05")
 	var lastLoginVal interface{} = nil
-	query := `
-		INSERT IGNORE INTO users (
+	query := fmt.Sprintf(`
+		%s users (
 			id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	`, insertIgnoreClause(db))
 
 	stmtInsert, err := db.Prepare(query)
 	if err != nil {
@@ -530,13 +547,13 @@ func SeedInitialApps(db *sql.DB, dataDir ...string) error {
 		return nil
 	}
 
-	query := `
-		INSERT IGNORE INTO apps (
+	query := fmt.Sprintf(`
+		%s apps (
 			id, name, version, platform, category, ` + "`desc`" + `, file_name,
 			size_bytes, size_formatted, sha256, author, downloads,
 			status, published_at, download_url, video_url, guide, user_id
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	`, insertIgnoreClause(db))
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -624,10 +641,10 @@ func SeedInitialKeys(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
 	}
 
-	query := `
-		INSERT IGNORE INTO api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
+	query := fmt.Sprintf(`
+		%s api_keys (id, user_id, name, key_hash, prefix, status, permissions, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	`, insertIgnoreClause(db))
 
 	stmt, err := db.Prepare(query)
 	if err != nil {
@@ -695,7 +712,7 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 	}
 	if jsonPath == "" {
 		// Tự động chèn bản ghi phiên bản hệ thống mặc định để đảm bảo bảng system_releases luôn sẵn sàng
-		defQuery := `INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`
+		defQuery := fmt.Sprintf(`%s system_releases (version, title, date, build_hash, notes, published_by) VALUES (?, ?, ?, ?, ?, ?)`, insertIgnoreClause(db))
 		nowVal := time.Now().UTC().Format("2006-01-02 15:04:05")
 		_, _ = db.Exec(defQuery, "v2.1.0", "SupportFlast Polyglot Cloud Architecture", nowVal, "sf-build-2026-cloud", "Phiên bản phát hành hệ thống chính thức tự động khởi tạo", "System Auto-Bootstrap")
 		log.Println("[ENGINE] [DATABASE] Đã tự động khởi tạo phiên bản hệ thống mặc định v2.1.0 cho system_releases")
@@ -719,10 +736,10 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
 	}
 
-	query := `
-		INSERT IGNORE INTO system_releases (version, title, date, build_hash, notes, published_by)
+	query := fmt.Sprintf(`
+		%s system_releases (version, title, date, build_hash, notes, published_by)
 		VALUES (?, ?, ?, ?, ?, ?)
-	`
+	`, insertIgnoreClause(db))
 
 	stmt, err := db.Prepare(query)
 	if err != nil {

@@ -598,9 +598,11 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 		t.Fatalf("CreateFileOTP failed: %v", err)
 	}
 
-	// Mô phỏng chuỗi text ngày tháng trong bảng file_access_otps
+	// Mô phỏng chuỗi text ngày tháng trong bảng file_access_otps với thời hạn tương lai
+	futureTimeStr := time.Now().Add(24 * time.Hour).Format("2006-01-02 15:04:05")
+	pastTimeStr := time.Now().Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
 	_, err = db.SQLDB().Exec("UPDATE file_access_otps SET expires_at = ?, created_at = ? WHERE id = ?",
-		"2026-10-01 12:00:00", "2026-09-30 08:00:00", otp.ID)
+		futureTimeStr, pastTimeStr, otp.ID)
 	if err != nil {
 		t.Fatalf("Failed to update file_access_otps time strings: %v", err)
 	}
@@ -1027,6 +1029,10 @@ func TestRealDatabaseVFSIntegrity(t *testing.T) {
 	_ = db.SQLDB().QueryRow("SELECT COUNT(*) FROM virtual_files WHERE is_deleted = 1").Scan(&trashedCount)
 
 	t.Logf("CSDL Thật: %d records (%d thư mục gồm root, %d tệp tin), trashed=%d", totalRecords, totalFolders, totalFiles, trashedCount)
+
+	if totalRecords <= 1 {
+		t.Skip("Bỏ qua kiểm tra cấu trúc 675 file vì database hiện tại là database rỗng mới tạo (chưa nạp snapshot)")
+	}
 
 	if totalRecords != 675 {
 		t.Logf("Lưu ý: Tổng số bản ghi là %d (kỳ vọng ~675)", totalRecords)

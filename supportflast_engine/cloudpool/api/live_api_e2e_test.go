@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -307,15 +308,18 @@ func TestLiveAPIEndToEndAuditor(t *testing.T) {
 			_ = json.Unmarshal(bodyBytes, &fileResp)
 			t.Logf("        [GUEST CHECK] Danh mục root của Guest trả về: %d tệp tin (cô lập phân vùng an toàn)", len(fileResp.Files))
 		case "/api/settings":
-			if resp.StatusCode != http.StatusOK {
-				t.Errorf("[GUEST] Cần HTTP 200 cho %s, nhận: %d", ep.Path, resp.StatusCode)
-			}
-			var set models.Settings
-			_ = json.Unmarshal(bodyBytes, &set)
-			if set.MasterPassphrase != "********" || set.GoogleClientSecret != "********" || set.TurnstileSecretKey != "********" {
-				t.Errorf("[GUEST] LỖI BẢO MẬT: Khóa bí mật không được che mờ! MasterPassphrase=%s", set.MasterPassphrase)
+			if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusOK {
+				t.Errorf("[GUEST] Cần HTTP 403 (hoặc 200) cho %s, nhận: %d", ep.Path, resp.StatusCode)
+			} else if resp.StatusCode == http.StatusForbidden {
+				t.Logf("        [GUEST CHECK] Đúng thiết kế bảo mật P0: /api/settings từ chối truy cập khách (HTTP 403 Forbidden)")
 			} else {
-				t.Logf("        [GUEST CHECK] Tất cả thông tin nhạy cảm đã được che mờ bằng '********'")
+				var set models.Settings
+				_ = json.Unmarshal(bodyBytes, &set)
+				if set.MasterPassphrase != "********" || set.GoogleClientSecret != "********" || set.TurnstileSecretKey != "********" {
+					t.Errorf("[GUEST] LỖI BẢO MẬT: Khóa bí mật không được che mờ! MasterPassphrase=%s", set.MasterPassphrase)
+				} else {
+					t.Logf("        [GUEST CHECK] Tất cả thông tin nhạy cảm đã được che mờ bằng '********'")
+				}
 			}
 		case "/api/shares":
 			t.Logf("        [GUEST DIAGNOSIS] Phản hồi HTTP 401 Unauthorized:")
@@ -447,8 +451,8 @@ func TestLiveAPIEndToEndAuditor(t *testing.T) {
 		gStatus := guestStatusMap[ep.Path]
 		aStatus := adminStatusMap[ep.Path]
 		statusNote := "HOÀN HẢO (200 OK)"
-		if gStatus == 401 {
-			statusNote = "BẢO MẬT TỐT (401 Auth Required)"
+		if gStatus == 401 || gStatus == 403 {
+			statusNote = fmt.Sprintf("BẢO MẬT TỐT (%d Restricted)", gStatus)
 		}
 		t.Logf("%-32s | HTTP %-11d | HTTP %-11d | %-20s", ep.Path, gStatus, aStatus, statusNote)
 	}
