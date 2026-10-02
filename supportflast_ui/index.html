@@ -3918,6 +3918,570 @@
                 height: 42px;
             }
         }
+
+        /* ========================================================================== */
+        /* GOOGLE AI PRO & GEMINI PROMO SHOWCASE CSS (GLASSMORPHISM & NEON GLOW)     */
+        /* ========================================================================== */
+
+        /* Top Announcement Ribbon */
+        .gemini-top-ribbon {
+            width: 100%;
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.25) 0%, rgba(0, 229, 255, 0.25) 50%, rgba(236, 72, 153, 0.25) 100%);
+            border-bottom: 1px solid rgba(0, 229, 255, 0.35);
+            backdrop-filter: blur(12px);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.88rem;
+            color: #f1f5f9;
+            z-index: 1000;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.15);
+        }
+        .gemini-top-ribbon-inner {
+            max-width: 1360px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            text-align: center;
+        }
+        .gemini-ribbon-badge {
+            background: linear-gradient(135deg, #00e5ff, #8b5cf6);
+            color: #030712;
+            font-weight: 800;
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 999px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .gemini-ribbon-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 229, 255, 0.18);
+            border: 1px solid rgba(0, 229, 255, 0.6);
+            color: #00e5ff;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 4px 12px;
+            border-radius: 999px;
+            text-decoration: none;
+            transition: all 0.25s ease;
+        }
+        .gemini-ribbon-link:hover {
+            background: #00e5ff;
+            color: #030712;
+            box-shadow: 0 0 16px rgba(0, 229, 255, 0.8);
+            transform: scale(1.04);
+        }
+
+        /* Showcase Section */
+        .gemini-showcase-section {
+            margin: 40px auto 35px;
+            max-width: 1360px;
+            background: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15), rgba(0, 229, 255, 0.05) 50%, rgba(11, 17, 32, 0.85) 100%);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 28px;
+            padding: 36px 32px 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 229, 255, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+        .gemini-showcase-section::before {
+            content: "";
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(40px);
+        }
+        .gemini-showcase-section::after {
+            content: "";
+            position: absolute;
+            bottom: -100px;
+            left: -100px;
+            width: 320px;
+            height: 320px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.25) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(40px);
+        }
+
+        .gemini-showcase-header {
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto 30px;
+            position: relative;
+            z-index: 2;
+        }
+        .gemini-sparkle-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.45);
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #c084fc;
+            letter-spacing: 0.8px;
+            margin-bottom: 14px;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+        }
+        .gemini-sparkle-badge .sparkle-icon {
+            color: #facc15;
+            font-size: 1rem;
+            animation: pulse-gemini 2s infinite ease-in-out;
+        }
+        .gemini-showcase-title {
+            font-size: 2.3rem;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 12px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+        .gradient-gemini-text {
+            background: linear-gradient(135deg, #00e5ff 10%, #a855f7 60%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
+        }
+        .gemini-showcase-desc {
+            font-size: 1.05rem;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        .gemini-showcase-desc strong {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        /* 3 Cards Grid */
+        .gemini-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            position: relative;
+            z-index: 2;
+            margin-bottom: 30px;
+        }
+        .gemini-poster-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(15px);
+        }
+        .gemini-poster-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(0, 229, 255, 0.6);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 229, 255, 0.35);
+        }
+        .gemini-poster-card.featured-gemini-card {
+            border-color: rgba(139, 92, 246, 0.55);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 35px rgba(139, 92, 246, 0.3);
+        }
+        .gemini-poster-card.featured-gemini-card:hover {
+            border-color: rgba(139, 92, 246, 0.9);
+            box-shadow: 0 22px 60px rgba(0, 0, 0, 0.8), 0 0 45px rgba(139, 92, 246, 0.5);
+        }
+        .poster-badge {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 5;
+            background: rgba(11, 17, 32, 0.85);
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            color: #00e5ff;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 5px 12px;
+            border-radius: 999px;
+            backdrop-filter: blur(10px);
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        }
+        .poster-badge.badge-hot {
+            border-color: rgba(244, 63, 94, 0.6);
+            color: #fb7185;
+            background: rgba(11, 17, 32, 0.9);
+            box-shadow: 0 0 14px rgba(244, 63, 94, 0.4);
+        }
+        .poster-badge.badge-support {
+            border-color: rgba(168, 85, 247, 0.6);
+            color: #c084fc;
+            background: rgba(11, 17, 32, 0.9);
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.4);
+        }
+        .poster-image-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 5;
+            overflow: hidden;
+            background: #060913;
+        }
+        .poster-image-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        .gemini-poster-card:hover .poster-image-wrap img {
+            transform: scale(1.05);
+        }
+        .poster-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(3, 7, 18, 0) 50%, rgba(3, 7, 18, 0.95) 100%);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+        .poster-cta-tag {
+            background: linear-gradient(135deg, #0068ff, #00c6ff);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 0.88rem;
+            padding: 10px 18px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 6px 20px rgba(0, 104, 255, 0.5);
+            transform: translateY(0);
+            transition: all 0.25s ease;
+        }
+        .gemini-poster-card:hover .poster-cta-tag {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 104, 255, 0.8);
+        }
+        .poster-info {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+            justify-content: space-between;
+            background: rgba(11, 17, 32, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .poster-info h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+            line-height: 1.35;
+        }
+        .poster-info p {
+            font-size: 0.88rem;
+            color: #94a3b8;
+            margin: 0;
+            line-height: 1.5;
+        }
+        .poster-btn-mini {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #00e5ff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: gap 0.2s ease;
+        }
+        .poster-btn-mini.hl-btn {
+            color: #a855f7;
+        }
+        .gemini-poster-card:hover .poster-btn-mini {
+            gap: 8px;
+        }
+
+        /* Banner CTA Trung tâm */
+        .gemini-cta-banner {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.85) 50%, rgba(15, 23, 42, 0.95) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            border-radius: 20px;
+            padding: 26px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .gemini-cta-badge {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #facc15;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .gemini-cta-left h3 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0 0 6px;
+        }
+        .gemini-cta-left p {
+            font-size: 0.92rem;
+            color: #94a3b8;
+            margin: 0;
+        }
+        .btn-zalo-neon-pulse {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(135deg, #0068ff 0%, #00c6ff 100%);
+            color: #ffffff;
+            padding: 14px 28px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-weight: 800;
+            box-shadow: 0 8px 30px rgba(0, 104, 255, 0.6), 0 0 25px rgba(0, 229, 255, 0.5);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .btn-zalo-neon-pulse:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 12px 40px rgba(0, 104, 255, 0.85), 0 0 40px rgba(0, 229, 255, 0.8);
+        }
+        .zalo-pulse-ring {
+            position: absolute;
+            inset: -4px;
+            border-radius: 999px;
+            border: 2px solid rgba(0, 229, 255, 0.75);
+            animation: ring-pulse 2s infinite cubic-bezier(0.25, 1, 0.5, 1);
+            pointer-events: none;
+        }
+        .zalo-btn-label {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            line-height: 1.2;
+        }
+        .zalo-btn-sub {
+            font-size: 0.68rem;
+            letter-spacing: 0.8px;
+            opacity: 0.9;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .zalo-btn-main {
+            font-size: 1.05rem;
+            font-weight: 800;
+        }
+
+        /* Cam kết 4 mục */
+        .gemini-commitments-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            z-index: 2;
+        }
+        .commit-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        .commit-icon {
+            font-size: 1.1rem;
+        }
+
+        /* FLOATING ZALO PULSE WIDGET */
+        .floating-zalo-widget {
+            position: fixed;
+            bottom: 84px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .floating-zalo-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0068ff 0%, #0099ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 104, 255, 0.5), 0 0 20px rgba(0, 229, 255, 0.4);
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .floating-zalo-widget:hover .floating-zalo-circle {
+            transform: scale(1.1);
+            box-shadow: 0 14px 35px rgba(0, 104, 255, 0.75), 0 0 30px rgba(0, 229, 255, 0.7);
+        }
+        .floating-zalo-wave, .floating-zalo-wave-2 {
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid #00c6ff;
+            opacity: 0;
+            pointer-events: none;
+            animation: zalo-ripple 2.4s infinite cubic-bezier(0, 0.2, 0.8, 1);
+        }
+        .floating-zalo-wave-2 {
+            animation-delay: 1.2s;
+        }
+        .gemini-sparkle-star {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: linear-gradient(135deg, #facc15, #f59e0b);
+            color: #000;
+            font-size: 11px;
+            font-weight: 900;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+            border: 2px solid #030712;
+            animation: pulse-gemini 1.8s infinite;
+        }
+        .floating-zalo-pill {
+            position: absolute;
+            right: 68px;
+            background: rgba(11, 17, 32, 0.95);
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            padding: 8px 14px;
+            border-radius: 999px;
+            white-space: nowrap;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 229, 255, 0.25);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            transform-origin: right center;
+        }
+        .floating-zalo-pill-title {
+            font-size: 0.78rem;
+            font-weight: 800;
+            color: #00e5ff;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .floating-zalo-pill-sub {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes ring-pulse {
+            0% { transform: scale(1); opacity: 0.9; }
+            100% { transform: scale(1.12); opacity: 0; }
+        }
+        @keyframes zalo-ripple {
+            0% { transform: scale(0.9); opacity: 0.9; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        @keyframes pulse-gemini {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Responsive Media Queries cho Gemini Promo */
+        @media (max-width: 1024px) {
+            .gemini-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .gemini-poster-card:last-child {
+                grid-column: span 2;
+            }
+            .gemini-cta-banner {
+                flex-direction: column;
+                text-align: center;
+            }
+            .gemini-cta-left h3 {
+                font-size: 1.25rem;
+            }
+            .btn-zalo-neon-pulse {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        @media (max-width: 768px) {
+            .gemini-showcase-section {
+                padding: 24px 18px 20px;
+                border-radius: 20px;
+                margin: 25px auto 25px;
+            }
+            .gemini-showcase-title {
+                font-size: 1.6rem;
+            }
+            .gemini-showcase-desc {
+                font-size: 0.92rem;
+            }
+            .gemini-cards-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .gemini-poster-card:last-child {
+                grid-column: auto;
+            }
+            .poster-image-wrap {
+                aspect-ratio: 4 / 5;
+            }
+            .floating-zalo-pill {
+                display: none;
+            }
+            .floating-zalo-widget {
+                bottom: 74px;
+                right: 14px;
+            }
+            .floating-zalo-circle {
+                width: 48px;
+                height: 48px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -4050,8 +4614,19 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </nav>
+
+        <!-- THANH THÔNG BÁO ƯU ĐÃI NỔI BẬT ĐẦU TRANG (GEMINI TOP RIBBON) -->
+        <div class="gemini-top-ribbon">
+            <div class="gemini-top-ribbon-inner">
+                <span class="gemini-ribbon-badge">⚡ ƯU ĐÃI ĐẶC QUYỀN</span>
+                <span>Nâng cấp <strong>Google AI Pro &amp; Gemini Advanced</strong> • Tặng kèm <strong>5TB Google Drive</strong> tốc độ cao!</span>
+                <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-ribbon-link">
+                    <span>💬 Nhắn Zalo Nhận Báo Giá: 0342.041.517</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
 
         <!-- ============================================== -->
         <!-- VIEW 1: TRANG CHỦ (HERO & TỔNG QUAN) -->
@@ -4107,6 +4682,127 @@
                     </button>
                 </div>
             </header>
+
+            <!-- ============================================================= -->
+            <!-- SECTION QUẢNG BÁ GOOGLE AI PRO & GEMINI (KÈM LINK ZALO)       -->
+            <!-- ============================================================= -->
+            <section class="gemini-showcase-section" id="gemini-promo-showcase">
+                <div class="gemini-showcase-header">
+                    <div class="gemini-sparkle-badge">
+                        <span class="sparkle-icon">✨</span>
+                        <span>GOOGLE AI PRO &amp; GEMINI ADVANCED // TẶNG 5TB GOOGLE DRIVE CHÍNH CHỦ</span>
+                    </div>
+                    <h2 class="gemini-showcase-title">
+                        BỨT PHÁ HIỆU SUẤT VỚI <span class="gradient-gemini-text">GOOGLE AI PRO</span>
+                    </h2>
+                    <p class="gemini-showcase-desc">
+                        Trải nghiệm sức mạnh đỉnh cao của Google AI: Deep Research phân tích chuyên sâu, tạo ảnh &amp; video AI thế hệ mới, tích hợp Gmail, Docs, Sheets và đặc quyền <strong>5TB dung lượng Google Drive</strong> tốc độ cao. Nhắn tin Zalo ngay để nhận ưu đãi kích hoạt siêu tốc!
+                    </p>
+                </div>
+
+                <!-- LƯỚI 3 ẢNH POSTER ĐÍNH LINK ZALO TIẾP CẬN DỄ DÀNG -->
+                <div class="gemini-cards-grid">
+                    <!-- THẺ ẢNH 1: HỌC TẬP - CÔNG VIỆC - SÁNG TẠO -->
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận báo giá Google AI Pro">
+                        <div class="poster-badge">⚡ THÊM CẢM HỨNG &amp; HIỆU SUẤT</div>
+                        <div class="poster-image-wrap">
+                            <img src="/assets/promo/gemini_pro_inspire.jpg" alt="Google AI Pro - Thêm cảm hứng, thêm hiệu suất" loading="lazy">
+                            <div class="poster-overlay">
+                                <span class="poster-cta-tag">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.18-1.31C8.61 21.49 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                                    Nhắn Zalo Nhận Báo Giá ➜
+                                </span>
+                            </div>
+                        </div>
+                        <div class="poster-info">
+                            <h3>Học Tập • Công Việc • Sáng Tạo</h3>
+                            <p>Tóm tắt, ôn tập kiến thức, soạn thảo tài liệu, nghiên cứu chuyên sâu &amp; sáng tạo ảnh cùng Gemini.</p>
+                            <span class="poster-btn-mini">Nhắn Zalo: 0342.041.517 &rarr;</span>
+                        </div>
+                    </a>
+
+                    <!-- THẺ ẢNH 2: NÂNG CẤP GEMINI & 5TB LƯU TRỮ DRIVE (NỔI BẬT NHẤT) -->
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card featured-gemini-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 kích hoạt gói Google AI Pro 5TB">
+                        <div class="poster-badge badge-hot">🔥 TẶNG 5TB GOOGLE DRIVE</div>
+                        <div class="poster-image-wrap">
+                            <img src="/assets/promo/gemini_pro_features_5tb.jpg" alt="Google AI Pro - Nâng cấp Gemini và 5TB lưu trữ Drive" loading="lazy">
+                            <div class="poster-overlay">
+                                <span class="poster-cta-tag">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.18-1.31C8.61 21.49 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                                    Nhắn Zalo Nhận Báo Giá ➜
+                                </span>
+                            </div>
+                        </div>
+                        <div class="poster-info">
+                            <h3>Gemini Nâng Cao &amp; 5TB Lưu Trữ</h3>
+                            <p>Deep Research, Tạo ảnh &amp; video AI, AI hỗ trợ Gmail, Docs, Sheets và 5TB Drive dùng chung gia đình.</p>
+                            <span class="poster-btn-mini hl-btn">Kích Hoạt Zalo Ngay &rarr;</span>
+                        </div>
+                    </a>
+
+                    <!-- THẺ ẢNH 3: BÁO GIÁ & HỖ TRỢ KÍCH HOẠT NHANH -->
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận tư vấn gói phù hợp">
+                        <div class="poster-badge badge-support">💎 KÍCH HOẠT SIÊU TỐC 1:1</div>
+                        <div class="poster-image-wrap">
+                            <img src="/assets/promo/gemini_pro_inspire_alt.jpg" alt="Google AI Pro - Tư vấn báo giá và kích hoạt nhanh" loading="lazy">
+                            <div class="poster-overlay">
+                                <span class="poster-cta-tag">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.18-1.31C8.61 21.49 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+                                    Nhắn Zalo Nhận Báo Giá ➜
+                                </span>
+                            </div>
+                        </div>
+                        <div class="poster-info">
+                            <h3>Tư Vấn Gói Phù Hợp &amp; Bảo Hành</h3>
+                            <p>Kích hoạt chính chủ chỉ 5 phút, bảo hành trọn thời hạn gói, hỗ trợ kỹ thuật tận tâm 24/7 qua Zalo.</p>
+                            <span class="poster-btn-mini">Nhắn Zalo: 0342.041.517 &rarr;</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- BANNER KÊU GỌI HÀNH ĐỘNG TRUNG TÂM -->
+                <div class="gemini-cta-banner">
+                    <div class="gemini-cta-left">
+                        <div class="gemini-cta-badge">⚡ ƯU ĐÃI ĐẶC QUYỀN HÔM NAY</div>
+                        <h3>Nhận Báo Giá Tốt Nhất &amp; Kích Hoạt Trong 5 Phút</h3>
+                        <p>Liên hệ ngay Zalo <strong>0342.041.517</strong> để được tư vấn gói Google AI Pro &amp; Gemini Advanced phù hợp nhu cầu của bạn.</p>
+                    </div>
+                    <div class="gemini-cta-right">
+                        <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="btn-zalo-neon-pulse" title="Mở Zalo nhắn tin ngay">
+                            <div class="zalo-pulse-ring"></div>
+                            <svg class="zalo-icon-svg" viewBox="0 0 48 48" width="30" height="30">
+                                <circle cx="24" cy="24" r="22" fill="#0068FF"/>
+                                <path d="M14 24.5C14 19.25 18.48 15 24 15s10 4.25 10 9.5c0 5.25-4.48 9.5-10 9.5-1.57 0-3.05-.34-4.38-.95L15 34l1.1-3.67C14.85 28.85 14 26.78 14 24.5z" fill="#FFFFFF"/>
+                                <path d="M22 21h4v1.5h-2.2l2.2 3.5V28h-4v-1.5h2.2L22 23v-2z" fill="#0068FF"/>
+                            </svg>
+                            <div class="zalo-btn-label">
+                                <span class="zalo-btn-sub">TƯ VẤN &amp; NHẬN BÁO GIÁ NGAY</span>
+                                <span class="zalo-btn-main">NHẮN ZALO: 0342.041.517 &rarr;</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- CAM KẾT VÀNG -->
+                <div class="gemini-commitments-row">
+                    <div class="commit-item">
+                        <span class="commit-icon">⚡</span>
+                        <span>Kích hoạt nhanh trong 5 phút</span>
+                    </div>
+                    <div class="commit-item">
+                        <span class="commit-icon">🛡️</span>
+                        <span>Bảo hành uy tín trọn thời hạn</span>
+                    </div>
+                    <div class="commit-item">
+                        <span class="commit-icon">☁️</span>
+                        <span>Tặng 5TB Google Drive chính chủ</span>
+                    </div>
+                    <div class="commit-item">
+                        <span class="commit-icon">👨‍💻</span>
+                        <span>Hỗ trợ kỹ thuật 1:1 qua Zalo</span>
+                    </div>
+                </div>
+            </section>
 
             <!-- BENTO GRID GIỚI THIỆU TRỌNG TÂM -->
             <div class="bento-grid" style="margin-top: 30px;">
@@ -11132,6 +11828,24 @@
             }
         }, { passive: true });
     </script>
+
+    <!-- NÚT ZALO NỔI THƯỜNG TRỰC CẢ TRANG (PULSE RIPPLE & GEMINI STAR) -->
+    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="floating-zalo-widget" id="floating-zalo-btn" title="Nhắn Zalo: 0342.041.517 nhận báo giá Google AI Pro 5TB">
+        <div class="floating-zalo-pill">
+            <span class="floating-zalo-pill-title">✨ Google AI Pro 5TB</span>
+            <span class="floating-zalo-pill-sub">Nhắn Zalo Báo Giá Ngay</span>
+        </div>
+        <div class="floating-zalo-circle">
+            <div class="floating-zalo-wave"></div>
+            <div class="floating-zalo-wave-2"></div>
+            <span class="gemini-sparkle-star">✦</span>
+            <svg viewBox="0 0 48 48" width="30" height="30">
+                <circle cx="24" cy="24" r="22" fill="#0068FF"/>
+                <path d="M14 24.5C14 19.25 18.48 15 24 15s10 4.25 10 9.5c0 5.25-4.48 9.5-10 9.5-1.57 0-3.05-.34-4.38-.95L15 34l1.1-3.67C14.85 28.85 14 26.78 14 24.5z" fill="#FFFFFF"/>
+                <path d="M22 21h4v1.5h-2.2l2.2 3.5V28h-4v-1.5h2.2L22 23v-2z" fill="#0068FF"/>
+            </svg>
+        </div>
+    </a>
 
     <!-- Nút Cuộn Nhanh Lên Đầu Trang Tối Ưu Chạm (Touch-friendly Back-to-Top) -->
     <button id="btn-back-to-top" class="btn-back-to-top" aria-label="Cuộn lên đầu trang" title="Cuộn lên đầu trang" onclick="scrollToTopSmooth()">
