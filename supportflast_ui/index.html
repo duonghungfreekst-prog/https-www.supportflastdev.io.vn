@@ -4034,44 +4034,72 @@
             50% { opacity: 1; }
         }
 
-        /* 2. NỘI DUNG CHỮ TO RÕ & TỪ KHÓA VÀNG KIM / CYAN ĐỈNH CAO */
+        /* 2. NỘI DUNG CHỮ TO RÕ & TỪ KHÓA VÀNG CHANH / CYAN NEON ĐẬM ĐẶC NỔI 100% */
         .mega-ribbon-headline {
-            font-size: 0.96rem;
-            font-weight: 600;
-            color: #ffffff;
-            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.8);
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: #FFFFFF;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 9px;
             flex-wrap: nowrap;
             white-space: nowrap;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
         }
+
+        /* Chữ dẫn đường 'Nâng cấp' và 'Tặng kèm' - Trắng tinh, dày dặn, nổi khối */
         .headline-lead {
-            color: #F8FAFC;
+            color: #FFFFFF !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.3px;
+            text-shadow: 
+                0 0 2px rgba(255, 255, 255, 0.9),
+                0 1px 3px #000000,
+                0 2px 6px rgba(0, 0, 0, 0.95);
         }
+
+        /* Dấu sao phân cách giữa 2 vế */
         .sparkle-separator {
-            color: #00f2fe;
-            font-size: 0.88rem;
-            filter: drop-shadow(0 0 8px #00f2fe);
+            color: #00F5FF;
+            font-size: 0.92rem;
+            text-shadow: 0 0 4px #FFFFFF, 0 0 10px #00F5FF, 0 1px 3px #000000;
             margin: 0 4px;
         }
+
+        /* Từ khóa 'Google AI Pro & Gemini Advanced' - Vàng chanh chói sáng cực độ, đặc chữ 100% */
         .neon-gold-keyword {
-            background: linear-gradient(180deg, #FFFFFF 0%, #FFE259 40%, #FFA751 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 850;
-            font-size: 1.05rem;
+            color: #FFF200 !important;
+            background: none !important;
+            -webkit-background-clip: unset !important;
+            -webkit-text-fill-color: #FFF200 !important;
+            font-weight: 900 !important;
+            font-size: 1.08rem !important;
             letter-spacing: 0.4px;
-            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.85));
             position: relative;
+            text-shadow:
+                0 0 2px #FFFFFF,
+                0 0 8px rgba(255, 242, 0, 0.95),
+                0 0 16px rgba(255, 215, 0, 0.75),
+                0 2px 4px #000000,
+                0 3px 8px rgba(0, 0, 0, 0.95);
         }
+
+        /* Từ khóa '5TB Google Drive Tốc Độ Cao!' - Xanh ngọc Neon rực sáng, tách khối 3D */
         .neon-gold-keyword.drive-keyword {
-            background: linear-gradient(180deg, #FFFFFF 0%, #67E8F9 45%, #00F2FE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 850;
-            font-size: 1.05rem;
-            filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.95));
+            color: #00F5FF !important;
+            background: none !important;
+            -webkit-background-clip: unset !important;
+            -webkit-text-fill-color: #00F5FF !important;
+            font-weight: 900 !important;
+            font-size: 1.08rem !important;
+            letter-spacing: 0.4px;
+            text-shadow:
+                0 0 2px #FFFFFF,
+                0 0 8px rgba(0, 245, 255, 0.95),
+                0 0 18px rgba(0, 229, 255, 0.8),
+                0 2px 4px #000000,
+                0 3px 8px rgba(0, 0, 0, 0.95);
         }
 
         /* 3. NÚT ZALO 3D SLEEK CYBER TO RÕ ĐẸP (OVERFLOW HIDDEN CHỐNG BIẾN DẠNG) */
@@ -4682,7 +4710,7 @@
                 display: none;
             }
             .neon-gold-keyword {
-                font-size: 0.94rem;
+                font-size: 0.98rem !important;
             }
             .btn-zalo-3d-mega {
                 width: auto;
