@@ -3,6 +3,7 @@ package registry
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -560,25 +561,40 @@ func GetUserFromToken(token string) (*User, bool) {
 		return nil, false
 	}
 
-	// 2. Trường hợp dùng trực tiếp Developer Secret Key mặc định của hệ thống
+	// 2. Trường hợp dùng API Key (Liên kết đúng chủ sở hữu, không tự động nâng thành admin)
 	if VerifyAPIKey(cleanToken) {
 		db := database.GetDB()
 		if db != nil {
-			var u User
-			err := db.QueryRow(`
-				SELECT id, username, email, password_hash, COALESCE(display_name, ''), 
-				       COALESCE(role, 'admin'), COALESCE(avatar, ''), COALESCE(created_at, ''), 
-				       COALESCE(updated_at, ''), COALESCE(last_login, '')
-				FROM users WHERE role = 'admin' LIMIT 1
-			`).Scan(
-				&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.DisplayName,
-				&u.Role, &u.Avatar, &u.CreatedAt, &u.UpdatedAt, &u.LastLogin,
-			)
-			if err == nil {
-				u.IsActive = true
-				return &u, true
+			h := sha256.Sum256([]byte(cleanToken))
+			hashHex := hex.EncodeToString(h[:])
+			var userID sql.NullString
+			var permissions sql.NullString
+			err := db.QueryRow("SELECT user_id, permissions FROM api_keys WHERE key_hash = ? AND status = 'active'", hashHex).Scan(&userID, &permissions)
+			if err == nil && userID.Valid && strings.TrimSpace(userID.String) != "" {
+				var u User
+				uErr := db.QueryRow(`
+					SELECT id, username, email, password_hash, COALESCE(display_name, ''), 
+					       COALESCE(role, 'user'), COALESCE(avatar, ''), COALESCE(created_at, ''), 
+					       COALESCE(updated_at, ''), COALESCE(last_login, '')
+					FROM users WHERE id = ?
+				`, strings.TrimSpace(userID.String)).Scan(
+					&u.ID, &u.Username, &u.Email, &u.PasswordHash, &u.DisplayName,
+					&u.Role, &u.Avatar, &u.CreatedAt, &u.UpdatedAt, &u.LastLogin,
+				)
+				if uErr == nil {
+					u.IsActive = true
+					return &u, true
+				}
 			}
 		}
+		// API Key độc lập (service identity) - CẤM gán quyền admin
+		return &User{
+			ID:          "svc-api-key",
+			Username:    "api_service",
+			DisplayName: "API Service Client",
+			Role:        "service",
+			IsActive:    true,
+		}, true
 	}
 
 	// 3. Xác thực Asymmetric JWT RS256 theo Rule 3.2

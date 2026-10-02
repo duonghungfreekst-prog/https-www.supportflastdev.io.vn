@@ -96,6 +96,17 @@ type GitStatusResponse struct {
 func GitStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	token := ExtractToken(r)
+	user, ok := GetUserFromToken(token)
+	if !ok || user == nil || user.Role != "admin" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "Yêu cầu quyền Quản trị viên (Admin)",
+		})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
@@ -161,7 +172,6 @@ func GitStatusHandler(w http.ResponseWriter, r *http.Request) {
 // GitSyncRequest tham số tùy chọn khi gọi API đồng bộ
 type GitSyncRequest struct {
 	Message string `json:"message"`
-	Force   bool   `json:"force"`
 }
 
 // GitSyncHandler xử lý kích hoạt tự động đồng bộ lên GitHub (POST /api/git/sync hoặc /api/admin/git/sync)
@@ -170,6 +180,17 @@ func GitSyncHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"Method not allowed, use POST"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	token := ExtractToken(r)
+	user, ok := GetUserFromToken(token)
+	if !ok || user == nil || user.Role != "admin" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  "Yêu cầu quyền Quản trị viên (Admin) để kích hoạt đồng bộ Git",
+		})
 		return
 	}
 
@@ -243,11 +264,8 @@ func GitSyncHandler(w http.ResponseWriter, r *http.Request) {
 	// 2. Kéo rebase nhẹ nhàng từ remote
 	_, _ = runGitCommand(ctx, "pull", "--rebase", "origin", "main")
 
-	// 3. Đẩy lên GitHub
+	// 3. Đẩy lên GitHub (Tuyệt đối không force push)
 	pushArgs := []string{"push", "-u", "origin", "main"}
-	if req.Force {
-		pushArgs = append(pushArgs, "--force")
-	}
 
 	pushOut, err := runGitCommand(ctx, pushArgs...)
 	if err != nil {

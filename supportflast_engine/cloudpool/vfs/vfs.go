@@ -371,14 +371,27 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 		IsEncrypted: true,
 	}
 
-	// Auto-replace: Nếu có file trùng tên trong cùng thư mục cha,
+	// Auto-replace: Nếu có file trùng tên trong cùng thư mục cha của user,
 	// xóa file cũ (chunks trên Drive + bản ghi DB) trước khi lưu file mới.
-	existingFile, findErr := v.db.FindFileByNameInParent(parentID, fileName)
+	existingFile, findErr := v.db.FindFileByNameInParent(userID, parentID, fileName)
 	if findErr == nil && existingFile != nil {
+		// Tập hợp danh sách các GDriveFileID mà file mới đang tái sử dụng (Deduplicated)
+		reusedDriveIDs := make(map[string]bool)
+		for _, c := range chunks {
+			if c.GDriveFileID != "" {
+				reusedDriveIDs[c.GDriveFileID] = true
+			}
+		}
+
 		// Lấy danh sách chunk cũ để xóa trên Google Drive (kiểm tra ref count)
 		oldChunks, chunkErr := v.db.GetChunksForFile(existingFile.ID)
 		if chunkErr == nil {
 			for _, oldChunk := range oldChunks {
+				// TUYỆT ĐỐI KHÔNG xóa trên Google Drive nếu file mới đang tái sử dụng chunk này!
+				if reusedDriveIDs[oldChunk.GDriveFileID] {
+					continue
+				}
+
 				// Only delete on Drive if no other file is sharing this chunk
 				refCount, _ := v.db.CountChunkReferences(oldChunk.GDriveFileID)
 				if refCount <= 1 {

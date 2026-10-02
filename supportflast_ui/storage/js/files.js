@@ -2006,27 +2006,31 @@ const FilesManager = {
             const statusBg = isPending ? 'rgba(245,158,11,0.1)' : (isApproved ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)');
             const statusText = isPending ? '⏳ Chờ duyệt' : (isApproved ? `✅ Đã cấp` : '❌ Từ chối');
 
+            const safeUserName = this.escapeHtml(r.user_display_name || r.username);
+            const safeFileName = this.escapeHtml(r.file_name);
+            const initialChar = this.escapeHtml((r.user_display_name || r.username || '?')[0].toUpperCase());
+
             return `
-            <div data-req-id="${r.id}" data-username="${r.user_display_name || r.username}" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 10px; transition: background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+            <div data-req-id="${this.escapeHtml(r.id)}" data-username="${safeUserName}" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 10px; transition: background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
               <!-- Avatar -->
               <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; flex-shrink: 0;">
-                ${(r.user_display_name || r.username || '?')[0].toUpperCase()}
+                ${initialChar}
               </div>
               <!-- Info -->
               <div style="flex: 1; min-width: 0;">
-                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${r.user_display_name || r.username}</div>
-                <div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${r.file_name}</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${safeUserName}</div>
+                <div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ${safeFileName}</div>
               </div>
               <!-- Status -->
               <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
-                <span style="background: ${statusBg}; color: ${statusColor}; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap;">${statusText}${isApproved && r.otp_code ? ` (${r.otp_code})` : ''}</span>
+                <span style="background: ${statusBg}; color: ${statusColor}; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap;">${statusText}${isApproved && r.otp_code ? ` (${this.escapeHtml(r.otp_code)})` : ''}</span>
                 <span style="font-size: 10px; color: var(--text-muted);">${Utils.formatDate(r.created_at)}</span>
               </div>
               <!-- Actions -->
               ${isPending ? `
               <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px; height: auto;" onclick="FilesManager.adminApproveRequest('${r.id}')">✓ Duyệt</button>
-                <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto; color: #ef4444;" onclick="FilesManager.adminRejectRequest('${r.id}')">✕</button>
+                <button class="btn btn-primary" style="font-size: 11px; padding: 4px 10px; height: auto;" onclick="FilesManager.adminApproveRequest('${this.escapeHtml(r.id)}')">✓ Duyệt</button>
+                <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px; height: auto; color: #ef4444;" onclick="FilesManager.adminRejectRequest('${this.escapeHtml(r.id)}')">✕</button>
               </div>` : ''}
             </div>`;
           }).join('');
@@ -2085,27 +2089,32 @@ const FilesManager = {
               remainText = `<span style="color:#38bdf8; font-family:monospace; font-size:11px; font-weight:700;">⏱ ${timeStr}</span>`;
             }
 
+            const safeOtpFileName = this.escapeHtml(o.file_name);
+            const rawTargetName = o.target_username || (o.target_user_id === 'all' ? 'Tất cả' : (o.target_user_id || '?'));
+            const safeTargetName = this.escapeHtml(rawTargetName);
+            const safeTargetInitial = this.escapeHtml((rawTargetName || '?')[0].toUpperCase());
+
             return `
             <tr>
               <td style="padding: 10px 14px;">
-                <span style="font-family:monospace; font-weight:800; font-size:14px; color:#60a5fa; background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:6px; letter-spacing:0.1em;">${o.otp_code}</span>
+                <span style="font-family:monospace; font-weight:800; font-size:14px; color:#60a5fa; background:rgba(59,130,246,0.1); padding:3px 10px; border-radius:6px; letter-spacing:0.1em;">${this.escapeHtml(o.otp_code)}</span>
               </td>
-              <td style="padding: 10px 14px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 12px;" title="${o.file_name}">
-                <span style="color:var(--text-muted); margin-right:4px;">📄</span>${o.file_name}
+              <td style="padding: 10px 14px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); font-size: 12px;" title="${safeOtpFileName}">
+                <span style="color:var(--text-muted); margin-right:4px;">📄</span>${safeOtpFileName}
               </td>
               <td style="padding: 10px 14px; white-space: nowrap;">
                 <div style="display:flex; align-items:center; gap:6px;">
                   <div style="width:22px; height:22px; border-radius:50%; background:linear-gradient(135deg,#8b5cf6,#3b82f6); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:white;">
-                    ${(o.target_username || (o.target_user_id === 'all' ? 'A' : '?'))[0].toUpperCase()}
+                    ${safeTargetInitial}
                   </div>
-                  <span style="font-size:12px; color:var(--text-secondary);">${o.target_username || (o.target_user_id === 'all' ? 'Tất cả' : o.target_user_id)}</span>
+                  <span style="font-size:12px; color:var(--text-secondary);">${safeTargetName}</span>
                 </div>
               </td>
               <td style="padding: 10px 14px;">${statusBadge}</td>
               <td style="padding: 10px 14px;">${remainText}</td>
               <td style="padding: 10px 14px; text-align: right;">
                 ${o.status === 'active' && !isExpired ? `
-                  <button class="btn btn-secondary btn-sm" style="font-size:11px; padding:3px 10px; color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="FilesManager.adminRevokeOTP('${o.id}')">Thu hồi</button>
+                  <button class="btn btn-secondary btn-sm" style="font-size:11px; padding:3px 10px; color:#ef4444; border-color:rgba(239,68,68,0.3);" onclick="FilesManager.adminRevokeOTP('${this.escapeHtml(o.id)}')">Thu hồi</button>
                 ` : `<span style="color:var(--text-muted); font-size:11px;">—</span>`}
               </td>
             </tr>`;
@@ -2523,21 +2532,23 @@ const FilesManager = {
         const icon = Utils.getFileIconSVG(f.mime_type || '', f.is_dir);
         const sizeText = f.is_dir ? 'Thư mục' : Utils.formatBytes(f.size_bytes);
         const delDate = f.deleted_at ? Utils.formatDate(f.deleted_at) : '-';
+        const safeName = this.escapeHtml(f.name);
+        const safeId = this.escapeHtml(f.id);
         html += `
           <tr>
             <td>
               <div class="file-name-cell">
                 <span class="file-icon ${f.is_dir ? 'folder' : ''}">${icon}</span>
-                <span>${f.name}</span>
+                <span>${safeName}</span>
               </div>
             </td>
             <td>${sizeText}</td>
             <td style="font-size: 11px; color: var(--text-muted);">${delDate}</td>
             <td style="text-align: right; white-space: nowrap;">
-              <button class="btn btn-secondary btn-sm" onclick="FilesManager.restoreTrashFile('${f.id}')" style="font-size: 11px; padding: 3px 8px; color: #10b981; margin-right: 6px;" title="Khôi phục tệp">
+              <button class="btn btn-secondary btn-sm" data-action="restore" data-id="${safeId}" style="font-size: 11px; padding: 3px 8px; color: #10b981; margin-right: 6px;" title="Khôi phục tệp">
                 ↩️ Khôi phục
               </button>
-              <button class="btn btn-danger btn-sm" onclick="FilesManager.purgeTrashFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="font-size: 11px; padding: 3px 8px;" title="Xóa vĩnh viễn">
+              <button class="btn btn-danger btn-sm" data-action="purge" data-id="${safeId}" data-name="${safeName}" style="font-size: 11px; padding: 3px 8px;" title="Xóa vĩnh viễn">
                 ✕ Xóa hẳn
               </button>
             </td>
@@ -2545,6 +2556,13 @@ const FilesManager = {
         `;
       });
       tbody.innerHTML = html;
+
+      tbody.querySelectorAll('button[data-action="restore"]').forEach(btn => {
+        btn.onclick = () => this.restoreTrashFile(btn.dataset.id);
+      });
+      tbody.querySelectorAll('button[data-action="purge"]').forEach(btn => {
+        btn.onclick = () => this.purgeTrashFile(btn.dataset.id, btn.dataset.name);
+      });
     } catch (err) {
       tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px; color: #ef4444;">Lỗi: ${err.message}</td></tr>`;
     }

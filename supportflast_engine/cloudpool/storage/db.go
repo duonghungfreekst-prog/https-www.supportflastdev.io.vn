@@ -1888,19 +1888,30 @@ func (s *DB) DeleteChunksForFile(fileID string) error {
 	return err
 }
 
-// FindFileByNameInParent tìm file (không phải folder) có cùng tên trong cùng thư mục cha.
-// Dùng để kiểm tra trùng tên trước khi upload → auto-replace.
-func (s *DB) FindFileByNameInParent(parentID, name string) (*models.VirtualFile, error) {
+// FindFileByNameInParent tìm file (không phải folder) có cùng tên trong cùng thư mục cha của đúng người dùng đó.
+// Dùng để kiểm tra trùng tên trước khi upload → auto-replace cho riêng từng user (Chống Cross-Tenant Overwrite).
+func (s *DB) FindFileByNameInParent(userID, parentID, name string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	row := s.db.QueryRow(
-		`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
-		 FROM virtual_files
-		 WHERE parent_id = ? AND name = ? AND is_dir = 0
-		 LIMIT 1`,
-		parentID, name,
-	)
+	var row *sql.Row
+	if userID != "" {
+		row = s.db.QueryRow(
+			`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
+			 FROM virtual_files
+			 WHERE user_id = ? AND parent_id = ? AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
+			 LIMIT 1`,
+			userID, parentID, name,
+		)
+	} else {
+		row = s.db.QueryRow(
+			`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, created_at, updated_at
+			 FROM virtual_files
+			 WHERE parent_id = ? AND name = ? AND is_dir = 0 AND (is_deleted = 0 OR is_deleted IS NULL)
+			 LIMIT 1`,
+			parentID, name,
+		)
+	}
 
 	var f models.VirtualFile
 	var sha, uid sql.NullString
@@ -3227,6 +3238,32 @@ func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]
 		list = append(list, f)
 	}
 	return list, nil
+}
+
+// IsFileDescendantOfFolder kiểm tra xem targetFileID có phải là tệp con cháu nằm trong rootFolderID hay không (Bảo vệ chống IDOR qua Public Share)
+func (s *DB) IsFileDescendantOfFolder(rootFolderID, targetFileID string) bool {
+	if rootFolderID == "" || targetFileID == "" {
+		return false
+	}
+	if rootFolderID == targetFileID {
+		return true
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var isDescendant int
+	checkQuery := `
+	WITH RECURSIVE folder_tree AS (
+		SELECT id FROM virtual_files WHERE id = ? AND is_deleted = 0
+		UNION ALL
+		SELECT vf.id FROM virtual_files vf
+		JOIN folder_tree ft ON vf.parent_id = ft.id
+		WHERE vf.is_deleted = 0
+	)
+	SELECT COUNT(*) FROM folder_tree WHERE id = ?;
+	`
+	_ = s.db.QueryRow(checkQuery, rootFolderID, targetFileID).Scan(&isDescendant)
+	return isDescendant > 0
 }
 
 type FileInTree struct {

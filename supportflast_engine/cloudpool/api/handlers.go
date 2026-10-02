@@ -119,7 +119,7 @@ func (s *Server) getOrRestoreChunkedSession(uploadID string) (*ChunkedUploadSess
 
 	// Nếu phiên có trạng thái assembling nhưng server vừa khởi động lại, kiểm tra xem tệp đã hoàn tất trên VFS chưa
 	if session.Status == "assembling" && s.db != nil {
-		if existing, err := s.db.FindFileByNameInParent(session.ParentID, session.FileName); err == nil && existing != nil {
+		if existing, err := s.db.FindFileByNameInParent(session.UserID, session.ParentID, session.FileName); err == nil && existing != nil {
 			session.Status = "completed"
 			session.ResultFile = existing
 			log.Printf("[ENGINE] [RESTORE] Tệp %s của phiên %s đã hoàn tất trên VFS, chuyển trạng thái sang completed", session.FileName, uploadID)
@@ -880,7 +880,7 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Kiểm tra trước xem có file trùng tên không (để báo với frontend)
-			existingOld, _ := s.db.FindFileByNameInParent(parentID, fileName)
+			existingOld, _ := s.db.FindFileByNameInParent(currentUserID, parentID, fileName)
 			wasReplaced := existingOld != nil
 
 			vfile, err := s.vfs.UploadFile(r.Context(), currentUserID, parentID, fileName, part, -1)
@@ -1148,7 +1148,7 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		existingOld, _ := s.db.FindFileByNameInParent(sess.ParentID, sess.FileName)
+		existingOld, _ := s.db.FindFileByNameInParent(sess.UserID, sess.ParentID, sess.FileName)
 		wasReplaced := existingOld != nil
 
 		vfile, err := s.vfs.UploadFile(bgCtx, sess.UserID, sess.ParentID, sess.FileName, pr, sess.TotalSize)
@@ -1368,8 +1368,25 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	isOwner := user != nil && vfile.UserID == user.ID
 
 	if !isAdmin && !isOwner {
-		// Kiểm tra xem file hoặc thư mục cha có được chia sẻ công khai không
-		if !s.db.IsFileOrAncestorShared(vfile.ID) {
+		// Kiểm tra quyền qua link chia sẻ công khai (Bắt buộc kèm share_token và mật khẩu hợp lệ)
+		isShareAuthorized := false
+		shareToken := r.URL.Query().Get("share_token")
+		if shareToken == "" {
+			shareToken = r.URL.Query().Get("token")
+		}
+		if shareToken != "" {
+			sh, err := s.db.GetPublicShare(shareToken)
+			if err == nil && sh != nil && sh.IsActive {
+				pass := r.URL.Query().Get("pass")
+				if !sh.HasPassword || (pass != "" && subtle.ConstantTimeCompare([]byte(core.HashSHA256([]byte(pass))), []byte(sh.PasswordHash)) == 1) {
+					if sh.FileID == vfile.ID || (sh.IsDir && s.db.IsFileDescendantOfFolder(sh.FileID, vfile.ID)) {
+						isShareAuthorized = true
+					}
+				}
+			}
+		}
+
+		if !isShareAuthorized {
 			settings, _ := s.db.GetSettings()
 			guestMode := "view_only"
 			if settings != nil && settings.GuestAccessMode != "" {
@@ -1475,8 +1492,25 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	isOwner := user != nil && vfile.UserID == user.ID
 
 	if !isAdmin && !isOwner {
-		// Kiểm tra xem file hoặc thư mục cha có được chia sẻ công khai không
-		if !s.db.IsFileOrAncestorShared(vfile.ID) {
+		// Kiểm tra quyền qua link chia sẻ công khai (Bắt buộc kèm share_token và mật khẩu hợp lệ)
+		isShareAuthorized := false
+		shareToken := r.URL.Query().Get("share_token")
+		if shareToken == "" {
+			shareToken = r.URL.Query().Get("token")
+		}
+		if shareToken != "" {
+			sh, err := s.db.GetPublicShare(shareToken)
+			if err == nil && sh != nil && sh.IsActive {
+				pass := r.URL.Query().Get("pass")
+				if !sh.HasPassword || (pass != "" && subtle.ConstantTimeCompare([]byte(core.HashSHA256([]byte(pass))), []byte(sh.PasswordHash)) == 1) {
+					if sh.FileID == vfile.ID || (sh.IsDir && s.db.IsFileDescendantOfFolder(sh.FileID, vfile.ID)) {
+						isShareAuthorized = true
+					}
+				}
+			}
+		}
+
+		if !isShareAuthorized {
 			settings, _ := s.db.GetSettings()
 			guestMode := "view_only"
 			if settings != nil && settings.GuestAccessMode != "" {
@@ -1869,27 +1903,30 @@ func (s *Server) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+	user := s.getUserFromRequest(r)
+	if user == nil || user.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Yêu cầu quyền Quản trị viên để truy cập cài đặt", nil)
+		return
+	}
+
 	if r.Method == http.MethodGet {
 		settings, err := s.db.GetSettings()
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "Lỗi đọc cài đặt", err)
 			return
 		}
-		// Mask sensitive passphrase for display
+		// Mask sensitive credentials for display
 		settings.MasterPassphrase = "********"
 		settings.GoogleClientSecret = "********"
 		settings.TurnstileSecretKey = "********"
+		if settings.WebDAVPassword != "" {
+			settings.WebDAVPassword = "********"
+		}
 		writeJSON(w, http.StatusOK, settings)
 		return
 	}
 
 	if r.Method == http.MethodPost {
-		user := s.getUserFromRequest(r)
-		if user == nil || user.Role != "admin" {
-			writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền thay đổi cài đặt hệ thống", nil)
-			return
-		}
-
 		var req models.Settings
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeError(w, http.StatusBadRequest, "Dữ liệu cài đặt không hợp lệ", err)
@@ -1898,17 +1935,26 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 		current, _ := s.db.GetSettings()
 		if req.MasterPassphrase == "" || req.MasterPassphrase == "********" {
-			req.MasterPassphrase = current.MasterPassphrase
+			if current != nil {
+				req.MasterPassphrase = current.MasterPassphrase
+			}
 		} else if current == nil || req.MasterPassphrase != current.MasterPassphrase {
 			newHash := core.HashSHA256([]byte(req.MasterPassphrase))
 			_ = s.db.UpdateUserPassword("user_admin", newHash)
 
 			// REKEY database
-			oldPass := current.MasterPassphrase
+			oldPass := ""
+			if current != nil {
+				oldPass = current.MasterPassphrase
+			}
 			if oldPass == "" {
 				oldPass = "cloudpool_secure_master_key_2026"
 			}
-			_ = s.db.RekeyDatabase(oldPass, req.MasterPassphrase)
+			if err := s.db.RekeyDatabase(oldPass, req.MasterPassphrase); err != nil {
+				log.Printf("[ENGINE] [ERROR] RekeyDatabase thất bại: %v", err)
+				writeError(w, http.StatusInternalServerError, "Lỗi cập nhật mật mã bảo mật hệ thống: "+err.Error(), err)
+				return
+			}
 		}
 
 		if req.GoogleClientID == "" || req.GoogleClientID == "********" {
@@ -1926,11 +1972,20 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 				req.TurnstileSecretKey = current.TurnstileSecretKey
 			}
 		}
+		if req.WebDAVPassword == "" || req.WebDAVPassword == "********" {
+			if current != nil {
+				req.WebDAVPassword = current.WebDAVPassword
+			}
+		}
 		if req.ServerPort <= 0 {
-			req.ServerPort = current.ServerPort
+			if current != nil {
+				req.ServerPort = current.ServerPort
+			}
 		}
 		if req.ChunkSizeBytes <= 0 {
-			req.ChunkSizeBytes = current.ChunkSizeBytes
+			if current != nil {
+				req.ChunkSizeBytes = current.ChunkSizeBytes
+			}
 		}
 
 		if err := s.db.SaveSettings(&req); err != nil {
@@ -4616,6 +4671,14 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	targetMimeType := sh.MimeType
 
 	if fileID != "" && fileID != sh.FileID {
+		if !sh.IsDir {
+			writeError(w, http.StatusForbidden, "Link chia sẻ chỉ dành cho tệp tin đơn lẻ, không được phép chỉ định tệp khác", nil)
+			return
+		}
+		if !s.db.IsFileDescendantOfFolder(sh.FileID, fileID) {
+			writeError(w, http.StatusForbidden, "Tệp tin yêu cầu không nằm trong thư mục được chia sẻ", nil)
+			return
+		}
 		vfile, err := s.db.GetVirtualFile(fileID)
 		if err != nil || vfile.IsDir {
 			writeError(w, http.StatusNotFound, "Tệp tin không tồn tại", err)
@@ -4685,6 +4748,14 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 
 	// If downloading a specific file inside a shared folder
 	if fileID != "" && fileID != sh.FileID {
+		if !sh.IsDir {
+			writeError(w, http.StatusForbidden, "Link chia sẻ chỉ dành cho tệp tin đơn lẻ, không được phép chỉ định tệp khác", nil)
+			return
+		}
+		if !s.db.IsFileDescendantOfFolder(sh.FileID, fileID) {
+			writeError(w, http.StatusForbidden, "Tệp tin yêu cầu không nằm trong thư mục được chia sẻ", nil)
+			return
+		}
 		vfile, err := s.db.GetVirtualFile(fileID)
 		if err != nil || vfile.IsDir {
 			writeError(w, http.StatusNotFound, "Tệp không tồn tại", err)
