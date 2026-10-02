@@ -145,6 +145,9 @@ func ResolveDBPath(customPath ...string) string {
 	if envPath := strings.TrimSpace(os.Getenv("DB_PATH")); envPath != "" {
 		return envPath
 	}
+	if dataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); dataDir != "" {
+		return filepath.Join(dataDir, "supportflast.db")
+	}
 	return filepath.Join(".", "data", "supportflast.db")
 }
 

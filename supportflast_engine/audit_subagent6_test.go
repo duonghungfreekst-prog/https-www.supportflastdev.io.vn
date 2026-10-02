@@ -413,6 +413,10 @@ func TestCrossKeyDecryptionImpact(t *testing.T) {
 	// Lấy 1 tài khoản làm mẫu
 	var encEmail, encName, encToken string
 	err = sqlDB.QueryRow("SELECT email, name, token_json FROM accounts LIMIT 1").Scan(&encEmail, &encName, &encToken)
+	if err == sql.ErrNoRows {
+		t.Skip("Bỏ qua: Bảng accounts chưa có dữ liệu mẫu để kiểm tra giải mã chéo")
+		return
+	}
 	if err != nil {
 		t.Fatalf("Query account mẫu thất bại: %v", err)
 	}

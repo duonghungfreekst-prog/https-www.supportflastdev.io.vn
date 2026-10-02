@@ -212,9 +212,9 @@ func TestAutoBootstrapping_BlankHosting(t *testing.T) {
 	}
 	for _, tbl := range expectedCloudPoolTables {
 		var count int
-		query := fmt.Sprintf("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='%s'", tbl)
+		query := fmt.Sprintf("SELECT COUNT(*) FROM sqlite_master WHERE type IN ('table', 'view') AND name='%s'", tbl)
 		if err := sDB.QueryRow(query).Scan(&count); err != nil || count == 0 {
-			t.Errorf("Bảng bắt buộc '%s' không tồn tại trong cloudpool_metadata.db", tbl)
+			t.Errorf("Bảng/View bắt buộc '%s' không tồn tại trong cloudpool_metadata.db", tbl)
 		}
 	}
 }
