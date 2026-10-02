@@ -4034,72 +4034,69 @@
             50% { opacity: 1; }
         }
 
-        /* 2. NỘI DUNG CHỮ TO RÕ & TỪ KHÓA VÀNG CHANH / CYAN NEON ĐẬM ĐẶC NỔI 100% */
+        /* 2. NỘI DUNG CHỮ SẮC NÉT CRYSTAL CLEAR - ĐỌC RÕ 100% TRONG 1 GIÂY */
         .mega-ribbon-headline {
             font-size: 0.98rem;
             font-weight: 700;
             color: #FFFFFF;
             display: inline-flex;
             align-items: center;
-            gap: 9px;
+            gap: 10px;
             flex-wrap: nowrap;
             white-space: nowrap;
-            text-rendering: optimizeLegibility;
-            -webkit-font-smoothing: antialiased;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 999px;
+            padding: 3px 14px;
         }
 
-        /* Chữ dẫn đường 'Nâng cấp' và 'Tặng kèm' - Trắng tinh, dày dặn, nổi khối */
+        /* Chữ dẫn đường 'Nâng cấp' và 'Tặng kèm' - Trắng sáng thuần khiết 100%, không bóng mờ */
         .headline-lead {
             color: #FFFFFF !important;
             font-weight: 800 !important;
+            font-size: 0.94rem;
             letter-spacing: 0.3px;
-            text-shadow: 
-                0 0 2px rgba(255, 255, 255, 0.9),
-                0 1px 3px #000000,
-                0 2px 6px rgba(0, 0, 0, 0.95);
+            text-shadow: none !important;
         }
 
-        /* Dấu sao phân cách giữa 2 vế */
+        /* Dấu phân cách giữa 2 vế */
         .sparkle-separator {
-            color: #00F5FF;
-            font-size: 0.92rem;
-            text-shadow: 0 0 4px #FFFFFF, 0 0 10px #00F5FF, 0 1px 3px #000000;
-            margin: 0 4px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+            margin: 0 2px;
+            text-shadow: none !important;
         }
 
-        /* Từ khóa 'Google AI Pro & Gemini Advanced' - Vàng chanh chói sáng cực độ, đặc chữ 100% */
+        /* Từ khóa 'Google AI Pro & Gemini Advanced' - Vàng chanh tươi sáng nguyên bản, đóng khung viền sắc nét */
         .neon-gold-keyword {
-            color: #FFF200 !important;
-            background: none !important;
-            -webkit-background-clip: unset !important;
-            -webkit-text-fill-color: #FFF200 !important;
+            color: #FFFF00 !important;
+            background: rgba(255, 255, 0, 0.14) !important;
+            border: 1px solid #FFFF00 !important;
+            border-radius: 6px !important;
+            padding: 2px 10px !important;
             font-weight: 900 !important;
-            font-size: 1.08rem !important;
-            letter-spacing: 0.4px;
-            position: relative;
-            text-shadow:
-                0 0 2px #FFFFFF,
-                0 0 8px rgba(255, 242, 0, 0.95),
-                0 0 16px rgba(255, 215, 0, 0.75),
-                0 2px 4px #000000,
-                0 3px 8px rgba(0, 0, 0, 0.95);
+            font-size: 1.02rem !important;
+            letter-spacing: 0.3px;
+            display: inline-flex;
+            align-items: center;
+            text-shadow: none !important; /* XÓA BỎ 100% BÓNG ĐEN GÂY ĐỤC VÀ BẨN CHỮ */
+            -webkit-text-fill-color: #FFFF00 !important;
         }
 
-        /* Từ khóa '5TB Google Drive Tốc Độ Cao!' - Xanh ngọc Neon rực sáng, tách khối 3D */
+        /* Từ khóa '5TB Google Drive Tốc Độ Cao!' - Xanh lục dạ quang chói sáng, tách khối rõ rệt */
         .neon-gold-keyword.drive-keyword {
-            color: #00F5FF !important;
-            background: none !important;
-            -webkit-background-clip: unset !important;
-            -webkit-text-fill-color: #00F5FF !important;
+            color: #00FF88 !important;
+            background: rgba(0, 255, 136, 0.14) !important;
+            border: 1px solid #00FF88 !important;
+            border-radius: 6px !important;
+            padding: 2px 10px !important;
             font-weight: 900 !important;
-            font-size: 1.08rem !important;
-            letter-spacing: 0.4px;
-            text-shadow:
-                0 0 2px #FFFFFF,
-                0 0 8px rgba(0, 245, 255, 0.95),
-                0 0 18px rgba(0, 229, 255, 0.8),
-                0 2px 4px #000000,
-                0 3px 8px rgba(0, 0, 0, 0.95);
+            font-size: 1.02rem !important;
+            letter-spacing: 0.3px;
+            display: inline-flex;
+            align-items: center;
+            text-shadow: none !important; /* XÓA BỎ 100% BÓNG ĐEN */
+            -webkit-text-fill-color: #00FF88 !important;
         }
 
         /* 3. NÚT ZALO 3D SLEEK CYBER TO RÕ ĐẸP (OVERFLOW HIDDEN CHỐNG BIẾN DẠNG) */
@@ -4702,15 +4699,20 @@
                 font-size: 0.88rem;
                 line-height: 1.45;
                 flex-direction: column;
-                gap: 4px;
+                gap: 6px;
                 flex-wrap: wrap;
                 white-space: normal;
+                background: none;
+                border: none;
+                padding: 0;
             }
             .sparkle-separator {
                 display: none;
             }
-            .neon-gold-keyword {
-                font-size: 0.98rem !important;
+            .neon-gold-keyword,
+            .neon-gold-keyword.drive-keyword {
+                font-size: 0.94rem !important;
+                padding: 2px 10px !important;
             }
             .btn-zalo-3d-mega {
                 width: auto;
@@ -4724,8 +4726,8 @@
 
         @media (max-width: 1200px) and (min-width: 769px) {
             .gemini-top-ribbon-inner {
-                gap: 12px;
-                padding: 0 14px;
+                gap: 10px;
+                padding: 0 12px;
             }
             .mega-ribbon-badge {
                 font-size: 0.74rem;
@@ -4733,11 +4735,14 @@
                 padding: 0 8px;
             }
             .mega-ribbon-headline {
-                font-size: 0.88rem;
+                font-size: 0.86rem;
                 gap: 6px;
+                padding: 2px 10px;
             }
-            .neon-gold-keyword {
-                font-size: 0.96rem;
+            .neon-gold-keyword,
+            .neon-gold-keyword.drive-keyword {
+                font-size: 0.92rem !important;
+                padding: 1px 8px !important;
             }
             .btn-zalo-3d-mega {
                 height: 32px;
