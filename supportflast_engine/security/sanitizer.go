@@ -404,19 +404,39 @@ type SecurityResponseWriter struct {
 func (w *SecurityResponseWriter) ApplyHeaders() {
 	h := w.ResponseWriter.Header()
 
-	// 1. Cấu hình đầy đủ bộ Security Headers bắt buộc chuẩn quân sự theo Rule 3.4
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("X-Frame-Options", "DENY")
-	h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
-	h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;")
-	h.Set("X-XSS-Protection", "1; mode=block")
-	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-	h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+	// 1. Cấu hình đầy đủ bộ Security Headers bắt buộc chuẩn quân sự theo Rule 3.4 (chỉ gán nếu chưa được handler tùy biến)
+	if h.Get("X-Content-Type-Options") == "" {
+		h.Set("X-Content-Type-Options", "nosniff")
+	}
+	if h.Get("X-Frame-Options") == "" {
+		h.Set("X-Frame-Options", "DENY")
+	}
+	if h.Get("Strict-Transport-Security") == "" {
+		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+	}
+	if h.Get("Content-Security-Policy") == "" {
+		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;")
+	}
+	if h.Get("X-XSS-Protection") == "" {
+		h.Set("X-XSS-Protection", "1; mode=block")
+	}
+	if h.Get("Referrer-Policy") == "" {
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	}
+	if h.Get("Permissions-Policy") == "" {
+		h.Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+	}
 
-	// 2. Chống cache trình duyệt nghiêm ngặt đối với mọi HTTP response & UI
-	h.Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-	h.Set("Pragma", "no-cache")
-	h.Set("Expires", "0")
+	// 2. Chống cache trình duyệt mặc định: KHÔNG ghi đè nếu downstream handler đã chỉ định cache hợp lệ (ví dụ: static assets)
+	if h.Get("Cache-Control") == "" {
+		h.Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+		if h.Get("Pragma") == "" {
+			h.Set("Pragma", "no-cache")
+		}
+		if h.Get("Expires") == "" {
+			h.Set("Expires", "0")
+		}
+	}
 
 	// 3. Triệt tiêu hoàn toàn các header lộ thông tin công nghệ theo Rule 3.4 & 3.5
 	h.Del("Server")
