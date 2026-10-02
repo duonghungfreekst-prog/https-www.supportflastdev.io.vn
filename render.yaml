@@ -66,9 +66,9 @@ services:
       - key: TIDB_PORT
         value: "4000"
       - key: TIDB_USER
-        value: 2KGt5QqixkveQPP.root
+        sync: false
       - key: TIDB_PASSWORD
-        value: JIxWb1nGVINnKzap
+        sync: false
       - key: TIDB_DATABASE
         value: supportflast
       - key: TIDB_TLS

@@ -20,9 +20,6 @@ func TestDefaultTiDBConfig(t *testing.T) {
 		t.Errorf("Kỳ vọng database mặc định '%s', thực tế: '%s'", DefaultTiDBDatabase, cfg.Database)
 	}
 	expectedUser := DefaultTiDBUser
-	if strings.Contains(cfg.Host, "tidbcloud.com") {
-		expectedUser = "2KGt5QqixkveQPP.root"
-	}
 	if cfg.User != expectedUser {
 		t.Errorf("Kỳ vọng user mặc định '%s', thực tế: '%s'", expectedUser, cfg.User)
 	}

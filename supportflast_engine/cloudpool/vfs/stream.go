@@ -662,13 +662,12 @@ func (s *FileStreamer) fetchAndDecryptChunk(chunk models.FileChunk) ([]byte, err
 		return rawBytes, nil
 	}
 
-	// Decrypt encrypted chunks with multi-key adaptive fallback
+	// Decrypt encrypted chunks using derived file key and configured db master key
 	candidateKeys := [][32]byte{
 		s.encKey,
-		core.DeriveKey("Hung1999@", nil),
-		core.DeriveKey("17c88fc173d5005180d476444daeb1e7", nil),
-		core.DeriveKey("cloudpool_secure_master_key_2026", nil),
-		core.DeriveKey("", nil),
+	}
+	if envMasterKey := strings.TrimSpace(os.Getenv("CLOUDPOOL_MASTER_KEY")); envMasterKey != "" {
+		candidateKeys = append(candidateKeys, core.DeriveKey(envMasterKey, nil))
 	}
 	if s.vfs != nil && s.vfs.db != nil {
 		candidateKeys = append(candidateKeys, s.vfs.db.GetMasterKey())

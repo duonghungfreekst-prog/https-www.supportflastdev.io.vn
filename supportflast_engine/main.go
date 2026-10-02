@@ -55,10 +55,7 @@ func getInternalServiceSecret() string {
 	if s := strings.TrimSpace(os.Getenv("INTERNAL_SERVICE_SECRET")); s != "" {
 		return s
 	}
-	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
-		return s
-	}
-	return "sf_internal_service_secret_2026"
+	return strings.TrimSpace(os.Getenv("JWT_SECRET"))
 }
 
 type SubagentMeta struct {
@@ -879,6 +876,16 @@ func main() {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+
+		// Chặn hoàn toàn truy cập web vào thư mục desktop WPF và mã nguồn C#
+		cleanPath := strings.ToLower(filepath.ToSlash(filepath.Clean(path)))
+		if strings.HasPrefix(cleanPath, "/wpf") || strings.HasPrefix(cleanPath, "wpf") ||
+			strings.HasSuffix(cleanPath, ".cs") || strings.HasSuffix(cleanPath, ".xaml") ||
+			strings.HasSuffix(cleanPath, ".csproj") || strings.HasSuffix(cleanPath, ".dll") ||
+			strings.HasSuffix(cleanPath, ".pdb") || strings.HasSuffix(cleanPath, ".baml") {
+			http.NotFound(w, r)
+			return
+		}
 
 		// Phân loại file để áp dụng Cache-Control phù hợp
 		isHTML := path == "/" || strings.HasSuffix(path, ".html")

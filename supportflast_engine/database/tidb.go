@@ -147,17 +147,10 @@ func DefaultTiDBConfig() TiDBConfig {
 		host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
 	}
 	user := strings.TrimSpace(os.Getenv("TIDB_USER"))
-	if user == "" || user == DefaultTiDBUser {
-		if strings.Contains(host, "tidbcloud.com") {
-			user = "2KGt5QqixkveQPP.root"
-		} else {
-			user = DefaultTiDBUser
-		}
+	if user == "" {
+		user = DefaultTiDBUser
 	}
 	pass := strings.TrimSpace(os.Getenv("TIDB_PASSWORD"))
-	if pass == "" && strings.Contains(host, "tidbcloud.com") {
-		pass = "JIxWb1nGVINnKzap"
-	}
 
 	return TiDBConfig{
 		Host:               host,

@@ -74,6 +74,13 @@ tools/cloudflared*
 tools/dist/
 supportflast_core/target/
 
+# 3.1 .NET / C# WPF Build Artifacts
+bin/
+obj/
+supportflast_ui/wpf/bin/
+supportflast_ui/wpf/obj/
+*.baml
+
 # 4. Logs & File tạm thời (Rule PHAN 1.2)
 logs/*
 !logs/.gitkeep

@@ -15,7 +15,7 @@ from core.subagent_dispatcher import SubagentDispatcher
 from core.security_scanner import PackageSecurityScanner
 from core.siem_engine import SIEMEngine
 
-INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET") or os.getenv("JWT_SECRET") or "sf_internal_service_secret_2026"
+INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET") or os.getenv("JWT_SECRET") or ""
 
 def verify_internal_auth(request: Request) -> bool:
     """Xác thực token nội bộ giữa Go Engine và Python AI (Rule 2.4 & Rule 3.2)."""
