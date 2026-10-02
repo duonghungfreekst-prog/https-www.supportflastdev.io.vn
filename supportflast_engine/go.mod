@@ -10,6 +10,7 @@ require (
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sys v0.48.0
 	google.golang.org/api v0.299.0
+	modernc.org/sqlite v1.59.0
 )
 
 require (

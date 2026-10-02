@@ -130,7 +130,7 @@ func (s *Server) getOrRestoreChunkedSession(uploadID string) (*ChunkedUploadSess
 }
 
 // cleanupExpiredSessions removes chunked upload sessions older than 2 hours and deletes temp files.
-func cleanupExpiredSessions() {
+func cleanupExpiredSessions(baseDir string) {
 	chunkedSessions.Range(func(key, value interface{}) bool {
 		session, ok := value.(*ChunkedUploadSession)
 		if !ok {
@@ -143,8 +143,58 @@ func cleanupExpiredSessions() {
 			}
 			chunkedSessions.Delete(key)
 			log.Printf("[ENGINE] Cleaned up expired chunked upload session and temp dir: %s", key)
+		} else if session.Status == "completed" && time.Since(session.CreatedAt) > 15*time.Minute {
+			chunkedSessions.Delete(key)
 		}
 		return true
+	})
+
+	if baseDir != "" {
+		tempRootDir := filepath.Join(baseDir, "temp_chunks")
+		entries, err := os.ReadDir(tempRootDir)
+		if err == nil {
+			now := time.Now()
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					continue
+				}
+				info, iErr := entry.Info()
+				if iErr != nil {
+					continue
+				}
+				if now.Sub(info.ModTime()) > 2*time.Hour {
+					dirPath := filepath.Join(tempRootDir, entry.Name())
+					if val, exists := chunkedSessions.Load(entry.Name()); exists {
+						if sess, ok := val.(*ChunkedUploadSession); ok && sess.Status == "assembling" {
+							continue
+						}
+					}
+					if rErr := os.RemoveAll(dirPath); rErr != nil {
+						log.Printf("[ENGINE] [CLEANUP] [WARN] Không thể xóa thư mục tạm mồ côi %s: %v", dirPath, rErr)
+					} else {
+						chunkedSessions.Delete(entry.Name())
+						log.Printf("[ENGINE] [CLEANUP] Đã dọn dẹp thư mục tạm mồ côi: %s", dirPath)
+					}
+				}
+			}
+		}
+	}
+}
+
+var cleanupWorkerOnce sync.Once
+
+// StartSessionCleanupWorker khởi chạy background worker định kỳ quét dọn session và thư mục tạm mồ côi
+func StartSessionCleanupWorker(baseDir string) {
+	cleanupWorkerOnce.Do(func() {
+		go func() {
+			cleanupExpiredSessions(baseDir)
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				cleanupExpiredSessions(baseDir)
+			}
+		}()
+		log.Printf("[ENGINE] [CLEANUP] Worker dọn dẹp phiên tải lên và rác đĩa mồ côi đã được kích hoạt thành công")
 	})
 }
 
@@ -155,13 +205,7 @@ func (s *Server) Start() error {
 	}
 
 	// Start background goroutine to clean up expired chunked upload sessions
-	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			cleanupExpiredSessions()
-		}
-	}()
+	StartSessionCleanupWorker(s.baseDir)
 
 	mux := http.NewServeMux()
 
@@ -883,6 +927,21 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 			existingOld, _ := s.db.FindFileByNameInParent(currentUserID, parentID, fileName)
 			wasReplaced := existingOld != nil
 
+			// Kiểm tra hạn ngạch người dùng trước khi upload stream (P1: Quota Enforcement)
+			if currentUserID != "user_admin" && user != nil && user.Role != "admin" {
+				dbUser, uErr := s.db.GetUserByID(currentUserID)
+				if uErr == nil && dbUser != nil && dbUser.QuotaBytes > 0 {
+					remQuota := dbUser.QuotaBytes - dbUser.UsedBytes
+					if existingOld != nil {
+						remQuota += existingOld.SizeBytes
+					}
+					if remQuota <= 0 {
+						writeError(w, http.StatusInsufficientStorage, "Hạn ngạch dung lượng tài khoản của bạn đã đầy. Vui lòng giải phóng bớt dung lượng.", nil)
+						return
+					}
+				}
+			}
+
 			vfile, err := s.vfs.UploadFile(r.Context(), currentUserID, parentID, fileName, part, -1)
 			if err != nil {
 				log.Printf("[ENGINE] Upload error for user %s: %v", currentUserID, err)
@@ -967,6 +1026,21 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 			initReq.ParentID = "root"
 		}
 
+		// Kiểm tra hạn ngạch người dùng trước khi cấp phép phiên tải lên (P1: Quota Enforcement)
+		if currentUserID != "user_admin" && user != nil && user.Role != "admin" {
+			dbUser, uErr := s.db.GetUserByID(currentUserID)
+			if uErr == nil && dbUser != nil && dbUser.QuotaBytes > 0 {
+				remQuota := dbUser.QuotaBytes - dbUser.UsedBytes
+				if oldFile, _ := s.db.FindFileByNameInParent(currentUserID, initReq.ParentID, initReq.FileName); oldFile != nil {
+					remQuota += oldFile.SizeBytes
+				}
+				if remQuota <= 0 || (initReq.TotalSize > 0 && initReq.TotalSize > remQuota) {
+					writeError(w, http.StatusInsufficientStorage, fmt.Sprintf("Hạn ngạch dung lượng tài khoản không đủ (Còn trống %s, tệp yêu cầu %s)", formatBytes(remQuota), formatBytes(initReq.TotalSize)), nil)
+					return
+				}
+			}
+		}
+
 		newID := uuid.New().String()
 		tempDir := filepath.Join(s.baseDir, "data", "temp_chunks", newID)
 		if err := os.MkdirAll(tempDir, 0700); err != nil {
@@ -1015,6 +1089,17 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 	session, ok := s.getOrRestoreChunkedSession(uploadID)
 	if !ok {
 		writeError(w, http.StatusNotFound, "Phiên tải lên không tồn tại hoặc đã hết hạn", nil)
+		return
+	}
+
+	session.mu.Lock()
+	sessStatus := session.Status
+	session.mu.Unlock()
+	if sessStatus != "uploading" {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status":  sessStatus,
+			"message": "Phiên tải lên đang được xử lý ghép tệp hoặc đã hoàn tất",
+		})
 		return
 	}
 
@@ -1087,17 +1172,24 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Store chunk status
+	// Store chunk status & Atomic CAS Assembling transition (Chống Double Assembling Race Condition)
+	var shouldStartAssembly bool
 	session.mu.Lock()
 	session.Received[chunkIndex] = true
 	receivedCount := len(session.Received)
+	if receivedCount == session.TotalChunks && session.Status == "uploading" {
+		session.Status = "assembling"
+		shouldStartAssembly = true
+		if sBytes, err := json.Marshal(session); err == nil && session.TempDir != "" {
+			_ = os.WriteFile(filepath.Join(session.TempDir, "session.json"), sBytes, 0600)
+		}
+	}
 	session.mu.Unlock()
 
 	log.Printf("[ENGINE] Chunked upload %s: received chunk %d/%d (%d bytes written to disk)",
 		uploadID, chunkIndex+1, session.TotalChunks, written)
 
-	// Check if all chunks received
-	if receivedCount < session.TotalChunks {
+	if !shouldStartAssembly {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"status":   "chunk_received",
 			"received": receivedCount,
@@ -1105,14 +1197,6 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	// === All chunks received → assemble and upload asynchronously via background goroutine ===
-	session.mu.Lock()
-	session.Status = "assembling"
-	if sBytes, err := json.Marshal(session); err == nil && session.TempDir != "" {
-		_ = os.WriteFile(filepath.Join(session.TempDir, "session.json"), sBytes, 0600)
-	}
-	session.mu.Unlock()
 
 	log.Printf("[ENGINE] Chunked upload %s: all %d chunks received, starting async assembly for file %s",
 		uploadID, session.TotalChunks, session.FileName)

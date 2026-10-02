@@ -56,6 +56,9 @@ func InitHandlers(db *storage.DB, gd *gdrive.Manager, vfsEngine *vfs.VFS, uiDir 
 		s.setupSubMuxes()
 		DefaultServer = s
 
+		// Khởi chạy worker dọn dẹp các phiên upload quá hạn và rác đĩa mồ côi
+		StartSessionCleanupWorker(baseDir)
+
 		FilesHandler = s.FilesHandler
 		AccountsHandler = s.AccountsHandler
 		StatsHandler = s.StatsHandler

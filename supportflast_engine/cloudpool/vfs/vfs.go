@@ -111,6 +111,21 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 	filePath := path.Clean(path.Join(parentPath, fileName))
 	mimeType := models.ResolveMimeType(fileName)
 
+	// Kiểm tra hạn ngạch người dùng trước khi stream (P1: Quota Enforcement)
+	var userMaxAllowed int64 = -1
+	if userID != "user_admin" && userID != "" {
+		if dbUser, uErr := v.db.GetUserByID(userID); uErr == nil && dbUser != nil && dbUser.QuotaBytes > 0 {
+			remQuota := dbUser.QuotaBytes - dbUser.UsedBytes
+			if oldF, _ := v.db.FindFileByNameInParent(userID, parentID, fileName); oldF != nil {
+				remQuota += oldF.SizeBytes
+			}
+			if remQuota <= 0 || (sizeHint > 0 && sizeHint > remQuota) {
+				return nil, fmt.Errorf("dung lượng tệp vượt quá hạn mức lưu trữ còn lại của tài khoản (còn lại: %d bytes)", remQuota)
+			}
+			userMaxAllowed = remQuota
+		}
+	}
+
 	fileID := "file_" + uuid.New().String()
 	var totalSize int64
 	var chunkIndex int
@@ -293,6 +308,14 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 			chunkData := make([]byte, n)
 			copy(chunkData, buf[:n])
 			totalSize += int64(n)
+
+			// Kiểm tra hạn ngạch người dùng trong quá trình stream (In-flight Quota Guard)
+			if userMaxAllowed > 0 && totalSize > userMaxAllowed {
+				errMu.Lock()
+				uploadErr = fmt.Errorf("dung lượng tệp vượt quá hạn mức lưu trữ còn lại của tài khoản (đã stream %d bytes, hạn mức còn lại %d bytes)", totalSize, userMaxAllowed)
+				errMu.Unlock()
+				break
+			}
 
 			job := &uploadJob{
 				chunkIndex: chunkIndex,
