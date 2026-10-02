@@ -14,7 +14,9 @@
 *.pfx
 *.p12
 data/certs/
-data/keys/
+data/keys/*
+!data/keys/.gitkeep
+!data/.gitkeep
 **/keys.json
 supportflast_engine/data/
 data/oauth/

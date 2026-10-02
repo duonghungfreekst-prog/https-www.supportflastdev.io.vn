@@ -75,20 +75,14 @@ COPY --chown=appuser:appgroup entrypoint.sh /app/entrypoint.sh
 # Copy toàn bộ giao diện Web UI (gồm cả thư mục con storage/ cho CloudPool Virtual Storage)
 COPY --chown=appuser:appgroup supportflast_ui /app/supportflast_ui
 
-# Copy cấu hình schema DDL và JSON metadata từ data/ (loại trừ toàn bộ database tĩnh .db/.sqlite nhờ .dockerignore)
-# Khi container khởi chạy trên Render/Production, engine sẽ kết nối TiDB Cloud hoặc tự động khởi tạo CSDL mới tại /app/data
-COPY --chown=appuser:appgroup data /app/data
-
 # Copy thư mục storage/ (chứa các gói phần mềm packages được phân phối qua CDN)
 COPY --chown=appuser:appgroup storage /app/storage
 
 # Phân quyền chặt chẽ & Bảo vệ dữ liệu runtime:
-# - Đảm bảo dọn dẹp sạch mọi file .db, .sqlite tĩnh nếu vô tình lọt vào build context (zero baked DB)
 # - Chuẩn hóa line endings (LF) cho entrypoint wrapper
 # - Cấp quyền thực thi cho binary Go Monolith Engine và entrypoint.sh
 # - Cấp quyền đọc/ghi cho appuser vào /app/data (SQLite WAL/SHM, Keys) và /app/storage
-RUN rm -f /app/data/*.db /app/data/*.sqlite* /app/data/*.db-wal /app/data/*.db-shm /app/data/*.db-journal 2>/dev/null || true && \
-    sed -i 's/\r$//' /app/entrypoint.sh && \
+RUN sed -i 's/\r$//' /app/entrypoint.sh && \
     chmod +x /app/supportflast /app/entrypoint.sh && \
     chown -R appuser:appgroup /app && \
     chmod -R 755 /app && \
