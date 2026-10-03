@@ -104,7 +104,14 @@ class TestPackageSecurityScanner(unittest.TestCase):
         self.assertIn("POWERSHELL_HIDDEN_ENCODED", threat_ids)
 
     def test_certificate_verification_pe(self):
-        """Kiểm tra thẩm định chữ ký số PE Authenticode trên tệp thực thi chuẩn (python.exe)."""
+        """Kiểm tra thẩm định chữ ký số PE Authenticode trên tệp thực thi chuẩn (đa nền tảng)."""
+        if sys.platform != "win32":
+            # Trên Linux / Ubuntu CI runner, sys.executable là tệp ELF chứ không phải Windows PE (.exe)
+            res = CertificateVerifier.verify_pe_authenticode(sys.executable)
+            self.assertFalse(res["is_signed"])
+            self.assertIn(res["status"], ["ERROR_OR_NOT_PE", "UNSIGNED"])
+            return
+
         res = CertificateVerifier.verify_pe_authenticode(sys.executable)
         self.assertTrue(res["is_signed"])
         self.assertEqual(res["status"], "SIGNED")
