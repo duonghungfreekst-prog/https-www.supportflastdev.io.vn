@@ -400,28 +400,49 @@
         }
 
         /* 11. Hệ thống Chuyển Đổi View Độc Lập (Multi-View SPA) */
-        function switchMainView(viewKey, navElem, skipScroll = false) {
-            const isReviewsAnchor = (viewKey === 'reviews');
-            if (viewKey === 'reviews') {
-                viewKey = 'faq';
-            }
-            if (viewKey === 'videos') {
-                viewKey = 'docs';
-            }
+        const SPA_VIEW_ALIASES = {
+            '': 'home',
+            'home': 'home',
+            'trang-chu': 'home',
+            'download': 'download',
+            'downloads': 'download',
+            'apps': 'download',
+            'kho-ung-dung': 'download',
+            'faq': 'faq',
+            'reviews': 'faq',
+            'danh-gia': 'faq',
+            'rating': 'faq',
+            'ratings': 'faq',
+            'changelog': 'changelog',
+            'updates': 'changelog',
+            'cap-nhat': 'changelog',
+            'docs': 'docs',
+            'guide': 'docs',
+            'guides': 'docs',
+            'videos': 'docs',
+            'huong-dan': 'docs'
+        };
+
+        function switchMainView(rawKey, navElem, skipScroll = false) {
+            const rawKeyClean = String(rawKey || 'home').replace(/^#/, '').trim().toLowerCase();
+            const viewKey = SPA_VIEW_ALIASES[rawKeyClean] || 'home';
+            const isReviewsAnchor = (rawKeyClean === 'reviews' || rawKeyClean === 'danh-gia' || rawKeyClean === 'rating');
 
             // Cập nhật URL hash để người dùng có thể chia sẻ link hoặc refresh trang mà không mất view
             try {
-                if (window.location.hash.replace('#', '') !== viewKey) {
-                    history.replaceState(null, null, '#' + viewKey);
+                const targetHash = (viewKey === 'home') ? '' : ('#' + (isReviewsAnchor ? 'reviews' : viewKey));
+                if (window.location.hash !== targetHash && !(viewKey === 'home' && !window.location.hash)) {
+                    history.replaceState(null, null, targetHash || window.location.pathname);
                 }
             } catch (e) {}
 
             // Cập nhật trạng thái active trên các phím nổi Navbar
             document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-            if (navElem) {
+            if (navElem && typeof navElem.classList !== 'undefined') {
                 navElem.classList.add('active');
             } else {
-                const targetNav = document.getElementById('nav-' + viewKey);
+                const navId = (viewKey === 'faq') ? 'nav-faq' : ('nav-' + viewKey);
+                const targetNav = document.getElementById(navId);
                 if (targetNav) targetNav.classList.add('active');
             }
 
@@ -436,27 +457,28 @@
             if (!skipScroll && !window.__isRestoringLiveState) {
                 if (isReviewsAnchor) {
                     setTimeout(() => {
-                        const revEl = document.getElementById('reviews-container');
+                        const revEl = document.getElementById('reviews-container') || document.getElementById('inline-review-card');
                         if (revEl) {
                             revEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
-                    }, 100);
+                    }, 120);
                 } else {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             }
         }
+        window.switchMainView = switchMainView;
 
-        // Tự động chuyển view khi truy cập URL có hash (ví dụ: #subagents, #docs, #download)
+        // Tự động chuyển view khi truy cập URL có hash (ví dụ: #apps, #docs, #download, #reviews)
         function handleHashRouting(e) {
             const isInitialLoad = !e || e.type !== 'hashchange';
-            let hash = window.location.hash.replace('#', '').trim();
-            if (hash === 'reviews') hash = 'faq';
-            if (hash === 'videos') hash = 'docs';
-            if (hash && document.getElementById('view-' + hash)) {
-                switchMainView(hash, null, isInitialLoad || window.__isRestoringLiveState);
+            const hashRaw = window.location.hash.replace('#', '').trim().toLowerCase();
+            const targetViewKey = SPA_VIEW_ALIASES[hashRaw] || 'home';
+            if (document.getElementById('view-' + targetViewKey)) {
+                switchMainView(hashRaw || 'home', null, isInitialLoad || window.__isRestoringLiveState);
             }
         }
+        window.handleHashRouting = handleHashRouting;
         window.addEventListener('DOMContentLoaded', handleHashRouting);
         window.addEventListener('hashchange', handleHashRouting);
         window.addEventListener('load', handleHashRouting);
@@ -3805,9 +3827,6 @@ function renderCyberRadarEmptyState(options) {
                             ${adminBtns}
                         </div>`;
                 }).join('');
-            } catch(err) {
-                console.warn('[CMS] Lỗi load reviews từ server:', err);
-            }
         }
 
 /* =====================================================
