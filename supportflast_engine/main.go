@@ -871,11 +871,15 @@ func main() {
 			strings.HasSuffix(path, ".eot") || strings.HasSuffix(path, ".webp") || strings.HasSuffix(path, ".avif")
 
 		if isHTML {
-			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 		} else if isImmutableAsset {
-			w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+			if r.URL.RawQuery != "" && strings.Contains(r.URL.RawQuery, "v=") {
+				w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+			} else {
+				w.Header().Set("Cache-Control", "public, max-age=300, must-revalidate")
+			}
 		} else {
 			w.Header().Set("Cache-Control", "public, max-age=3600")
 		}
@@ -946,12 +950,17 @@ func main() {
 			// HTML files: luôn tải mới để mọi cập nhật hiển thị ngay lập tức
 			r.Header.Del("If-Modified-Since")
 			r.Header.Del("If-None-Match")
-			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 			w.Header().Set("Pragma", "no-cache")
 			w.Header().Set("Expires", "0")
 		} else if isImmutableAsset {
-			// CSS/JS/images/fonts: cache dài hạn 1 tuần, hỗ trợ ETag/304 tự động
-			w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+			if r.URL.RawQuery != "" && strings.Contains(r.URL.RawQuery, "v=") {
+				// CSS/JS/images/fonts có version param: cache dài hạn 1 tuần
+				w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+			} else {
+				// Không có version param: cache ngắn 300s để tự động cập nhật
+				w.Header().Set("Cache-Control", "public, max-age=300, must-revalidate")
+			}
 		} else {
 			// Các file khác: cache vừa phải 1 giờ
 			w.Header().Set("Cache-Control", "public, max-age=3600")
