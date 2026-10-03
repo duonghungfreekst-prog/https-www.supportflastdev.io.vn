@@ -19,11 +19,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'
+        go-version-file: 'supportflast_engine/go.mod'
         cache-dependency-path: supportflast_engine/go.sum
 
     - name: Verify Go Engine
       working-directory: supportflast_engine
+      env:
+        CGO_ENABLED: 0
       run: |
         go mod verify
         go test -v ./security -run "TestSecurityHeadersMiddleware|TestVerifyTurnstileToken"

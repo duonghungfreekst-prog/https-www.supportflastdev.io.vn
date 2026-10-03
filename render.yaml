@@ -44,6 +44,8 @@ services:
         value: 0.0.0.0
       - key: DOMAIN
         value: supportflastdev.io.vn
+      - key: ALLOWED_ORIGINS
+        value: https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,https://supportflastdev-io-vn.onrender.com
       # Cấu hình lưu trữ dữ liệu bền vững trên Persistent Disk
       - key: DATA_DIR
         value: /app/data
