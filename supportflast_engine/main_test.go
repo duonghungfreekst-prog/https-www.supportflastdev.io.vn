@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -419,4 +420,113 @@ func Test10Subagents_OnDeviceDispatcherAndConcurrencyPool(t *testing.T) {
 	}
 }
 
+func TestHandleHealthCheck(t *testing.T) {
+	_ = database.CloseDB()
+	defer database.CloseDB()
 
+	// 1. Khởi tạo một SQLite DB tạm thời để test kết nối hợp lệ
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "health_test.db")
+	db, err := database.InitSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("Không thể khởi tạo SQLite test DB: %v", err)
+	}
+
+	// Trường hợp 1: Database kết nối bình thường, không fallback
+	t.Setenv("DB_DRIVER", "sqlite")
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rr := httptest.NewRecorder()
+	HandleHealthCheck(rr, req, true)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Kỳ vọng HTTP 200, nhận: %d", rr.Code)
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &res); err != nil {
+		t.Fatalf("Lỗi parse JSON phản hồi: %v", err)
+	}
+
+	if res["status"] != "healthy" {
+		t.Errorf("Kỳ vọng status là 'healthy', nhận: %v", res["status"])
+	}
+
+	dbInfo, ok := res["database"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Thiếu cấu trúc database trong phản hồi health: %v", res)
+	}
+
+	if dbInfo["status"] != "connected" {
+		t.Errorf("Kỳ vọng database.status là 'connected', nhận: %v", dbInfo["status"])
+	}
+
+	if dbInfo["driver"] != "sqlite" {
+		t.Errorf("Kỳ vọng database.driver là 'sqlite', nhận: %v", dbInfo["driver"])
+	}
+
+	if dbInfo["is_fallback"] != false {
+		t.Errorf("Kỳ vọng database.is_fallback là false, nhận: %v", dbInfo["is_fallback"])
+	}
+
+	if latency, ok := dbInfo["latency_ms"].(float64); !ok || latency < 0 {
+		t.Errorf("Kỳ vọng database.latency_ms >= 0, nhận: %v", dbInfo["latency_ms"])
+	}
+
+	if allocMb, ok := res["alloc_mb"].(float64); !ok || allocMb <= 0 {
+		t.Errorf("Kỳ vọng alloc_mb > 0, nhận: %v", res["alloc_mb"])
+	}
+
+	if goroutines, ok := res["goroutines"].(float64); !ok || goroutines <= 0 {
+		t.Errorf("Kỳ vọng goroutines > 0, nhận: %v", res["goroutines"])
+	}
+
+	// Trường hợp 2: Chế độ Fallback (DB_DRIVER="tidb" nhưng driver thực tế là sqlite)
+	t.Setenv("DB_DRIVER", "tidb")
+	database.SetDBInstance(db, "sqlite")
+	rrFallback := httptest.NewRecorder()
+	HandleHealthCheck(rrFallback, req, false)
+
+	var resFallback map[string]interface{}
+	if err := json.Unmarshal(rrFallback.Body.Bytes(), &resFallback); err != nil {
+		t.Fatalf("Lỗi parse JSON fallback: %v", err)
+	}
+
+	if resFallback["status"] != "degraded" {
+		t.Errorf("Kỳ vọng status fallback là 'degraded', nhận: %v", resFallback["status"])
+	}
+
+	dbFallbackInfo := resFallback["database"].(map[string]interface{})
+	if dbFallbackInfo["is_fallback"] != true {
+		t.Errorf("Kỳ vọng database.is_fallback là true khi fallback, nhận: %v", dbFallbackInfo["is_fallback"])
+	}
+	if dbFallbackInfo["driver"] != "sqlite" {
+		t.Errorf("Kỳ vọng database.driver là 'sqlite', nhận: %v", dbFallbackInfo["driver"])
+	}
+	if dbFallbackInfo["status"] != "connected" {
+		t.Errorf("Kỳ vọng database.status là 'connected', nhận: %v", dbFallbackInfo["status"])
+	}
+
+	// Trường hợp 3: Database disconnected (connection đã bị đóng hoặc ping lỗi)
+	_ = database.CloseDB()
+	closedDB, openErr := database.InitSQLite(filepath.Join(tempDir, "closed.db"))
+	if openErr == nil {
+		_ = closedDB.Close() // Đóng kết nối để mô phỏng mất kết nối CSDL
+		database.SetDBInstance(closedDB, "sqlite")
+		rrDisconnected := httptest.NewRecorder()
+		HandleHealthCheck(rrDisconnected, req, false)
+
+		var resDisc map[string]interface{}
+		if err := json.Unmarshal(rrDisconnected.Body.Bytes(), &resDisc); err != nil {
+			t.Fatalf("Lỗi parse JSON disconnected DB: %v", err)
+		}
+
+		if resDisc["status"] != "degraded" {
+			t.Errorf("Kỳ vọng status khi DB disconnected là 'degraded', nhận: %v", resDisc["status"])
+		}
+
+		dbDiscInfo := resDisc["database"].(map[string]interface{})
+		if dbDiscInfo["status"] != "disconnected" {
+			t.Errorf("Kỳ vọng database.status khi DB disconnected là 'disconnected', nhận: %v", dbDiscInfo["status"])
+		}
+	}
+}

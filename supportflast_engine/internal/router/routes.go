@@ -59,6 +59,7 @@ var allV1Routes = []string{
 	// Group 7: AI Agents
 	"/api/agents",
 	"/api/agents/chat",
+	"/api/request",
 
 	// Group 8: Security (Honeypot, SIEM)
 	"/api/security/cloudflare-status",

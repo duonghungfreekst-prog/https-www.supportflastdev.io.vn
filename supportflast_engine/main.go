@@ -375,6 +375,71 @@ func logMemoryStats() {
 	cache.LogMemoryStats()
 }
 
+// HandleHealthCheck xử lý phản hồi kiểm tra sức khỏe hệ thống và trạng thái kết nối CSDL (Rule 7.1)
+func HandleHealthCheck(w http.ResponseWriter, r *http.Request, autoHTTPSEnabled bool) {
+	w.Header().Set("Content-Type", "application/json")
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	host := registry.GetRequestHost(r)
+	scheme := registry.GetRequestScheme(r)
+
+	// 1.1. Kiểm tra kết nối CSDL với timeout 2 giây (Rule 7.1 Context Timeout)
+	db := database.GetDB()
+	dbStatus := "disconnected"
+	var latencyMs float64
+	systemStatus := "healthy"
+
+	activeDriver := database.ActiveDriver()
+	isFallback := (strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER"))) == "tidb" && activeDriver != "tidb")
+
+	if db == nil {
+		systemStatus = "degraded"
+		log.Println("[ENGINE] [HEALTH] [WARN] CSDL chính chưa được khởi tạo (GetDB is nil)")
+	} else {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		start := time.Now()
+		if err := db.PingContext(ctx); err != nil {
+			latencyMs = float64(time.Since(start).Microseconds()) / 1000.0
+			systemStatus = "degraded"
+			log.Printf("[ENGINE] [HEALTH] [ERROR] Ping CSDL (%s) thất bại sau %.2fms: %v", activeDriver, latencyMs, err)
+		} else {
+			latencyMs = float64(time.Since(start).Microseconds()) / 1000.0
+			dbStatus = "connected"
+			if isFallback {
+				systemStatus = "degraded"
+				log.Printf("[ENGINE] [HEALTH] [WARN] CSDL đang hoạt động ở chế độ fallback sang %s (latency: %.2fms)", activeDriver, latencyMs)
+			}
+		}
+	}
+
+	resp := map[string]interface{}{
+		"status": systemStatus,
+		"database": map[string]interface{}{
+			"status":      dbStatus,
+			"driver":      activeDriver,
+			"is_fallback": isFallback,
+			"latency_ms":  latencyMs,
+		},
+		"alloc_mb":    float64(m.Alloc) / 1024 / 1024,
+		"goroutines":  runtime.NumGoroutine(),
+		"domain":      host,
+		"scheme":      scheme,
+		"base_url":    fmt.Sprintf("%s://%s", scheme, host),
+		"port":        registry.GetServicePort(),
+		"service":     "supportflast_engine",
+		"num_gc":      m.NumGC,
+		"cache_items": cache.DefaultCache.Len(),
+		"subagents":   5,
+		"auto_https":  autoHTTPSEnabled,
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[ENGINE] [HEALTH] [ERROR] Lỗi serialize phản hồi JSON: %v", err)
+	}
+}
+
 func main() {
 	log.SetPrefix("[ENGINE] ")
 
@@ -402,27 +467,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// 1. Health check endpoint (bổ sung num_gc, cache_items và auto_https)
+	// 1. Health check endpoint (bổ sung kiểm tra CSDL, latency, fallback và tài nguyên hệ thống)
 	healthHandler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
-		host := registry.GetRequestHost(r)
-		scheme := registry.GetRequestScheme(r)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":      "healthy",
-			"domain":      host,
-			"scheme":      scheme,
-			"base_url":    fmt.Sprintf("%s://%s", scheme, host),
-			"port":        registry.GetServicePort(),
-			"service":     "supportflast_engine",
-			"alloc_mb":    float64(m.Alloc) / 1024 / 1024,
-			"goroutines":  runtime.NumGoroutine(),
-			"num_gc":      m.NumGC,
-			"cache_items": cache.DefaultCache.Len(),
-			"subagents":   5,
-			"auto_https":  autoHTTPSConfig.Enabled,
-		})
+		HandleHealthCheck(w, r, autoHTTPSConfig.Enabled)
 	}
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/health", healthHandler)
@@ -658,7 +705,7 @@ func main() {
 	})
 
 	// 3. API gửi tin nhắn tới Subagents (Có Worker Pool giới hạn 10 Subagent song song - Rule 7.1)
-	mux.HandleFunc("/api/agents/chat", func(w http.ResponseWriter, r *http.Request) {
+	chatHandler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.Method != http.MethodPost {
@@ -737,7 +784,9 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(mobileResult)
 		}
-	})
+	}
+	mux.HandleFunc("/api/agents/chat", chatHandler)
+	mux.HandleFunc("/api/request", chatHandler)
 
 	// 4. Phục vụ Static Web UI (Hỗ trợ cấu hình STATIC_DIR qua biến môi trường)
 	staticDirEnv := strings.TrimSpace(os.Getenv("STATIC_DIR"))
