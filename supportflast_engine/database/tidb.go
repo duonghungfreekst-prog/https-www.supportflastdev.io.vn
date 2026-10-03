@@ -538,6 +538,7 @@ func SeedInitialTiDBAdmin(db *sql.DB, dataDir ...string) error {
 		_ = SeedInitialApps(db, dataDir...)
 		_ = SeedInitialKeys(db, dataDir...)
 		_ = SeedInitialReleases(db, dataDir...)
+		_ = SeedInitialReviews(db, dataDir...)
 		return nil // Đã tồn tại tài khoản admin chuẩn, không chèn lại
 	}
 
@@ -571,10 +572,11 @@ func SeedInitialTiDBAdmin(db *sql.DB, dataDir ...string) error {
 	log.Printf("[ENGINE] [TIDB] Khởi tạo thành công tài khoản quản trị viên chuẩn: username='%s', email='%s', role='%s'",
 		DefaultAdminUsername, DefaultAdminEmail, DefaultAdminRole)
 
-	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
+	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases, reviews nếu bảng rỗng
 	_ = SeedInitialApps(db, dataDir...)
 	_ = SeedInitialKeys(db, dataDir...)
 	_ = SeedInitialReleases(db, dataDir...)
+	_ = SeedInitialReviews(db, dataDir...)
 
 	return nil
 }

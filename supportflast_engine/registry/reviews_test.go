@@ -21,10 +21,11 @@ func setupTestDB(t *testing.T) func() {
 	_ = os.Remove(testDBPath)
 
 	_ = database.CloseDB()
-	_, err := database.InitDB(testDBPath)
+	db, err := database.InitDB(testDBPath)
 	if err != nil {
 		t.Fatalf("Không thể khởi tạo test database: %v", err)
 	}
+	_, _ = db.Exec("DELETE FROM reviews")
 
 	return func() {
 		_ = database.CloseDB()

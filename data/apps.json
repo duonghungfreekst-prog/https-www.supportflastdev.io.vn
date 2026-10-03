@@ -18,7 +18,7 @@
       "download_url": "/api/apps/download/APP-4964",
       "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       "guide": "Cẩm nang hướng dẫn chuyên sâu 15 chương thực chiến DMH Tools Enterprise Suite.",
-      "user_id": "usr-admin-system-001"
+      "user_id": "usr-admin-001"
     },
     {
       "id": "APP-7290",
@@ -38,7 +38,7 @@
       "download_url": "/api/apps/download/APP-7290",
       "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       "guide": "Hướng dẫn cấu hình âm thanh vòm 3D và lọc tạp âm micro bằng AI.",
-      "user_id": "usr-admin-system-001"
+      "user_id": "usr-admin-001"
     },
     {
       "id": "APP-3820",
@@ -58,7 +58,7 @@
       "download_url": "/api/apps/download/APP-3820",
       "video_url": "",
       "guide": "Hướng dẫn cài đặt chuông báo và đồng bộ lịch trình.",
-      "user_id": "usr-admin-system-001"
+      "user_id": "usr-admin-001"
     },
     {
       "id": "APP-5192",
@@ -78,7 +78,7 @@
       "download_url": "/api/apps/download/APP-5192",
       "video_url": "",
       "guide": "Hướng dẫn kết nối phần cứng USB và cấu hình webhook thông báo an toàn.",
-      "user_id": "usr-admin-system-001"
+      "user_id": "usr-admin-001"
     }
   ]
 }

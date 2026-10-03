@@ -653,11 +653,11 @@ func SeedInitialApps(db *sql.DB, dataDir ...string) error {
 
 	inserted := 0
 	for _, a := range appsList {
-		var uid *string
-		if strings.TrimSpace(a.UserID) != "" {
-			trimmed := strings.TrimSpace(a.UserID)
-			uid = &trimmed
+		targetUID := strings.TrimSpace(a.UserID)
+		if targetUID == "" || targetUID == "usr-admin-system-001" {
+			targetUID = DefaultAdminID
 		}
+		uid := &targetUID
 		_, errExec := stmt.Exec(
 			a.ID, a.Name, a.Version, a.Platform, a.Category, a.Desc, a.FileName,
 			a.SizeBytes, a.SizeFormatted, a.SHA256, a.Author, a.Downloads,
@@ -665,6 +665,8 @@ func SeedInitialApps(db *sql.DB, dataDir ...string) error {
 		)
 		if errExec == nil {
 			inserted++
+		} else {
+			log.Printf("[ENGINE] [DATABASE] [WARN] Seed app '%s' failed: %v", a.ID, errExec)
 		}
 	}
 
@@ -814,13 +816,26 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("không thể đọc file '%s': %w", jsonPath, err)
 	}
 
+	type rawRelease struct {
+		ID          string   `json:"id"`
+		Version     string   `json:"version"`
+		Title       string   `json:"title"`
+		Date        string   `json:"date"`
+		Badge       string   `json:"badge"`
+		Type        string   `json:"type"`
+		Changes     []string `json:"changes"`
+		Notes       string   `json:"notes"`
+		BuildHash   string   `json:"build_hash"`
+		PublishedBy string   `json:"published_by"`
+	}
+
 	var sysUpdate struct {
 		System struct {
 			Version   string `json:"version"`
 			UpdatedAt string `json:"updated_at"`
 			BuildHash string `json:"build_hash"`
 		} `json:"system"`
-		Releases []SystemRelease `json:"releases"`
+		Releases []rawRelease `json:"releases"`
 	}
 	if err := json.Unmarshal(data, &sysUpdate); err != nil {
 		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
@@ -848,10 +863,122 @@ func SeedInitialReleases(db *sql.DB, dataDir ...string) error {
 		)
 	}
 	for _, r := range sysUpdate.Releases {
-		_, _ = stmt.Exec(r.Version, r.Title, r.Date, r.BuildHash, r.Notes, r.PublishedBy)
+		notesStr := r.Notes
+		if notesStr == "" && len(r.Changes) > 0 {
+			metaMap := map[string]interface{}{
+				"id":         r.ID,
+				"type":       r.Type,
+				"changes":    r.Changes,
+				"active":     true,
+				"created_at": r.Date + "T00:00:00Z",
+			}
+			metaBytes, _ := json.Marshal(metaMap)
+			notesStr = string(metaBytes)
+		}
+		buildHash := r.BuildHash
+		if buildHash == "" {
+			buildHash = r.ID
+		}
+		pubBy := r.PublishedBy
+		if pubBy == "" {
+			pubBy = "SupportFlast Engineering"
+		}
+		_, _ = stmt.Exec(r.Version, r.Title, r.Date, buildHash, notesStr, pubBy)
 	}
 
 	log.Printf("[ENGINE] [DATABASE] Tự động nạp bản cập nhật hệ thống từ '%s' vào CSDL", jsonPath)
+	return nil
+}
+
+// SeedInitialReviews nạp dữ liệu nhận xét đánh giá từ reviews.json nếu bảng reviews rỗng
+func SeedInitialReviews(db *sql.DB, dataDir ...string) error {
+	if db == nil {
+		return fmt.Errorf("database connection is nil")
+	}
+
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM reviews").Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to count reviews: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
+	var candidates []string
+	if len(dataDir) > 0 && strings.TrimSpace(dataDir[0]) != "" {
+		candidates = append(candidates, filepath.Join(dataDir[0], "reviews.json"))
+	}
+	if envDataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); envDataDir != "" {
+		candidates = append(candidates, filepath.Join(envDataDir, "reviews.json"))
+	}
+	candidates = append(candidates,
+		filepath.Join("..", "data", "reviews.json"),
+		filepath.Join("data", "reviews.json"),
+		`f:\supportflast.dev\data\reviews.json`,
+	)
+
+	var jsonPath string
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			jsonPath = c
+			break
+		}
+	}
+	if jsonPath == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
+		return fmt.Errorf("không thể đọc file '%s': %w", jsonPath, err)
+	}
+
+	var revStore struct {
+		Reviews []Review `json:"reviews"`
+	}
+	if err := json.Unmarshal(data, &revStore); err != nil {
+		return fmt.Errorf("lỗi parse json '%s': %w", jsonPath, err)
+	}
+
+	query := fmt.Sprintf(`
+		%s reviews (id, app_id, user_id, author_name, author_role, stars, text, status, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, insertIgnoreClause(db))
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return fmt.Errorf("failed to prepare insert review statement: %w", err)
+	}
+	defer stmt.Close()
+
+	inserted := 0
+	for _, r := range revStore.Reviews {
+		appID := r.AppID
+		if appID == "" {
+			appID = "APP-4964"
+		}
+		userID := r.UserID
+		if userID == "" || userID == "usr-admin-system-001" {
+			userID = DefaultAdminID
+		}
+		status := r.Status
+		if status == "" {
+			status = "approved"
+		}
+		createdAt := r.CreatedAt
+		if createdAt == "" {
+			createdAt = time.Now().UTC().Format("2006-01-02 15:04:05")
+		}
+		_, errExec := stmt.Exec(r.ID, appID, userID, r.AuthorName, r.AuthorRole, r.Stars, r.Text, status, createdAt)
+		if errExec == nil {
+			inserted++
+		} else {
+			log.Printf("[ENGINE] [DATABASE] [WARN] Seed review '%s' failed: %v", r.ID, errExec)
+		}
+	}
+
+	log.Printf("[ENGINE] [DATABASE] Tự động nạp thành công %d/%d đánh giá cộng đồng từ '%s' vào CSDL", inserted, len(revStore.Reviews), jsonPath)
 	return nil
 }
 

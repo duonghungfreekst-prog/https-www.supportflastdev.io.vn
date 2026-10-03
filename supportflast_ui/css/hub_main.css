@@ -9326,3 +9326,208 @@ body {
     font-weight: 700;
 }
 
+/* ========================================================================== */
+/* CÂY BẢN CẬP NHẬT CÔNG NGHỆ TECH TREE - THANH BỘ LỌC & TÌM KIẾM 3D CYBER      */
+/* ========================================================================== */
+.tech-tree-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(8, 14, 28, 0.94));
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 16px;
+    padding: 14px 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 20px rgba(0, 229, 255, 0.08);
+    backdrop-filter: blur(16px);
+    position: relative;
+    overflow: hidden;
+}
+
+.tech-tree-filter-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00e5ff 25%, #c084fc 75%, transparent);
+}
+
+.filter-pills-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-pill-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    outline: none;
+    user-select: none;
+}
+
+.filter-pill-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.22);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.filter-pill-btn.active {
+    background: rgba(0, 229, 255, 0.16);
+    color: #00e5ff;
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.32), 0 4px 14px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+}
+
+.filter-pill-btn.pill-feat.active {
+    background: rgba(0, 229, 255, 0.18);
+    color: #00e5ff;
+    border-color: #00e5ff;
+    box-shadow: 0 0 18px rgba(0, 229, 255, 0.4);
+}
+
+.filter-pill-btn.pill-fix.active {
+    background: rgba(255, 107, 107, 0.18);
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+    box-shadow: 0 0 18px rgba(255, 107, 107, 0.4);
+}
+
+.filter-pill-btn.pill-security.active {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fbbf24;
+    border-color: #fbbf24;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.4);
+}
+
+.filter-pill-btn.pill-perf.active {
+    background: rgba(192, 132, 252, 0.18);
+    color: #c084fc;
+    border-color: #c084fc;
+    box-shadow: 0 0 18px rgba(192, 132, 252, 0.4);
+}
+
+.pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.dot-cyan { background: #00e5ff; box-shadow: 0 0 8px #00e5ff; }
+.dot-coral { background: #ff6b6b; box-shadow: 0 0 8px #ff6b6b; }
+.dot-amber { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
+.dot-purple { background: #c084fc; box-shadow: 0 0 8px #c084fc; }
+
+.tech-tree-search-box {
+    position: relative;
+    min-width: 280px;
+    flex-grow: 1;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+}
+
+.tech-tree-search-box .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #00e5ff;
+    pointer-events: none;
+    font-size: 0.95rem;
+    opacity: 0.8;
+}
+
+#tech-tree-search-input {
+    width: 100%;
+    background: rgba(4, 8, 18, 0.85);
+    border: 1px solid rgba(0, 229, 255, 0.22);
+    border-radius: 10px;
+    padding: 10px 16px 10px 42px;
+    color: #fff;
+    font-size: 0.88rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.25s ease;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+#tech-tree-search-input:focus {
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35), inset 0 2px 6px rgba(0, 0, 0, 0.4);
+    background: rgba(4, 8, 18, 0.98);
+}
+
+#tech-tree-search-input::placeholder {
+    color: #64748b;
+    font-size: 0.84rem;
+}
+
+/* ========================================================================== */
+/* HỆ THỐNG HIỆU ỨNG 3D TIÊN TIẾN TOÀN TRANG (FULL 3D DEPTH ENGINE)            */
+/* ========================================================================== */
+@media (min-width: 769px) {
+    /* Cho phép 3D Transform tự do trên Desktop */
+    .card, 
+    .featured-app-card, 
+    .gemini-poster-card, 
+    .rating-bento-card, 
+    .review-item-card, 
+    .inline-review-card,
+    .tech-tree-hud {
+        transform-style: preserve-3d;
+        will-change: transform, box-shadow;
+        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    /* Hiệu ứng nâng 3D và hào quang Neon khi Hover */
+    .featured-app-card:hover,
+    .gemini-poster-card:hover,
+    .rating-bento-card:hover,
+    .review-item-card:hover {
+        box-shadow: 0 24px 50px rgba(0, 0, 0, 0.75), 0 0 32px rgba(0, 229, 255, 0.25) !important;
+        border-color: rgba(0, 229, 255, 0.5) !important;
+    }
+
+    /* Chiều sâu cho icon ứng dụng nổi 3D */
+    .featured-app-card:hover .app-icon,
+    .gemini-poster-card:hover .poster-icon-box {
+        transform: translateZ(24px) scale(1.08);
+        box-shadow: 0 8px 24px rgba(0, 229, 255, 0.4);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+}
+
+/* Hiệu ứng quét sáng 3D cho các nút chính */
+.btn-primary, .btn-download-primary {
+    position: relative;
+    overflow: hidden;
+    transform-style: preserve-3d;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary:hover, .btn-download-primary:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 26px rgba(0, 229, 255, 0.45);
+}
+
+

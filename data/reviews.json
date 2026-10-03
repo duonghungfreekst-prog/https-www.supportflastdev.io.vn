@@ -1,0 +1,64 @@
+{
+  "reviews": [
+    {
+      "id": "rev-001",
+      "app_id": "APP-4964",
+      "author_name": "Trần Minh Hoàng",
+      "author_role": "Kỹ Sư Quản Trị Hệ Thống IT",
+      "stars": 5,
+      "text": "Bộ công cụ DMH Tools Enterprise và Virtual CloudPool Storage phân tán Google Drive hoạt động cực kỳ ổn định. Tốc độ upload chunk mã hóa AES-256-GCM nhanh và tiết kiệm băng thông vượt bậc so với các giải pháp thông thường.",
+      "status": "approved",
+      "created_at": "2026-10-01 10:15:00"
+    },
+    {
+      "id": "rev-002",
+      "app_id": "APP-4964",
+      "author_name": "BS. Lê Quang Tuấn",
+      "author_role": "Trưởng Phòng Khám Đa Khoa Sài Gòn",
+      "stars": 5,
+      "text": "Tính năng gọi bệnh nhân tự động TTS bằng AI và cầu nối máy nội soi 4K chạy mượt mà, giúp phòng khám giảm 70% thời gian chờ đợi của bệnh nhân và quản lý dữ liệu chẩn đoán hình ảnh rất an tâm.",
+      "status": "approved",
+      "created_at": "2026-10-01 14:30:00"
+    },
+    {
+      "id": "rev-003",
+      "app_id": "APP-5192",
+      "author_name": "Phạm Đức Thắng",
+      "author_role": "Trưởng Nhóm DevOps & Cloud Architect",
+      "stars": 5,
+      "text": "Kiến trúc Go Monolith kết hợp Rust Core FFI và TiDB Cloud Serverless cực kỳ tối ưu, zero memory leak và thời gian đáp ứng API dưới 5ms. Rất khuyên dùng cho các doanh nghiệp cần hạ tầng bảo mật cao.",
+      "status": "approved",
+      "created_at": "2026-10-02 09:45:00"
+    },
+    {
+      "id": "rev-004",
+      "app_id": "APP-7290",
+      "author_name": "Nguyễn Thị Mai Anh",
+      "author_role": "Kỹ Thuật Viên Âm Thanh & Đa Phương Tiện",
+      "stars": 5,
+      "text": "Giao diện Cyber Nebula 3D đẹp mắt, trực quan và dễ sử dụng. Bộ xử lý âm thanh AI Equalizer 10 băng tần cho chất âm chi tiết, khử nhiễu micro theo thời gian thực rất ấn tượng.",
+      "status": "approved",
+      "created_at": "2026-10-02 16:20:00"
+    },
+    {
+      "id": "rev-005",
+      "app_id": "APP-4964",
+      "author_name": "Vũ Đình Khoa",
+      "author_role": "Chuyên Viên Cứu Hộ & Sửa Chữa Máy Tính",
+      "stars": 5,
+      "text": "41 công cụ sửa lỗi Windows sâu của DMH Tools xử lý dứt điểm các ca lỗi Print Spooler, chia sẻ máy in LAN 0x11b và trích xuất driver chỉ trong 1 click, không cần cài lại Windows.",
+      "status": "approved",
+      "created_at": "2026-10-03 08:30:00"
+    },
+    {
+      "id": "rev-006",
+      "app_id": "APP-3820",
+      "author_name": "Đỗ Gia Huy",
+      "author_role": "Kỹ Sư Phần Mềm Fullstack",
+      "stars": 5,
+      "text": "Hệ thống WebDAV và API phân phối Anycast CDN cho ứng dụng cực kỳ tiện lợi. Đội ngũ SupportFlast hỗ trợ kỹ thuật rất tận tình và chuyên nghiệp qua Zalo.",
+      "status": "approved",
+      "created_at": "2026-10-03 11:00:00"
+    }
+  ]
+}

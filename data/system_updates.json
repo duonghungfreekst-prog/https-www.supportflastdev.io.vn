@@ -1,0 +1,47 @@
+{
+  "releases": [
+    {
+      "id": "rel-2.6.0",
+      "version": "v2.6.0",
+      "title": "Nâng Cấp Toàn Diện Kiến Trúc Polyglot TiDB Cloud & Anycast CDN",
+      "date": "2026-10-03",
+      "badge": "Mới Nhất",
+      "type": "feat",
+      "changes": [
+        "[feat] Tích hợp TiDB Cloud Serverless AP-Southeast-1 với cơ chế Auto-Fallback sang SQLite dự phòng",
+        "[feat] Đại tu giao diện Cyber Glassmorphism với HUD Telemetry, Tech Tree Timeline và Bento Rating Center",
+        "[security] Triển khai bộ bảo mật đa tầng: IP Jail, Multi-Tier Rate Limit và Zero-Trust Signed Commits",
+        "[perf] Tối ưu hóa bộ nhớ Go Monolith GOMEMLIMIT=384MiB chống OOM trên Render Cloud Container",
+        "[fix] Khắc phục triệt để lỗi phân quyền Git remote và cấu hình Cache-Busting cho toàn bộ static assets"
+      ]
+    },
+    {
+      "id": "rel-2.5.0",
+      "version": "v2.5.0",
+      "title": "Ra Mắt CloudPool Virtual Storage & Mã Hóa AES-256-GCM Chống Lượng Tử",
+      "date": "2026-10-01",
+      "badge": "Quan Trọng",
+      "type": "security",
+      "changes": [
+        "[feat] Ra mắt công nghệ phân tán file mã hóa đa tài khoản Google Drive dung lượng không giới hạn",
+        "[security] Tích hợp Rust Core FFI mã hóa AES-256-GCM 128-bit Authentication Tag và Blind Index",
+        "[feat] Bổ sung giao thức WebDAV và liên kết chia sẻ tệp công khai bảo vệ mật khẩu hai lớp",
+        "[perf] Giảm 45% thời gian xử lý chunk dữ liệu với Pure-Go multi-stream concurrency"
+      ]
+    },
+    {
+      "id": "rel-2.4.0",
+      "version": "v2.4.0",
+      "title": "Phát Hành Cụm 5 AI Subagents & Cổng Đăng Tải Ứng Dụng",
+      "date": "2026-09-28",
+      "badge": "Ổn Định",
+      "type": "feat",
+      "changes": [
+        "[feat] Triển khai cụm 5 Subagents AI chuyên trách: Security, Triage, Code Review, Docs và Billing",
+        "[feat] Phát hành 4 bộ cài chính thức: DMH Tools, AI Equalizer Pro, Smart Alarm Clock và Balance Notify",
+        "[fix] Vá lỗi phân giải MIME-type và tự động tạo thư mục Persistent Disk trên Cloud Run / Render",
+        "[perf] Tối ưu hóa High-DPI Canvas Rendering 60FPS tiết kiệm 80% pin thiết bị di động"
+      ]
+    }
+  ]
+}

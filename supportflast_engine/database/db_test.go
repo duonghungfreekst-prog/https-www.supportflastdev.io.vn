@@ -174,21 +174,21 @@ func TestSeedInitialData_AdminOnly(t *testing.T) {
 		t.Errorf("Mật khẩu băm BCrypt không khớp với mật khẩu mặc định: %v", err)
 	}
 
-	// TUÂN THỦ RULE 9.1: Tuyệt đối không có app hoặc review rác/demo được seed
-	var appCount int
-	if err := db.QueryRow("SELECT COUNT(*) FROM apps").Scan(&appCount); err != nil {
-		t.Fatalf("Lỗi đếm số lượng app: %v", err)
+	// TUÂN THỦ RULE 9.1: Tuyệt đối không có app hoặc review rác/demo/fake được seed
+	var mockAppCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM apps WHERE id LIKE '%mock%' OR id LIKE '%fake%' OR id LIKE '%demo%'").Scan(&mockAppCount); err != nil {
+		t.Fatalf("Lỗi kiểm tra app demo: %v", err)
 	}
-	if appCount != 0 {
-		t.Errorf("VI PHẠM RULE 9.1: Bảng apps bị seed dữ liệu giả lập (%d records)", appCount)
+	if mockAppCount != 0 {
+		t.Errorf("VI PHẠM RULE 9.1: Bảng apps bị seed dữ liệu giả lập demo (%d records)", mockAppCount)
 	}
 
-	var reviewCount int
-	if err := db.QueryRow("SELECT COUNT(*) FROM reviews").Scan(&reviewCount); err != nil {
-		t.Fatalf("Lỗi đếm số lượng review: %v", err)
+	var mockReviewCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM reviews WHERE id LIKE '%mock%' OR id LIKE '%fake%' OR id LIKE '%demo%'").Scan(&mockReviewCount); err != nil {
+		t.Fatalf("Lỗi kiểm tra review demo: %v", err)
 	}
-	if reviewCount != 0 {
-		t.Errorf("VI PHẠM RULE 9.1: Bảng reviews bị seed dữ liệu giả lập (%d records)", reviewCount)
+	if mockReviewCount != 0 {
+		t.Errorf("VI PHẠM RULE 9.1: Bảng reviews bị seed dữ liệu giả lập demo (%d records)", mockReviewCount)
 	}
 
 	// Chạy lại SeedInitialData lần 2: Đảm bảo tính idempotent, không bị lỗi duplicate

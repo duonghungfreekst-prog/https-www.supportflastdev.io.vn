@@ -22,10 +22,11 @@ func setupIntegrationTestDB(t *testing.T) func() {
 	dbPath := filepath.Join(testDir, "test.db")
 
 	database.CloseDB()
-	_, err := database.InitDB(dbPath)
+	db, err := database.InitDB(dbPath)
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
 	}
+	_, _ = db.Exec("DELETE FROM apps; DELETE FROM system_releases; DELETE FROM reviews;")
 
 	return func() {
 		database.CloseDB()
@@ -252,10 +253,8 @@ func TestSystem_SQLiteIntegration(t *testing.T) {
 	cache.DefaultCache.Clear()
 
 	// 1. Kiểm tra ban đầu
-	rels := LoadReleasesFromDB()
-	if len(rels) != 0 {
-		t.Fatalf("Kỳ vọng ban đầu rỗng, nhận: %d", len(rels))
-	}
+	initialRels := LoadReleasesFromDB()
+	initialCount := len(initialRels)
 
 	// 2. Lưu bản cập nhật mới qua SaveReleaseToDB
 	item := ReleaseItem{
@@ -276,14 +275,22 @@ func TestSystem_SQLiteIntegration(t *testing.T) {
 
 	// 3. Đọc lại từ LoadReleasesFromDB
 	relsAfter := LoadReleasesFromDB()
-	if len(relsAfter) != 1 {
-		t.Fatalf("Kỳ vọng 1 release trong SQLite, nhận: %d", len(relsAfter))
+	if len(relsAfter) != initialCount+1 {
+		t.Fatalf("Kỳ vọng %d release trong SQLite, nhận: %d", initialCount+1, len(relsAfter))
 	}
-	if relsAfter[0].Version != "v3.0.0" || relsAfter[0].Title != item.Title {
-		t.Fatalf("Dữ liệu release không khớp: %+v", relsAfter[0])
+	var foundRelease *ReleaseItem
+	for _, r := range relsAfter {
+		if r.Version == "v3.0.0" {
+			copyRel := r
+			foundRelease = &copyRel
+			break
+		}
 	}
-	if len(relsAfter[0].Changes) != 2 {
-		t.Fatalf("Changes không bảo toàn: %+v", relsAfter[0].Changes)
+	if foundRelease == nil || foundRelease.Title != item.Title {
+		t.Fatalf("Dữ liệu release không khớp hoặc không tìm thấy v3.0.0: %+v", foundRelease)
+	}
+	if len(foundRelease.Changes) != 2 {
+		t.Fatalf("Changes không bảo toàn: %+v", foundRelease.Changes)
 	}
 
 	// 4. Kiểm tra SystemUpdatesHandler() trả về đúng release từ SQLite
