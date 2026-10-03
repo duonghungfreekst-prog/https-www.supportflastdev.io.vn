@@ -243,31 +243,37 @@ func checkWritePermission(dirPath string) (bool, string) {
 	return true, "Có quyền Đọc/Ghi (Read/Write) hoàn toàn hợp lệ"
 }
 
-// isTiDBOrMySQL xác định xem hệ thống đang cấu hình hoặc kết nối tới TiDB Cloud/MySQL hay SQLite
+// isTiDBOrMySQL xác định xem hệ thống đang cấu hình hoặc kết nối tới TiDB Cloud/MySQL hay SQLite.
+// Đọc driver thực tế từ database.ActiveDriver() thay vì ưu tiên os.Getenv("DB_DRIVER").
+// Nếu database.ActiveDriver() == "sqlite", trả về false ngay cả khi biến môi trường là "tidb" (chế độ fallback).
 func isTiDBOrMySQL(db *sql.DB) bool {
-	driverEnv := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if driverEnv == "tidb" || driverEnv == "mysql" {
-		return true
-	}
-	if driverEnv == "sqlite" || driverEnv == "sqlite3" {
+	active := database.ActiveDriver()
+	if active == "sqlite" {
 		return false
+	}
+	if active == "tidb" || active == "mysql" {
+		return true
 	}
 	if db != nil {
 		driverType := strings.ToLower(fmt.Sprintf("%T", db.Driver()))
-		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
-			return true
-		}
 		if strings.Contains(driverType, "sqlite") {
 			return false
 		}
+		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
+			return true
+		}
+	}
+	driverEnv := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
+	if driverEnv == "sqlite" || driverEnv == "sqlite3" {
+		return false
+	}
+	if driverEnv == "tidb" || driverEnv == "mysql" {
+		return true
 	}
 	if strings.TrimSpace(os.Getenv("TIDB_HOST")) != "" && driverEnv != "sqlite" {
 		return true
 	}
-	if database.ActiveDriver() == "sqlite" {
-		return false
-	}
-	return database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql"
+	return false
 }
 
 // resolveTiDBEndpoint tạo chuỗi định danh máy chủ TiDB/MySQL an toàn không lộ mật khẩu (Rule 3.2 & 3.5)

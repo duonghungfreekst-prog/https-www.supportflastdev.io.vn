@@ -42,7 +42,7 @@ func init() {
 	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 	if d == "tidb" || d == "mysql" {
 		activeDriver.Store("tidb")
-	} else {
+	} else if d == "sqlite" || d == "sqlite3" {
 		activeDriver.Store("sqlite")
 	}
 }
@@ -302,6 +302,9 @@ type SystemRelease struct {
 func isMySQLOrTiDB(db ...*sql.DB) bool {
 	if len(db) > 0 && db[0] != nil {
 		driverType := strings.ToLower(fmt.Sprintf("%T", db[0].Driver()))
+		if strings.Contains(driverType, "sqlite") {
+			return false
+		}
 		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
 			return true
 		}
@@ -318,6 +321,9 @@ func ActiveDriver() string {
 	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 	if d == "tidb" || d == "mysql" {
 		return d
+	}
+	if d == "" && strings.TrimSpace(os.Getenv("TIDB_HOST")) != "" {
+		return "tidb"
 	}
 	return "sqlite"
 }
@@ -397,8 +403,8 @@ func CloseDB() error {
 			lastErr = err
 		}
 		dbInstance = nil
-		activeDriver.Store("")
 	}
+	activeDriver.Store("")
 
 	// Đóng đồng thời instance TiDB nếu đang mở độc lập
 	_ = CloseTiDB()

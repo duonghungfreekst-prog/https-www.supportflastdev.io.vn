@@ -66,6 +66,7 @@ func TestPerformDiagnostics(t *testing.T) {
 }
 
 func TestSystemDiagnosticsHandler(t *testing.T) {
+	defer database.CloseDB()
 	req := httptest.NewRequest(http.MethodGet, "/api/system/diagnostics?nocache=1", nil)
 	rr := httptest.NewRecorder()
 
@@ -123,6 +124,9 @@ func TestFormatBytes(t *testing.T) {
 }
 
 func TestIsTiDBOrMySQL(t *testing.T) {
+	_ = database.CloseDB()
+	defer database.CloseDB()
+
 	// 1. Kiểm tra qua DB_DRIVER=tidb
 	t.Setenv("DB_DRIVER", "tidb")
 	if !isTiDBOrMySQL(nil) {
@@ -147,9 +151,18 @@ func TestIsTiDBOrMySQL(t *testing.T) {
 	if !isTiDBOrMySQL(nil) {
 		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi TIDB_HOST được cấu hình")
 	}
+
+	// 5. Kiểm tra chế độ fallback: DB_DRIVER=tidb nhưng database.ActiveDriver()="sqlite" -> isTiDBOrMySQL trả về false
+	t.Setenv("DB_DRIVER", "tidb")
+	database.SetDBInstance(nil, "sqlite")
+	if isTiDBOrMySQL(nil) {
+		t.Errorf("kỳ vọng isTiDBOrMySQL trả về false khi database.ActiveDriver() là sqlite dù DB_DRIVER=tidb (chế độ fallback)")
+	}
 }
 
 func TestPerformDiagnostics_TiDB_Config(t *testing.T) {
+	_ = database.CloseDB()
+	defer database.CloseDB()
 	tempDir := t.TempDir()
 	dataDir := filepath.Join(tempDir, "data")
 	storageDir := filepath.Join(tempDir, "storage")
