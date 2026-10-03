@@ -64,6 +64,12 @@ ENV PORT=8080 \
     UI_DIR=/app/supportflast_ui \
     STATIC_DIR=/app/supportflast_ui \
     JWT_KEYS_DIR=/app/data/keys \
+    DB_DRIVER=tidb \
+    CLOUDPOOL_DB_DRIVER=tidb \
+    TIDB_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com \
+    TIDB_PORT=4000 \
+    TIDB_DATABASE=supportflast \
+    TIDB_TLS=true \
     AI_ENGINE_URL=http://supportflast-ai:8000 \
     TZ=Asia/Ho_Chi_Minh
 

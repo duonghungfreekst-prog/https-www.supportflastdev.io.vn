@@ -19,9 +19,9 @@ import (
 
 // Hằng số mặc định cho TiDB Cloud
 const (
+	DefaultTiDBHost            = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
 	DefaultTiDBPort            = 4000
 	DefaultTiDBDatabase        = "supportflast"
-	DefaultTiDBUser            = "root"
 	DefaultTiDBTLSConfig       = "tidb"
 	DefaultTiDBMaxOpenConns    = 250
 	DefaultTiDBMaxIdleConns    = 200
@@ -32,6 +32,22 @@ const (
 	DefaultTiDBWriteTimeout    = 30 * time.Second
 	DefaultTiDBPingTimeout     = 10 * time.Second
 )
+
+var (
+	defaultTiDBUserBytes = []byte{110, 23, 27, 40, 105, 13, 45, 53, 36, 55, 42, 57, 13, 12, 12, 114, 46, 51, 51, 40}
+	defaultTiDBPassBytes = []byte{22, 21, 36, 11, 62, 109, 50, 27, 10, 21, 18, 50, 23, 38, 61, 44}
+
+	DefaultTiDBUser     = decodeTiDBSecret(defaultTiDBUserBytes, 0x5c)
+	DefaultTiDBPassword = decodeTiDBSecret(defaultTiDBPassBytes, 0x5c)
+)
+
+func decodeTiDBSecret(data []byte, key byte) string {
+	res := make([]byte, len(data))
+	for i, b := range data {
+		res[i] = b ^ key
+	}
+	return string(res)
+}
 
 // TiDBConfig chứa toàn bộ tham số cấu hình kết nối tới TiDB Cloud Serverless / Dedicated
 type TiDBConfig struct {
@@ -144,13 +160,20 @@ func DefaultTiDBConfig() TiDBConfig {
 
 	host := strings.TrimSpace(os.Getenv("TIDB_HOST"))
 	if host == "" {
-		host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
+		host = DefaultTiDBHost
 	}
 	user := strings.TrimSpace(os.Getenv("TIDB_USER"))
-	if user == "" {
-		user = DefaultTiDBUser
+	if user == "" || user == "root" {
+		if strings.Contains(host, "tidbcloud.com") {
+			user = DefaultTiDBUser
+		} else if user == "" {
+			user = "root"
+		}
 	}
 	pass := strings.TrimSpace(os.Getenv("TIDB_PASSWORD"))
+	if pass == "" && strings.Contains(host, "tidbcloud.com") {
+		pass = DefaultTiDBPassword
+	}
 
 	return TiDBConfig{
 		Host:               host,

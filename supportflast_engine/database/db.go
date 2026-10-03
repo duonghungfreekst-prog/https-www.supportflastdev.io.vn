@@ -350,10 +350,10 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 
 // InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (TiDB Cloud hoặc SQLite)
 func InitDB(customPath ...string) (*sql.DB, error) {
-	drv := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
 		return InitSQLite(customPath[0])
 	}
+	drv := ActiveDriver()
 	if drv == "tidb" || drv == "mysql" {
 		db, err := InitTiDB()
 		if err != nil {
