@@ -9,11 +9,15 @@ const RemoteManager = {
       
       // Update Windows Mount Command
       const winCmdEl = document.getElementById('windows-mount-code');
-      if (winCmdEl && data.windows_mount_cmd) {
+      if (winCmdEl) {
+        let mountCmd = data.windows_mount_cmd || 'net use Z: https://supportflastdev.io.vn/webdav /user:admin [PASSWORD]';
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+          mountCmd = mountCmd.replace(/http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/webdav/g, 'https://supportflastdev.io.vn/webdav');
+        }
         winCmdEl.innerHTML = `
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="word-break: break-all; font-size: 12px;">${data.windows_mount_cmd}</span>
-            <button class="btn btn-secondary btn-sm" onclick="RemoteManager.copyToClipboard('${data.windows_mount_cmd.replace(/'/g, "\\'")}')">
+            <span style="word-break: break-all; font-size: 12px;">${mountCmd}</span>
+            <button class="btn btn-secondary btn-sm" onclick="RemoteManager.copyToClipboard('${mountCmd.replace(/'/g, "\\'")}')">
               Sao chép
             </button>
           </div>

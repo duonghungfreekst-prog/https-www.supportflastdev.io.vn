@@ -3,7 +3,31 @@
 // ==========================================================================
 
 const API = {
-  baseURL: '',
+  baseURL: (() => {
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        if (window.__API_BASE_URL__) return window.__API_BASE_URL__;
+        const proto = window.location.protocol || '';
+        const host = window.location.hostname || '';
+        const origin = window.location.origin || '';
+        // Tự động nhận diện nếu mở trực tiếp giao diện (file:// hoặc client standalone) thì mặc định trỏ về https://supportflastdev.io.vn
+        if (proto === 'file:' || !host || origin === 'null' || proto === 'about:' || proto.startsWith('app')) {
+          return 'https://supportflastdev.io.vn';
+        }
+      }
+    } catch (_) {}
+    return '';
+  })(),
+
+  url(endpoint) {
+    if (!endpoint) return '';
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return endpoint;
+    }
+    const base = (this.baseURL || '').replace(/\/+$/, '');
+    const path = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+    return base ? `${base}${path}` : path;
+  },
 
   getCurrentUser() {
     try {
@@ -88,7 +112,7 @@ const API = {
     const currentToken = this.getToken();
     try {
       if (currentToken) {
-        await fetch('/api/auth/logout', {
+        await fetch(this.url('/api/auth/logout'), {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${currentToken}` },
           credentials: 'include'
@@ -151,7 +175,7 @@ const API = {
 
       // Cache busting: bypass trình duyệt/CDN cache cho tất cả GET API request
       const method = (options.method || 'GET').toUpperCase();
-      if (method === 'GET' && endpoint.startsWith('/api/')) {
+      if (method === 'GET' && endpoint.includes('/api/')) {
         const sep = endpoint.includes('?') ? '&' : '?';
         endpoint = endpoint + sep + '_t=' + Date.now();
       }
@@ -162,7 +186,7 @@ const API = {
       const timeoutId = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
       options.signal = controller.signal;
 
-      const res = await fetch(endpoint, options);
+      const res = await fetch(this.url(endpoint), options);
       if (timeoutId) clearTimeout(timeoutId);
 
       if (!res.ok) {
@@ -316,7 +340,7 @@ const API = {
         }
         formData.append('file', file, file.name);
 
-        xhr.open('POST', '/api/files/upload', true);
+        xhr.open('POST', this.url('/api/files/upload'), true);
 
         // CRITICAL: phải set withCredentials=true để gửi cookie cloudpool_token lên server
         xhr.withCredentials = true;
@@ -627,7 +651,7 @@ const API = {
     if (user && user.id) {
       headers['X-User-ID'] = user.id;
     }
-    return fetch('/api/admin/update/upload', {
+    return fetch(this.url('/api/admin/update/upload'), {
       method: 'POST',
       headers,
       credentials: 'include',
@@ -738,7 +762,7 @@ const API = {
     }
 
     // Bước 1: Khởi tạo session
-    const initRes = await fetch('/api/files/upload-chunked', {
+    const initRes = await fetch(this.url('/api/files/upload-chunked'), {
       method: 'POST',
       headers: {
         ...authHeaders,
@@ -777,7 +801,7 @@ const API = {
           const timeoutId = setTimeout(() => controller.abort(), 180 * 1000); // 3 phút cho 1 chunk 5MB
 
           const res = await fetch(
-            `/api/files/upload-chunked?upload_id=${encodeURIComponent(upload_id)}&chunk_index=${i}`,
+            this.url(`/api/files/upload-chunked?upload_id=${encodeURIComponent(upload_id)}&chunk_index=${i}`),
             {
               method: 'POST',
               body: formData,
@@ -845,7 +869,7 @@ const API = {
         await new Promise(r => setTimeout(r, pollDelay));
 
         try {
-          const statusRes = await fetch(`/api/files/upload-status?upload_id=${encodeURIComponent(upload_id)}`, {
+          const statusRes = await fetch(this.url(`/api/files/upload-status?upload_id=${encodeURIComponent(upload_id)}`), {
             method: 'GET',
             headers: authHeaders,
             credentials: 'include'

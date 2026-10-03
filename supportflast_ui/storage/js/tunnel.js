@@ -60,6 +60,7 @@ const TunnelManager = {
 
     const primaryUrl = (state && state.url) ? state.url : 'https://supportflastdev.io.vn';
     const altUrl = 'https://www.supportflastdev.io.vn';
+    const webdavUrl = (state && state.url) ? `${state.url.replace(/\/+$/, '')}/webdav` : 'https://supportflastdev.io.vn/webdav';
 
     container.style.display = 'block';
     container.innerHTML = `
@@ -77,6 +78,22 @@ const TunnelManager = {
           <div style="display: flex; gap: 6px;">
             <button class="btn btn-secondary btn-sm" onclick="RemoteManager.copyToClipboard('${primaryUrl}')">Sao chép</button>
             <a href="${primaryUrl}" target="_blank" class="btn btn-primary btn-sm" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Truy cập ngay ↗</a>
+          </div>
+        </div>
+
+        <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59, 130, 246, 0.2); display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 18px;">
+              📁
+            </div>
+            <div>
+              <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #3b82f6;">Đường dẫn WebDAV Mount Từ Xa:</div>
+              <a href="${webdavUrl}" target="_blank" style="font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none;">${webdavUrl}</a>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="RemoteManager.copyToClipboard('${webdavUrl}')">Sao chép WebDAV</button>
+            <button class="btn btn-primary btn-sm" onclick="RemoteManager.copyToClipboard('net use Z: ${webdavUrl} /user:admin [PASSWORD]')">Sao chép lệnh Mount</button>
           </div>
         </div>
 
