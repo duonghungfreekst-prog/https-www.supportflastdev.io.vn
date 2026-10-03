@@ -2354,14 +2354,7 @@
             const list = Array.isArray(apps) && apps.length > 0 ? apps : DEFAULT_FEATURED_APPS;
             const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
 
-            // 1. Cập nhật Tab Trang Chủ (#home-featured-apps-grid) - 2 app tiêu biểu nhất
-            const homeGrid = document.getElementById('home-featured-apps-grid');
-            if (homeGrid) {
-                const top2 = list.slice(0, 2);
-                homeGrid.innerHTML = top2.map(app => renderAppCardHTML(app, isAdmin)).join('');
-            }
-
-            // 2. Cập nhật Tab Tải Ứng Dụng (#featured-apps-container) với bộ lọc và tìm kiếm
+            // Cập nhật Tab Tải Ứng Dụng (#featured-apps-container) với bộ lọc và tìm kiếm
             renderFilteredDownloadApps(list, isAdmin);
 
             // 3. Cập nhật số đếm trên filter chips
