@@ -470,7 +470,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 	if got := resp.Header.Get("Strict-Transport-Security"); got != "max-age=31536000; includeSubDomains; preload" {
 		t.Errorf("Expected Strict-Transport-Security: max-age=31536000; includeSubDomains; preload, got: %s", got)
 	}
-	expectedCSP := "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;"
+	expectedCSP := "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://supportflastdev.io.vn https://www.supportflastdev.io.vn https://supportflastdev-io-vn.onrender.com https://challenges.cloudflare.com https://*.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;"
 	if got := resp.Header.Get("Content-Security-Policy"); got != expectedCSP {
 		t.Errorf("Expected Content-Security-Policy: %s, got: %s", expectedCSP, got)
 	}
@@ -523,6 +523,12 @@ func TestCORS_AllowedOriginsAndPreflight(t *testing.T) {
 	}
 	if !IsOriginAllowed("https://supportflastdev.io.vn") {
 		t.Errorf("Expected https://supportflastdev.io.vn to be allowed by default")
+	}
+	if !IsOriginAllowed("https://www.supportflastdev.io.vn") {
+		t.Errorf("Expected https://www.supportflastdev.io.vn to be allowed by default")
+	}
+	if !IsOriginAllowed("https://supportflastdev-io-vn.onrender.com") {
+		t.Errorf("Expected https://supportflastdev-io-vn.onrender.com to be allowed by default")
 	}
 
 	// Kiểm tra chống bypass tên miền (Regex/Substring bypass attempt)

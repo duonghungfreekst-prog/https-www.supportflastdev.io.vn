@@ -85,15 +85,17 @@ var (
 	// Danh sách origin được phép cấu hình Exact String Match theo Rule 3.4
 	// TUYỆT ĐỐI KHÔNG dùng wildcard '*' hoặc regex pattern matching
 	allowedOriginsMap = map[string]bool{
-		"http://localhost":                true,
-		"http://127.0.0.1":                true,
-		"http://localhost:8080":           true,
-		"http://127.0.0.1:8080":           true,
-		"https://localhost:8443":          true,
-		"https://127.0.0.1:8443":          true,
-		"http://supportflast.local":       true,
-		"https://supportflast.local:8443": true,
-		"https://supportflastdev.io.vn":   true,
+		"http://localhost":                           true,
+		"http://127.0.0.1":                           true,
+		"http://localhost:8080":                      true,
+		"http://127.0.0.1:8080":                      true,
+		"https://localhost:8443":                     true,
+		"https://127.0.0.1:8443":                     true,
+		"http://supportflast.local":                  true,
+		"https://supportflast.local:8443":            true,
+		"https://supportflastdev.io.vn":              true,
+		"https://www.supportflastdev.io.vn":          true,
+		"https://supportflastdev-io-vn.onrender.com": true,
 	}
 )
 
@@ -415,7 +417,7 @@ func (w *SecurityResponseWriter) ApplyHeaders() {
 		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 	}
 	if h.Get("Content-Security-Policy") == "" {
-		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;")
+		h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https://supportflastdev.io.vn https://www.supportflastdev.io.vn https://supportflastdev-io-vn.onrender.com https://challenges.cloudflare.com https://*.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https://www.youtube.com https://*.youtube.com https://*.googlevideo.com; media-src 'self' data: blob: https:;")
 	}
 	if h.Get("X-XSS-Protection") == "" {
 		h.Set("X-XSS-Protection", "1; mode=block")

@@ -204,7 +204,7 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Content-Security-Policy", "default-src 'none'; media-src 'self' https: data: blob:; img-src 'self' https: data: blob:; style-src 'unsafe-inline';")
 		} else {
 			w.Header().Set("X-Frame-Options", "DENY")
-			w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' ws: wss: https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https: blob: data:; object-src 'self' https: blob: data:; media-src 'self' https: blob: data:;")
+			w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' ws: wss: https://supportflastdev.io.vn https://www.supportflastdev.io.vn https://supportflastdev-io-vn.onrender.com https://challenges.cloudflare.com https://*.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com https: blob: data:; object-src 'self' https: blob: data:; media-src 'self' https: blob: data:;")
 		}
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
