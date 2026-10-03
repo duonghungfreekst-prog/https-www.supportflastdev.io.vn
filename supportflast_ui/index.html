@@ -32,182 +32,205 @@
     <div id="mouse-aura"></div>
     <canvas id="network-canvas"></canvas>
 
+    <!-- KHỐI GRADIENT MESH CHUYỂN ĐỘNG & SCANLINE (CYBER NEBULA) -->
+    <div class="cyber-mesh-container" aria-hidden="true">
+        <div class="mesh-orb mesh-orb-cyan"></div>
+        <div class="mesh-orb mesh-orb-indigo"></div>
+        <div class="mesh-orb mesh-orb-purple"></div>
+        <div class="cyber-scanline-overlay"></div>
+    </div>
+
     <!-- ============================================================== -->
-    <!-- TOP SLEEK CYBER LUXURY ANNOUNCEMENT BAR (FULL-WIDTH 100%)      -->
+    <!-- CỤM HEADER KÍNH LIỀN KHỐI (MONOLITHIC CYBER-GLASS DOCK)        -->
+    <!-- HỢP NHẤT: TOP RIBBON ƯU ĐÃI & NAVBAR CHUẨN BACKDROP-FILTER 24PX -->
     <!-- ============================================================== -->
-    <aside class="gemini-top-ribbon-mega" role="banner" aria-label="Thông báo ưu đãi Google AI Pro">
-        <div class="ribbon-light-shimmer"></div>
-        <div class="gemini-top-ribbon-inner">
-            <!-- 1. HUY HIỆU SẤM SÉT TINH TẾ -->
-            <div class="mega-ribbon-badge">
-                <span class="lightning-icon">⚡</span>
-                <span>ƯU ĐÃI ĐẶC QUYỀN HÔM NAY</span>
+    <header class="cyber-monolith-header">
+        <!-- TẦNG 1: DẢI THÔNG BÁO ƯU ĐÃI GOOGLE AI PRO & DRIVE (CYAN & INDIGO) -->
+        <aside class="gemini-top-ribbon-mega" role="banner" aria-label="Thông báo ưu đãi Google AI Pro">
+            <div class="ribbon-light-shimmer"></div>
+            <div class="gemini-top-ribbon-inner">
+                <!-- 1. HUY HIỆU CYBER DIAMOND NEON -->
+                <div class="mega-ribbon-badge">
+                    <span class="lightning-icon">⚡</span>
+                    <span>ƯU ĐÃI ĐẶC QUYỀN HÔM NAY</span>
+                </div>
+
+                <!-- 2. NỘI DUNG CHỮ ĐỒNG BỘ CYAN NEON VÀ INDIGO SẮC NÉT -->
+                <div class="mega-ribbon-headline">
+                    <span class="headline-lead">Nâng cấp</span>
+                    <span class="neon-indigo-keyword">Google AI Pro &amp; Gemini Advanced</span>
+                    <span class="sparkle-separator">✦</span>
+                    <span class="headline-lead">Tặng kèm</span>
+                    <span class="neon-cyan-keyword">5TB Google Drive Tốc Độ Cao!</span>
+                </div>
+
+                <!-- 3. NÚT ZALO 3D SLEEK CYBER ĐỒNG TÔNG INDIGO - CYAN -->
+                <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" 
+                   class="btn-zalo-3d-mega" title="Bấm mở Zalo 0342.041.517 nhận tư vấn &amp; báo giá ưu đãi">
+                    <span class="btn-shimmer-sheen"></span>
+                    <span class="zalo-chat-icon">💬</span>
+                    <span class="zalo-text-block">NHẮN ZALO BÁO GIÁ: <strong>0342.041.517</strong></span>
+                    <span class="zalo-arrow-icon">➔</span>
+                </a>
+
+                <!-- 4. NÚT ĐÓNG THANH THÔNG BÁO (KÍNH MỜ LIỀN MẠCH) -->
+                <button class="mega-ribbon-close" onclick="dismissMegaRibbon()" title="Đóng thanh thông báo" aria-label="Đóng thanh thông báo">✕</button>
             </div>
+            <!-- Dải sợi quang vi mô Indigo - Cyan ở đáy Ribbon -->
+            <div class="ribbon-neon-led-track"></div>
+        </aside>
 
-            <!-- 2. NỘI DUNG CHỮ GỌN ĐẸP & TỪ KHÓA VÀNG KIM NEON -->
-            <div class="mega-ribbon-headline">
-                <span class="headline-lead">Nâng cấp</span>
-                <span class="neon-gold-keyword">Google AI Pro &amp; Gemini Advanced</span>
-                <span class="sparkle-separator">✦</span>
-                <span class="headline-lead">Tặng kèm</span>
-                <span class="neon-gold-keyword drive-keyword">5TB Google Drive Tốc Độ Cao!</span>
-            </div>
+        <!-- TẦNG 2: THANH NAVBAR ĐIỀU HƯỚNG KÍNH MỜ LIỀN KHỐI -->
+        <div class="wrapper nav-inner-wrapper">
+            <nav>
+                <div class="logo" onclick="switchMainView('home')" title="Về Trang Chủ SupportFlast">
+                    <div class="logo-icon" id="main-logo-3d">
+                        <div class="cube-3d-scene">
+                            <div class="cube-3d">
+                                <!-- Mặt Trước -->
+                                <div class="cube-face cube-front">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00e5ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <!-- Mặt Sau -->
+                                <div class="cube-face cube-back">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <!-- Mặt Phải -->
+                                <div class="cube-face cube-right">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <!-- Mặt Trái -->
+                                <div class="cube-face cube-left">
+                                    <svg viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <!-- Mặt Trên & Mặt Đáy -->
+                                <div class="cube-face cube-top"><div class="face-grid"></div></div>
+                                <div class="cube-face cube-bottom"><div class="face-grid"></div></div>
+                                <!-- Lõi Năng Lượng Quantum Core -->
+                                <div class="cube-core"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="logo-text">
+                        SUPPORT<span class="hl" style="color:#00e5ff;">FLASTDEV.IO.VN</span>
+                    </div>
+                </div>
 
-            <!-- 3. NÚT ZALO 3D SLEEK CYBER (CHỐNG LEM SHEEN) -->
-            <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" 
-               class="btn-zalo-3d-mega" title="Bấm mở Zalo 0342.041.517 nhận tư vấn &amp; báo giá ưu đãi">
-                <span class="btn-shimmer-sheen"></span>
-                <span class="zalo-chat-icon">💬</span>
-                <span class="zalo-text-block">NHẮN ZALO BÁO GIÁ: <strong>0342.041.517</strong></span>
-                <span class="zalo-arrow-icon">➔</span>
-            </a>
+                <!-- MENU CHÍNH: CÁC NÚT PILL TABS KÍNH MỜ -->
+                <div class="nav-links">
+                    <a href="javascript:void(0)" id="nav-home" class="active" onclick="switchMainView('home', this)">Trang chủ</a>
+                    <a href="javascript:void(0)" id="nav-download" onclick="switchMainView('download', this)">Tải ứng dụng</a>
+                    <a href="javascript:void(0)" id="nav-docs" style="display: none !important;" onclick="switchMainView('docs', this)">Video &amp; Hướng dẫn</a>
+                    <a href="javascript:void(0)" id="nav-faq" onclick="switchMainView('faq', this)">Đánh giá</a>
+                    <a href="javascript:void(0)" id="nav-changelog" onclick="switchMainView('changelog', this)">Cập nhật</a>
+                    <a href="/storage/" target="_blank" id="nav-storage" class="admin-only" style="color: #00e5ff; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>📁</span> Kho Lưu Trữ</a>
+                </div>
 
-            <!-- 4. NÚT ĐÓNG THANH THÔNG BÁO -->
-            <button class="mega-ribbon-close" onclick="dismissMegaRibbon()" title="Đóng thanh thông báo" aria-label="Đóng thanh thông báo">✕</button>
+                <!-- CỤM TÁC VỤ GÓC PHẢI (NAV RIGHT) -->
+                <div class="nav-right">
+                    <button id="btn-nav-upload" class="btn-nav-upload admin-only" style="display: none;" onclick="openCreateAppModal()">
+                        <span style="font-size: 1.15rem; line-height: 1;">+</span>
+                        <span>Đăng Tải App</span>
+                    </button>
+
+                    <!-- Nút Đăng Ký & Đăng Nhập cho Khách (Đồng bộ Cyan Neon & Indigo) -->
+                    <button id="btn-admin-register-trigger" class="btn-nav-register" onclick="openAdminRegisterModal()" title="Tạo tài khoản Nhà Phát Triển / Thành Viên mới">
+                        <span>📝</span>
+                        <span>Đăng Ký</span>
+                    </button>
+                    <button id="btn-admin-login-trigger" class="btn-nav-login" onclick="openAdminLoginModal()" title="Đăng nhập tài khoản SupportFlast Dev">
+                        <span>🔐</span>
+                        <span>Đăng Nhập</span>
+                    </button>
+
+                    <!-- Profile Badge khi Admin đã đăng nhập -->
+                    <div id="nav-user-profile" style="position: relative; display: none;">
+                        <div onclick="toggleUserDropdown(event)" style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(0, 229, 255, 0.3); padding: 4px 12px 4px 6px; border-radius: 999px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='rgba(0,229,255,0.7)'" onmouseout="this.style.borderColor='rgba(0,229,255,0.3)'">
+                            <div id="user-nav-avatar" style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5, #00e5ff); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #fff;">Q</div>
+                            <div style="display: flex; flex-direction: column; line-height: 1.15; text-align: left;">
+                                <span id="user-nav-name" style="font-size: 0.82rem; font-weight: 700; color: #fff;">Quản Trị Viên Hệ Thống</span>
+                                <span id="user-nav-role" style="font-size: 0.65rem; color: #00e5ff; font-weight: 800; letter-spacing: 0.5px;">ADMIN</span>
+                            </div>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#94a3b8;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+
+                        <!-- Dropdown Menu -->
+                        <div id="user-dropdown-menu" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #0b1120; border: 1px solid rgba(0, 229, 255, 0.25); border-radius: 12px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75); min-width: 240px; padding: 6px 0; z-index: 1500; backdrop-filter: blur(16px);">
+                            <div style="padding: 10px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                                <div id="dropdown-user-fullname" style="color: #fff; font-weight: 700; font-size: 0.88rem;">Quản Trị Viên Hệ Thống</div>
+                                <div id="dropdown-user-email" style="color: #94a3b8; font-size: 0.78rem;">admin@supportflastdev.io.vn</div>
+                            </div>
+                            <div class="user-dropdown-item" onclick="window.open('/storage/', '_blank'); closeUserDropdown();">
+                                <span>📁</span>
+                                <span>Kho Lưu Trữ Multi-Drive</span>
+                            </div>
+                            <div class="user-dropdown-item" onclick="switchMainView('changelog'); closeUserDropdown();">
+                                <span>⚡</span>
+                                <span>Trung Tâm Cập Nhật Web (Admin)</span>
+                            </div>
+                            <div class="user-dropdown-item" onclick="openDomainModal(); closeUserDropdown();">
+                                <span>🛡️</span>
+                                <span>Cấu Hình Tên Miền &amp; WAF</span>
+                            </div>
+                            <div class="user-dropdown-item" onclick="openAdminApiModal(); closeUserDropdown();">
+                                <span>🔑</span>
+                                <span>Cấp &amp; Quản Lý Mã API Key</span>
+                            </div>
+                            <div class="user-dropdown-item" onclick="openGitSyncModal(); closeUserDropdown();">
+                                <span>🐙</span>
+                                <span>Đồng Bộ GitHub (Auto-Sync)</span>
+                            </div>
+                            <div class="user-dropdown-item" onclick="switchMainView('download'); closeUserDropdown();">
+                                <span>📦</span>
+                                <span>Kho Ứng Dụng Của Tôi</span>
+                            </div>
+                            <div class="user-dropdown-item" style="color: #10b981;" onclick="triggerGDriveBackupHub(); closeUserDropdown();">
+                                <span>☁️</span>
+                                <span>Sao Lưu CSDL Về Google Drive</span>
+                            </div>
+                            <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: 4px;"></div>
+                            <div class="user-dropdown-item" style="color: #ef4444;" onclick="handleUserLogout(); closeUserDropdown();">
+                                <span>🚪</span>
+                                <span>Đăng Xuất Tài Khoản</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
         </div>
-        <!-- Dải sợi chỉ ánh sáng Neon ở đáy -->
-        <div class="ribbon-neon-led-track"></div>
-    </aside>
+    </header>
 
     <div class="wrapper">
-        <nav>
-            <div class="logo" onclick="switchMainView('home')" title="Về Trang Chủ">
-                <div class="logo-icon" id="main-logo-3d">
-                    <div class="cube-3d-scene">
-                        <div class="cube-3d">
-                            <!-- Mặt Trước (Front Face) -->
-                            <div class="cube-face cube-front">
-                                <svg viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00e5ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <!-- Mặt Sau (Back Face) -->
-                            <div class="cube-face cube-back">
-                                <svg viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#a855f7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <!-- Mặt Phải (Right Face) -->
-                            <div class="cube-face cube-right">
-                                <svg viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <!-- Mặt Trái (Left Face) -->
-                            <div class="cube-face cube-left">
-                                <svg viewBox="0 0 24 24" fill="none">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </div>
-                            <!-- Mặt Trên (Top Face) -->
-                            <div class="cube-face cube-top">
-                                <div class="face-grid"></div>
-                            </div>
-                            <!-- Mặt Đáy (Bottom Face) -->
-                            <div class="cube-face cube-bottom">
-                                <div class="face-grid"></div>
-                            </div>
-                            <!-- Lõi Năng Lượng Trung Tâm (Glowing Quantum Core) -->
-                            <div class="cube-core"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="logo-text">
-                    SUPPORT<span class="hl" style="color:#00e5ff;">FLASTDEV.IO.VN</span>
-                </div>
-            </div>
-
-            <div class="nav-links">
-                <a href="javascript:void(0)" id="nav-home" class="active" onclick="switchMainView('home', this)">Trang chủ</a>
-                <a href="javascript:void(0)" id="nav-download" onclick="switchMainView('download', this)">Tải ứng dụng</a>
-                <a href="javascript:void(0)" id="nav-docs" style="display: none !important;" onclick="switchMainView('docs', this)">Video &amp; Hướng dẫn</a>
-                <a href="javascript:void(0)" id="nav-faq" onclick="switchMainView('faq', this)">Đánh giá</a>
-                <a href="javascript:void(0)" id="nav-changelog" onclick="switchMainView('changelog', this)">Cập nhật</a>
-                <a href="/storage/" target="_blank" id="nav-storage" class="admin-only" style="color: #f59e0b; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>📁</span> Kho Lưu Trữ</a>
-            </div>
-
-            <div class="nav-right">
-                <button id="btn-nav-upload" class="btn-nav-upload admin-only" style="display: none;" onclick="openCreateAppModal()">
-                    <span style="font-size: 1.15rem; line-height: 1;">+</span>
-                    <span>Đăng Tải App</span>
-                </button>
-
-                <!-- Cụm Nút Đăng Ký & Đăng Nhập (Hiển thị khi khách chưa đăng nhập) -->
-                <button id="btn-admin-register-trigger" class="btn-nav-register" onclick="openAdminRegisterModal()" title="Tạo tài khoản Nhà Phát Triển / Thành Viên mới">
-                    <span>📝</span>
-                    <span>Đăng Ký</span>
-                </button>
-                <button id="btn-admin-login-trigger" class="btn-nav-login" onclick="openAdminLoginModal()" title="Đăng nhập tài khoản SupportFlast Dev">
-                    <span>🔐</span>
-                    <span>Đăng Nhập</span>
-                </button>
-
-                <!-- Profile badge: Avatar Q + Quản Trị Viên Hệ Thống + ADMIN (Chỉ hiển thị khi đã xác thực tài khoản Admin) -->
-                <div id="nav-user-profile" style="position: relative; display: none;">
-                    <div onclick="toggleUserDropdown(event)" style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.15); padding: 4px 12px 4px 6px; border-radius: 999px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='rgba(0,229,255,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)'">
-                        <div id="user-nav-avatar" style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #f97316); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; color: #fff;">Q</div>
-                        <div style="display: flex; flex-direction: column; line-height: 1.15; text-align: left;">
-                            <span id="user-nav-name" style="font-size: 0.82rem; font-weight: 700; color: #fff;">Quản Trị Viên Hệ Thống</span>
-                            <span id="user-nav-role" style="font-size: 0.65rem; color: #ef4444; font-weight: 800; letter-spacing: 0.5px;">ADMIN</span>
-                        </div>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#94a3b8;"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-
-                    <!-- Dropdown Menu -->
-                    <div id="user-dropdown-menu" style="display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #0b1120; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 12px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65); min-width: 240px; padding: 6px 0; z-index: 1500; backdrop-filter: blur(12px);">
-                        <div style="padding: 10px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-                            <div id="dropdown-user-fullname" style="color: #fff; font-weight: 700; font-size: 0.88rem;">Quản Trị Viên Hệ Thống</div>
-                            <div id="dropdown-user-email" style="color: #94a3b8; font-size: 0.78rem;">admin@supportflastdev.io.vn</div>
-                        </div>
-                        <div class="user-dropdown-item" onclick="window.open('/storage/', '_blank'); closeUserDropdown();">
-                            <span>📁</span>
-                            <span>Kho Lưu Trữ Multi-Drive</span>
-                        </div>
-                        <div class="user-dropdown-item" onclick="switchMainView('changelog'); closeUserDropdown();">
-                            <span>⚡</span>
-                            <span>Trung Tâm Cập Nhật Web (Admin)</span>
-                        </div>
-                        <div class="user-dropdown-item" onclick="openDomainModal(); closeUserDropdown();">
-                            <span>🛡️</span>
-                            <span>Cấu Hình Tên Miền &amp; WAF</span>
-                        </div>
-                        <div class="user-dropdown-item" onclick="openAdminApiModal(); closeUserDropdown();">
-                            <span>🔑</span>
-                            <span>Cấp &amp; Quản Lý Mã API Key</span>
-                        </div>
-                        <div class="user-dropdown-item" onclick="openGitSyncModal(); closeUserDropdown();">
-                            <span>🐙</span>
-                            <span>Đồng Bộ GitHub (Auto-Sync)</span>
-                        </div>
-                        <div class="user-dropdown-item" onclick="switchMainView('download'); closeUserDropdown();">
-                            <span>📦</span>
-                            <span>Kho Ứng Dụng Của Tôi</span>
-                        </div>
-                        <div class="user-dropdown-item" style="color: #10b981;" onclick="triggerGDriveBackupHub(); closeUserDropdown();">
-                            <span>☁️</span>
-                            <span>Sao Lưu CSDL Về Google Drive</span>
-                        </div>
-                        <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); margin-top: 4px;"></div>
-                        <div class="user-dropdown-item" style="color: #ef4444;" onclick="handleUserLogout(); closeUserDropdown();">
-                            <span>🚪</span>
-                            <span>Đăng Xuất Tài Khoản</span>
-                        </div>
-                    </div>
-                </div>
-        </nav>
-
         <!-- ============================================== -->
-        <!-- VIEW 1: TRANG CHỦ (HERO & TỔNG QUAN) -->
+        <!-- VIEW 1: TRANG CHỦ (HERO HUD KINETIC)          -->
         <!-- ============================================== -->
         <main class="app-view active" id="view-home">
             <header class="hero">
-                <div class="badge" id="scramble-badge">
-                    [ APP_HUB_READY ] // Nền tảng Đăng tải &amp; Phân phối Ứng dụng Toàn cầu
+                <!-- HUY HIỆU TRẠNG THÁI RADAR SỐNG ĐỘNG (RADAR HUD STATUS BADGE) -->
+                <div class="hero-radar-badge" id="scramble-badge" title="Tình trạng hệ thống máy chủ và Anycast CDN toàn cầu">
+                    <span class="radar-ping-emitter">
+                        <span class="radar-core-dot"></span>
+                        <span class="radar-ripple-ring ring-1"></span>
+                        <span class="radar-ripple-ring ring-2"></span>
+                    </span>
+                    <span class="radar-text-label">ALL CDN NODES OPERATIONAL</span>
+                    <span class="radar-divider">|</span>
+                    <span class="radar-sla-metric">99.99% SLA</span>
                 </div>
                 
+                <!-- HERO KINETIC TITLE: TYPOGRAPHY PHÂN CẤP ĐIỆN ẢNH VỚI CHỮ NHẢY 3D -->
                 <h1 class="hero-kinetic-title" onclick="triggerHeroLettersAssemble()" title="Nhấp để kích hoạt hiệu ứng chữ nhảy xếp chữ">
-                    <div>
-                        <span class="h1-line">
+                    <!-- Dòng 1: Pre-Headline Bạch Kim Băng Giá (Platinum Frost) -->
+                    <div class="h1-tier-sub">
+                        <span class="h1-line h1-line-silver">
                             <span class="k-word"><span class="k-char" style="--i:0">Đ</span><span class="k-char" style="--i:1">Ă</span><span class="k-char" style="--i:2">N</span><span class="k-char" style="--i:3">G</span></span>
                             <span class="k-space">&nbsp;</span>
                             <span class="k-word"><span class="k-char" style="--i:4">T</span><span class="k-char" style="--i:5">Ả</span><span class="k-char" style="--i:6">I</span></span>
@@ -217,8 +240,9 @@
                             <span class="k-word"><span class="k-char" style="--i:11">T</span><span class="k-char" style="--i:12">Ố</span><span class="k-char" style="--i:13">C</span><span class="k-char" style="--i:14">.</span></span>
                         </span>
                     </div>
-                    <div>
-                        <span class="h1-line h1-glow">
+                    <!-- Dòng 2: Main Punchline Rực Sáng Gradient Cyan Neon sang Deep Indigo -->
+                    <div class="h1-tier-main">
+                        <span class="h1-line h1-glow h1-line-neon">
                             <span class="k-word"><span class="k-char" style="--i:15">P</span><span class="k-char" style="--i:16">H</span><span class="k-char" style="--i:17">Â</span><span class="k-char" style="--i:18">N</span></span>
                             <span class="k-space">&nbsp;</span>
                             <span class="k-word"><span class="k-char" style="--i:19">P</span><span class="k-char" style="--i:20">H</span><span class="k-char" style="--i:21">Ố</span><span class="k-char" style="--i:22">I</span></span>
@@ -230,18 +254,29 @@
                     </div>
                 </h1>
                 
+                <!-- ĐOẠN DẪN HERO CHUẨN TERMINAL HUD -->
                 <p class="desc">
-                    Hệ sinh thái xuất bản và tải ứng dụng thế hệ mới. Hỗ trợ nhà phát triển tự động đóng gói đa nền tảng, quét mã độc bảo vệ người dùng, cấp phép bản quyền và phân phối tốc độ cao qua Anycast CDN.
+                    Hệ sinh thái xuất bản và phân phối ứng dụng chuẩn Cloud-Native. Tự động đóng gói đa nền tảng, mã hóa phân tán AES-256-GCM, quét mã độc Zero-Day bảo vệ người dùng và tăng tốc truyền tải toàn cầu qua mạng Anycast CDN.
                 </p>
                 
+                <!-- BỘ ĐÔI NÚT BẤM HÀNH ĐỘNG PHÁT SÁNG NEON RIPPLE -->
                 <div class="btn-group">
+                    <!-- Nút 1: Primary Action Button phát sáng Neon Ripple -->
                     <button class="btn-hero-primary" onclick="switchMainView('download');">
-                        <span style="font-size: 1.15rem; line-height: 1;">🚀</span>
+                        <span class="btn-neon-ripple-core"></span>
+                        <span class="btn-icon-spin" style="font-size: 1.25rem; line-height: 1;">🚀</span>
                         <span>Khám Phá &amp; Tải Ứng Dụng Ngay</span>
+                        <span class="btn-arrow-right">&rarr;</span>
                     </button>
+
+                    <!-- Nút 2: Secondary Action Button Cyber Glass HUD -->
                     <button class="btn-hero-secondary" onclick="switchMainView('docs');">
-                        <span>🎬 Xem Video Hướng Dẫn &rarr;</span>
+                        <span class="btn-glass-ripple"></span>
+                        <span style="font-size: 1.15rem; line-height: 1;">🎬</span>
+                        <span>Xem Video Hướng Dẫn &rarr;</span>
                     </button>
+
+                    <!-- Nút 3: Ghost Button dành riêng cho Quản Trị Viên (Admin Only) -->
                     <button class="btn-hero-ghost admin-only" id="btn-hero-api-admin" onclick="openCreateAppModal();" title="Thêm ứng dụng mới vào kho (Chỉ dành cho Admin)">
                         <span style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 1.1rem; line-height: 1;">➕</span>
@@ -277,33 +312,38 @@
                 </div>
 
                 <!-- Lưới ứng dụng nổi bật trang chủ -->
+                                <!-- Lưới ứng dụng nổi bật trang chủ -->
                 <div class="featured-apps-grid" id="home-featured-apps-grid">
                     <!-- APP 0: DMH Tools Enterprise Suite -->
-                    <div class="featured-app-card" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
+                    <div class="featured-app-card" id="home-app-card-APP-4964" data-app-id="APP-4964">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
                             <div class="app-card-header">
-                                <div class="app-icon" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🩺</div>
+                                <div class="app-icon">🩺</div>
                                 <div>
-                                    <div class="app-info-title" style="color: #00e5ff; font-weight: 800;">DMH Tools Enterprise Suite</div>
-                                    <div class="app-info-dev">bởi Dương Mạnh Hùng (DMH Tech) • v1.1.3</div>
+                                    <div class="app-info-title">DMH Tools Enterprise Suite</div>
+                                    <div class="app-info-dev"><span class="dev-status-dot"></span> bởi Dương Mạnh Hùng (DMH Tech) • v1.1.3</div>
                                 </div>
                             </div>
-                            <p style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Bộ công cụ toàn diện: Quản lý Bản Quyền Windows/Office (Online, BIOS OEM, CID), 41 Fixes lỗi hệ thống chuyên sâu (Driver, Spooler, LAN 0x11b), Sao lưu DriverStore PnP, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TV Màn 2 &amp; Nội soi AI 4K.</p>
+                            <p class="app-desc-text">Bộ công cụ toàn diện: Quản lý Bản Quyền Windows/Office (Online, BIOS OEM, CID), 41 Fixes lỗi hệ thống chuyên sâu (Driver, Spooler, LAN 0x11b), Sao lưu DriverStore PnP, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TV Màn 2 &amp; Nội soi AI 4K.</p>
                             <div class="app-tags">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Windows 10/11 x64</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">141.3 MB Slim</span>
+                                <span class="app-tag tag-platform">Windows 10/11 x64</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">141.3 MB Slim</span>
                             </div>
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-4964" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-4964" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.exe 141.3 MB)</span> &rarr;
                             </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-4964')">
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-4964')">
                                     <span>📘</span> <span>Bài Viết HD</span>
                                 </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-4964')">
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-4964')">
                                     <span>🎬</span> <span>Video HD</span>
                                 </button>
                             </div>
@@ -311,31 +351,35 @@
                     </div>
 
                     <!-- APP 1: AI Equalizer Pro & Audio Processor -->
-                    <div class="featured-app-card" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
+                    <div class="featured-app-card" id="home-app-card-APP-7290" data-app-id="APP-7290">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
                             <div class="app-card-header">
-                                <div class="app-icon" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🎛️</div>
+                                <div class="app-icon">🎛️</div>
                                 <div>
-                                    <div class="app-info-title" style="color: #00e5ff; font-weight: 800;">AI Equalizer Pro &amp; Audio Processor</div>
-                                    <div class="app-info-dev">bởi Dương Mạnh Hùng • v2.2.0</div>
+                                    <div class="app-info-title">AI Equalizer Pro &amp; Audio Processor</div>
+                                    <div class="app-info-dev"><span class="dev-status-dot"></span> bởi Dương Mạnh Hùng • v2.2.0</div>
                                 </div>
                             </div>
-                            <p style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, mic và lọc âm hệ thống.</p>
+                            <p class="app-desc-text">Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, mic và lọc âm hệ thống.</p>
                             <div class="app-tags">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Android &amp; Web HUD</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">10.9 MB</span>
+                                <span class="app-tag tag-platform">Android &amp; Web HUD</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">10.9 MB</span>
                             </div>
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-7290" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-7290" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.zip 10.9 MB)</span> &rarr;
                             </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-7290')">
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-7290')">
                                     <span>📘</span> <span>Bài Viết HD</span>
                                 </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-7290')">
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-7290')">
                                     <span>🎬</span> <span>Video HD</span>
                                 </button>
                             </div>
@@ -1061,175 +1105,91 @@
                 </div>
 
                 <div class="featured-apps-grid" id="featured-apps-container">
-                    <!-- APP 0: DMH Tools Enterprise Suite (Chính thức được xuất bản) -->
-                    <div class="featured-app-card" id="app-card-APP-4964" data-app-id="APP-4964" data-app-name="DMH Tools Enterprise Suite" data-app-version="v1.1.3" data-app-platform="Windows 10 / 11 (x64)" data-app-category="Tiện Ích Hệ Thống, Bản Quyền &amp; Y Tế" data-app-desc="Bộ công cụ toàn diện: Kích hoạt &amp; Quản lý Bản Quyền Windows/Office (Online, OEM BIOS, CID), 41 Fixes lỗi Windows chuyên sâu (Driver, Spooler, LAN 0x11b, SFC/DISM), Sao lưu &amp; trích xuất Driver PnP DriverStore, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TTS, Nội soi AI 4K." data-app-author="Dương Mạnh Hùng (DMH Tech)" data-app-filename="DMH_Tools_Setup_1.1.3_Slim.exe" data-app-icon="🩺" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
+                    <!-- APP 0: DMH Tools Enterprise Suite -->
+                    <div class="featured-app-card" id="app-card-APP-4964" data-app-id="APP-4964" data-app-name="DMH Tools Enterprise Suite" data-app-version="v1.1.3" data-app-platform="Windows 10 / 11 (x64)" data-app-category="Tiện Ích Hệ Thống, Bản Quyền &amp; Y Tế" data-app-desc="Bộ công cụ toàn diện: Kích hoạt &amp; Quản lý Bản Quyền Windows/Office (Online, OEM BIOS, CID), 41 Fixes lỗi Windows chuyên sâu (Driver, Spooler, LAN 0x11b, SFC/DISM), Sao lưu &amp; trích xuất Driver PnP DriverStore, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TTS, Nội soi AI 4K." data-app-author="Dương Mạnh Hùng (DMH Tech)" data-app-filename="DMH_Tools_Setup_1.1.3_Slim.exe" data-app-icon="🩺">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
                             <div class="app-card-header">
-                                <div class="app-icon" id="app-icon-APP-4964" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🩺</div>
+                                <div class="app-icon" id="app-icon-APP-4964">🩺</div>
                                 <div>
-                                    <div class="app-info-title" id="app-name-APP-4964" style="color: #00e5ff; font-weight: 800;">DMH Tools Enterprise Suite</div>
-                                    <div class="app-info-dev" id="app-dev-APP-4964">bởi Dương Mạnh Hùng (DMH Tech) • v1.1.3</div>
+                                    <div class="app-info-title" id="app-name-APP-4964">DMH Tools Enterprise Suite</div>
+                                    <div class="app-info-dev" id="app-dev-APP-4964"><span class="dev-status-dot"></span> bởi Dương Mạnh Hùng (DMH Tech) • v1.1.3</div>
                                 </div>
                             </div>
-                            <p id="app-desc-APP-4964" style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Bộ công cụ toàn diện: Quản lý Bản Quyền Windows/Office (Online, BIOS OEM, CID), 41 Fixes lỗi hệ thống chuyên sâu (Driver, Spooler, LAN 0x11b), Sao lưu DriverStore PnP, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TV Màn 2 &amp; Nội soi AI 4K.</p>
+                            <p class="app-desc-text" id="app-desc-APP-4964">Bộ công cụ toàn diện: Quản lý Bản Quyền Windows/Office (Online, BIOS OEM, CID), 41 Fixes lỗi hệ thống chuyên sâu (Driver, Spooler, LAN 0x11b), Sao lưu DriverStore PnP, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TV Màn 2 &amp; Nội soi AI 4K.</p>
                             <div class="app-tags" id="app-tags-APP-4964">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Windows 10/11 x64</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">141.3 MB Slim</span>
+                                <span class="app-tag tag-platform">Windows 10/11 x64</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">141.3 MB Slim</span>
                             </div>
                         </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-4964" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-4964" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.exe 141.3 MB)</span> &rarr;
                             </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-4964')">
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-4964')">
                                     <span>📘</span> <span>Bài Viết HD</span>
                                 </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-4964')">
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-4964')">
                                     <span>🎬</span> <span>Video HD</span>
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- THANH CÔNG CỤ DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ADMIN -->
-                        <div class="admin-app-actions admin-only" style="display: none;">
-                            <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-4964')" title="Chỉnh sửa thông tin ứng dụng">
-                                <span>✏️</span> <span>Sửa</span>
-                            </button>
-                            <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-4964', 'DMH Tools Enterprise Suite')" title="Xóa ứng dụng khỏi kho">
-                                <span>🗑️</span> <span>Xoá</span>
-                            </button>
+                            <div class="admin-app-actions admin-only" style="display: none;">
+                                <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-4964')" title="Chỉnh sửa thông tin ứng dụng">
+                                    <span>✏️</span> <span>Sửa</span>
+                                </button>
+                                <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-4964', 'DMH Tools Enterprise Suite')" title="Xóa ứng dụng khỏi kho">
+                                    <span>🗑️</span> <span>Xoá</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- APP 1: AI Equalizer Pro & Audio Processor -->
-                    <div class="featured-app-card" id="app-card-APP-7290" data-app-id="APP-7290" data-app-name="AI Equalizer Pro &amp; Audio Processor" data-app-version="v2.2.0" data-app-platform="Android 8.0+ &amp; Web Audio HUD" data-app-category="Âm thanh &amp; Đa phương tiện" data-app-desc="Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, hiệu ứng không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực (Spectrum/Waveform/Ring/Stars/Mirror). Hỗ trợ phát nhạc cục bộ, nhạc nền Synth Ambient, thu âm Mic trực tiếp và lọc âm hệ thống (YouTube, Spotify, Game) chuẩn xác không độ trễ." data-app-author="Dương Mạnh Hùng (DMH Tech &amp; Antigravity)" data-app-filename="APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip" data-app-icon="🎛️" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
+                    <div class="featured-app-card" id="app-card-APP-7290" data-app-id="APP-7290" data-app-name="AI Equalizer Pro &amp; Audio Processor" data-app-version="v2.2.0" data-app-platform="Android 8.0+ &amp; Web Audio HUD" data-app-category="Âm thanh &amp; Đa phương tiện" data-app-desc="Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, hiệu ứng không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, nhạc nền Synth Ambient, thu âm Mic trực tiếp và lọc âm hệ thốngchuẩn xác không độ trễ." data-app-author="Dương Mạnh Hùng (DMH Tech &amp; Antigravity)" data-app-filename="APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip" data-app-icon="🎛️">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
                             <div class="app-card-header">
-                                <div class="app-icon" id="app-icon-APP-7290" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🎛️</div>
+                                <div class="app-icon" id="app-icon-APP-7290">🎛️</div>
                                 <div>
-                                    <div class="app-info-title" id="app-name-APP-7290" style="color: #00e5ff; font-weight: 800;">AI Equalizer Pro &amp; Audio Processor</div>
-                                    <div class="app-info-dev" id="app-dev-APP-7290">bởi Dương Mạnh Hùng (DMH Tech &amp; Antigravity) • v2.2.0</div>
+                                    <div class="app-info-title" id="app-name-APP-7290">AI Equalizer Pro &amp; Audio Processor</div>
+                                    <div class="app-info-dev" id="app-dev-APP-7290"><span class="dev-status-dot"></span> bởi Dương Mạnh Hùng (DMH Tech &amp; Antigravity) • v2.2.0</div>
                                 </div>
                             </div>
-                            <p id="app-desc-APP-7290" style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, hiệu ứng không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, nhạc nền Synth Ambient, thu âm Mic trực tiếp và lọc âm hệ thống.</p>
+                            <p class="app-desc-text" id="app-desc-APP-7290">Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, mic và lọc âm hệ thống.</p>
                             <div class="app-tags" id="app-tags-APP-7290">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Android &amp; Web HUD</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">10.9 MB</span>
+                                <span class="app-tag tag-platform">Android &amp; Web HUD</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">10.9 MB</span>
                             </div>
                         </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-7290" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-7290" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.zip 10.9 MB)</span> &rarr;
                             </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-7290')">
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-7290')">
                                     <span>📘</span> <span>Bài Viết HD</span>
                                 </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-7290')">
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-7290')">
                                     <span>🎬</span> <span>Video HD</span>
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- THANH CÔNG CỤ DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ADMIN -->
-                        <div class="admin-app-actions admin-only" style="display: none;">
-                            <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-7290')" title="Chỉnh sửa thông tin ứng dụng">
-                                <span>✏️</span> <span>Sửa</span>
-                            </button>
-                            <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-7290', 'AI Equalizer Pro & Audio Processor')" title="Xóa ứng dụng khỏi kho">
-                                <span>🗑️</span> <span>Xoá</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- APP 2: Thông Báo Số Dư & USB Bridge -->
-                    <div class="featured-app-card" id="app-card-APP-5036" data-app-id="APP-5036" data-app-name="Thông Báo Số Dư &amp; USB Bridge" data-app-version="v2.1.0" data-app-platform="Windows 10/11 &amp; Android" data-app-category="Tài chính &amp; Tiện ích Tự động hóa" data-app-desc="Giải pháp nhận thông báo biến động số dư ngân hàng tức thì qua cáp USB Bridge (Offline 100%, độ trễ < 1ms) và mạng Wi-Fi LAN. Tích hợp giọng đọc Text-to-Speech (TTS) tự động đọc to số tiền giao dịch, hỗ trợ tất cả ngân hàng Việt Nam, popup biến động thời gian thực và ghi nhận nhật ký lịch sử." data-app-author="Phát Triển Phần Mềm" data-app-filename="ThongBaoSoDu_v2.1.0_FullPackage.zip" data-app-icon="⚡" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
-                            <div class="app-card-header">
-                                <div class="app-icon" id="app-icon-APP-5036" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">⚡</div>
-                                <div>
-                                    <div class="app-info-title" id="app-name-APP-5036" style="color: #00e5ff; font-weight: 800;">Thông Báo Số Dư &amp; USB Bridge</div>
-                                    <div class="app-info-dev" id="app-dev-APP-5036">bởi Phát Triển Phần Mềm • v2.1.0</div>
-                                </div>
-                            </div>
-                            <p id="app-desc-APP-5036" style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Giải pháp nhận thông báo biến động số dư ngân hàng tức thì qua cáp USB Bridge (Offline 100%, độ trễ &lt; 1ms) và mạng Wi-Fi LAN. Tích hợp giọng đọc Text-to-Speech (TTS) tự động đọc to số tiền giao dịch, popup biến động thời gian thực.</p>
-                            <div class="app-tags" id="app-tags-APP-5036">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Windows &amp; Android</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">56.0 MB</span>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-5036" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
-                                <span>📥</span> <span>Tải Bộ Cài (.zip 56.0 MB)</span> &rarr;
-                            </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-5036')">
-                                    <span>📘</span> <span>Bài Viết HD</span>
+                            <div class="admin-app-actions admin-only" style="display: none;">
+                                <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-7290')" title="Chỉnh sửa thông tin ứng dụng">
+                                    <span>✏️</span> <span>Sửa</span>
                                 </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-5036')">
-                                    <span>🎬</span> <span>Video HD</span>
+                                <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-7290', 'AI Equalizer Pro &amp; Audio Processor')" title="Xóa ứng dụng khỏi kho">
+                                    <span>🗑️</span> <span>Xoá</span>
                                 </button>
                             </div>
-                        </div>
-
-                        <!-- THANH CÔNG CỤ DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ADMIN -->
-                        <div class="admin-app-actions admin-only" style="display: none;">
-                            <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-5036')" title="Chỉnh sửa thông tin ứng dụng">
-                                <span>✏️</span> <span>Sửa</span>
-                            </button>
-                            <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-5036', 'Thông Báo Số Dư & USB Bridge')" title="Xóa ứng dụng khỏi kho">
-                                <span>🗑️</span> <span>Xoá</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- APP 3: Đồng Hồ Báo Thức -->
-                    <div class="featured-app-card" id="app-card-APP-5152" data-app-id="APP-5152" data-app-name="Đồng Hồ Báo Thức" data-app-version="v1.0.1" data-app-platform="Android 8.0+ (Flutter)" data-app-category="Tiện ích &amp; Quản lý Thời gian" data-app-desc="Ứng dụng đồng hồ báo thức chuẩn xác từng giây được phát triển trên nền tảng Flutter 3.x tân tiến, giao diện Material 3 Dark OLED sang trọng. Tích hợp 12 giai điệu chuông độc quyền, cơ chế đánh thức không bị trễ Doze Mode, tra cứu Giờ Quốc Tế đa múi giờ, Bấm Giờ thể thao chuẩn 1/100 giây và Đếm Ngược đa dụng. Hoạt động 100% Offline an toàn và bảo mật." data-app-author="Dương Mạnh Hùng (DMH Tech)" data-app-filename="DongHoBaoThuc_v1.0.1_FullPackage.zip" data-app-icon="⏰" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                        <div>
-                            <div class="app-card-header">
-                                <div class="app-icon" id="app-icon-APP-5152" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">⏰</div>
-                                <div>
-                                    <div class="app-info-title" id="app-name-APP-5152" style="color: #00e5ff; font-weight: 800;">Đồng Hồ Báo Thức</div>
-                                    <div class="app-info-dev" id="app-dev-APP-5152">bởi Dương Mạnh Hùng (DMH Tech) • v1.0.1</div>
-                                </div>
-                            </div>
-                            <p id="app-desc-APP-5152" style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Ứng dụng đồng hồ báo thức chuẩn xác từng giây phát triển trên Flutter 3.x, giao diện Dark OLED. 12 giai điệu chuông độc quyền, cơ chế đánh thức không trễ Doze Mode, tra cứu Giờ Quốc Tế, Bấm Giờ và Đếm Ngược. Hoạt động 100% Offline.</p>
-                            <div class="app-tags" id="app-tags-APP-5152">
-                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Android 8.0+ Flutter</span>
-                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
-                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">36.7 MB</span>
-                            </div>
-                        </div>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                            <a href="/api/apps/download/APP-5152" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
-                                <span>📥</span> <span>Tải Bộ Cài (.zip 36.7 MB)</span> &rarr;
-                            </a>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-5152')">
-                                    <span>📘</span> <span>Bài Viết HD</span>
-                                </button>
-                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-5152')">
-                                    <span>🎬</span> <span>Video HD</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- THANH CÔNG CỤ DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ADMIN -->
-                        <div class="admin-app-actions admin-only" style="display: none;">
-                            <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-5152')" title="Chỉnh sửa thông tin ứng dụng">
-                                <span>✏️</span> <span>Sửa</span>
-                            </button>
-                            <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-5152', 'Đồng Hồ Báo Thức')" title="Xóa ứng dụng khỏi kho">
-                                <span>🗑️</span> <span>Xoá</span>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1317,55 +1277,281 @@
         <!-- ============================================== -->
         <!-- VIEW 6: ĐÁNH GIÁ & PHẢN HỒI CỦA KHÁCH HÀNG -->
         <!-- ============================================== -->
+        <!-- ============================================== -->
+        <!-- VIEW 6: ĐÁNH GIÁ & PHẢN HỒI CỦA KHÁCH HÀNG (BENTO GLASS RATING CENTER) -->
+        <!-- ============================================== -->
         <main class="app-view" id="view-faq">
-            <!-- ĐÁNH GIÁ & PHẢN HỒI CỦA KHÁCH HÀNG -->
+            <!-- HEADER TAB ĐÁNH GIÁ -->
             <div class="view-header">
                 <div>
-                    <div class="view-title"><span>⭐</span> Đánh Giá &amp; Phản Hồi Của Khách Hàng</div>
-                    <div class="view-desc">Những chia sẻ, cảm nhận và đánh giá thực tế từ khách hàng, kỹ thuật viên tin tưởng lựa chọn và sử dụng phần mềm trên SupportFlast Hub.</div>
+                    <div class="view-title"><span>⭐</span> Trung Tâm Đánh Giá &amp; Phản Hồi Khách Hàng</div>
+                    <div class="view-desc">Những chia sẻ, cảm nhận và trải nghiệm thực chiến từ cộng đồng Kỹ thuật viên IT, Quản trị hệ thống và Phòng khám y tế tin tưởng SupportFlast Hub.</div>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button class="btn-primary admin-only-inline" style="display: none; background: linear-gradient(135deg, #00e5ff, #3b82f6); border: none; font-size: 0.88rem; padding: 10px 18px;" onclick="openCreateContentModal('review')">
-                        <span>➕</span> <span>Thêm Đánh Giá</span>
+                        <span>➕</span> <span>Thêm Đánh Giá (Admin)</span>
                     </button>
-                    <button class="btn-secondary" onclick="openCustomerFeedbackModal()">
-                        <span>Gửi Đánh Giá Của Bạn &rarr;</span>
+                    <button class="btn-secondary btn-jump-to-form" onclick="focusInlineReviewForm()">
+                        <span>✍️ Gửi Đánh Giá Trực Tiếp &darr;</span>
                     </button>
                 </div>
             </div>
 
-            <div class="reviews-grid" id="reviews-container">
-                <div id="reviews-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                    <div style="font-size: 2.4rem; margin-bottom: 12px;">💬</div>
-                    <div style="font-weight: 700; color: #fff; font-size: 1.15rem; margin-bottom: 6px;">Chưa Có Đánh Giá Nào Được Gửi</div>
-                    <div style="font-size: 0.9rem; max-width: 520px; margin: 0 auto 18px auto; line-height: 1.6; color: #cbd5e1;">Hệ thống chưa ghi nhận đánh giá nào từ người dùng thực tế. Hãy là người đầu tiên gửi phản hồi hoặc nhận xét trải nghiệm sử dụng phần mềm trên SupportFlast Hub.</div>
-                    <button class="btn-secondary" onclick="openCustomerFeedbackModal()" style="font-size: 0.9rem; padding: 10px 22px;">
-                        <span>✍️ Gửi Đánh Giá Của Bạn Ngay</span>
+            <!-- 1. KHỐI TỔNG QUAN RATING ANALYTICS DASHBOARD (BENTO GLASS UI) -->
+            <div class="rating-analytics-dashboard">
+                <!-- Cột 1: Điểm tổng quan Bento -->
+                <div class="rating-bento-card rating-bento-score">
+                    <div class="bento-badge-top">⭐ ĐIỂM ĐÁNH GIÁ TRUNG BÌNH</div>
+                    <div class="rating-score-huge" id="stat-avg-score">5.0</div>
+                    <div class="rating-score-stars" id="stat-avg-stars">★★★★★</div>
+                    <div class="rating-score-desc" id="stat-total-text">Dựa trên <span id="stat-total-count" style="font-weight: 700; color: #00e5ff;">0</span> phản hồi thực tế từ cộng đồng</div>
+                    
+                    <div class="verified-customer-badge">
+                        <span class="badge-icon">🛡️</span>
+                        <span class="badge-text">100% Khách Hàng Xác Thực</span>
+                    </div>
+                </div>
+
+                <!-- Cột 2: Thanh tiến độ phân bổ sao Bento (Progress Bars) -->
+                <div class="rating-bento-card rating-bento-breakdown">
+                    <div class="breakdown-header">
+                        <span class="breakdown-title">Phân Bổ Xếp Hạng</span>
+                        <span class="breakdown-subtitle">Tỷ lệ theo số sao đánh giá thực tế</span>
+                    </div>
+                    <div class="rating-breakdown-list">
+                        <!-- 5 sao -->
+                        <div class="rating-bar-row">
+                            <span class="bar-star-label">5 ★</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill bar-5" id="rating-bar-5" style="width: 100%;"></div>
+                            </div>
+                            <span class="bar-percent" id="rating-percent-5">100%</span>
+                            <span class="bar-count" id="rating-count-5">(0)</span>
+                        </div>
+                        <!-- 4 sao -->
+                        <div class="rating-bar-row">
+                            <span class="bar-star-label">4 ★</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill bar-4" id="rating-bar-4" style="width: 0%;"></div>
+                            </div>
+                            <span class="bar-percent" id="rating-percent-4">0%</span>
+                            <span class="bar-count" id="rating-count-4">(0)</span>
+                        </div>
+                        <!-- 3 sao -->
+                        <div class="rating-bar-row">
+                            <span class="bar-star-label">3 ★</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill bar-3" id="rating-bar-3" style="width: 0%;"></div>
+                            </div>
+                            <span class="bar-percent" id="rating-percent-3">0%</span>
+                            <span class="bar-count" id="rating-count-3">(0)</span>
+                        </div>
+                        <!-- 2 sao -->
+                        <div class="rating-bar-row">
+                            <span class="bar-star-label">2 ★</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill bar-2" id="rating-bar-2" style="width: 0%;"></div>
+                            </div>
+                            <span class="bar-percent" id="rating-percent-2">0%</span>
+                            <span class="bar-count" id="rating-count-2">(0)</span>
+                        </div>
+                        <!-- 1 sao -->
+                        <div class="rating-bar-row">
+                            <span class="bar-star-label">1 ★</span>
+                            <div class="rating-bar-track">
+                                <div class="rating-bar-fill bar-1" id="rating-bar-1" style="width: 0%;"></div>
+                            </div>
+                            <span class="bar-percent" id="rating-percent-1">0%</span>
+                            <span class="bar-count" id="rating-count-1">(0)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột 3: Tiêu chuẩn tin cậy & Nút điều hướng nhanh -->
+                <div class="rating-bento-card rating-bento-trust">
+                    <div class="breakdown-header">
+                        <span class="breakdown-title">Cam Kết Chất Lượng</span>
+                        <span class="breakdown-subtitle">Tiêu chuẩn kiểm định SupportFlast</span>
+                    </div>
+                    <div class="trust-metrics-grid">
+                        <div class="trust-metric-item">
+                            <span class="metric-icon">⚡</span>
+                            <div class="metric-info">
+                                <div class="metric-title">Vận Hành Tin Cậy 99.9%</div>
+                                <div class="metric-desc">Tương thích Windows 10/11, WinPE &amp; Server</div>
+                            </div>
+                        </div>
+                        <div class="trust-metric-item">
+                            <span class="metric-icon">🔒</span>
+                            <div class="metric-info">
+                                <div class="metric-title">Bảo Mật &amp; Toàn Vẹn Tuyệt Đối</div>
+                                <div class="metric-desc">Chữ ký số Ed25519, quét virus &amp; mã sạch 100%</div>
+                            </div>
+                        </div>
+                        <div class="trust-metric-item">
+                            <span class="metric-icon">👨‍💻</span>
+                            <div class="metric-info">
+                                <div class="metric-title">Cộng Đồng Chuyên Môn</div>
+                                <div class="metric-desc">KTV IT, Quản trị hệ thống &amp; Bác sĩ phòng khám</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-scroll-to-form" onclick="focusInlineReviewForm()">
+                        <span>✍️ Viết Nhận Xét Của Bạn Ngay</span>
+                        <span>&darr;</span>
                     </button>
                 </div>
             </div>
+
+            <!-- 2. FORM GỬI ĐÁNH GIÁ TRỰC TIẾP (INLINE REVIEW FORM) -->
+            <div class="inline-review-card" id="inline-review-card">
+                <div class="inline-review-header">
+                    <div class="inline-header-left">
+                        <div class="inline-header-icon">✍️</div>
+                        <div>
+                            <div class="inline-header-title">Gửi Đánh Giá Trực Tiếp Của Bạn</div>
+                            <div class="inline-header-desc">Chia sẻ trải nghiệm thực tế với phần mềm trên SupportFlast Hub. Ý kiến của bạn giúp cộng đồng chọn công cụ an toàn và phù hợp nhất.</div>
+                        </div>
+                    </div>
+                    <div class="inline-header-tag">✨ Đóng Góp Cộng Đồng</div>
+                </div>
+
+                <form id="inline-review-form" onsubmit="submitInlineReview(event)">
+                    <div class="inline-form-row inline-two-cols">
+                        <div class="inline-field-group">
+                            <label class="inline-label" for="inline-review-name">Họ &amp; Tên / Danh Xưng <span class="required-star">*</span></label>
+                            <div class="inline-input-wrapper">
+                                <span class="input-icon">👤</span>
+                                <input type="text" id="inline-review-name" class="inline-input" placeholder="Ví dụ: Hoàng Long IT, KTV Tuấn, hoặc Ẩn danh..." required maxlength="60">
+                            </div>
+                        </div>
+                        <div class="inline-field-group">
+                            <label class="inline-label" for="inline-review-role">Vai Trò / Chuyên Môn Của Bạn <span class="required-star">*</span></label>
+                            <div class="inline-input-wrapper">
+                                <span class="input-icon">💼</span>
+                                <select id="inline-review-role" class="inline-input inline-select" required>
+                                    <option value="KTV IT / Helpdesk">💻 KTV IT / Helpdesk</option>
+                                    <option value="Quản trị hệ thống (System Admin)">🛡️ Quản trị hệ thống (System Admin)</option>
+                                    <option value="Bác sĩ / KTV Phòng khám (HIS)">🩺 Bác sĩ / KTV Phòng khám (HIS)</option>
+                                    <option value="Kỹ sư DevOps / Phần mềm">⚙️ Kỹ sư DevOps / Phần mềm</option>
+                                    <option value="KTV Phần cứng &amp; Máy in LAN">🖨️ KTV Phần cứng &amp; Máy in LAN</option>
+                                    <option value="Doanh nghiệp / Khách hàng sử dụng">🏢 Doanh nghiệp / Khách hàng sử dụng</option>
+                                    <option value="Người Dùng Cá Nhân">⭐ Người Dùng Cá Nhân</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inline-form-row">
+                        <div class="inline-field-group">
+                            <label class="inline-label">Đánh Giá Mức Độ Hài Lòng <span class="required-star">*</span></label>
+                            <div class="inline-stars-control">
+                                <div class="inline-star-picker" id="inline-star-picker" role="radiogroup" aria-label="Đánh giá số sao">
+                                    <button type="button" class="star-btn" data-star="1" onclick="setInlineRating(1)" onmouseenter="previewInlineRating(1)" onmouseleave="resetPreviewInlineRating()" title="1 sao">★</button>
+                                    <button type="button" class="star-btn" data-star="2" onclick="setInlineRating(2)" onmouseenter="previewInlineRating(2)" onmouseleave="resetPreviewInlineRating()" title="2 sao">★</button>
+                                    <button type="button" class="star-btn" data-star="3" onclick="setInlineRating(3)" onmouseenter="previewInlineRating(3)" onmouseleave="resetPreviewInlineRating()" title="3 sao">★</button>
+                                    <button type="button" class="star-btn" data-star="4" onclick="setInlineRating(4)" onmouseenter="previewInlineRating(4)" onmouseleave="resetPreviewInlineRating()" title="4 sao">★</button>
+                                    <button type="button" class="star-btn active" data-star="5" onclick="setInlineRating(5)" onmouseenter="previewInlineRating(5)" onmouseleave="resetPreviewInlineRating()" title="5 sao">★</button>
+                                </div>
+                                <span class="inline-rating-caption" id="inline-rating-caption">⭐⭐⭐⭐⭐ 5/5 — Cực kỳ hài lòng &amp; Xuất sắc!</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="inline-form-row">
+                        <div class="inline-field-group">
+                            <label class="inline-label" for="inline-review-text">Cảm Nhận &amp; Nhận Xét Thực Tế <span class="required-star">*</span></label>
+                            <textarea id="inline-review-text" class="inline-textarea" rows="3" placeholder="Chia sẻ trải nghiệm sử dụng phần mềm của bạn (ví dụ: công cụ hoạt động mượt mà, cứu hộ máy in LAN rất nhanh, kích hoạt bản quyền an toàn, hỗ trợ chu đáo...)" required minlength="10" maxlength="1500"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="inline-form-actions">
+                        <div class="inline-form-hint">
+                            <span>🔒 Phản hồi của bạn được ghi nhận trực tiếp vào cơ sở dữ liệu hệ thống mà không cần popup che màn hình.</span>
+                        </div>
+                        <button type="submit" id="btn-submit-inline-review" class="btn-inline-submit">
+                            <span class="btn-inline-icon">🚀</span>
+                            <span class="btn-inline-text">Gửi Đánh Giá Ngay</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 3. DANH SÁCH BENTO GLASS REVIEW CARDS -->
+            <div class="reviews-section-header">
+                <div class="reviews-section-title">
+                    <span>💬</span>
+                    <span>Tất Cả Nhận Xét Từ Cộng Đồng Khách Hàng</span>
+                </div>
+                <div class="reviews-filter-info" id="reviews-filter-info">
+                    Đồng bộ tự động từ máy chủ
+                </div>
+            </div>
+
+            <div class="reviews-grid" id="reviews-container">
+                <div id="reviews-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 20px; backdrop-filter: blur(12px);">
+                    <div style="font-size: 2.6rem; margin-bottom: 12px;">💬</div>
+                    <div style="font-weight: 700; color: #fff; font-size: 1.2rem; margin-bottom: 6px;">Chưa Có Đánh Giá Nào Trong Cơ Sở Dữ Liệu</div>
+                    <div style="font-size: 0.92rem; max-width: 520px; margin: 0 auto 20px auto; line-height: 1.6; color: #cbd5e1;">Hãy là người đầu tiên chia sẻ cảm nhận và đánh giá trải nghiệm thực tế với các công cụ trên SupportFlast Hub bằng form phía trên!</div>
+                    <button class="btn-secondary" onclick="focusInlineReviewForm()" style="font-size: 0.92rem; padding: 10px 24px;">
+                        <span>✍️ Viết Đánh Giá Ngay Bây Giờ</span>
+                    </button>
+                </div>
+            </div>
+        </main>
         </main>
 
         <!-- ============================================== -->
         <!-- VIEW 8: CẬP NHẬT PHIÊN BẢN (DEDICATED VIEW) -->
         <!-- ============================================== -->
-        <main class="app-view" id="view-changelog">
+                <main class="app-view" id="view-changelog">
             <div class="view-header">
                 <div>
-                    <div class="view-title"><span>🚀</span> Công Bố Bản Cập Nhật Ứng Dụng</div>
-                    <div class="view-desc">Theo dõi các phiên bản phát hành mới, bản vá sửa lỗi và nâng cấp tính năng của các phần mềm chính thức trên SupportFlast Hub.</div>
+                    <div class="view-title"><span>🚀</span> Cây Bản Cập Nhật Công Nghệ (Tech Tree Timeline)</div>
+                    <div class="view-desc">Nhật ký phát hành, bản vá sửa lỗi và nâng cấp hạ tầng hệ thống SupportFlast Hub đồng bộ theo thời gian thực dạng Git Commit.</div>
                 </div>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button class="btn-primary admin-only-inline" style="display: none; background: linear-gradient(135deg, #00e5ff, #3b82f6); border: none; font-size: 0.88rem; padding: 10px 18px;" onclick="openCreateContentModal('changelog')">
-                        <span>➕</span> <span>Thêm Bản Cập Nhật Ứng Dụng</span>
+                        <span>➕</span> <span>Thêm Bản Cập Nhật (Admin)</span>
                     </button>
                 </div>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 18px;" id="changelog-container">
-                <!-- Nội dung changelog được load động từ /api/system/updates -->
+            <!-- THANH ĐIỀU HƯỚNG VÀ BỘ LỌC TECH TREE COMMIT -->
+            <div class="tech-tree-filter-bar">
+                <div class="filter-pills-group" id="tech-tree-filter-pills">
+                    <button class="filter-pill-btn active" data-filter="all" onclick="filterTechTreeCommits('all')">
+                        <span>🌐 Tất Cả Commits</span>
+                    </button>
+                    <button class="filter-pill-btn pill-feat" data-filter="feat" onclick="filterTechTreeCommits('feat')">
+                        <span class="pill-dot dot-cyan"></span>
+                        <span>[FEAT] Tính Năng</span>
+                    </button>
+                    <button class="filter-pill-btn pill-fix" data-filter="fix" onclick="filterTechTreeCommits('fix')">
+                        <span class="pill-dot dot-coral"></span>
+                        <span>[FIX] Vá Lỗi</span>
+                    </button>
+                    <button class="filter-pill-btn pill-security" data-filter="security" onclick="filterTechTreeCommits('security')">
+                        <span class="pill-dot dot-amber"></span>
+                        <span>[SECURITY] Bảo Mật</span>
+                    </button>
+                    <button class="filter-pill-btn pill-perf" data-filter="perf" onclick="filterTechTreeCommits('perf')">
+                        <span class="pill-dot dot-purple"></span>
+                        <span>[PERF] Hiệu Năng</span>
+                    </button>
+                </div>
+                <div class="tech-tree-search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="tech-tree-search-input" placeholder="Tìm kiếm commit theo mã SHA, tính năng, module..." oninput="handleTechTreeSearch(this.value)">
+                </div>
+            </div>
+
+            <div class="tech-tree-timeline-container" id="changelog-container">
+                <!-- Nội dung Git Commit Timeline được loadChangelogFromAPI() render tự động -->
             </div>
         </main>
+
+        
 
         <!-- FOOTER HỆ THỐNG CHÍNH THỨC -->
         <footer style="margin-top: 50px; padding: 26px 0; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; color: var(--text-muted); font-size: 0.86rem;">

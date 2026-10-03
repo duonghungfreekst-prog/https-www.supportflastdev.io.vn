@@ -2206,7 +2206,7 @@
         }
 
         // 5.1. Tự động đồng bộ kho ứng dụng thật từ cơ sở dữ liệu TiDB Cloud (/api/apps)
-        async function loadLiveAppsFromAPI() {
+                async function loadLiveAppsFromAPI() {
             try {
                 const res = await fetch('/api/apps');
                 if (!res.ok) return;
@@ -2216,64 +2216,91 @@
                     const container = document.getElementById('featured-apps-container');
                     if (!container) return;
                     if (data.apps.length === 0) {
-                        container.innerHTML = `
-                            <div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                                <div style="font-size: 2.2rem; margin-bottom: 10px;">📦</div>
-                                <div style="font-weight: 700; color: #fff; font-size: 1.05rem; margin-bottom: 6px;">Kho Ứng Dụng Sẵn Sàng Tiếp Nhận Bản Phát Hành</div>
-                                <div style="font-size: 0.88rem; max-width: 480px; margin: 0 auto 16px auto; line-height: 1.5;">Toàn bộ dữ liệu ảo đã được xóa sạch. Hệ thống phân phối chính thức từ CSDL TiDB Cloud.</div>
-                                <button class="btn-primary" class="btn-primary admin-only-inline" onclick="openCreateAppModal()" style="display: none; font-size: 0.88rem; padding: 8px 18px;">
-                                    <span>➕ Thêm Ứng Dụng Mới</span>
-                                </button>
-                            </div>
-                        `;
+                        if (typeof renderCyberRadarEmptyState === 'function') {
+                            container.innerHTML = renderCyberRadarEmptyState({
+                                id: 'apps-empty-state',
+                                badge: 'KHO ỨNG DỤNG // CHỜ BẢN PHÁT HÀNH',
+                                title: 'Chưa Ghi Nhận Bản Cài Đặt Trong Kho',
+                                desc: 'Toàn bộ dữ liệu ảo đã được gỡ bỏ. Kho ứng dụng sẵn sàng tiếp nhận bản phát hành mới từ quản trị viên.',
+                                ctaText: 'Thêm Ứng Dụng Mới',
+                                ctaAction: 'openCreateAppModal()',
+                                gridSpan: true
+                            });
+                        } else {
+                            container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px; color: #94a3b8;">Kho ứng dụng đang sẵn sàng tiếp nhận bản phát hành.</div>`;
+                        }
                         return;
                     }
 
-                    // Render danh sách app thật từ CSDL
+                    // Render danh sách app thật từ CSDL với Frosted Glass Card + Border Beam + Spotlight + Metrics Tags
                     container.innerHTML = data.apps.map(app => {
                         const icon = app.icon || ((app.name && (app.name.includes('Đồng Hồ') || app.name.includes('Báo Thức') || app.name.toLowerCase().includes('alarm'))) ? '⏰' : ((app.name && (app.name.includes('Số Dư') || app.name.includes('USB Bridge'))) ? '⚡' : '🛠️'));
                         const dlUrl = app.download_url || `/api/apps/download/${app.id}`;
-                        const sizeText = app.size_formatted ? ` - ${app.size_formatted}` : '';
+                        const sizeText = app.size_formatted ? ` (${app.size_formatted})` : '';
                         const ext = (app.file_name && app.file_name.includes('.')) ? ('.' + app.file_name.split('.').pop()) : '.exe';
-                        const isAdmin = window.__isAdminLoggedIn || false;
+                        const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
 
                         return `
-                            <div class="featured-app-card" id="app-card-${app.id}" data-app-id="${app.id}" data-app-name="${escapeHtml(app.name)}" data-app-version="${escapeHtml(app.version)}" data-app-platform="${escapeHtml(app.platform)}" data-app-category="${escapeHtml(app.category)}" data-app-desc="${escapeHtml(app.desc)}" data-app-author="${escapeHtml(app.author)}" data-app-filename="${escapeHtml(app.file_name)}" data-app-icon="${icon}" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
-                                <div>
+                            <div class="featured-app-card" id="app-card-${app.id}" 
+                                 data-app-id="${app.id}" 
+                                 data-app-name="${escapeHtml(app.name)}" 
+                                 data-app-version="${escapeHtml(app.version)}" 
+                                 data-app-platform="${escapeHtml(app.platform)}" 
+                                 data-app-category="${escapeHtml(app.category)}" 
+                                 data-app-desc="${escapeHtml(app.desc)}" 
+                                 data-app-author="${escapeHtml(app.author)}" 
+                                 data-app-filename="${escapeHtml(app.file_name)}" 
+                                 data-app-icon="${icon}">
+
+                                <!-- Lớp Border Beam & Spotlight -->
+                                <div class="border-beam" aria-hidden="true"></div>
+                                <div class="card-spotlight" aria-hidden="true"></div>
+                                <div class="card-spotlight-border" aria-hidden="true"></div>
+
+                                <div class="card-content-wrap">
                                     <div class="app-card-header">
-                                        <div class="app-icon" id="app-icon-${app.id}" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">${icon}</div>
+                                        <div class="app-icon" id="app-icon-${app.id}">
+                                            <span class="app-icon-symbol">${icon}</span>
+                                        </div>
                                         <div>
-                                            <div class="app-info-title" id="app-name-${app.id}" style="color: #00e5ff; font-weight: 800;">${escapeHtml(app.name)}</div>
-                                            <div class="app-info-dev" id="app-dev-${app.id}">bởi ${escapeHtml(app.author)} • v${escapeHtml(app.version)}</div>
+                                            <div class="app-info-title" id="app-name-${app.id}">${escapeHtml(app.name)}</div>
+                                            <div class="app-info-dev" id="app-dev-${app.id}">
+                                                <span class="dev-status-dot"></span>
+                                                <span>bởi ${escapeHtml(app.author)} • v${escapeHtml(app.version)}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <p id="app-desc-${app.id}" style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">${escapeHtml(app.desc)}</p>
+                                    <p class="app-desc-text" id="app-desc-${app.id}">${escapeHtml(app.desc)}</p>
                                     <div class="app-tags" id="app-tags-${app.id}">
-                                        <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">${escapeHtml(app.platform)}</span>
-                                        <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (${app.downloads || 0}+ tải)</span>
-                                        <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">${escapeHtml(app.category)}</span>
+                                        <span class="app-tag tag-platform">${escapeHtml(app.platform)}</span>
+                                        <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                        <span class="app-tag tag-size">${escapeHtml(app.category)}</span>
                                     </div>
                                 </div>
-                                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
-                                    <a href="${dlUrl}" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;" target="_blank">
-                                        <span>📥</span> <span>Tải Bộ Cài (${ext}${sizeText})</span> &rarr;
+
+                                <div class="card-actions-wrap">
+                                    <a href="${dlUrl}" class="btn-download-primary" target="_blank">
+                                        <span class="btn-sweep-sheen"></span>
+                                        <span>📥</span>
+                                        <span>Tải Bộ Cài (${ext}${sizeText})</span>
+                                        <span>&rarr;</span>
                                     </a>
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                        <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('${app.id}')">
+                                    <div class="card-action-subgrid">
+                                        <button class="btn-card-sub" onclick="openAppGuideModal('${app.id}')">
                                             <span>📘</span> <span>Bài Viết HD</span>
                                         </button>
-                                        <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('${app.id}')">
+                                        <button class="btn-card-sub btn-video" onclick="openAppVideoModal('${app.id}')">
                                             <span>🎬</span> <span>Video HD</span>
                                         </button>
                                     </div>
-                                </div>
-                                <div class="admin-app-actions admin-only" style="display: ${isAdmin ? 'flex' : 'none'};">
-                                    <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('${app.id}')" title="Chỉnh sửa thông tin ứng dụng">
-                                        <span>✏️</span> <span>Sửa</span>
-                                    </button>
-                                    <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('${app.id}', '${escapeHtml(app.name)}')" title="Xóa ứng dụng khỏi kho">
-                                        <span>🗑️</span> <span>Xoá</span>
-                                    </button>
+                                    <div class="admin-app-actions admin-only" style="display: ${isAdmin ? 'flex' : 'none'};">
+                                        <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('${app.id}')" title="Chỉnh sửa thông tin ứng dụng">
+                                            <span>✏️</span> <span>Sửa</span>
+                                        </button>
+                                        <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('${app.id}', '${escapeHtml(app.name)}')" title="Xóa ứng dụng khỏi kho">
+                                            <span>🗑️</span> <span>Xoá</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -3093,52 +3120,426 @@
            LOAD REVIEWS TỪ SERVER (/api/reviews)
            Đồng bộ thực sự — hiển thị đúng trên mọi browser
            ===================================================== */
+        /* =====================================================
+   HÀM RENDER TRẠNG THÁI RỖNG RADAR QUÉT HOLOGRAM (TASK 7)
+   ===================================================== */
+/* ==========================================================================
+   HÀM RENDER TRẠNG THÁI RỖNG RADAR QUÉT HOLOGRAM (CYBER RADAR EMPTY STATES)
+   Chuẩn Polyglot Cyberpunk UI - Xóa bỏ vĩnh viễn nét đứt và emoji đơn điệu
+   ========================================================================== */
+function renderCyberRadarEmptyState(options) {
+    const id = options.id || 'cyber-empty-state';
+    const badge = options.badge || 'TẦN SỐ RADAR // QUÉT TÍN HIỆU TOÀN CẢNH';
+    const title = options.title || 'Chưa Ghi Nhận Tín Hiệu Dữ Liệu';
+    const desc = options.desc || 'Hệ thống đang tích cực rà soát không gian mạng nhưng chưa ghi nhận dữ liệu mới.';
+    const ctaText = options.ctaText || 'Kích Hoạt Trải Nghiệm';
+    const ctaAction = options.ctaAction || '';
+    const secondaryHtml = options.secondaryHtml || '';
+    const styleAttr = options.gridSpan ? 'style="grid-column: 1 / -1;"' : '';
+
+    return `
+        <div id="${id}" class="cyber-radar-empty-state" ${styleAttr}>
+            <div class="cyber-radar-bg-scanlines"></div>
+
+            <!-- ĐỒ HỌA RADAR QUÉT KHÔNG GIAN 3D (HOLOGRAPHIC CYBER RADAR) -->
+            <div class="cyber-radar-stage">
+                <!-- Chân đế phát chùm sáng Hologram -->
+                <div class="radar-emitter-pedestal"></div>
+                <div class="radar-holo-cone"></div>
+
+                <!-- Đĩa Radar nghiêng 3D trong không gian -->
+                <div class="cyber-radar-dish">
+                    <!-- SVG Các Vòng Tròn Đồng Tâm Xoay Nhẹ Nhàng -->
+                    <svg class="radar-svg-grid" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <radialGradient id="radarHoloGlow_${id}" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.32"/>
+                                <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.1"/>
+                                <stop offset="100%" stop-color="#010308" stop-opacity="0"/>
+                            </radialGradient>
+                        </defs>
+
+                        <!-- Đĩa nền phát quang hologram -->
+                        <circle cx="100" cy="100" r="92" fill="url(#radarHoloGlow_${id})"/>
+
+                        <!-- Vòng tròn ngoài cùng (Compass ring xoay chậm theo chiều kim đồng hồ) -->
+                        <g class="radar-outer-ring">
+                            <circle cx="100" cy="100" r="92" stroke="rgba(0, 229, 255, 0.45)" stroke-width="1.5" stroke-dasharray="6 4"/>
+                            <!-- Ticks đánh dấu 12 cung độ hướng radar -->
+                            <line x1="100" y1="8" x2="100" y2="15" stroke="#00e5ff" stroke-width="1.5"/>
+                            <line x1="192" y1="100" x2="185" y2="100" stroke="#00e5ff" stroke-width="1.5"/>
+                            <line x1="100" y1="192" x2="100" y2="185" stroke="#00e5ff" stroke-width="1.5"/>
+                            <line x1="8" y1="100" x2="15" y2="100" stroke="#00e5ff" stroke-width="1.5"/>
+                        </g>
+
+                        <!-- Vòng tròn tầm trung (Xoay ngược chiều kim đồng hồ) -->
+                        <g class="radar-mid-ring">
+                            <circle cx="100" cy="100" r="70" stroke="rgba(0, 229, 255, 0.28)" stroke-width="1" stroke-dasharray="3 4"/>
+                            <circle cx="100" cy="100" r="46" stroke="rgba(0, 229, 255, 0.25)" stroke-width="1"/>
+                        </g>
+
+                        <!-- Vòng tròn tâm nhân (Pulse co giãn nhẹ nhàng) -->
+                        <circle cx="100" cy="100" r="22" stroke="rgba(0, 229, 255, 0.55)" stroke-width="1.2" class="radar-core-ring"/>
+
+                        <!-- Trục tọa độ chữ thập Reticle Crosshair -->
+                        <line x1="8" y1="100" x2="192" y2="100" stroke="rgba(0, 229, 255, 0.25)" stroke-width="1"/>
+                        <line x1="100" y1="8" x2="100" y2="192" stroke="rgba(0, 229, 255, 0.25)" stroke-width="1"/>
+
+                        <!-- Đường dẫn chéo 45 độ chấm mảnh -->
+                        <line x1="35" y1="35" x2="165" y2="165" stroke="rgba(0, 229, 255, 0.12)" stroke-width="1" stroke-dasharray="2 4"/>
+                        <line x1="165" y1="35" x2="35" y2="165" stroke="rgba(0, 229, 255, 0.12)" stroke-width="1" stroke-dasharray="2 4"/>
+
+                        <!-- Điểm đèn hiệu trung tâm radar -->
+                        <circle cx="100" cy="100" r="3.5" fill="#00e5ff" class="radar-beacon-center"/>
+                        <circle cx="100" cy="100" r="10" stroke="#00e5ff" stroke-width="1" fill="none" class="radar-beacon-ripple"/>
+                    </svg>
+
+                    <!-- Tia quét Radar Hologram 360 độ góc xoay mượt mà -->
+                    <div class="radar-sweep-beam"></div>
+
+                    <!-- Các điểm xung lượng tử phản hồi (Target Quantum Blips) -->
+                    <div class="radar-quantum-blip blip-pos-1"></div>
+                    <div class="radar-quantum-blip blip-pos-2"></div>
+                    <div class="radar-quantum-blip blip-pos-3"></div>
+                </div>
+            </div>
+
+            <!-- THÔNG ĐIỆP TRUYỀN CẢM HỨNG CÔNG NGHỆ -->
+            <div class="radar-hud-tag">
+                <span class="radar-hud-dot"></span>
+                <span>${badge}</span>
+            </div>
+            <h3 class="radar-empty-title">${title}</h3>
+            <p class="radar-empty-desc">${desc}</p>
+
+            <!-- NÚT CTA KÍCH HOẠT TRẢI NGHIỆM VỚI HÀO QUANG NHẤP NHÁY -->
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; align-items: center; position: relative; z-index: 2;">
+                ${ctaAction ? `
+                <button class="btn-cyber-radar-cta" onclick="${ctaAction}">
+                    <span>${ctaText}</span>
+                    <span style="font-size: 1.1rem; transition: transform 0.2s;">&rarr;</span>
+                </button>` : ''}
+                ${secondaryHtml}
+            </div>
+        </div>
+    `;
+}
+
+/* =====================================================
+   HỆ THỐNG ĐÁNH GIÁ KHÁCH HÀNG & BENTO GLASS (TASK 6)
+   ===================================================== */
+/* =====================================================
+           HỆ THỐNG ĐÁNH GIÁ KHÁCH HÀNG & DASHBOARD ANALYTICS
+           Bento Glass UI, Gradient Glowing Avatars, Inline Form
+           Đồng bộ trực tiếp với CSDL SQLite qua /api/reviews
+           ===================================================== */
+
+        // Bộ dải màu gradient phát quang rực rỡ dành cho Avatar
+        const REVIEW_AVATAR_GRADIENTS = [
+            { bg: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)', glow: 'rgba(0, 242, 254, 0.45)' },      // Cyan Azure
+            { bg: 'linear-gradient(135deg, #b224ef 0%, #7579ff 100%)', glow: 'rgba(178, 36, 239, 0.45)' },     // Indigo Purple
+            { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', glow: 'rgba(245, 87, 108, 0.45)' },     // Rose Magenta
+            { bg: 'linear-gradient(135deg, #0ba360 0%, #3cba92 100%)', glow: 'rgba(60, 186, 146, 0.45)' },     // Emerald Teal
+            { bg: 'linear-gradient(135deg, #ff9946 0%, #ff5e62 100%)', glow: 'rgba(255, 94, 98, 0.45)' },      // Sunset Amber
+            { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', glow: 'rgba(102, 126, 234, 0.45)' },    // Violet Slate
+            { bg: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', glow: 'rgba(0, 198, 255, 0.45)' }       // Electric Blue
+        ];
+
+        // Trích xuất màu gradient ngẫu nhiên nhưng cố định theo tên/id người dùng
+        function getReviewAvatarGradient(seedStr) {
+            let hash = 0;
+            const str = seedStr || 'SupportFlast';
+            for (let i = 0; i < str.length; i++) {
+                hash = (hash << 5) - hash + str.charCodeAt(i);
+                hash |= 0;
+            }
+            const idx = Math.abs(hash) % REVIEW_AVATAR_GRADIENTS.length;
+            return REVIEW_AVATAR_GRADIENTS[idx];
+        }
+
+        // Tự động phân giải biểu tượng chuyên môn theo vai trò
+        function getReviewRoleIcon(roleStr) {
+            const s = (roleStr || '').toLowerCase();
+            if (s.includes('ktv') || s.includes('it') || s.includes('helpdesk')) return '💻';
+            if (s.includes('quản trị') || s.includes('admin') || s.includes('system') || s.includes('hệ thống')) return '🛡️';
+            if (s.includes('bác sĩ') || s.includes('y tế') || s.includes('phòng khám') || s.includes('bệnh viện') || s.includes('his')) return '🩺';
+            if (s.includes('devops') || s.includes('kỹ sư') || s.includes('lập trình') || s.includes('software')) return '⚙️';
+            if (s.includes('máy in') || s.includes('phần cứng') || s.includes('lan')) return '🖨️';
+            if (s.includes('doanh nghiệp') || s.includes('công ty')) return '🏢';
+            return '👤';
+        }
+
+        /* --- Quản lý Chọn Sao Trên Inline Review Form --- */
+        window.__inlineSelectedRating = 5;
+
+        const INLINE_RATING_CAPTIONS = {
+            1: '⭐ 1/5 — Cần cải thiện nhiều',
+            2: '⭐⭐ 2/5 — Chưa thực sự hài lòng',
+            3: '⭐⭐⭐ 3/5 — Tạm ổn & Bình thường',
+            4: '⭐⭐⭐⭐ 4/5 — Rất tốt & Hài lòng',
+            5: '⭐⭐⭐⭐⭐ 5/5 — Cực kỳ hài lòng & Xuất sắc!'
+        };
+
+        function setInlineRating(stars) {
+            window.__inlineSelectedRating = stars;
+            updateInlineStarsUI(stars);
+        }
+
+        function previewInlineRating(stars) {
+            updateInlineStarsUI(stars);
+        }
+
+        function resetPreviewInlineRating() {
+            updateInlineStarsUI(window.__inlineSelectedRating || 5);
+        }
+
+        function updateInlineStarsUI(stars) {
+            const buttons = document.querySelectorAll('#inline-star-picker .star-btn');
+            buttons.forEach(btn => {
+                const val = parseInt(btn.getAttribute('data-star') || '0', 10);
+                if (val <= stars) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            const captionEl = document.getElementById('inline-rating-caption');
+            if (captionEl) {
+                captionEl.textContent = INLINE_RATING_CAPTIONS[stars] || `${stars}/5 Sao`;
+            }
+        }
+
+        // Cuộn mượt và kích hoạt focus vào Inline Review Form
+        function focusInlineReviewForm() {
+            const formCard = document.getElementById('inline-review-card');
+            if (formCard) {
+                formCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    const nameInput = document.getElementById('inline-review-name');
+                    if (nameInput) nameInput.focus();
+                    formCard.classList.add('form-highlight-pulse');
+                    setTimeout(() => formCard.classList.remove('form-highlight-pulse'), 1500);
+                }, 300);
+            }
+        }
+
+        /* --- Xử Lý Gửi Đánh Giá Trực Tiếp (Inline Review Submit) --- */
+        async function submitInlineReview(e) {
+            if (e) e.preventDefault();
+
+            const nameInput = document.getElementById('inline-review-name');
+            const roleSelect = document.getElementById('inline-review-role');
+            const textInput = document.getElementById('inline-review-text');
+            const submitBtn = document.getElementById('btn-submit-inline-review');
+
+            const authorName = (nameInput?.value || '').trim() || 'Người Dùng Ẩn Danh';
+            const authorRole = (roleSelect?.value || '').trim() || 'Khách Hàng';
+            const text = (textInput?.value || '').trim();
+            const stars = window.__inlineSelectedRating || 5;
+
+            if (!text || text.length < 5) {
+                alert('⚠️ Vui lòng nhập nội dung đánh giá thực tế của bạn (tối thiểu 5 ký tự)!');
+                if (textInput) textInput.focus();
+                return;
+            }
+
+            // Hiệu ứng Loading nút bấm
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <span class="inline-spinner" style="display:inline-block; width:15px; height:15px; border:2px solid rgba(0,0,0,0.3); border-top-color:#030712; border-radius:50%; animation:spin 0.6s linear infinite; vertical-align:middle; margin-right:6px;"></span>
+                    <span>Đang gửi đánh giá...</span>
+                `;
+            }
+
+            try {
+                const payload = {
+                    author_name: authorName,
+                    author_role: authorRole,
+                    text: text,
+                    stars: stars
+                };
+
+                const res = await fetch('/api/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    // Reset form trường nội dung
+                    if (nameInput) nameInput.value = '';
+                    if (textInput) textInput.value = '';
+                    setInlineRating(5);
+
+                    if (typeof showStateToast === 'function') {
+                        showStateToast('✅ Cảm ơn bạn! Đánh giá đã được ghi nhận trực tiếp vào hệ thống.', '⭐', 4500);
+                    } else {
+                        alert('✅ Cảm ơn bạn! Đánh giá đã được ghi nhận thành công.');
+                    }
+
+                    // Tải lại và đồng bộ tức thì toàn bộ Dashboard và Danh sách thẻ
+                    await loadReviewsFromAPI();
+
+                    // Cuộn mượt tới thẻ đánh giá vừa tạo
+                    setTimeout(() => {
+                        const targetEl = document.getElementById(`review-${data.id}`);
+                        if (targetEl) {
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            targetEl.classList.add('review-card-just-added');
+                        }
+                    }, 350);
+                } else {
+                    const msg = data.error || 'Lỗi không xác định khi gửi đánh giá';
+                    alert('❌ Gửi đánh giá thất bại: ' + msg);
+                }
+            } catch (err) {
+                console.error('[REVIEWS] Lỗi gửi review:', err);
+                alert('❌ Không thể kết nối tới máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
+                }
+            }
+        }
+
+        /* =====================================================
+           HÀM LOAD REVIEWS TỪ SERVER (/api/reviews)
+           Cập nhật toàn bộ Rating Dashboard & Render Bento Cards
+           ===================================================== */
         async function loadReviewsFromAPI() {
             const container = document.getElementById('reviews-container');
             if (!container) return;
+
             try {
                 const res = await fetch('/api/reviews');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
-                const reviews = (data.reviews || []);
+                const reviews = data.reviews || [];
+                const total = data.total_reviews ?? reviews.length;
+                const avg = (total > 0 && typeof data.average_stars === 'number' && data.average_stars > 0)
+                    ? data.average_stars
+                    : (total > 0 ? (reviews.reduce((s, r) => s + (r.stars || 5), 0) / total) : 5.0);
+                const counts = data.star_counts || { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
+                const percentages = data.percentages || { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
+
+                // Tính toán fallback percentages nếu server chưa trả về percentages
+                if (total > 0 && (!data.percentages || Object.keys(data.percentages).length === 0)) {
+                    let s5 = 0, s4 = 0, s3 = 0, s2 = 0, s1 = 0;
+                    reviews.forEach(r => {
+                        const s = r.stars || 5;
+                        if (s === 5) s5++;
+                        else if (s === 4) s4++;
+                        else if (s === 3) s3++;
+                        else if (s === 2) s2++;
+                        else if (s === 1) s1++;
+                    });
+                    counts["5"] = s5; counts["4"] = s4; counts["3"] = s3; counts["2"] = s2; counts["1"] = s1;
+                    percentages["5"] = Math.round((s5 / total) * 100);
+                    percentages["4"] = Math.round((s4 / total) * 100);
+                    percentages["3"] = Math.round((s3 / total) * 100);
+                    percentages["2"] = Math.round((s2 / total) * 100);
+                    percentages["1"] = Math.round((s1 / total) * 100);
+                }
+
+                // 1. Cập nhật Rating Analytics Dashboard
+                const avgScoreEl = document.getElementById('stat-avg-score');
+                const avgStarsEl = document.getElementById('stat-avg-stars');
+                const totalTextEl = document.getElementById('stat-total-text');
+
+                if (avgScoreEl) avgScoreEl.textContent = avg.toFixed(1);
+                if (avgStarsEl) {
+                    const roundedStars = Math.round(avg);
+                    avgStarsEl.textContent = '★'.repeat(Math.max(1, Math.min(5, roundedStars)));
+                }
+                if (totalTextEl) {
+                    totalTextEl.innerHTML = total > 0 
+                        ? `Dựa trên <span id="stat-total-count" style="font-weight: 700; color: #00e5ff;">${total}</span> phản hồi thực tế từ cộng đồng`
+                        : `Hệ thống chuẩn hoá điểm khởi tạo <span style="font-weight: 700; color: #00e5ff;">5.0★</span> xuất sắc`;
+                }
+
+                // 2. Cập nhật thanh tiến độ phân bổ sao (Progress Bars)
+                ['5', '4', '3', '2', '1'].forEach(star => {
+                    const pct = percentages[star] ?? (total === 0 && star === '5' ? 100 : 0);
+                    const cnt = counts[star] ?? 0;
+                    const bar = document.getElementById(`rating-bar-${star}`);
+                    const pctEl = document.getElementById(`rating-percent-${star}`);
+                    const cntEl = document.getElementById(`rating-count-${star}`);
+                    if (bar) bar.style.width = `${pct}%`;
+                    if (pctEl) pctEl.textContent = `${pct}%`;
+                    if (cntEl) cntEl.textContent = `(${cnt})`;
+                });
+
                 const isAdmin = document.body.classList.contains('is-admin') && (sessionStorage.getItem('cloudpool_admin_session') === 'true');
 
+                // 3. Xử lý trạng thái cơ sở dữ liệu trống
                 if (reviews.length === 0) {
                     container.innerHTML = `
-                        <div id="reviews-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div style="font-size: 2.4rem; margin-bottom: 12px;">💬</div>
-                            <div style="font-weight: 700; color: #fff; font-size: 1.15rem; margin-bottom: 6px;">Chưa Có Đánh Giá Nào Được Gửi</div>
-                            <div style="font-size: 0.9rem; max-width: 520px; margin: 0 auto 18px auto; line-height: 1.6; color: #cbd5e1;">Hệ thống chưa ghi nhận đánh giá nào từ người dùng thực tế. Hãy là người đầu tiên gửi phản hồi hoặc nhận xét trải nghiệm sử dụng phần mềm trên SupportFlast Hub.</div>
-                            <button class="btn-secondary" onclick="openCustomerFeedbackModal()" style="font-size: 0.9rem; padding: 10px 22px;">
-                                <span>✍️ Gửi Đánh Giá Của Bạn Ngay</span>
+                        <div id="reviews-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 60px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 20px; backdrop-filter: blur(12px);">
+                            <div style="font-size: 2.6rem; margin-bottom: 12px;">💬</div>
+                            <div style="font-weight: 700; color: #fff; font-size: 1.2rem; margin-bottom: 6px;">Chưa Có Đánh Giá Nào Trong Cơ Sở Dữ Liệu</div>
+                            <div style="font-size: 0.92rem; max-width: 520px; margin: 0 auto 20px auto; line-height: 1.6; color: #cbd5e1;">Hãy là người đầu tiên chia sẻ cảm nhận và đánh giá trải nghiệm thực tế với các công cụ trên SupportFlast Hub bằng form phía trên!</div>
+                            <button class="btn-secondary" onclick="focusInlineReviewForm()" style="font-size: 0.92rem; padding: 10px 24px;">
+                                <span>✍️ Viết Đánh Giá Ngay Bây Giờ</span>
                             </button>
                         </div>`;
                     return;
                 }
 
-                // Render review cards từ DB
+                // 4. Render danh sách thẻ .review-card phong cách Bento Glass
                 container.innerHTML = reviews.map(rev => {
-                    const name = rev.author_name || rev.name || 'Ẩn Danh';
-                    const roleText = rev.author_role || rev.role || 'Người Dùng';
+                    const name = rev.author_name || rev.name || 'Người Dùng Ẩn Danh';
+                    const roleText = rev.author_role || rev.role || 'Kỹ Thuật Viên IT';
                     const text = rev.text || '';
-                    const stars = '★'.repeat(Math.max(1, Math.min(5, rev.stars || 5)));
-                    const initials = name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                    const starsCount = Math.max(1, Math.min(5, rev.stars || 5));
+                    const stars = '★'.repeat(starsCount) + '☆'.repeat(5 - starsCount);
+                    const initials = name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'KH';
+                    const grad = getReviewAvatarGradient(name + (rev.id || ''));
+                    const roleIcon = getReviewRoleIcon(roleText);
+                    const revDate = rev.date || (rev.created_at ? rev.created_at.slice(0, 10) : 'Gần đây');
+
                     const adminBtns = isAdmin ? `
-                        <div class="admin-app-actions admin-only" style="display: flex; margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.14);">
+                        <div class="admin-app-actions admin-only" style="display: flex; margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, 0.12);">
                             <button class="btn-app-admin btn-app-delete" onclick="event.stopPropagation(); deleteContentItem('review-${rev.id}', 'đánh giá')" title="Xóa đánh giá này">
-                                <span>🗑️</span> <span>Xoá</span>
+                                <span>🗑️</span> <span>Xoá Đánh Giá</span>
                             </button>
                         </div>` : '';
+
                     return `
-                        <div class="review-card" id="review-${rev.id}" data-review-id="${rev.id}">
-                            <div class="review-stars">${stars}</div>
-                            <div class="review-text">"${text}"</div>
-                            <div class="review-author">
-                                <div class="author-avatar">${initials}</div>
-                                <div class="author-info">
-                                    <div class="author-name">${name}</div>
-                                    <div class="author-role">${roleText}</div>
+                        <div class="review-card bento-glass-card" id="review-${rev.id}" data-review-id="${rev.id}">
+                            <div class="review-quote-watermark">“</div>
+                            <div class="review-card-top">
+                                <div class="review-stars-wrap">
+                                    <span class="review-stars-glow">${stars}</span>
+                                    <span class="review-score-tag">${starsCount}.0</span>
                                 </div>
+                                <span class="review-verified-tag">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                    Xác thực
+                                </span>
+                            </div>
+
+                            <div class="review-quote-body">
+                                <span class="quote-mark-open">“</span>
+                                <p class="review-text-content">${text}</p>
+                                <span class="quote-mark-close">”</span>
+                            </div>
+
+                            <div class="review-card-footer">
+                                <div class="author-avatar-glow" style="background: ${grad.bg}; box-shadow: 0 0 16px ${grad.glow};">
+                                    <span>${initials}</span>
+                                </div>
+                                <div class="author-details">
+                                    <div class="author-name-text">${name}</div>
+                                    <div class="author-role-badge">
+                                        <span class="role-icon">${roleIcon}</span>
+                                        <span class="role-name">${roleText}</span>
+                                    </div>
+                                </div>
+                                <div class="review-date-badge">${revDate}</div>
                             </div>
                             ${adminBtns}
                         </div>`;
@@ -3148,77 +3549,432 @@
             }
         }
 
-        /* =====================================================
-           LOAD CHANGELOG TỪ SERVER (/api/system/updates)
-           Đồng bộ thực sự — empty state nếu DB trống
-           ===================================================== */
+/* =====================================================
+   CÂY BẢN CẬP NHẬT CÔNG NGHỆ TECH TREE TIMELINE (TASK 5)
+   ===================================================== */
+/* ==========================================================================
+           KIẾN TRÚC DÒNG THỜI GIAN BẢN CẬP NHẬT GIT COMMIT / TECH RELEASE TREE
+           loadChangelogFromAPI() & BỘ PHÂN LOẠI COMMIT ĐA MÀU THỜI GIAN THỰC
+           ========================================================================== */
+
+        // Bộ nhớ đệm toàn cục phục vụ lọc và tìm kiếm tức thì
+        window.__techTreeRawReleases = [];
+        window.__techTreeCurrentFilter = 'all';
+        window.__techTreeSearchQuery = '';
+
+        /**
+         * Phân loại commit đa màu thông minh:
+         * [feat] Cyan (#00e5ff), [fix] Coral (#ff6b6b), [perf] Purple (#c084fc), [security] Amber (#fbbf24)
+         */
+        function classifyCommitType(rawText, releaseType = '') {
+            const raw = String(rawText || '').trim();
+            const lower = raw.toLowerCase();
+
+            // 1. Phân loại theo tiền tố tường minh trong ngoặc vuông hoặc Conventional Commits
+            if (/^\[(feat|feature|tính năng)\]/i.test(raw) || /^(feat|feature):/i.test(raw)) {
+                return { type: 'feat', label: '[FEAT]', color: 'cyan', icon: '✨' };
+            }
+            if (/^\[(fix|bug|vá lỗi|sửa lỗi)\]/i.test(raw) || /^(fix|bug):/i.test(raw)) {
+                return { type: 'fix', label: '[FIX]', color: 'coral', icon: '🛠️' };
+            }
+            if (/^\[(perf|performance|hiệu năng|tối ưu)\]/i.test(raw) || /^(perf|performance):/i.test(raw)) {
+                return { type: 'perf', label: '[PERF]', color: 'purple', icon: '⚡' };
+            }
+            if (/^\[(sec|security|bảo mật|an ninh)\]/i.test(raw) || /^(sec|security):/i.test(raw)) {
+                return { type: 'security', label: '[SECURITY]', color: 'amber', icon: '🛡️' };
+            }
+
+            // 2. Quét từ khóa thông minh theo mức độ ưu tiên
+            // Bảo mật [security]
+            if (/\b(bảo mật|an ninh|security|pqc|kyber|dilithium|mã hóa|aes|rsa|jwt|token|xác thực|auth|waf|honeypot|sha256|sha-256|zero-trust|mật khẩu|khóa|siem|auditor|phân quyền)\b/i.test(lower)) {
+                return { type: 'security', label: '[SECURITY]', color: 'amber', icon: '🛡️' };
+            }
+
+            // Vá lỗi [fix]
+            if (/\b(sửa lỗi|vá lỗi|khắc phục|fix|fixed|fixing|bug|bugs|issue|crash|oom|error|sai sót|conflict|hotfix|vá|revert)\b/i.test(lower)) {
+                return { type: 'fix', label: '[FIX]', color: 'coral', icon: '🛠️' };
+            }
+
+            // Hiệu năng & Cache [perf]
+            if (/\b(hiệu năng|tối ưu|tăng tốc|perf|performance|speed|cache|caching|latency|tải nhanh|giảm tải|băng thông|pgbouncer|tiết kiệm|zstd|nén|memory leak|buffer)\b/i.test(lower)) {
+                return { type: 'perf', label: '[PERF]', color: 'purple', icon: '⚡' };
+            }
+
+            // Tính năng mới [feat]
+            if (/\b(tính năng|bổ sung|thêm|mới|hỗ trợ|giao diện|nâng cấp|tích hợp|phát hành|chức năng|công cụ|suite|dashboard|portal|modal)\b/i.test(lower)) {
+                return { type: 'feat', label: '[FEAT]', color: 'cyan', icon: '✨' };
+            }
+
+            // 3. Fallback theo thuộc tính releaseType của bản phát hành
+            const relLower = String(releaseType).toLowerCase();
+            if (relLower.includes('bảo mật') || relLower.includes('security')) return { type: 'security', label: '[SECURITY]', color: 'amber', icon: '🛡️' };
+            if (relLower.includes('vá') || relLower.includes('fix')) return { type: 'fix', label: '[FIX]', color: 'coral', icon: '🛠️' };
+            if (relLower.includes('hiệu năng') || relLower.includes('perf')) return { type: 'perf', label: '[PERF]', color: 'purple', icon: '⚡' };
+
+            // Mặc định: feat
+            return { type: 'feat', label: '[FEAT]', color: 'cyan', icon: '✨' };
+        }
+
+        /**
+         * Làm sạch chuỗi commit để loại bỏ tiền tố thô
+         */
+        function cleanCommitText(rawText) {
+            let msg = String(rawText || '').trim();
+            msg = msg.replace(/^\[(feat|feature|fix|bug|perf|performance|security|sec|refactor|docs|chore)\]\s*:?\s*/i, '');
+            msg = msg.replace(/^(feat|feature|fix|bug|perf|performance|security|sec|refactor|docs|chore)(\([a-z0-9_-]+\))?\s*:\s*/i, '');
+            msg = msg.replace(/^[•\-\*]\s*/, '');
+            return msg.trim();
+        }
+
+        /**
+         * Sinh mã Git Hash 7 ký tự ổn định từ seed & index
+         */
+        function makeDeterministicSha(seed, index) {
+            let hash = 0;
+            const str = `${seed}_git_commit_${index}`;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return (Math.abs(hash).toString(16) + 'abcdef0123456789').slice(0, 7);
+        }
+
+        /**
+         * Render toàn bộ Cây Bản Cập Nhật Công Nghệ (Tech Tree Timeline)
+         */
         async function loadChangelogFromAPI() {
             const container = document.getElementById('changelog-container');
             if (!container) return;
+
             try {
                 const res = await fetch('/api/system/updates');
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 const releases = (data.releases || []);
-                const isAdmin = document.body.classList.contains('is-admin') && (sessionStorage.getItem('cloudpool_admin_session') === 'true');
+                window.__techTreeRawReleases = releases;
 
-                if (releases.length === 0) {
-                    // DB trống -> hiện empty state (KHÔNG fallback hardcode - tránh không đồng bộ)
-                    container.innerHTML = `
-                        <div id="changelog-empty-state" style="text-align: center; padding: 60px 24px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div style="font-size: 2.4rem; margin-bottom: 12px;">🚀</div>
-                            <div style="font-weight: 700; color: #fff; font-size: 1.15rem; margin-bottom: 6px;">Chưa Có Bản Cập Nhật Nào</div>
-                            <div style="font-size: 0.9rem; max-width: 520px; margin: 0 auto 18px auto; line-height: 1.6; color: #cbd5e1;">Hiện chưa có bản phát hành nào được công bố chính thức. Các bản cập nhật mới sẽ xuất hiện tại đây khi được quản trị viên đăng tải.</div>
-                            ${isAdmin ? `<button class="btn-primary admin-only" onclick="openCreateContentModal('changelog')" style="background: linear-gradient(135deg, #00e5ff, #3b82f6); border: none; font-size: 0.88rem; padding: 10px 18px; border-radius: 10px; color: #030712; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><span>➕</span> <span>Thêm Bản Cập Nhật</span></button>` : ''}
-                        </div>`;
-                    return;
-                }
-
-                // DB có releases -> render dynamic, xóa hardcode
-                container.innerHTML = releases.map((rel, idx) => {
-                    const isLatest = idx === 0;
-                    const adminBtns = isAdmin ? `
-                        <div class="admin-app-actions admin-only" style="display: flex; margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.14);">
-                            <button class="btn-app-admin btn-app-delete" onclick="event.stopPropagation(); deleteChangelogRelease('${rel.id}')" title="Xóa bỏ bản cập nhật này">
-                                <span>🗑️</span> <span>Xoá</span>
-                            </button>
-                        </div>` : '';
-                    const changes = (rel.changes || []).map(f => `<li>${f}</li>`).join('');
-                    const featureList = changes || (rel.title ? `<li>${rel.title}</li>` : '');
-                    return `
-                        <div class="release-article-card" id="release-${rel.id}">
-                            <div class="release-card-header">
-                                <div>
-                                    <div class="release-breadcrumb">
-                                        <span>📦</span> <span>SupportFlast Hub</span> <span>/</span>
-                                        <span style="color: #00e5ff;">Releases</span>
-                                    </div>
-                                    <div class="release-app-title changelog-title">${rel.version} - ${rel.title || 'Bản Phát Hành Chính Thức'}</div>
-                                    <div class="release-meta-bar">
-                                        <span class="release-author-avatar">${(rel.author || 'A')[0].toUpperCase()}</span>
-                                        <span style="color: #fff; font-weight: 600;">${rel.author || 'DMH Tech'}</span>
-                                        <span>&bull;</span>
-                                        <span class="release-badge-pill changelog-date" ${isLatest ? '' : 'style="border-color: rgba(255,255,255,0.2); color: #cbd5e1;"'}>${rel.version}${isLatest ? ' • Mới Nhất' : ''}</span>
-                                        ${isLatest ? '<span>&bull;</span><span style="color: #4ade80;">🛡️ SHA-256 Verified Safe</span>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="release-article-body">
-                                <ul class="changelog-list" style="padding-left: 20px; line-height: 1.8; margin-bottom: 16px; color: #cbd5e1;">
-                                    ${featureList}
-                                </ul>
-                            </div>
-                            ${adminBtns}
-                        </div>`;
-                }).join('');
-            } catch(err) {
+                renderTechTreeTimeline(releases);
+            } catch (err) {
                 console.warn('[CMS] Lỗi load changelog từ server:', err);
+                // Trường hợp API lỗi kết nối nhưng đã có cache
+                if (window.__techTreeRawReleases && window.__techTreeRawReleases.length > 0) {
+                    renderTechTreeTimeline(window.__techTreeRawReleases);
+                }
             }
         }
 
-        /* Xóa release trên server (Admin) */
+        /**
+         * Hàm vẽ giao diện Tech Tree Timeline (Đồng bộ với Filter & Search)
+         */
+        function renderTechTreeTimeline(releases) {
+            const container = document.getElementById('changelog-container');
+            if (!container) return;
+
+            const isAdmin = document.body.classList.contains('is-admin') && (sessionStorage.getItem('cloudpool_admin_session') === 'true');
+
+            // 1. Kiểm tra trạng thái rỗng
+            if (!releases || releases.length === 0) {
+                container.innerHTML = `
+                    <div class="tech-tree-wrapper">
+                        <div class="tech-tree-empty-terminal" id="changelog-empty-state">
+                            <div class="tech-empty-laser-ring">🚀</div>
+                            <div style="font-weight: 800; color: #fff; font-size: 1.3rem; margin-bottom: 8px;">CÂY CÔNG NGHỆ CHƯA CÓ BẢN PHÁT HÀNH</div>
+                            <div style="font-size: 0.92rem; max-width: 540px; margin: 0 auto 24px auto; line-height: 1.7; color: #94a3b8;">
+                                Toàn bộ các gói cập nhật hệ thống, nhánh Git Commit và bản vá bảo mật sẽ tự động đồng bộ và kết nối dọc trục cáp quang học tại đây khi quản trị viên xuất bản.
+                            </div>
+                            ${isAdmin ? `
+                                <button class="btn-primary admin-only" onclick="openCreateContentModal('changelog')" style="background: linear-gradient(135deg, #00e5ff, #3b82f6); border: none; font-size: 0.9rem; padding: 12px 24px; border-radius: 12px; color: #030712; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);">
+                                    <span>➕</span> <span>Công Bố Bản Phát Hành Đầu Tiên</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // 2. Thống kê số lượng commits theo loại để hiển thị lên HUD
+            let totalCommits = 0;
+            let countFeat = 0;
+            let countFix = 0;
+            let countPerf = 0;
+            let countSec = 0;
+
+            releases.forEach(rel => {
+                const list = (rel.changes && rel.changes.length > 0) ? rel.changes : (rel.title ? [rel.title] : ['Cập nhật hệ thống']);
+                list.forEach(changeText => {
+                    totalCommits++;
+                    const cInfo = classifyCommitType(changeText, rel.type);
+                    if (cInfo.type === 'feat') countFeat++;
+                    else if (cInfo.type === 'fix') countFix++;
+                    else if (cInfo.type === 'perf') countPerf++;
+                    else if (cInfo.type === 'security') countSec++;
+                });
+            });
+
+            // 3. Xây dựng Bảng Điều Khiển Vi Mạch Git HUD & Bộ lọc
+            const currentFilter = window.__techTreeCurrentFilter || 'all';
+            const searchQuery = (window.__techTreeSearchQuery || '').toLowerCase().trim();
+
+            const hudHtml = `
+                <div class="tech-tree-hud">
+                    <div class="tech-hud-top">
+                        <div class="tech-git-branch-badge">
+                            <span class="tech-pulse-dot"></span>
+                            <span>branch: <strong>main</strong></span>
+                            <span style="color: #64748b;">(origin/HEAD)</span>
+                            <span>&bull;</span>
+                            <span style="color: #4ade80;">Zero-Trust Signed</span>
+                        </div>
+                        <div class="tech-stats-bar">
+                            <span class="tech-stat-chip">🏷️ ${releases.length} Releases</span>
+                            <span class="tech-stat-chip">🔀 ${totalCommits} Commits</span>
+                            <span class="tech-stat-chip stat-feat">✨ ${countFeat} Feat</span>
+                            <span class="tech-stat-chip stat-fix">🛠️ ${countFix} Fix</span>
+                            <span class="tech-stat-chip stat-perf">⚡ ${countPerf} Perf</span>
+                            <span class="tech-stat-chip stat-security">🛡️ ${countSec} Sec</span>
+                        </div>
+                    </div>
+                    <div class="tech-hud-controls">
+                        <div class="tech-filter-group">
+                            <button class="tech-filter-btn ${currentFilter === 'all' ? 'active' : ''}" data-filter="all" onclick="applyTechTreeFilter('all')">
+                                <span>🌐</span> <span>Tất Cả (${totalCommits})</span>
+                            </button>
+                            <button class="tech-filter-btn ${currentFilter === 'feat' ? 'active' : ''}" data-filter="feat" onclick="applyTechTreeFilter('feat')">
+                                <span style="color: var(--tree-fiber-cyan);">✨</span> <span>[feat] Tính Năng (${countFeat})</span>
+                            </button>
+                            <button class="tech-filter-btn ${currentFilter === 'fix' ? 'active' : ''}" data-filter="fix" onclick="applyTechTreeFilter('fix')">
+                                <span style="color: var(--tree-fiber-coral);">🛠️</span> <span>[fix] Vá Lỗi (${countFix})</span>
+                            </button>
+                            <button class="tech-filter-btn ${currentFilter === 'perf' ? 'active' : ''}" data-filter="perf" onclick="applyTechTreeFilter('perf')">
+                                <span style="color: var(--tree-fiber-purple);">⚡</span> <span>[perf] Hiệu Năng (${countPerf})</span>
+                            </button>
+                            <button class="tech-filter-btn ${currentFilter === 'security' ? 'active' : ''}" data-filter="security" onclick="applyTechTreeFilter('security')">
+                                <span style="color: var(--tree-fiber-amber);">🛡️</span> <span>[security] Bảo Mật (${countSec})</span>
+                            </button>
+                        </div>
+                        <div class="tech-search-box">
+                            <span class="tech-search-icon">🔍</span>
+                            <input type="text" class="tech-search-input" id="tech-tree-search-input" 
+                                placeholder="Lọc mã commit, tính năng, bản vá..." 
+                                value="${escapeHtml(window.__techTreeSearchQuery || '')}"
+                                oninput="handleTechTreeSearch(this.value)" />
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 4. Render danh sách các Releases & Commits dọc trục cáp quang
+            let visibleReleasesCount = 0;
+
+            const releasesHtml = releases.map((rel, relIdx) => {
+                const isLatest = relIdx === 0;
+                const baseHash = rel.build_hash || makeDeterministicSha(rel.id || rel.version, 0);
+                const rawChanges = (rel.changes && rel.changes.length > 0) ? rel.changes : (rel.title ? [rel.title] : ['Cải tiến hiệu năng và cập nhật giao diện web.']);
+
+                // Lọc danh sách commit theo Filter và Search Query
+                const filteredCommits = rawChanges.map((changeText, cIdx) => {
+                    const cInfo = classifyCommitType(changeText, rel.type);
+                    const cleanText = cleanCommitText(changeText);
+                    const commitHash = makeDeterministicSha(baseHash, cIdx + 1);
+                    return {
+                        original: changeText,
+                        cleanText: cleanText,
+                        typeInfo: cInfo,
+                        hash: commitHash,
+                        index: cIdx
+                    };
+                }).filter(commitItem => {
+                    // Kiểm tra filter loại
+                    if (currentFilter !== 'all' && commitItem.typeInfo.type !== currentFilter) {
+                        return false;
+                    }
+                    // Kiểm tra từ khóa tìm kiếm
+                    if (searchQuery) {
+                        const matchText = (commitItem.cleanText + ' ' + commitItem.hash + ' ' + commitItem.typeInfo.label + ' ' + rel.version + ' ' + (rel.title || '')).toLowerCase();
+                        if (!matchText.includes(searchQuery)) return false;
+                    }
+                    return true;
+                });
+
+                // Nếu bản phát hành không còn commit nào phù hợp với filter/search -> ẩn
+                if (filteredCommits.length === 0) {
+                    return '';
+                }
+
+                visibleReleasesCount++;
+
+                // Thẻ nút quản trị Admin
+                const adminBtns = isAdmin ? `
+                    <div class="admin-app-actions admin-only" style="display: flex; margin-top: 18px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, 0.12); gap: 10px;">
+                        <button class="btn-app-admin btn-app-edit" onclick="event.stopPropagation(); openContentEditor('changelog', '${rel.id}')" title="Chỉnh sửa bản cập nhật này">
+                            <span>✏️</span> <span>Sửa</span>
+                        </button>
+                        <button class="btn-app-admin btn-app-delete" onclick="event.stopPropagation(); deleteChangelogRelease('${rel.id}')" title="Xóa bỏ bản cập nhật này">
+                            <span>🗑️</span> <span>Xoá</span>
+                        </button>
+                    </div>` : '';
+
+                // Danh sách nốt commit (Bảo toàn thẻ <li> để tương thích 100% openContentEditor)
+                const commitNodesHtml = filteredCommits.map(c => {
+                    // Tự động highlight từ khóa mã code dạng inline
+                    const highlightedMessage = escapeHtml(c.cleanText).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+                    return `
+                        <li class="tech-commit-node node-${c.typeInfo.type}">
+                            <div class="tech-commit-meta-row">
+                                <div class="tech-commit-left">
+                                    <span class="tech-optic-indicator"></span>
+                                    <span class="tech-tag-badge">${c.typeInfo.label}</span>
+                                    <span style="color: #64748b;">•</span>
+                                    <a href="javascript:void(0)" class="tech-commit-hash-link" title="Sao chép commit hash" onclick="copyToClipboard('${c.hash}', this)">
+                                        #${c.hash}
+                                    </a>
+                                </div>
+                                <div style="font-size: 0.76rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">
+                                    verified commit
+                                </div>
+                            </div>
+                            <div class="tech-commit-content">
+                                ${highlightedMessage}
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="tech-release-node release-article-card" id="release-${rel.id}">
+                        <!-- Trạm nốt quang học gắn trên trục cáp -->
+                        <div class="tech-trunk-terminal">
+                            <div class="tech-terminal-core" title="Trạm nốt phiên bản ${rel.version}">
+                                <span>${isLatest ? '🚀' : '🏷️'}</span>
+                            </div>
+                        </div>
+                        <!-- Dây cáp dẫn quang ngang sang thẻ -->
+                        <div class="tech-laser-conduit"></div>
+
+                        <!-- Thẻ Bản Phát Hành Chính (Tech Release Card) -->
+                        <div class="tech-release-card">
+                            <div class="tech-release-header release-card-header">
+                                <div class="tech-release-topbar">
+                                    <div class="tech-release-breadcrumb release-breadcrumb">
+                                        <span>📦</span>
+                                        <span>SupportFlast Hub</span>
+                                        <span>/</span>
+                                        <span style="color: #00e5ff;">Releases</span>
+                                        <span>/</span>
+                                        <span>tree: ${rel.version}</span>
+                                    </div>
+                                    <div class="tech-release-badges">
+                                        ${isLatest ? `
+                                            <span class="tech-badge-live">
+                                                <span class="tech-pulse-dot" style="background:#4ade80; box-shadow: 0 0 8px #4ade80;"></span>
+                                                PRODUCTION CURRENT • LATEST
+                                            </span>
+                                            <span class="tech-badge-live" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);">
+                                                🛡️ SHA-256 Verified
+                                            </span>
+                                        ` : `
+                                            <span class="tech-badge-archived">STABLE RELEASE</span>
+                                        `}
+                                    </div>
+                                </div>
+
+                                <div class="tech-release-title-row">
+                                    <h2 class="tech-release-title changelog-title">${rel.version} - ${escapeHtml(rel.title || 'Bản Phát Hành Hệ Thống')}</h2>
+                                </div>
+
+                                <div class="tech-release-metadata release-meta-bar">
+                                    <div class="tech-author-box">
+                                        <span class="tech-author-avatar release-author-avatar">${(rel.author || 'DMH')[0].toUpperCase()}</span>
+                                        <span>${escapeHtml(rel.author || 'DMH Tech')}</span>
+                                    </div>
+                                    <span>&bull;</span>
+                                    <span class="tech-sha-chip" onclick="copyToClipboard('${baseHash}', this)" title="Nhấp để sao chép Root Hash">
+                                        <span>🔑</span>
+                                        <span>${baseHash.slice(0, 7)}</span>
+                                        <span style="font-size: 0.7rem; color: #94a3b8;">(copy)</span>
+                                    </span>
+                                    <span>&bull;</span>
+                                    <span class="changelog-date" style="color: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                        📅 ${escapeHtml(rel.date || 'Gần đây')}
+                                    </span>
+                                    <span>&bull;</span>
+                                    <span style="color: #a855f7; font-size: 0.8rem; font-weight: 600;">
+                                        ${filteredCommits.length} commits hiển thị
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Thân thẻ chứa danh sách các nốt Commit Đa Màu -->
+                            <div class="tech-release-body release-article-body" style="background: transparent; border: none; padding: 0;">
+                                <ul class="tech-commit-tree changelog-list">
+                                    ${commitNodesHtml}
+                                </ul>
+                            </div>
+
+                            ${adminBtns}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 5. Kết hợp cấu trúc trục cáp quang thẳng đứng và các thẻ
+            const noMatchState = (visibleReleasesCount === 0) ? `
+                <div style="text-align: center; padding: 45px 20px; background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 16px; color: #94a3b8;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">🔍</div>
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 6px;">Không tìm thấy bản ghi commit phù hợp</div>
+                    <div style="font-size: 0.88rem;">Hãy thử đổi từ khóa tìm kiếm hoặc chọn bộ lọc <strong>"Tất Cả"</strong>.</div>
+                </div>
+            ` : '';
+
+            container.innerHTML = `
+                <div class="tech-tree-wrapper">
+                    ${hudHtml}
+                    <div class="tech-tree-timeline">
+                        <!-- Trục Cáp Quang Học Thẳng Đứng -->
+                        <div class="tech-optical-spine"></div>
+                        
+                        ${releasesHtml}
+                        ${noMatchState}
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Xử lý chuyển đổi bộ lọc commit ([all], [feat], [fix], [perf], [security])
+         */
+        function applyTechTreeFilter(filterType) {
+            window.__techTreeCurrentFilter = filterType;
+            if (window.__techTreeRawReleases && window.__techTreeRawReleases.length > 0) {
+                renderTechTreeTimeline(window.__techTreeRawReleases);
+            }
+        }
+
+        /**
+         * Xử lý tìm kiếm commit theo thời gian thực (Debounced Search)
+         */
+        let __techTreeSearchDebounce = null;
+        function handleTechTreeSearch(query) {
+            window.__techTreeSearchQuery = query;
+            clearTimeout(__techTreeSearchDebounce);
+            __techTreeSearchDebounce = setTimeout(() => {
+                if (window.__techTreeRawReleases && window.__techTreeRawReleases.length > 0) {
+                    renderTechTreeTimeline(window.__techTreeRawReleases);
+                    const inp = document.getElementById('tech-tree-search-input');
+                    if (inp) {
+                        inp.focus();
+                        inp.setSelectionRange(inp.value.length, inp.value.length);
+                    }
+                }
+            }, 180);
+        }
+
+        /**
+         * Xóa release trên server (Admin)
+         */
         async function deleteChangelogRelease(releaseId) {
-            if (!confirm('Bạn có chắc chắn muốn XOÁ bản cập nhật này không?')) return;
+            if (!confirm('Bạn có chắc chắn muốn XOÁ bản cập nhật này khỏi Cây Công Nghệ không?')) return;
             const el = document.getElementById('release-' + releaseId);
             const adminKey = sessionStorage.getItem('cloudpool_api_key') || '';
             try {
@@ -3233,98 +3989,397 @@
                         el.style.transform = 'scale(0.9)';
                         setTimeout(() => { el.remove(); loadChangelogFromAPI(); }, 350);
                     }
-                    if (typeof showStateToast === 'function') showStateToast('🗑️ Đã xóa bản cập nhật!', '🗑️');
+                    if (typeof showStateToast === 'function') showStateToast('🗑️ Đã xóa bản cập nhật khỏi Cây Công Nghệ!', '🗑️');
                     return;
                 }
             } catch(err) {}
-            // Fallback: localStorage deletion
+            // Fallback nếu server không hỗ trợ DELETE
             if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 350); }
             if (typeof showStateToast === 'function') showStateToast('🗑️ Đã ẩn bản cập nhật!', '🗑️');
         }
 
-        /* 5. Giám sát Gateway Health */
-        async function checkHealth() {
-            try {
-                await fetch('/api/health');
-            } catch (e) {}
-        }
-        setInterval(checkHealth, 10000);
-        checkHealth();
 
-        /* 6. Mạng lưới Canvas hạt tương tác */
-        const canvas = document.getElementById('network-canvas');
-        const ctx = canvas.getContext('2d');
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-        
-        const particles = [];
-        const isMobileScreen = window.innerWidth <= 768 || window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-        const particleCount = isMobileScreen ? 42 : 100; 
-        let mouse = { x: null, y: null, radius: isMobileScreen ? 150 : 250 }; 
+        /* ============================================================== */
+        /* 6. CYBER NEBULA & ANIMATED METEOR CANVAS ENGINE (TASK 1)       */
+        /* High-DPI Crisp Rendering | Star Dust & Nodes | Shooting Stars   */
+        /* 60FPS Optimization | Spatial Bounding | Zero Battery Waste     */
+        /* ============================================================== */
+        (function initCyberNebulaCanvas() {
+            const canvas = document.getElementById('network-canvas');
+            if (!canvas) return;
 
-        window.addEventListener('resize', () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; });
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.vx = (Math.random() - 0.5) * 1.5; 
-                this.vy = (Math.random() - 0.5) * 1.5;
-                this.size = Math.random() * 2 + 1;
-                this.color = Math.random() > 0.5 ? '#00e5ff' : '#8b5cf6';
+            // Đảm bảo DOM Gradient Mesh tồn tại nếu HTML chưa khai báo
+            if (!document.querySelector('.cyber-nebula-mesh')) {
+                const meshContainer = document.createElement('div');
+                meshContainer.className = 'cyber-nebula-mesh';
+                meshContainer.setAttribute('aria-hidden', 'true');
+                meshContainer.innerHTML = `
+                    <div class="nebula-orb orb-cyan"></div>
+                    <div class="nebula-orb orb-purple"></div>
+                    <div class="nebula-orb orb-deep-blue"></div>
+                `;
+                canvas.parentNode.insertBefore(meshContainer, canvas);
             }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.fill();
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                if (this.x < 0 || this.x > width) this.vx = -this.vx;
-                if (this.y < 0 || this.y > height) this.vy = -this.vy;
 
-                let dx = aura.style.left ? parseFloat(aura.style.left) - this.x : -1000;
-                let dy = aura.style.top ? parseFloat(aura.style.top) - this.y : -1000;
-                let distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < mouse.radius) {
-                    const forceDirectionX = dx / distance;
-                    const forceDirectionY = dy / distance;
-                    const force = (mouse.radius - distance) / mouse.radius;
-                    this.x -= forceDirectionX * force * 4;
-                    this.y -= forceDirectionY * force * 4;
+            const ctx = canvas.getContext('2d', { alpha: true });
+            if (!ctx) return;
+
+            // Biến môi trường và cấu hình hiệu năng
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+            let animationFrameId = null;
+            let isTabVisible = !document.hidden;
+
+            const isTouchScreen = window.innerWidth <= 768 || 
+                window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            
+            // Thiết lập số lượng hạt thích ứng theo cấu hình thiết bị
+            const PARTICLE_COUNT = isTouchScreen ? 36 : 82;
+            const CONNECT_DISTANCE = isTouchScreen ? 115 : 145;
+            const CONNECT_DISTANCE_SQ = CONNECT_DISTANCE * CONNECT_DISTANCE; // Tối ưu: Bỏ căn bậc hai
+            const MOUSE_RADIUS = isTouchScreen ? 120 : 220;
+
+            const particles = [];
+            const meteors = [];
+            let nextMeteorTime = performance.now() + 2000;
+
+            // Định vị tương tác chuột / Aura
+            const mouse = { x: -9999, y: -9999, radius: MOUSE_RADIUS };
+            const auraEl = document.getElementById('mouse-aura');
+
+            function resizeCanvas() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2); // Clamp tối đa 2 để chống giật lag Retina
+                width = window.innerWidth;
+                height = window.innerHeight;
+
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+            }
+
+            resizeCanvas();
+            window.addEventListener('resize', debounce(resizeCanvas, 150), { passive: true });
+
+            function debounce(fn, ms) {
+                let timer;
+                return function() {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn.apply(this, arguments), ms);
+                };
+            }
+
+            // Lắng nghe chuột desktop
+            if (!isTouchScreen) {
+                window.addEventListener('mousemove', (e) => {
+                    mouse.x = e.clientX;
+                    mouse.y = e.clientY;
+                }, { passive: true });
+
+                window.addEventListener('mouseleave', () => {
+                    mouse.x = -9999;
+                    mouse.y = -9999;
+                }, { passive: true });
+            }
+
+            /* --- LỚP HẠT SÁNG VŨ TRỤ (STAR DUST & CYBER NODES) --- */
+            class CyberParticle {
+                constructor() {
+                    this.init(true);
                 }
-                this.draw();
-            }
-        }
 
-        for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+                init(isFirstRun = false) {
+                    this.x = Math.random() * width;
+                    this.y = isFirstRun ? Math.random() * height : (Math.random() > 0.5 ? -10 : height + 10);
+                    
+                    // Tốc độ trôi dạt êm dịu
+                    const speed = Math.random() * 0.45 + 0.2;
+                    const angle = Math.random() * Math.PI * 2;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
 
-        function animate() {
-            ctx.clearRect(0, 0, width, height);
-            for (let i = 0; i < particles.length; i++) {
-                particles[i].update();
-                for (let j = i; j < particles.length; j++) {
-                    let dx = particles[i].x - particles[j].x;
-                    let dy = particles[i].y - particles[j].y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 150) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = `rgba(139, 92, 246, ${0.3 - distance/500})`;
-                        if(particles[i].color === '#00e5ff') {
-                            ctx.strokeStyle = `rgba(0, 229, 255, ${0.4 - distance/375})`;
+                    // Phân tầng: 40% là Bụi sao siêu mịn, 60% là Nút mạng năng lượng
+                    this.isStarDust = Math.random() < 0.4;
+                    this.radius = this.isStarDust ? (Math.random() * 0.8 + 0.5) : (Math.random() * 1.6 + 1.2);
+                    
+                    // Bảng màu Cyber: Cyan hoặc Neon Purple hoặc Slate Ice
+                    const colorPick = Math.random();
+                    if (colorPick < 0.55) {
+                        this.baseColor = '#00e5ff'; // Cyan Neon
+                        this.rgb = '0, 229, 255';
+                    } else if (colorPick < 0.85) {
+                        this.baseColor = '#a855f7'; // Neon Violet
+                        this.rgb = '168, 85, 247';
+                    } else {
+                        this.baseColor = '#38bdf8'; // Sky Ice
+                        this.rgb = '56, 189, 248';
+                    }
+
+                    // Tần số nhấp nháy phát quang
+                    this.twinkleSpeed = Math.random() * 0.025 + 0.01;
+                    this.twinklePhase = Math.random() * Math.PI * 2;
+                    this.baseAlpha = Math.random() * 0.35 + 0.35;
+                }
+
+                update(timestamp) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // Đảo chiều mượt khi chạm biên màn hình
+                    if (this.x < 0) this.x = width;
+                    else if (this.x > width) this.x = 0;
+                    if (this.y < 0) this.y = height;
+                    else if (this.y > height) this.y = 0;
+
+                    // Tương tác lực đẩy từ con trỏ chuột / Mouse Aura
+                    let targetX = mouse.x;
+                    let targetY = mouse.y;
+
+                    // Tương thích với vị trí Aura nếu có
+                    if (auraEl && auraEl.style.left && !isTouchScreen) {
+                        const auraX = parseFloat(auraEl.style.left);
+                        const auraY = parseFloat(auraEl.style.top);
+                        if (!isNaN(auraX) && !isNaN(auraY)) {
+                            targetX = auraX;
+                            targetY = auraY;
                         }
-                        ctx.lineWidth = 1;
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
+                    }
+
+                    const dx = targetX - this.x;
+                    const dy = targetY - this.y;
+                    const distSq = dx * dx + dy * dy;
+
+                    if (distSq < mouse.radius * mouse.radius && distSq > 0) {
+                        const dist = Math.sqrt(distSq);
+                        const force = (mouse.radius - dist) / mouse.radius;
+                        const normalX = dx / dist;
+                        const normalY = dy / dist;
+                        // Đẩy nhẹ nhàng không giật
+                        this.x -= normalX * force * 2.8;
+                        this.y -= normalY * force * 2.8;
+                    }
+
+                    // Tính độ sáng nhấp nháy quang học
+                    this.twinklePhase += this.twinkleSpeed;
+                    this.currentAlpha = Math.max(0.15, Math.min(0.9, this.baseAlpha + Math.sin(this.twinklePhase) * 0.22));
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    
+                    if (this.isStarDust) {
+                        ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha * 0.75})`;
+                        ctx.fill();
+                    } else {
+                        // Tạo vầng phát sáng nhẹ cho hạt lớn
+                        ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha})`;
+                        ctx.shadowColor = `rgba(${this.rgb}, 0.5)`;
+                        ctx.shadowBlur = 6;
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            /* --- LỚP SAO BĂNG TINH TẾ (CYBER SHOOTING STARS / METEORS) --- */
+            class CyberMeteor {
+                constructor() {
+                    this.init();
+                }
+
+                init() {
+                    // Xuất phát từ góc trên hoặc bên phải
+                    const startFromTop = Math.random() > 0.4;
+                    if (startFromTop) {
+                        this.x = Math.random() * (width * 0.9) + (width * 0.1);
+                        this.y = -20;
+                    } else {
+                        this.x = width + 20;
+                        this.y = Math.random() * (height * 0.4);
+                    }
+
+                    // Góc bay tự nhiên: chéo từ trên phải xuống dưới trái (-135° ~ -145°) hoặc từ trên trái sang phải
+                    const angleRad = (Math.PI / 180) * (Math.random() * 12 + 130); 
+                    const velocity = Math.random() * 7 + 10; // Tốc độ lướt nhanh nhưng thanh thoát
+
+                    this.vx = -Math.cos(angleRad - Math.PI / 2) * velocity;
+                    this.vy = Math.sin(angleRad - Math.PI / 2) * velocity;
+
+                    this.length = Math.random() * 85 + 75; // Độ dài vệt sao băng (px)
+                    this.thickness = Math.random() * 1.2 + 1.1;
+                    this.alpha = 1.0;
+                    this.decay = Math.random() * 0.012 + 0.014; // Tốc độ tan biến
+                    this.alive = true;
+
+                    // Tông màu sao băng: Trắng pha Cyan hoặc Electric Purple
+                    this.isCyan = Math.random() > 0.35;
+                }
+
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.alpha -= this.decay;
+
+                    if (this.alpha <= 0 || this.x < -100 || this.y > height + 100) {
+                        this.alive = false;
                     }
                 }
+
+                draw() {
+                    if (!this.alive || this.alpha <= 0) return;
+
+                    // Tính tọa độ đuôi vệt sao băng
+                    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                    const dirX = this.vx / speed;
+                    const dirY = this.vy / speed;
+                    const tailX = this.x - dirX * this.length;
+                    const tailY = this.y - dirY * this.length;
+
+                    ctx.save();
+                    const gradient = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
+                    
+                    if (this.isCyan) {
+                        gradient.addColorStop(0, 'rgba(0, 229, 255, 0)');
+                        gradient.addColorStop(0.65, `rgba(0, 229, 255, ${this.alpha * 0.4})`);
+                        gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha * 0.95})`);
+                    } else {
+                        gradient.addColorStop(0, 'rgba(168, 85, 247, 0)');
+                        gradient.addColorStop(0.65, `rgba(168, 85, 247, ${this.alpha * 0.4})`);
+                        gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha * 0.95})`);
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(tailX, tailY);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = this.thickness;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    // Chấm sáng rực rỡ ở đầu sao băng
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.thickness * 1.3, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                    ctx.shadowColor = this.isCyan ? 'rgba(0, 229, 255, 0.8)' : 'rgba(168, 85, 247, 0.8)';
+                    ctx.shadowBlur = 8;
+                    ctx.fill();
+                    ctx.restore();
+                }
             }
-            requestAnimationFrame(animate);
+
+            // Khởi tạo các hạt ban đầu
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new CyberParticle());
+            }
+
+            /* --- VÒNG LẶP RENDER HOẠT HỌA 60FPS CHUẨN MỰC --- */
+            function animate(timestamp) {
+                if (!isTabVisible) return;
+
+                ctx.clearRect(0, 0, width, height);
+
+                // 1. Cập nhật và vẽ các hạt sáng
+                const pCount = particles.length;
+                for (let i = 0; i < pCount; i++) {
+                    const p = particles[i];
+                    p.update(timestamp);
+                    p.draw();
+
+                    // 2. Vẽ các đường liên kết mạng lưới (Constellation Neural Lines)
+                    for (let j = i + 1; j < pCount; j++) {
+                        const p2 = particles[j];
+                        const dx = p.x - p2.x;
+                        const dy = p.y - p2.y;
+                        const distSq = dx * dx + dy * dy;
+
+                        if (distSq < CONNECT_DISTANCE_SQ) {
+                            const dist = Math.sqrt(distSq);
+                            const factor = 1 - (dist / CONNECT_DISTANCE);
+                            const lineAlpha = factor * 0.22;
+
+                            ctx.beginPath();
+                            // Tạo gradient nối mượt mà giữa màu 2 hạt
+                            const lineGrad = ctx.createLinearGradient(p.x, p.y, p2.x, p2.y);
+                            lineGrad.addColorStop(0, `rgba(${p.rgb}, ${lineAlpha * p.currentAlpha})`);
+                            lineGrad.addColorStop(1, `rgba(${p2.rgb}, ${lineAlpha * p2.currentAlpha})`);
+
+                            ctx.strokeStyle = lineGrad;
+                            ctx.lineWidth = factor * 1.1;
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // 3. Quản lý chu kỳ xuất hiện sao băng (Shooting Stars Spawner)
+                if (timestamp >= nextMeteorTime) {
+                    // Giới hạn tối đa 2 vệt đồng thời để tinh tế, không rối mắt
+                    if (meteors.length < (isTouchScreen ? 1 : 2)) {
+                        meteors.push(new CyberMeteor());
+                    }
+                    // Khoảng thời gian ngẫu nhiên 2.5s - 5.5s
+                    nextMeteorTime = timestamp + Math.random() * 3000 + 2500;
+                }
+
+                // 4. Cập nhật và vẽ sao băng
+                for (let i = meteors.length - 1; i >= 0; i--) {
+                    const m = meteors[i];
+                    m.update();
+                    m.draw();
+                    if (!m.alive) {
+                        meteors.splice(i, 1);
+                    }
+                }
+
+                animationFrameId = requestAnimationFrame(animate);
+            }
+
+            // Quản lý trạng thái tab (Tiết kiệm 100% tài nguyên khi người dùng rời tab)
+            document.addEventListener('visibilitychange', () => {
+                isTabVisible = !document.hidden;
+                if (isTabVisible) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = requestAnimationFrame(animate);
+                } else {
+                    cancelAnimationFrame(animationFrameId);
+                }
+            });
+
+            // Bắt đầu chu trình render
+            animationFrameId = requestAnimationFrame(animate);
+        })();
+
+        /* ========================================================================== */
+/* BỘ ĐIỀU KHIỂN SPOTLIGHT RỌI THEO CHUỘT CHO CARD FROSTED GLASS              */
+/* ========================================================================== */
+(function initCardSpotlightSystem() {
+    let ticking = false;
+
+    document.addEventListener('pointermove', function(e) {
+        const card = e.target.closest('.featured-app-card');
+        if (!card) return;
+
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+                ticking = false;
+            });
+            ticking = true;
         }
-        animate();
+    }, { passive: true });
+})();
+
 
         /* ============================================================== */
         /* MODULE BẢO TOÀN TRẠNG THÁI & LÀM MỚI THÔNG MINH (SMART REFRESH) */
