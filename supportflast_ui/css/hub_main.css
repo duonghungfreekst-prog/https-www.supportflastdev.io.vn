@@ -304,73 +304,54 @@
         }
         
         .nav-links a { 
-            color: var(--text-muted); 
+            color: #e2e8f0; 
             text-decoration: none; 
-            font-size: 0.81rem;
-            font-weight: 500;
-            padding: 6px 12px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            padding: 6px 15px;
             border-radius: 999px;
             white-space: nowrap; /* BẮT BUỘC: Chữ luôn ở 1 hàng duy nhất */
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             border: 1px solid transparent;
             cursor: pointer;
             user-select: none;
             position: relative;
         }
-        
-        /* ============================================================== */
-        /* HỆ THỐNG HIỆU ỨNG NỔI KHỐI 3D CAO VƯỢT TRỘI & NHÚN CƠ HỌC      */
-        /* (ULTRA 3D ELEVATION, EXTENSION LIP, DEPTH SHADOW & SPRING POP) */
-        /* ============================================================== */
 
-        /* 1. Thanh Menu Tab Navigation */
-        .nav-links a {
-            transition: transform 0.26s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                        box-shadow 0.26s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-                        background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-        }
-
-        /* Hover: Nổi bật lên cao -6px, phóng to 1.08x và bóng đổ đa tầng neon cyan */
+        /* Hover: Nổi nhẹ tinh tế, sáng chữ trắng tinh */
         .nav-links a:hover { 
             color: #ffffff; 
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(0, 229, 255, 0.22) 100%);
-            border-color: rgba(0, 229, 255, 0.85);
-            transform: translateY(-6px) scale(1.08);
-            box-shadow: 0 14px 28px -2px rgba(0, 229, 255, 0.65), 0 6px 14px rgba(0, 0, 0, 0.85), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.7);
-            text-shadow: 0 0 12px rgba(0, 229, 255, 1);
-            z-index: 5;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.22);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
-        /* Active: Nhấn lún đàn hồi tactile */
+        /* Active: Nhấn nhẹ tactile */
         .nav-links a:active {
-            transform: translateY(2px) scale(0.94) !important;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), inset 0 2px 6px rgba(0, 0, 0, 0.7) !important;
-            background: rgba(0, 229, 255, 0.3) !important;
+            transform: translateY(1px) scale(0.96) !important;
         }
         
-        /* Phím Đang Chọn (ACTIVE STATE - Mặc định đã có độ nổi khối 3D) */
+        /* Phím Đang Chọn (ACTIVE STATE - Sắc sảo, không nhòe) */
         .nav-links a.active {
-            background: linear-gradient(135deg, rgba(0, 229, 255, 0.4), rgba(139, 92, 246, 0.45));
-            color: #00e5ff;
-            border: 1px solid rgba(0, 229, 255, 0.85);
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.22), rgba(99, 102, 241, 0.28));
+            color: #00f0ff;
+            border: 1px solid rgba(0, 229, 255, 0.65);
             font-weight: 700;
-            box-shadow: 0 6px 20px rgba(0, 229, 255, 0.5), 0 3px 8px rgba(0, 0, 0, 0.6), inset 0 1.5px 2px rgba(255, 255, 255, 0.7);
-            text-shadow: 0 0 14px rgba(0, 229, 255, 0.95);
-            transform: translateY(-2px);
-            padding: 6px 14px;
+            box-shadow: 0 2px 12px rgba(0, 229, 255, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+            transform: translateY(-1px);
+            padding: 6px 15px;
         }
         
         .nav-links a.active:hover { 
-            background: linear-gradient(135deg, rgba(0, 229, 255, 0.55), rgba(139, 92, 246, 0.55));
-            border-color: #00e5ff;
-            box-shadow: 0 18px 38px rgba(0, 229, 255, 0.85), 0 0 30px rgba(139, 92, 246, 0.65), inset 0 2px 2px #ffffff;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.3), rgba(99, 102, 241, 0.35));
+            border-color: #00f0ff;
             color: #ffffff;
-            transform: translateY(-8px) scale(1.12);
-            z-index: 5;
+            transform: translateY(-2px);
         }
 
         .nav-links a.active:active {
@@ -739,55 +720,19 @@
             font-size: clamp(2.5rem, 5.8vw, 4.8rem);
             font-weight: 900;
             line-height: 1.25;
-            letter-spacing: -1px;
+            letter-spacing: -0.02em;
             padding-top: 6px;
             padding-bottom: 4px;
         }
         
         .h1-glow { 
             margin-top: 10px;
-            filter: drop-shadow(0 0 28px rgba(0, 229, 255, 0.45));
+            filter: drop-shadow(0 2px 14px rgba(0, 229, 255, 0.25));
         }
 
-        /* ============================================================== */
-        /* HIỆU ỨNG CHỮ NHẢY XẾP CHỮ (JUMPING LETTERS ASSEMBLY)           */
-        /* ============================================================== */
         .hero-kinetic-title {
             margin-bottom: 28px;
             user-select: none;
-            perspective: 1000px;
-            cursor: pointer;
-        }
-
-        .k-word {
-            display: inline-block;
-            white-space: nowrap;
-        }
-
-        .k-space {
-            display: inline-block;
-            width: 0.32em;
-        }
-
-        .k-char {
-            display: inline-block;
-            transform-origin: 50% 85%;
-            color: #ffffff;
-            text-shadow: 0 2px 20px rgba(255, 255, 255, 0.25);
-            animation: letterJumpAssemble 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-            animation-delay: calc(var(--i, 0) * 0.045s);
-            will-change: transform, opacity;
-            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        /* Dòng 2: Hiệu ứng chữ màu Cyan Neon Gradient rực rỡ như ảnh gốc */
-        .h1-glow .k-char {
-            color: #00e5ff;
-            background: linear-gradient(135deg, #00e5ff 0%, #38bdf8 45%, #c084fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 25px rgba(0, 229, 255, 0.35);
         }
 
         /* Animation chữ rơi từ trên xuống, nảy tưng tưng rồi xếp ngay ngắn thành hàng */
@@ -5398,20 +5343,20 @@ nav {
 }
 
 .nav-links a:hover {
-    color: #ffffff;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(0, 229, 255, 0.15) 100%);
-    border-color: rgba(0, 229, 255, 0.6);
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 229, 255, 0.35);
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .nav-links a.active {
-    background: linear-gradient(135deg, rgba(79, 70, 229, 0.45) 0%, rgba(0, 229, 255, 0.35) 100%);
-    color: #00e5ff;
-    border: 1px solid rgba(0, 229, 255, 0.85);
-    font-weight: 700;
-    box-shadow: 0 4px 18px rgba(0, 229, 255, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.5);
-    text-shadow: 0 0 12px rgba(0, 229, 255, 0.85);
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.22) 0%, rgba(99, 102, 241, 0.28) 100%) !important;
+    color: #00f0ff !important;
+    border: 1px solid rgba(0, 229, 255, 0.65) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 10px rgba(0, 229, 255, 0.25) !important;
+    text-shadow: none !important;
     transform: translateY(-1px);
 }
 
@@ -5589,13 +5534,13 @@ nav {
     font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
     font-size: clamp(2rem, 4.4vw, 3.4rem);
     font-weight: 800;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.02em;
     line-height: 1.2;
 }
 
-.h1-line-silver .k-char {
-    color: #f1f5f9;
-    text-shadow: 0 2px 20px rgba(255, 255, 255, 0.35);
+.h1-line-silver {
+    color: #ffffff !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Dòng 2: Main Punchline màu Gradient Cyan Neon sang Deep Indigo */
@@ -5603,21 +5548,22 @@ nav {
     font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
     font-size: clamp(2.8rem, 6.2vw, 5.2rem);
     font-weight: 900;
-    letter-spacing: -1.2px;
+    letter-spacing: -0.02em;
     line-height: 1.15;
 }
 
-.h1-line-neon .k-char {
+.h1-line-neon {
     color: #00e5ff;
-    background: linear-gradient(135deg, #00e5ff 0%, #38bdf8 40%, #818cf8 80%, #c084fc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 0 35px rgba(0, 229, 255, 0.55);
+    background: linear-gradient(135deg, #ffffff 0%, #38bdf8 40%, #00e5ff 80%, #a855f7 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    text-shadow: none !important;
+    filter: drop-shadow(0 2px 12px rgba(0, 240, 255, 0.22)) !important;
 }
 
 .h1-glow {
-    filter: drop-shadow(0 0 32px rgba(0, 229, 255, 0.55)) drop-shadow(0 0 65px rgba(99, 102, 241, 0.4));
+    filter: none !important;
 }
 
 /* Cơ học chữ nhảy 3D */
@@ -5679,15 +5625,16 @@ nav {
     animation-delay: calc(var(--i, 0) * 0.042s) !important;
 }
 
-/* ĐOẠN DẪN HERO */
+/* ĐOẠN DẪN HERO CHUẨN ĐỌC DỊU MẮT TƯƠNG PHẢN CAO */
 p.desc {
-    font-size: 1.15rem;
-    color: #cbd5e1;
-    max-width: 760px;
-    margin: 0 auto 38px;
-    font-weight: 400;
-    line-height: 1.7;
-    letter-spacing: -0.2px;
+    font-size: clamp(1.05rem, 1.8vw, 1.2rem) !important;
+    color: #e2e8f0 !important;
+    max-width: 760px !important;
+    margin: 0 auto 38px !important;
+    font-weight: 500 !important;
+    line-height: 1.7 !important;
+    letter-spacing: -0.01em !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
 }
 
 /* ========================================================================== */
@@ -9138,20 +9085,19 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
 /* FIX TRIỆT ĐỂ BỐ CỤC CARD ỨNG DỤNG, NỀN OBSIDIAN VÀ HEADER (HOTFIX 2026)     */
 /* ========================================================================== */
 
-/* 1. KHÔI PHỤC CHIỀU SÂU NỀN KHÔNG GIAN DEEP SPACE NAVY & MIDNIGHT SAPPHIRE RỰC RỠ */
+/* 1. NỀN KHÔNG GIAN OBSIDIAN & MIDNIGHT SAPPHIRE TĨNH LẶNG, ÊM DỊU MẮT */
 body {
-    background-color: #070d1e !important;
+    background-color: #050914 !important;
     background-image: 
-        radial-gradient(circle at 50% -10%, rgba(0, 240, 255, 0.36) 0%, rgba(14, 165, 233, 0.18) 35%, transparent 65%),
-        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.14) 40%, transparent 60%),
-        radial-gradient(circle at 15% 75%, rgba(59, 130, 246, 0.32) 0%, rgba(30, 58, 138, 0.18) 45%, transparent 65%),
-        radial-gradient(circle at 80% 90%, rgba(245, 158, 11, 0.24) 0%, transparent 50%),
-        linear-gradient(180deg, #070d1e 0%, #0c152e 40%, #0a1329 70%, #060b18 100%) !important;
+        radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.12) 0%, transparent 60%),
+        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.10) 0%, transparent 55%),
+        radial-gradient(circle at 15% 75%, rgba(59, 130, 246, 0.10) 0%, transparent 55%),
+        linear-gradient(180deg, #050914 0%, #080f24 40%, #060c1d 75%, #040712 100%) !important;
     background-attachment: fixed !important;
     min-height: 100vh !important;
 }
 
-/* 2. ĐỒNG BỘ CLASS CHO CỤM GRADIENT MESH ORBS */
+/* 2. ĐỒNG BỘ CLASS CHO CỤM GRADIENT MESH ORBS - TÁN SẮC MỀM MỊN NHƯ LỤA */
 .cyber-mesh-container,
 .cyber-nebula-mesh {
     position: fixed !important;
@@ -9163,15 +9109,16 @@ body {
     user-select: none !important;
     overflow: hidden !important;
     z-index: 0 !important;
-    mix-blend-mode: screen !important;
+    mix-blend-mode: normal !important;
+    opacity: 0.65 !important;
 }
 
 .mesh-orb,
 .nebula-orb {
     position: absolute !important;
     border-radius: 50% !important;
-    filter: blur(85px) !important;
-    opacity: 0.88 !important;
+    filter: blur(140px) !important;
+    opacity: 0.35 !important;
     pointer-events: none !important;
     will-change: transform !important;
 }
@@ -9180,11 +9127,11 @@ body {
 .orb-cyan {
     top: -12vh !important;
     left: -10vw !important;
-    width: 70vw !important;
-    height: 70vw !important;
-    max-width: 900px !important;
-    max-height: 900px !important;
-    background: radial-gradient(circle, rgba(0, 240, 255, 0.38) 0%, rgba(14, 165, 233, 0.20) 45%, transparent 75%) !important;
+    width: 65vw !important;
+    height: 65vw !important;
+    max-width: 850px !important;
+    max-height: 850px !important;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.16) 0%, rgba(14, 165, 233, 0.08) 45%, transparent 75%) !important;
     animation: nebulaDriftOne 24s ease-in-out infinite alternate !important;
 }
 
@@ -9192,11 +9139,11 @@ body {
 .orb-deep-blue {
     bottom: -18vh !important;
     left: 15vw !important;
-    width: 80vw !important;
-    height: 80vw !important;
-    max-width: 1100px !important;
-    max-height: 1100px !important;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.36) 0%, rgba(79, 70, 229, 0.22) 50%, transparent 78%) !important;
+    width: 75vw !important;
+    height: 75vw !important;
+    max-width: 1000px !important;
+    max-height: 1000px !important;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(79, 70, 229, 0.08) 50%, transparent 78%) !important;
     animation: nebulaDriftThree 30s ease-in-out infinite alternate !important;
 }
 
@@ -9204,11 +9151,11 @@ body {
 .orb-purple {
     top: 10vh !important;
     right: -12vw !important;
-    width: 70vw !important;
-    height: 70vw !important;
-    max-width: 920px !important;
-    max-height: 920px !important;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.32) 0%, rgba(139, 92, 246, 0.18) 45%, transparent 75%) !important;
+    width: 65vw !important;
+    height: 65vw !important;
+    max-width: 850px !important;
+    max-height: 850px !important;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.13) 0%, rgba(139, 92, 246, 0.06) 45%, transparent 75%) !important;
     animation: nebulaDriftTwo 28s ease-in-out infinite alternate-reverse !important;
 }
 
@@ -9216,11 +9163,11 @@ body {
 .orb-amber {
     top: 45vh !important;
     left: 45vw !important;
-    width: 50vw !important;
-    height: 50vw !important;
-    max-width: 650px !important;
-    max-height: 650px !important;
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.28) 0%, rgba(217, 119, 6, 0.12) 45%, transparent 70%) !important;
+    width: 45vw !important;
+    height: 45vw !important;
+    max-width: 600px !important;
+    max-height: 600px !important;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.11) 0%, rgba(217, 119, 6, 0.04) 45%, transparent 70%) !important;
     animation: nebulaDriftFour 32s ease-in-out infinite alternate !important;
 }
 

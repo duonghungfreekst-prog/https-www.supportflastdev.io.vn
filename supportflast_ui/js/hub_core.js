@@ -83,12 +83,7 @@
             });
         }
 
-        // Tự động nhảy lặp lại nhịp nhàng mỗi 7.5 giây
-        setInterval(() => {
-            if (!document.hidden) {
-                triggerHeroLettersAssemble();
-            }
-        }, 7500);
+        // Chữ giữ trạng thái tĩnh lặng, nét căng sắc sảo chuẩn Typography hiện đại
 
         function escapeHtml(str) {
             if (!str) return '';
