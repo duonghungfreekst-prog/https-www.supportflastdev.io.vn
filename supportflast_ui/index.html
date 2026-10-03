@@ -25,7 +25,7 @@
         })();
     </script>
 
-    <link rel="stylesheet" href="/css/hub_main.css?v=20261003_1955">
+    <link rel="stylesheet" href="/css/hub_main.css?v=20261003_2010">
 </head>
 <body>
 
@@ -37,6 +37,7 @@
         <div class="nebula-orb orb-cyan mesh-orb mesh-orb-cyan"></div>
         <div class="nebula-orb orb-purple mesh-orb mesh-orb-purple"></div>
         <div class="nebula-orb orb-deep-blue mesh-orb mesh-orb-indigo"></div>
+        <div class="nebula-orb orb-amber mesh-orb mesh-orb-amber"></div>
         <div class="cyber-scanline-overlay"></div>
     </div>
 
@@ -483,80 +484,6 @@
                     </div>
                 </div>
             </section>
-                <!-- THẺ 1: ĐÓNG GÓI & XUẤT BẢN ỨNG DỤNG TỰ ĐỘNG -->
-                <div class="card">
-                    <div class="card-content">
-                        <div class="card-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                        </div>
-                        <h3>Đóng Gói &amp; Xuất Bản Ứng Dụng Tự Động</h3>
-                        <p>Tự động hóa hoàn toàn quy trình đóng gói phần mềm đa nền tảng, tạo tệp kê khai manifest và phân phối ứng dụng lên kho tải chỉ với một dòng lệnh duy nhất.</p>
-                        
-                        <div class="terminal">
-                            <div class="term-header">
-                                <div class="mac-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div>
-                                <div>supportflast-cli v2.4.0</div>
-                                <div>bash</div>
-                            </div>
-                            <div class="term-body">
-                                <div class="comment">// Tự động đóng gói và xuất bản bản phát hành ứng dụng</div>
-                                <div><span style="color: #4ade80">➜</span> <span style="color: #60a5fa">~</span> <span class="typewriter">supportflast deploy --app "MyAwesomeApp" --release v2.4.0</span></div>
-                                <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">✔ Đóng gói nhị phân đa nền tảng: <span style="color: #38bdf8;">Hoàn tất (Windows &amp; Android)</span></div>
-                                <div style="color: #94a3b8; font-size: 0.8rem;">✔ Quét an ninh &amp; kiểm tra chữ ký số: <span style="color: #4ade80;">100% An toàn (0 cảnh báo)</span></div>
-                                <div style="color: #94a3b8; font-size: 0.8rem;">✔ Đồng bộ kho ứng dụng toàn cầu: <span style="color: #facc15;">Sẵn sàng tải xuống!</span></div>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button id="btn-bento-upload-app" class="btn-secondary admin-only-inline" style="display: none; padding: 10px 20px; font-size: 0.9rem;" onclick="openSubmitAppModal();">
-                                📤 Đăng Tải Ứng Dụng Mới &rarr;
-                            </button>
-                            <button class="btn-secondary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="switchMainView('docs');">
-                                📚 Tài Liệu Hướng Dẫn &rarr;
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- THẺ 2: KIỂM ĐỊNH AN TOÀN & PHÂN PHỐI TỐC ĐỘ CAO -->
-                <div class="card">
-                    <div class="card-content">
-                        <div class="card-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
-                        </div>
-                        <h3>Kiểm Định An Toàn &amp; Phân Phối Tốc Độ Cao</h3>
-                        <p>Mọi ứng dụng tải lên hệ thống đều được kiểm định chữ ký số nghiêm ngặt, quét sạch mã độc tự động và phân phối với băng thông cực đại đến người dùng.</p>
-                        
-                        <div class="spec-list">
-                            <div class="spec-item">
-                                <span class="spec-label">Kiểm định mã độc &amp; virus</span>
-                                <span class="spec-val hl" style="color: #4ade80;">100% Sạch &amp; An Toàn</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">Băng thông tải xuống</span>
-                                <span class="spec-val">Tối đa (Hạ tầng CDN Anycast)</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">Hệ điều hành tương thích</span>
-                                <span class="spec-val">Windows, Android, Linux, Web</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">Tự động cập nhật phiên bản</span>
-                                <span class="spec-val">Đồng bộ &amp; Thông báo tức thì</span>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="btn-secondary" style="padding: 10px 18px; font-size: 0.88rem; flex: 1; justify-content: center;" onclick="switchMainView('download');">
-                                🚀 Khám Phá Kho Ứng Dụng &rarr;
-                            </button>
-                            <button class="btn-secondary" style="padding: 10px 18px; font-size: 0.88rem; flex: 1; justify-content: center;" onclick="switchMainView('docs');">
-                                🎬 Video &amp; Hướng Dẫn &rarr;
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </main>
 
         <!-- ============================================== -->
@@ -1578,8 +1505,8 @@
         <!-- ======================================================== -->
     <!-- MODAL: BÀI VIẾT HƯỚNG DẪN SỬ DỤNG ỨNG DỤNG (CHI TIẾT 15 CHƯƠNG A-Z) -->
     <!-- ======================================================== -->
-    <div id="modal-app-guide" style="display: none; position: fixed; inset: 0; background: rgba(3, 7, 18, 0.92); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(18px); padding: 16px;">
-        <div class="guide-modal-container" style="background: linear-gradient(145deg, #090e1a 0%, #030712 100%); border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 20px; max-width: 1180px; width: 100%; height: 92vh; display: flex; flex-direction: column; box-shadow: 0 30px 90px rgba(0,0,0,0.95), 0 0 50px rgba(0,229,255,0.2); position: relative; overflow: hidden;">
+    <div id="modal-app-guide" style="display: none; position: fixed; inset: 0; background: rgba(7, 13, 30, 0.85); z-index: 10001; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 16px;">
+        <div class="guide-modal-container" style="background: linear-gradient(145deg, rgba(16, 28, 62, 0.95) 0%, rgba(10, 18, 42, 0.98) 100%); border: 1px solid rgba(0, 240, 255, 0.45); border-radius: 20px; max-width: 1180px; width: 100%; height: 92vh; display: flex; flex-direction: column; box-shadow: 0 30px 90px rgba(0,0,0,0.85), 0 0 50px rgba(0,240,255,0.25); position: relative; overflow: hidden; backdrop-filter: blur(24px) saturate(180%);">
             <!-- Modal Header -->
             <div class="guide-modal-header" style="padding: 16px 26px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); flex-shrink: 0;">
                 <div class="guide-header-title-box" style="display: flex; align-items: center; gap: 14px;">
@@ -1993,8 +1920,8 @@
     <!-- ======================================================== -->
     <!-- MODAL: VIDEO HƯỚNG DẪN THỰC CHIẾN 4K & LIVE APP SIMULATOR -->
     <!-- ======================================================== -->
-    <div id="modal-app-video" style="display: none; position: fixed; inset: 0; background: rgba(3, 7, 18, 0.94); z-index: 10002; align-items: center; justify-content: center; backdrop-filter: blur(18px); padding: 16px;">
-        <div class="video-modal-container" style="background: linear-gradient(145deg, #090e1a 0%, #030712 100%); border: 1px solid rgba(234, 179, 8, 0.55); border-radius: 20px; max-width: 1220px; width: 100%; height: 94vh; display: flex; flex-direction: column; box-shadow: 0 30px 90px rgba(0,0,0,0.95), 0 0 50px rgba(234, 179, 8, 0.25); position: relative; overflow: hidden;">
+    <div id="modal-app-video" style="display: none; position: fixed; inset: 0; background: rgba(7, 13, 30, 0.85); z-index: 10002; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 16px;">
+        <div class="video-modal-container" style="background: linear-gradient(145deg, rgba(16, 28, 62, 0.95) 0%, rgba(10, 18, 42, 0.98) 100%); border: 1px solid rgba(234, 179, 8, 0.55); border-radius: 20px; max-width: 1220px; width: 100%; height: 94vh; display: flex; flex-direction: column; box-shadow: 0 30px 90px rgba(0,0,0,0.85), 0 0 50px rgba(234, 179, 8, 0.25); position: relative; overflow: hidden; backdrop-filter: blur(24px) saturate(180%);">
             <!-- Modal Header -->
             <div class="video-modal-header" style="padding: 14px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.02); flex-shrink: 0;">
                 <div class="video-header-title-box" style="display: flex; align-items: center; gap: 14px;">
@@ -2153,8 +2080,8 @@
 
     <!-- MODAL 1: CHỈNH SỬA / THÊM MỚI ỨNG DỤNG (DÀNH CHO ADMIN) -->
     <!-- ======================================================== -->
-    <div id="modal-app-editor" style="display: none; position: fixed; inset: 0; background: rgba(3, 7, 18, 0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(14px); padding: 18px; overflow-y: auto;">
-        <div style="background: linear-gradient(145deg, #0b1120 0%, #030712 100%); border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 20px; max-width: 620px; width: 100%; padding: 28px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 229, 255, 0.12); position: relative; margin: auto;">
+    <div id="modal-app-editor" style="display: none; position: fixed; inset: 0; background: rgba(7, 13, 30, 0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 18px; overflow-y: auto;">
+        <div style="background: linear-gradient(145deg, rgba(16, 28, 62, 0.95) 0%, rgba(10, 18, 42, 0.98) 100%); border: 1px solid rgba(0, 240, 255, 0.45); border-radius: 20px; max-width: 620px; width: 100%; padding: 28px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 240, 255, 0.15); position: relative; margin: auto; backdrop-filter: blur(24px) saturate(180%);">
             <!-- Header Modal -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 14px;">
@@ -2229,8 +2156,8 @@
     <!-- ======================================================== -->
     <!-- MODAL 2: ĐIỀU PHỐI 5 SUBAGENTS AI THẨM ĐỊNH AN NINH SANDBOX -->
     <!-- ======================================================== -->
-    <div id="modal-app-audit" style="display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.88); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(16px); padding: 18px; overflow-y: auto;">
-        <div style="background: linear-gradient(160deg, #090e1a 0%, #030712 100%); border: 1px solid rgba(139, 92, 246, 0.45); border-radius: 22px; max-width: 760px; width: 100%; padding: 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.95), 0 0 50px rgba(139, 92, 246, 0.2); position: relative; margin: auto;">
+    <div id="modal-app-audit" style="display: none; position: fixed; inset: 0; background: rgba(7, 13, 30, 0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 18px; overflow-y: auto;">
+        <div style="background: linear-gradient(160deg, rgba(16, 28, 62, 0.95) 0%, rgba(10, 18, 42, 0.98) 100%); border: 1px solid rgba(139, 92, 246, 0.55); border-radius: 22px; max-width: 760px; width: 100%; padding: 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.85), 0 0 50px rgba(139, 92, 246, 0.25); position: relative; margin: auto; backdrop-filter: blur(24px) saturate(180%);">
             <!-- Header -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 16px;">
                 <div style="display: flex; align-items: center; gap: 14px;">
@@ -2398,7 +2325,7 @@
                     <span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600;">TELEMETRY STREAM LOG (SUBAGENTS CLUSTER):</span>
                     <span id="audit-timer" style="font-size: 0.72rem; color: #4ade80; font-family: monospace;">● Live 0.0s</span>
                 </div>
-                <div id="audit-log-console" style="height: 110px; background: #030712; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; padding: 10px 14px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.75rem; color: #a5f3fc; overflow-y: auto; line-height: 1.6; white-space: pre-wrap;">[SYSTEM] Sẵn sàng kích hoạt chuỗi 5 Subagents AI kiểm tra toàn diện...</div>
+                <div id="audit-log-console" style="height: 110px; background: rgba(10, 18, 38, 0.85); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 10px; padding: 10px 14px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.75rem; color: #a5f3fc; overflow-y: auto; line-height: 1.6; white-space: pre-wrap; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);">[SYSTEM] Sẵn sàng kích hoạt chuỗi 5 Subagents AI kiểm tra toàn diện...</div>
             </div>
 
             <!-- Action Buttons Footer -->
@@ -2421,8 +2348,8 @@
     <!-- ============================================================== -->
     <!-- MODAL ĐA NĂNG QUẢN TRỊ VIÊN CMS: SỬA / THÊM MỚI NỘI DUNG 5 VIEW -->
     <!-- ============================================================== -->
-    <div id="modal-cms-editor" style="display: none; position: fixed; inset: 0; background: rgba(1, 3, 8, 0.88); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(14px); padding: 18px; overflow-y: auto;">
-        <div style="background: linear-gradient(160deg, #0b1120 0%, #030712 100%); border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 20px; max-width: 620px; width: 100%; padding: 26px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 229, 255, 0.15); position: relative; margin: auto;">
+    <div id="modal-cms-editor" style="display: none; position: fixed; inset: 0; background: rgba(7, 13, 30, 0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 18px; overflow-y: auto;">
+        <div style="background: linear-gradient(160deg, rgba(16, 28, 62, 0.95) 0%, rgba(10, 18, 42, 0.98) 100%); border: 1px solid rgba(0, 229, 255, 0.45); border-radius: 20px; max-width: 620px; width: 100%; padding: 26px; box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85), 0 0 40px rgba(0, 229, 255, 0.2); position: relative; margin: auto; backdrop-filter: blur(24px) saturate(180%);">
             <!-- Modal Header -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 14px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -2485,7 +2412,7 @@
 
 
 
-    <script src="/js/hub_core.js?v=20261003_1955"></script>
+    <script src="/js/hub_core.js?v=20261003_2010"></script>
 
     <!-- NÚT ZALO NỔI THƯỜNG TRỰC CẢ TRANG (GEMINI AI AVATAR & ZALO CORNER BADGE) -->
     <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="floating-zalo-widget" id="floating-zalo-btn" title="Hỗ trợ kỹ thuật &amp; tư vấn mở rộng 5TB Google Drive">

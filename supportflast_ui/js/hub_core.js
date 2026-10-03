@@ -661,9 +661,9 @@
                             </div>
 
                             <!-- MẪU LỆNH TÍCH HỢP CHO NHÀ PHÁT TRIỂN -->
-                            <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;">
+                            <div style="background:rgba(12,20,44,0.6);border:1px solid rgba(0,240,255,0.2);border-radius:12px;padding:14px 16px;">
                                 <div style="color:#94a3b8;font-weight:700;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Mẫu lệnh cURL tích hợp CI/CD gửi cho Nhà phát triển:</div>
-                                <div style="background:#010308;border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#cbd5e1;overflow-x:auto;">
+                                <div style="background:rgba(10,18,38,0.85);border:1px solid rgba(0,240,255,0.2);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#cbd5e1;overflow-x:auto;">
                                     <span style="color:#38bdf8;">curl</span> -X POST https://supportflastdev.io.vn/api/apps/publish \\<br>
                                     &nbsp;&nbsp;-H <span style="color:#4ade80;">"Authorization: Bearer [TOKEN_RIENG_BIET]"</span> \\<br>
                                     &nbsp;&nbsp;-F <span style="color:#facc15;">"name=TenUngDung"</span> \\<br>
@@ -5693,9 +5693,9 @@ function renderCyberRadarEmptyState(options) {
                                                 <button style="flex:1; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:6px; border-radius:6px; font-size:0.75rem;">📺 TV MÀN 2</button>
                                             </div>
                                         </div>
-                                        <div style="background:#010409; border:1px solid rgba(234,179,8,0.3); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+                                        <div style="background:rgba(14,24,52,0.85); border:1px solid rgba(234,179,8,0.3); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
                                             <div style="color:#fde047; font-weight:bold; font-size:0.8rem;">📷 NỘI SOI TAI MŨI HỌNG (REAL-ESRGAN 4K):</div>
-                                            <div style="flex:1; background:radial-gradient(circle at center, #1e1b4b 0%, #030712 100%); border:1px solid rgba(255,255,255,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:0.75rem; text-align:center; padding:10px;">
+                                            <div style="flex:1; background:radial-gradient(circle at center, #1e1b4b 0%, #0c152e 100%); border:1px solid rgba(0,240,255,0.2); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:0.75rem; text-align:center; padding:10px;">
                                                 <div>
                                                     <div style="font-size:1.6rem; margin-bottom:4px;">🔬</div>
                                                     <div style="color:#fff; font-weight:bold;">Ảnh Chụp Nội Soi 4K AI</div>

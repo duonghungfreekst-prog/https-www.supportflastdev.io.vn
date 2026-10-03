@@ -33,13 +33,35 @@
         }
 
         :root {
-            --bg: #010308;
+            /* 1. Nền không gian phân tầng Deep Space Navy & Midnight Sapphire */
+            --bg-space-void: #040714;
+            --bg-space-navy: #070d1e;
+            --bg-midnight-sapphire: #0c152e;
+            --bg-surface-elevated: #111d3b;
+            --bg: var(--bg-space-navy);
+
+            /* 2. Màu chữ tương phản cao WCAG AAA */
             --text-main: #ffffff;
-            --text-muted: #94a3b8;
-            --cyan: #00e5ff;
-            --purple: #8b5cf6;
-            --border: rgba(255, 255, 255, 0.1);
-            --card-bg: rgba(10, 15, 25, 0.5);
+            --text-luminous: #f8fafc;
+            --text-muted: #cbd5e1;
+            --text-subtle: #94a3b8;
+
+            /* 3. Bốn nguồn sáng quang phổ Aura Glows */
+            --cyan: #00f0ff;
+            --cyan-glow: rgba(0, 240, 255, 0.35);
+            --purple: #a855f7;
+            --purple-glow: rgba(168, 85, 247, 0.30);
+            --blue: #3b82f6;
+            --blue-glow: rgba(59, 130, 246, 0.30);
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.35);
+
+            /* 4. Viền lân quang & Card Glassmorphism */
+            --border: rgba(0, 240, 255, 0.24);
+            --border-subtle: rgba(255, 255, 255, 0.16);
+            --border-specular: rgba(255, 255, 255, 0.35);
+            --card-bg: rgba(14, 25, 54, 0.65);
+            --card-bg-hover: rgba(18, 34, 72, 0.80);
         }
 
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -883,21 +905,31 @@
         .bento-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; padding-bottom: 120px; }
 
         .card {
-            background: var(--card-bg); border: 1px solid var(--border);
-            border-radius: 24px; padding: 40px; backdrop-filter: blur(20px);
-            position: relative; display: flex; flex-direction: column;
+            background: var(--card-bg); 
+            border: 1px solid var(--border);
+            border-radius: 24px; 
+            padding: 40px; 
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            position: relative; 
+            display: flex; 
+            flex-direction: column;
             transform-style: preserve-3d;
-            transition: border-color 0.3s, box-shadow 0.3s, transform 0.1s ease-out;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.1s ease-out;
+            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 240, 255, 0.12), inset 0 1px 1.5px rgba(255, 255, 255, 0.35);
         }
         
         .card::before {
             content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 24px;
-            background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(255, 255, 255, 0.08), transparent 40%);
+            background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(0, 240, 255, 0.15), transparent 45%);
             z-index: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s;
         }
         .card:hover::before { opacity: 1; }
-        .card:hover { border-color: rgba(255, 255, 255, 0.3); z-index: 20; }
+        .card:hover { 
+            border-color: rgba(0, 240, 255, 0.6); 
+            box-shadow: 0 24px 50px -8px rgba(0, 0, 0, 0.75), 0 0 35px rgba(0, 240, 255, 0.3), inset 0 1.5px 2px rgba(255, 255, 255, 0.5);
+            z-index: 20; 
+        }
         
         .card-content { position: relative; z-index: 1; transform: translateZ(30px); }
 
@@ -1043,17 +1075,19 @@
 
         /* PHONG CÁCH BÀI VIẾT CÔNG BỐ TÍNH NĂNG THEO TỪNG ỨNG DỤNG (GITHUB RELEASES STYLE) */
         .release-article-card {
-            background: linear-gradient(145deg, rgba(13, 20, 35, 0.92), rgba(8, 14, 25, 0.98));
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(145deg, rgba(16, 28, 62, 0.65), rgba(11, 20, 46, 0.72));
+            border: 1px solid rgba(0, 240, 255, 0.22);
             border-radius: 18px;
             padding: 28px 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s ease;
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 240, 255, 0.1), inset 0 1px 1.5px rgba(255, 255, 255, 0.3);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
         .release-article-card:hover {
-            border-color: rgba(0, 229, 255, 0.4);
-            box-shadow: 0 15px 50px rgba(0, 229, 255, 0.12);
+            border-color: rgba(0, 240, 255, 0.55);
+            box-shadow: 0 22px 50px -8px rgba(0, 0, 0, 0.75), 0 0 35px rgba(0, 240, 255, 0.25), inset 0 1.5px 2px rgba(255, 255, 255, 0.45);
         }
         .release-card-header {
             display: flex;
@@ -1366,20 +1400,22 @@
 
         /* Dedicated Tab Terminal Console */
         .dedicated-terminal {
-            background: rgba(4, 7, 15, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 18, 38, 0.75);
+            border: 1px solid rgba(0, 240, 255, 0.22);
             border-radius: 20px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.88rem;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.6), 0 0 25px rgba(0, 240, 255, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.2);
             overflow: hidden;
             min-height: 480px;
         }
         .dedicated-term-header {
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.15);
             padding: 14px 18px;
             display: flex;
             justify-content: space-between;
@@ -1398,8 +1434,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: rgba(2, 5, 10, 0.98);
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(14, 24, 52, 0.85);
+            border-top: 1px solid rgba(0, 240, 255, 0.18);
             padding: 12px 16px;
         }
         .dedicated-term-input-bar input {
@@ -1627,10 +1663,18 @@
         .hub-close-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.15); }
         
         .code-box {
-            background: #030712; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
-            padding: 14px 18px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
-            color: #4ade80; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(11, 20, 44, 0.85); 
+            border: 1px solid rgba(0, 240, 255, 0.25); 
+            border-radius: 10px;
+            padding: 14px 18px; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 0.85rem;
+            color: #4ade80; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
             margin: 12px 0 20px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 240, 255, 0.08);
         }
         .copy-pill {
             background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
@@ -3669,8 +3713,8 @@
                 gap: 8px !important;
                 padding: 10px 14px !important;
                 align-items: stretch !important;
-                background: rgba(3, 7, 18, 0.98) !important;
-                border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+                background: rgba(12, 20, 44, 0.96) !important;
+                border-top: 1px solid rgba(0, 240, 255, 0.2) !important;
                 flex-shrink: 0 !important;
             }
 
@@ -4322,7 +4366,7 @@
             width: 100%;
             aspect-ratio: 4 / 5;
             overflow: hidden;
-            background: #060913;
+            background: #0a1329;
         }
         .poster-image-wrap img {
             width: 100%;
@@ -4337,7 +4381,7 @@
         .poster-overlay {
             position: absolute;
             inset: 0;
-            background: linear-gradient(180deg, rgba(3, 7, 18, 0) 50%, rgba(3, 7, 18, 0.95) 100%);
+            background: linear-gradient(180deg, rgba(7, 13, 30, 0) 40%, rgba(7, 13, 30, 0.9) 100%);
             display: flex;
             align-items: flex-end;
             justify-content: center;
@@ -4760,30 +4804,34 @@
 /* ============================================================== */
 
 :root {
-    /* 1. Hệ màu không gian đa lớp Slate Obsidian */
-    --bg-obsidian-deep: #030712;      /* Đen đá phiến thẫm sâu vô tận */
-    --bg-obsidian-mid: #050b1a;       /* Sắc xanh chìm Midnight thẫm */
-    --bg-obsidian-surface: #0a1128;   /* Sắc lam vũ trụ sâu thẳm */
-    --bg-obsidian-glow: #0d1b3e;      /* Ánh hào quang viền tầng khí quyển */
+    /* 1. Hệ màu không gian đa lớp Deep Space Navy & Midnight Sapphire */
+    --bg-obsidian-deep: #070d1e;      /* Deep Space Navy cao cấp */
+    --bg-obsidian-mid: #0b152d;       /* Midnight Sapphire thẫm */
+    --bg-obsidian-surface: #101c3d;   /* Phiến kính lam vũ trụ */
+    --bg-obsidian-glow: #16264f;      /* Hào quang viền khí quyển */
     --bg: var(--bg-obsidian-deep);
 
-    /* 2. Màu sắc quang học Cyber */
+    /* 2. Màu sắc quang học Cyber Radiant */
     --text-main: #ffffff;
-    --text-muted: #94a3b8;
-    --cyan: #00e5ff;
-    --cyan-glow: rgba(0, 229, 255, 0.25);
-    --purple: #8b5cf6;
-    --purple-glow: rgba(139, 92, 246, 0.25);
-    --border: rgba(255, 255, 255, 0.08);
-    --card-bg: rgba(10, 15, 25, 0.65);
+    --text-luminous: #f8fafc;
+    --text-muted: #cbd5e1;
+    --cyan: #00f0ff;
+    --cyan-glow: rgba(0, 240, 255, 0.35);
+    --purple: #a855f7;
+    --purple-glow: rgba(168, 85, 247, 0.30);
+    --amber: #f59e0b;
+    --amber-glow: rgba(245, 158, 11, 0.35);
+    --border: rgba(0, 240, 255, 0.24);
+    --card-bg: rgba(14, 25, 54, 0.65);
 }
 
-/* Nâng cấp Body: Nền không gian đa lớp Slate Obsidian sâu thẳm */
+/* Nâng cấp Body: Nền không gian Deep Space Navy & Midnight Sapphire sáng rực rỡ */
 body {
     background-color: var(--bg-obsidian-deep);
     background-image: 
-        radial-gradient(ellipse 130% 90% at 50% -15%, rgba(13, 27, 62, 0.65) 0%, rgba(7, 13, 30, 0.85) 35%, rgba(5, 11, 26, 0.95) 70%, #030712 100%),
-        radial-gradient(ellipse 80% 50% at 50% 110%, rgba(10, 17, 40, 0.45) 0%, transparent 80%);
+        radial-gradient(ellipse 130% 90% at 50% -15%, rgba(14, 165, 233, 0.28) 0%, rgba(20, 36, 76, 0.45) 40%, rgba(7, 13, 30, 0.85) 75%, #070d1e 100%),
+        radial-gradient(ellipse 90% 60% at 85% 35%, rgba(168, 85, 247, 0.22) 0%, transparent 65%),
+        radial-gradient(ellipse 80% 50% at 50% 110%, rgba(30, 58, 138, 0.35) 0%, transparent 80%);
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: 100% 100%;
@@ -4794,7 +4842,7 @@ body {
     overflow-x: hidden !important;
 }
 
-/* Khung chứa 3 khối Gradient Mesh Cyber Nebula */
+/* Khung chứa 4 khối Gradient Mesh Cyber Nebula */
 .cyber-nebula-mesh {
     position: fixed;
     top: 0;
@@ -4814,8 +4862,8 @@ body {
 .nebula-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(95px);
-    opacity: 0.75;
+    filter: blur(85px);
+    opacity: 0.85;
     pointer-events: none;
     will-change: transform;
     transform: translate3d(0, 0, 0);
@@ -4826,37 +4874,49 @@ body {
 /* Khối Orb 1: Cyan / Electric Hyper Horizon (Tây Bắc) */
 .orb-cyan {
     top: -15vh;
-    left: -12vw;
-    width: 65vw;
-    height: 65vw;
-    max-width: 850px;
-    max-height: 850px;
-    background: radial-gradient(circle, rgba(0, 229, 255, 0.22) 0%, rgba(14, 165, 233, 0.12) 45%, rgba(3, 7, 18, 0) 72%);
+    left: -10vw;
+    width: 70vw;
+    height: 70vw;
+    max-width: 900px;
+    max-height: 900px;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.38) 0%, rgba(14, 165, 233, 0.20) 45%, rgba(7, 13, 30, 0) 75%);
     animation: nebulaDriftOne 24s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
 
 /* Khối Orb 2: Purple / Quantum Violet Nebula (Đông Bắc) */
 .orb-purple {
-    top: 10vh;
-    right: -15vw;
+    top: 8vh;
+    right: -12vw;
     width: 72vw;
     height: 72vw;
-    max-width: 900px;
-    max-height: 900px;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.20) 0%, rgba(139, 92, 246, 0.12) 45%, rgba(3, 7, 18, 0) 72%);
+    max-width: 920px;
+    max-height: 920px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.32) 0%, rgba(139, 92, 246, 0.18) 45%, rgba(7, 13, 30, 0) 75%);
     animation: nebulaDriftTwo 28s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
 }
 
-/* Khối Orb 3: Deep Sapphire / Midnight Abyss (Phía Đáy) */
+/* Khối Orb 3: Deep Sapphire / Midnight Abyss (Phía Đáy & Trung tâm) */
 .orb-deep-blue {
-    bottom: -22vh;
-    left: 20vw;
-    width: 78vw;
-    height: 78vw;
-    max-width: 1050px;
-    max-height: 1050px;
-    background: radial-gradient(circle, rgba(30, 58, 138, 0.28) 0%, rgba(59, 130, 246, 0.14) 50%, rgba(3, 7, 18, 0) 75%);
+    bottom: -20vh;
+    left: 15vw;
+    width: 80vw;
+    height: 80vw;
+    max-width: 1100px;
+    max-height: 1100px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.36) 0%, rgba(30, 58, 138, 0.22) 50%, rgba(7, 13, 30, 0) 78%);
     animation: nebulaDriftThree 34s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Khối Orb 4: Solar Amber / Golden Glow (Phía Đông Nam - Ánh sáng ấm sang trọng) */
+.orb-amber {
+    top: 45vh;
+    left: 45vw;
+    width: 50vw;
+    height: 50vw;
+    max-width: 650px;
+    max-height: 650px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.26) 0%, rgba(217, 119, 6, 0.12) 45%, rgba(7, 13, 30, 0) 70%);
+    animation: nebulaDriftFour 32s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
 
 /* Keyframes chuyển động mượt mà cho 3 khối Mesh (Chỉ dùng transform để tối ưu 60fps) */
@@ -4893,6 +4953,18 @@ body {
     }
     100% {
         transform: translate3d(10vw, -4vh, 0) scale(0.95);
+    }
+}
+
+@keyframes nebulaDriftFour {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    }
+    50% {
+        transform: translate3d(-8vw, 10vh, 0) scale(1.14) rotate(15deg);
+    }
+    100% {
+        transform: translate3d(6vw, -6vh, 0) scale(0.92) rotate(-10deg);
     }
 }
 
@@ -5968,18 +6040,18 @@ p.desc {
     overflow: hidden;
     isolation: isolate;
 
-    /* Nền Kính Mờ Frosted Glassmorphism Đa Tầng */
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.72) 0%, rgba(10, 15, 30, 0.88) 100%) !important;
-    backdrop-filter: blur(20px) saturate(190%);
-    -webkit-backdrop-filter: blur(20px) saturate(190%);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    /* Nền Kính Mờ Frosted Sapphire Glassmorphism Đa Tầng */
+    background: linear-gradient(145deg, rgba(16, 28, 62, 0.65) 0%, rgba(10, 18, 42, 0.78) 100%) !important;
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(0, 240, 255, 0.26) !important;
     
     /* Chiều sâu ánh sáng bề mặt & Đổ bóng chân thẻ */
     box-shadow: 
-        0 14px 35px -8px rgba(0, 0, 0, 0.75),
-        0 0 25px -5px rgba(0, 229, 255, 0.10),
-        inset 0 1px 1px 0 rgba(255, 255, 255, 0.16),
-        inset 0 -1px 2px 0 rgba(0, 0, 0, 0.45) !important;
+        0 14px 35px -8px rgba(0, 4, 15, 0.60),
+        0 0 25px -4px rgba(0, 240, 255, 0.18),
+        inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 2px 0 rgba(0, 240, 255, 0.12) !important;
 
     transition: 
         transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
@@ -5990,13 +6062,13 @@ p.desc {
 
 .featured-app-card:hover {
     transform: translateY(-6px);
-    background: linear-gradient(145deg, rgba(20, 30, 58, 0.82) 0%, rgba(12, 18, 36, 0.94) 100%) !important;
-    border-color: rgba(0, 229, 255, 0.35) !important;
+    background: linear-gradient(145deg, rgba(22, 38, 78, 0.78) 0%, rgba(14, 24, 52, 0.88) 100%) !important;
+    border-color: rgba(0, 240, 255, 0.55) !important;
     box-shadow: 
-        0 24px 50px -10px rgba(0, 0, 0, 0.85),
-        0 0 35px -5px rgba(0, 229, 255, 0.28),
-        inset 0 1px 2px 0 rgba(255, 255, 255, 0.28),
-        inset 0 -1px 3px 0 rgba(0, 0, 0, 0.6) !important;
+        0 24px 50px -10px rgba(0, 4, 15, 0.75),
+        0 0 35px -2px rgba(0, 240, 255, 0.35),
+        0 0 50px 2px rgba(168, 85, 247, 0.20),
+        inset 0 1px 2px 0 rgba(255, 255, 255, 0.45) !important;
 }
 
 /* --- 3. HIỆU ỨNG VỆT SÁNG VIỀN ĐỘNG (INTERACTIVE BORDER BEAM) --- */
@@ -6708,8 +6780,8 @@ p.desc {
     --tree-fiber-coral: #ff6b6b;
     --tree-fiber-purple: #c084fc;
     --tree-fiber-amber: #fbbf24;
-    --tree-bg-card: rgba(11, 18, 32, 0.94);
-    --tree-border-card: rgba(0, 229, 255, 0.22);
+    --tree-bg-card: rgba(14, 25, 54, 0.65);
+    --tree-border-card: rgba(0, 229, 255, 0.28);
 }
 
 /* 2. Container tổng thể */
@@ -6722,12 +6794,13 @@ p.desc {
 
 /* 3. Bảng điều khiển vi mạch HUD (Git Telemetry & Controls) */
 .tech-tree-hud {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(8, 14, 28, 0.97));
-    border: 1px solid rgba(0, 229, 255, 0.28);
+    background: linear-gradient(135deg, rgba(16, 28, 60, 0.75), rgba(10, 18, 42, 0.85));
+    border: 1px solid rgba(0, 229, 255, 0.32);
     border-radius: 16px;
     padding: 18px 24px;
     margin-bottom: 34px;
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 229, 255, 0.08);
+    box-shadow: 0 12px 35px rgba(0, 4, 15, 0.55), 0 0 24px rgba(0, 229, 255, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -7034,9 +7107,9 @@ p.desc {
     border: 1px solid var(--tree-border-card);
     border-radius: 20px;
     padding: 28px 32px;
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.65), 0 0 25px rgba(0, 229, 255, 0.08);
+    box-shadow: 0 16px 40px rgba(0, 4, 15, 0.65), 0 0 25px rgba(0, 229, 255, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.30);
     position: relative;
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(24px) saturate(180%);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     overflow: hidden;
 }
@@ -7046,16 +7119,16 @@ p.desc {
     position: absolute;
     top: 0;
     left: 0;
-    width: 140px;
-    height: 140px;
-    background: radial-gradient(circle, rgba(0, 229, 255, 0.08) 0%, transparent 70%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.18) 0%, transparent 70%);
     pointer-events: none;
 }
 
 .tech-release-card:hover {
-    border-color: rgba(0, 229, 255, 0.45);
-    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 229, 255, 0.16);
-    transform: translateY(-2px);
+    border-color: rgba(0, 229, 255, 0.55);
+    box-shadow: 0 24px 60px rgba(0, 4, 15, 0.8), 0 0 40px rgba(0, 229, 255, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.45);
+    transform: translateY(-3px);
 }
 
 /* Header Thẻ Release */
@@ -7461,21 +7534,21 @@ p.desc {
 }
 
 .rating-bento-card {
-    background: rgba(13, 19, 33, 0.72);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(145deg, rgba(16, 28, 62, 0.68) 0%, rgba(10, 18, 42, 0.82) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(0, 240, 255, 0.25);
     border-radius: 20px;
     padding: 24px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: 0 16px 36px -10px rgba(0, 4, 15, 0.55), 0 0 20px rgba(0, 240, 255, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.30);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rating-bento-card:hover {
-    border-color: rgba(0, 229, 255, 0.28);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 229, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 240, 255, 0.45);
+    box-shadow: 0 22px 48px -10px rgba(0, 4, 15, 0.70), 0 0 28px rgba(0, 240, 255, 0.22), inset 0 1px 2px rgba(255, 255, 255, 0.40);
 }
 
 /* --- Card 1: Score Card --- */
@@ -8019,10 +8092,10 @@ p.desc {
 
 /* --- 4. Nâng Cấp Thẻ .review-card (Phong Cách Bento Glass) --- */
 .review-card.bento-glass-card {
-    background: rgba(13, 19, 33, 0.68);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(145deg, rgba(16, 28, 62, 0.65) 0%, rgba(10, 18, 42, 0.80) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(0, 240, 255, 0.24);
     border-radius: 20px;
     padding: 24px 26px;
     position: relative;
@@ -8030,14 +8103,14 @@ p.desc {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 14px 32px -10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: 0 14px 35px -8px rgba(0, 4, 15, 0.55), 0 0 18px rgba(0, 240, 255, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.30);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .review-card.bento-glass-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(0, 229, 255, 0.3);
-    box-shadow: 0 20px 42px -10px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 229, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    border-color: rgba(0, 240, 255, 0.50);
+    box-shadow: 0 22px 48px -10px rgba(0, 4, 15, 0.70), 0 0 30px rgba(0, 240, 255, 0.26), inset 0 1px 2px rgba(255, 255, 255, 0.40);
 }
 
 /* Watermark trích dẫn chìm nghệ thuật */
@@ -8674,14 +8747,14 @@ p.desc {
     --font-mono: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
 
     /* Thang màu tương phản cao chuẩn WCAG AAA/AA */
-    --color-bg-base: #010308;
-    --color-surface-card: rgba(10, 15, 25, 0.75);
-    --color-surface-border: rgba(255, 255, 255, 0.12);
-    --color-surface-border-hover: rgba(0, 229, 255, 0.45);
+    --color-bg-base: #070d1e;
+    --color-surface-card: rgba(14, 25, 54, 0.65);
+    --color-surface-border: rgba(0, 240, 255, 0.22);
+    --color-surface-border-hover: rgba(0, 240, 255, 0.65);
     --color-text-hero: #ffffff;
-    --color-text-primary: #e2e8f0;
-    --color-text-secondary: #cbd5e1;
-    --color-text-muted: #94a3b8;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #e2e8f0;
+    --color-text-muted: #cbd5e1;
     --color-neon-cyan: #00e5ff;
     --color-neon-purple: #c084fc;
     --color-neon-green: #4ade80;
@@ -9065,14 +9138,15 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
 /* FIX TRIỆT ĐỂ BỐ CỤC CARD ỨNG DỤNG, NỀN OBSIDIAN VÀ HEADER (HOTFIX 2026)     */
 /* ========================================================================== */
 
-/* 1. KHÔI PHỤC CHIỀU SÂU NỀN KHÔNG GIAN OBSIDIAN NEBULA */
+/* 1. KHÔI PHỤC CHIỀU SÂU NỀN KHÔNG GIAN DEEP SPACE NAVY & MIDNIGHT SAPPHIRE RỰC RỠ */
 body {
-    background-color: #030712 !important;
+    background-color: #070d1e !important;
     background-image: 
-        radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.14) 0%, transparent 45%),
-        radial-gradient(circle at 100% 40%, rgba(129, 140, 248, 0.10) 0%, transparent 45%),
-        radial-gradient(circle at 0% 80%, rgba(168, 85, 247, 0.10) 0%, transparent 45%),
-        linear-gradient(180deg, #030712 0%, #070d1e 50%, #030712 100%) !important;
+        radial-gradient(circle at 50% -10%, rgba(0, 240, 255, 0.36) 0%, rgba(14, 165, 233, 0.18) 35%, transparent 65%),
+        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.14) 40%, transparent 60%),
+        radial-gradient(circle at 15% 75%, rgba(59, 130, 246, 0.32) 0%, rgba(30, 58, 138, 0.18) 45%, transparent 65%),
+        radial-gradient(circle at 80% 90%, rgba(245, 158, 11, 0.24) 0%, transparent 50%),
+        linear-gradient(180deg, #070d1e 0%, #0c152e 40%, #0a1329 70%, #060b18 100%) !important;
     background-attachment: fixed !important;
     min-height: 100vh !important;
 }
@@ -9096,56 +9170,67 @@ body {
 .nebula-orb {
     position: absolute !important;
     border-radius: 50% !important;
-    filter: blur(90px) !important;
-    opacity: 0.75 !important;
+    filter: blur(85px) !important;
+    opacity: 0.88 !important;
     pointer-events: none !important;
     will-change: transform !important;
 }
 
 .mesh-orb-cyan,
 .orb-cyan {
-    top: -10vh !important;
+    top: -12vh !important;
     left: -10vw !important;
-    width: 60vw !important;
-    height: 60vw !important;
-    max-width: 800px !important;
-    max-height: 800px !important;
-    background: radial-gradient(circle, rgba(0, 229, 255, 0.25) 0%, rgba(14, 165, 233, 0.12) 45%, transparent 72%) !important;
+    width: 70vw !important;
+    height: 70vw !important;
+    max-width: 900px !important;
+    max-height: 900px !important;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.38) 0%, rgba(14, 165, 233, 0.20) 45%, transparent 75%) !important;
     animation: nebulaDriftOne 24s ease-in-out infinite alternate !important;
 }
 
 .mesh-orb-indigo,
 .orb-deep-blue {
-    bottom: -15vh !important;
-    left: 20vw !important;
-    width: 70vw !important;
-    height: 70vw !important;
-    max-width: 950px !important;
-    max-height: 950px !important;
-    background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, rgba(59, 130, 246, 0.14) 50%, transparent 75%) !important;
+    bottom: -18vh !important;
+    left: 15vw !important;
+    width: 80vw !important;
+    height: 80vw !important;
+    max-width: 1100px !important;
+    max-height: 1100px !important;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.36) 0%, rgba(79, 70, 229, 0.22) 50%, transparent 78%) !important;
     animation: nebulaDriftThree 30s ease-in-out infinite alternate !important;
 }
 
 .mesh-orb-purple,
 .orb-purple {
-    top: 15vh !important;
-    right: -10vw !important;
-    width: 65vw !important;
-    height: 65vw !important;
-    max-width: 850px !important;
-    max-height: 850px !important;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.12) 45%, transparent 72%) !important;
+    top: 10vh !important;
+    right: -12vw !important;
+    width: 70vw !important;
+    height: 70vw !important;
+    max-width: 920px !important;
+    max-height: 920px !important;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.32) 0%, rgba(139, 92, 246, 0.18) 45%, transparent 75%) !important;
     animation: nebulaDriftTwo 28s ease-in-out infinite alternate-reverse !important;
+}
+
+.mesh-orb-amber,
+.orb-amber {
+    top: 45vh !important;
+    left: 45vw !important;
+    width: 50vw !important;
+    height: 50vw !important;
+    max-width: 650px !important;
+    max-height: 650px !important;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.28) 0%, rgba(217, 119, 6, 0.12) 45%, transparent 70%) !important;
+    animation: nebulaDriftFour 32s ease-in-out infinite alternate !important;
 }
 
 .cyber-scanline-overlay {
     position: fixed !important;
     inset: 0 !important;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02)) !important;
-    background-size: 100% 3px, 4px 100% !important;
+    background: transparent !important;
     pointer-events: none !important;
     z-index: 1 !important;
-    opacity: 0.22 !important;
+    opacity: 0.02 !important;
 }
 
 /* 3. CĂN CHỈNH HEADER & TOP RIBBON CHÍNH TÂM */
