@@ -5246,3 +5246,34 @@
                 }
             }
         }, { passive: true });
+
+        /* 8. Quản lý trạng thái thanh thông báo Mega Ribbon */
+        function dismissMegaRibbon() {
+            const ribbon = document.querySelector('.gemini-top-ribbon-mega');
+            if (ribbon) {
+                ribbon.style.transition = 'all 0.3s ease';
+                ribbon.style.opacity = '0';
+                ribbon.style.maxHeight = '0';
+                ribbon.style.minHeight = '0';
+                ribbon.style.height = '0';
+                ribbon.style.overflow = 'hidden';
+                setTimeout(() => { ribbon.style.display = 'none'; }, 300);
+                try {
+                    localStorage.setItem('supportflast_top_ribbon_dismissed', '1');
+                } catch (e) {
+                    /* ignore private browsing error */
+                }
+            }
+        }
+        window.dismissMegaRibbon = dismissMegaRibbon;
+
+        // Tự động kiểm tra và ẩn ribbon nếu người dùng đã từng bấm đóng
+        (function initMegaRibbonState() {
+            try {
+                if (localStorage.getItem('supportflast_top_ribbon_dismissed') === '1') {
+                    const ribbon = document.querySelector('.gemini-top-ribbon-mega');
+                    if (ribbon) ribbon.style.display = 'none';
+                }
+            } catch (e) {}
+        })();
+

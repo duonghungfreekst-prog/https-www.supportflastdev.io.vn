@@ -61,6 +61,9 @@
                 <span class="zalo-text-block">NHẮN ZALO BÁO GIÁ: <strong>0342.041.517</strong></span>
                 <span class="zalo-arrow-icon">➔</span>
             </a>
+
+            <!-- 4. NÚT ĐÓNG THANH THÔNG BÁO -->
+            <button class="mega-ribbon-close" onclick="dismissMegaRibbon()" title="Đóng thanh thông báo" aria-label="Đóng thanh thông báo">✕</button>
         </div>
         <!-- Dải sợi chỉ ánh sáng Neon ở đáy -->
         <div class="ribbon-neon-led-track"></div>
@@ -249,33 +252,203 @@
             </header>
 
             <!-- ============================================================= -->
-            <!-- SECTION QUẢNG BÁ GOOGLE AI PRO & GEMINI (KÈM LINK ZALO)       -->
+            <!-- KHO ỨNG DỤNG NỔI BẬT & BỘ CÀI CHÍNH THỨC (TRỌNG TÂM HÀNG ĐẦU)-->
             <!-- ============================================================= -->
-            <section class="gemini-showcase-section" id="gemini-promo-showcase">
+            <section class="home-featured-apps-section" id="home-featured-apps" style="margin-top: 35px; margin-bottom: 45px;">
+                <div class="home-section-header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <div class="sparkle-badge" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 229, 255, 0.1); border: 1px solid rgba(0, 229, 255, 0.3); border-radius: 999px; padding: 4px 14px; font-size: 0.78rem; font-weight: 700; color: #00e5ff; margin-bottom: 10px;">
+                            <span>📦</span>
+                            <span>KHO PHẦN MỀM &amp; BỘ CÀI CHÍNH THỨC ĐƯỢC TIN DÙNG</span>
+                        </div>
+                        <h2 style="font-size: 1.85rem; font-weight: 800; color: #fff; line-height: 1.3; margin: 0;">
+                            Ứng Dụng Tiêu Biểu <span style="background: linear-gradient(135deg, #00e5ff, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Sẵn Sàng Tải Xuống</span>
+                        </h2>
+                        <p style="color: #94a3b8; font-size: 0.95rem; margin-top: 6px; max-width: 680px; line-height: 1.5;">
+                            Toàn bộ bộ cài phần mềm đều được biên dịch tĩnh, kiểm định an ninh chữ ký số và phân phối tốc độ cao qua Anycast CDN.
+                        </p>
+                    </div>
+                    <div>
+                        <button class="btn-primary" onclick="switchMainView('download');" style="padding: 10px 22px; font-size: 0.90rem; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; color: #000; cursor: pointer; box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);">
+                            <span>🚀 Xem Toàn Bộ Kho Ứng Dụng (4+ Apps)</span>
+                            <span>&rarr;</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lưới ứng dụng nổi bật trang chủ -->
+                <div class="featured-apps-grid" id="home-featured-apps-grid">
+                    <!-- APP 0: DMH Tools Enterprise Suite -->
+                    <div class="featured-app-card" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
+                        <div>
+                            <div class="app-card-header">
+                                <div class="app-icon" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🩺</div>
+                                <div>
+                                    <div class="app-info-title" style="color: #00e5ff; font-weight: 800;">DMH Tools Enterprise Suite</div>
+                                    <div class="app-info-dev">bởi Dương Mạnh Hùng (DMH Tech) • v1.1.3</div>
+                                </div>
+                            </div>
+                            <p style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Bộ công cụ toàn diện: Quản lý Bản Quyền Windows/Office (Online, BIOS OEM, CID), 41 Fixes lỗi hệ thống chuyên sâu (Driver, Spooler, LAN 0x11b), Sao lưu DriverStore PnP, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TV Màn 2 &amp; Nội soi AI 4K.</p>
+                            <div class="app-tags">
+                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Windows 10/11 x64</span>
+                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">141.3 MB Slim</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
+                            <a href="/api/apps/download/APP-4964" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                                <span>📥</span> <span>Tải Bộ Cài (.exe 141.3 MB)</span> &rarr;
+                            </a>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-4964')">
+                                    <span>📘</span> <span>Bài Viết HD</span>
+                                </button>
+                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-4964')">
+                                    <span>🎬</span> <span>Video HD</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- APP 1: AI Equalizer Pro & Audio Processor -->
+                    <div class="featured-app-card" style="border: 1px solid rgba(0, 229, 255, 0.45); box-shadow: 0 0 25px rgba(0, 229, 255, 0.15); background: linear-gradient(180deg, rgba(0, 229, 255, 0.05) 0%, rgba(13, 17, 23, 0.95) 100%);">
+                        <div>
+                            <div class="app-card-header">
+                                <div class="app-icon" style="background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.45); font-size: 1.5rem;">🎛️</div>
+                                <div>
+                                    <div class="app-info-title" style="color: #00e5ff; font-weight: 800;">AI Equalizer Pro &amp; Audio Processor</div>
+                                    <div class="app-info-dev">bởi Dương Mạnh Hùng • v2.2.0</div>
+                                </div>
+                            </div>
+                            <p style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, mic và lọc âm hệ thống.</p>
+                            <div class="app-tags">
+                                <span class="app-tag" style="background: rgba(0, 229, 255, 0.12); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.3);">Android &amp; Web HUD</span>
+                                <span class="app-tag" style="background: rgba(74, 222, 128, 0.12); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag" style="background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">10.9 MB</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
+                            <a href="/api/apps/download/APP-7290" class="btn-primary" style="padding: 10px; width: 100%; justify-content: center; font-size: 0.88rem; text-decoration: none; display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); border: none; font-weight: 700; color: #000; border-radius: 10px;">
+                                <span>📥</span> <span>Tải Bộ Cài (.zip 10.9 MB)</span> &rarr;
+                            </a>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px;" onclick="openAppGuideModal('APP-7290')">
+                                    <span>📘</span> <span>Bài Viết HD</span>
+                                </button>
+                                <button class="btn-secondary" style="padding: 8px; justify-content: center; font-size: 0.82rem; display: flex; align-items: center; gap: 5px; border-radius: 8px; border-color: rgba(234, 179, 8, 0.4); color: #fde047;" onclick="openAppVideoModal('APP-7290')">
+                                    <span>🎬</span> <span>Video HD</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BENTO GRID GIỚI THIỆU TRỌNG TÂM -->
+            <div class="bento-grid" style="margin-top: 30px;">
+                <!-- THẺ 1: ĐÓNG GÓI & XUẤT BẢN ỨNG DỤNG TỰ ĐỘNG -->
+                <div class="card">
+                    <div class="card-content">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                        </div>
+                        <h3>Đóng Gói &amp; Xuất Bản Ứng Dụng Tự Động</h3>
+                        <p>Tự động hóa hoàn toàn quy trình đóng gói phần mềm đa nền tảng, tạo tệp kê khai manifest và phân phối ứng dụng lên kho tải chỉ với một dòng lệnh duy nhất.</p>
+                        
+                        <div class="terminal">
+                            <div class="term-header">
+                                <div class="mac-dots"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+                                <div>supportflast-cli v2.4.0</div>
+                                <div>bash</div>
+                            </div>
+                            <div class="term-body">
+                                <div class="comment">// Tự động đóng gói và xuất bản bản phát hành ứng dụng</div>
+                                <div><span style="color: #4ade80">➜</span> <span style="color: #60a5fa">~</span> <span class="typewriter">supportflast deploy --app "MyAwesomeApp" --release v2.4.0</span></div>
+                                <div style="color: #94a3b8; font-size: 0.8rem; margin-top: 4px;">✔ Đóng gói nhị phân đa nền tảng: <span style="color: #38bdf8;">Hoàn tất (Windows &amp; Android)</span></div>
+                                <div style="color: #94a3b8; font-size: 0.8rem;">✔ Quét an ninh &amp; kiểm tra chữ ký số: <span style="color: #4ade80;">100% An toàn (0 cảnh báo)</span></div>
+                                <div style="color: #94a3b8; font-size: 0.8rem;">✔ Đồng bộ kho ứng dụng toàn cầu: <span style="color: #facc15;">Sẵn sàng tải xuống!</span></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button id="btn-bento-upload-app" class="btn-secondary admin-only-inline" style="display: none; padding: 10px 20px; font-size: 0.9rem;" onclick="openSubmitAppModal();">
+                                📤 Đăng Tải Ứng Dụng Mới &rarr;
+                            </button>
+                            <button class="btn-secondary" style="padding: 10px 20px; font-size: 0.9rem;" onclick="switchMainView('docs');">
+                                📚 Tài Liệu Hướng Dẫn &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- THẺ 2: KIỂM ĐỊNH AN TOÀN & PHÂN PHỐI TỐC ĐỘ CAO -->
+                <div class="card">
+                    <div class="card-content">
+                        <div class="card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+                        </div>
+                        <h3>Kiểm Định An Toàn &amp; Phân Phối Tốc Độ Cao</h3>
+                        <p>Mọi ứng dụng tải lên hệ thống đều được kiểm định chữ ký số nghiêm ngặt, quét sạch mã độc tự động và phân phối với băng thông cực đại đến người dùng.</p>
+                        
+                        <div class="spec-list">
+                            <div class="spec-item">
+                                <span class="spec-label">Kiểm định mã độc &amp; virus</span>
+                                <span class="spec-val hl" style="color: #4ade80;">100% Sạch &amp; An Toàn</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Băng thông tải xuống</span>
+                                <span class="spec-val">Tối đa (Hạ tầng CDN Anycast)</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Hệ điều hành tương thích</span>
+                                <span class="spec-val">Windows, Android, Linux, Web</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="spec-label">Tự động cập nhật phiên bản</span>
+                                <span class="spec-val">Đồng bộ &amp; Thông báo tức thì</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-secondary" style="padding: 10px 18px; font-size: 0.88rem; flex: 1; justify-content: center;" onclick="switchMainView('download');">
+                                🚀 Khám Phá Kho Ứng Dụng &rarr;
+                            </button>
+                            <button class="btn-secondary" style="padding: 10px 18px; font-size: 0.88rem; flex: 1; justify-content: center;" onclick="switchMainView('docs');">
+                                🎬 Video &amp; Hướng Dẫn &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SECTION HẠ TẦNG LƯU TRỮ CLOUDPOOL & MỞ RỘNG DUNG LƯỢNG 5TB    -->
+            <!-- ============================================================= -->
+            <section class="gemini-showcase-section" id="gemini-promo-showcase" style="margin-top: 45px;">
                 <div class="gemini-showcase-header">
                     <div class="gemini-sparkle-badge">
-                        <span class="sparkle-icon">✨</span>
-                        <span>GOOGLE AI PRO &amp; GEMINI ADVANCED // TẶNG 5TB GOOGLE DRIVE CHÍNH CHỦ</span>
+                        <span class="sparkle-icon">☁️</span>
+                        <span>HẠ TẦNG LƯU TRỮ CLOUDPOOL // NÂNG CẤP 5TB GOOGLE DRIVE CHÍNH CHỦ &amp; GOOGLE AI PRO</span>
                     </div>
                     <h2 class="gemini-showcase-title">
-                        BỨT PHÁ HIỆU SUẤT VỚI <span class="gradient-gemini-text">GOOGLE AI PRO</span>
+                        MỞ RỘNG KHO LƯU TRỮ VỚI <span class="gradient-gemini-text">GOOGLE AI PRO 5TB</span>
                     </h2>
                     <p class="gemini-showcase-desc">
-                        Trải nghiệm sức mạnh đỉnh cao của Google AI: Deep Research phân tích chuyên sâu, tạo ảnh &amp; video AI thế hệ mới, tích hợp Gmail, Docs, Sheets và đặc quyền <strong>5TB dung lượng Google Drive</strong> tốc độ cao. Nhắn tin Zalo ngay để nhận ưu đãi kích hoạt siêu tốc!
+                        SupportFlast CloudPool mã hóa phân tán dữ liệu theo chuẩn AES-256-GCM. Để mở rộng tối đa dung lượng lưu trữ cho các bản sao lưu, bộ cài ứng dụng và tận dụng sức mạnh trí tuệ nhân tạo (Deep Research, tạo ảnh &amp; video AI, tích hợp Gmail, Docs, Sheets), gói mở rộng <strong>5TB Google Drive chính chủ</strong> kết hợp Google AI Pro là giải pháp hạ tầng tối ưu cho bạn.
                     </p>
                 </div>
 
                 <!-- LƯỚI 3 ẢNH POSTER ĐÍNH LINK ZALO TIẾP CẬN DỄ DÀNG -->
                 <div class="gemini-cards-grid">
                     <!-- THẺ ẢNH 1: HỌC TẬP - CÔNG VIỆC - SÁNG TẠO -->
-                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận báo giá Google AI Pro">
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận tư vấn giải pháp lưu trữ Google AI Pro">
                         <div class="poster-badge">⚡ THÊM CẢM HỨNG &amp; HIỆU SUẤT</div>
                         <div class="poster-image-wrap">
                             <img src="/assets/promo/gemini_pro_inspire.jpg" alt="Google AI Pro - Thêm cảm hứng, thêm hiệu suất" loading="lazy">
                             <div class="poster-overlay">
                                 <span class="poster-cta-tag">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.82.49 3.53 1.34 5L2 22l5.18-1.31C8.61 21.49 10.26 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
-                                    Nhắn Zalo Nhận Báo Giá ➜
+                                    Nhắn Zalo Tư Vấn ➜
                                 </span>
                             </div>
                         </div>
@@ -287,7 +460,7 @@
                     </a>
 
                     <!-- THẺ ẢNH 2: NÂNG CẤP GEMINI & 5TB LƯU TRỮ DRIVE (NỔI BẬT NHẤT) -->
-                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card featured-gemini-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 kích hoạt gói Google AI Pro 5TB">
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card featured-gemini-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 kích hoạt gói mở rộng lưu trữ 5TB Drive">
                         <div class="poster-badge badge-hot">🔥 TẶNG 5TB GOOGLE DRIVE</div>
                         <div class="poster-image-wrap">
                             <img src="/assets/promo/gemini_pro_features_5tb.jpg" alt="Google AI Pro - Nâng cấp Gemini và 5TB lưu trữ Drive" loading="lazy">
@@ -306,7 +479,7 @@
                     </a>
 
                     <!-- THẺ ẢNH 3: BÁO GIÁ & HỖ TRỢ KÍCH HOẠT NHANH -->
-                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận tư vấn gói phù hợp">
+                    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="gemini-poster-card" title="Nhấp để nhắn tin Zalo: 0342.041.517 nhận tư vấn gói dung lượng phù hợp">
                         <div class="poster-badge badge-support">💎 KÍCH HOẠT SIÊU TỐC 1:1</div>
                         <div class="poster-image-wrap">
                             <img src="/assets/promo/gemini_pro_inspire_alt.jpg" alt="Google AI Pro - Tư vấn báo giá và kích hoạt nhanh" loading="lazy">
@@ -368,9 +541,6 @@
                     </div>
                 </div>
             </section>
-
-            <!-- BENTO GRID GIỚI THIỆU TRỌNG TÂM -->
-            <div class="bento-grid" style="margin-top: 30px;">
                 <!-- THẺ 1: ĐÓNG GÓI & XUẤT BẢN ỨNG DỤNG TỰ ĐỘNG -->
                 <div class="card">
                     <div class="card-content">
@@ -2146,10 +2316,10 @@
     <script src="/js/hub_core.js"></script>
 
     <!-- NÚT ZALO NỔI THƯỜNG TRỰC CẢ TRANG (GEMINI AI AVATAR & ZALO CORNER BADGE) -->
-    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="floating-zalo-widget" id="floating-zalo-btn" title="Nhắn Zalo: 0342.041.517 nhận báo giá Google AI Pro 5TB">
+    <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="floating-zalo-widget" id="floating-zalo-btn" title="Hỗ trợ kỹ thuật &amp; tư vấn mở rộng 5TB Google Drive">
         <div class="floating-zalo-pill">
-            <span class="floating-zalo-pill-title">✨ Google AI Pro 5TB</span>
-            <span class="floating-zalo-pill-sub">Nhắn Zalo Báo Giá Ngay &rarr;</span>
+            <span class="floating-zalo-pill-title">💬 Hỗ Trợ &amp; Tư Vấn 5TB</span>
+            <span class="floating-zalo-pill-sub">Nhắn Zalo Kỹ Thuật 24/7 &rarr;</span>
         </div>
         <div class="floating-zalo-circle">
             <div class="floating-zalo-wave"></div>

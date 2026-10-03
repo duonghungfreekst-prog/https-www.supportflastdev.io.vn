@@ -45,3 +45,6 @@ Disallow: /phpmyadmin/
 Disallow: /.env
 Disallow: /wp-admin
 Disallow: /.git
+
+# 3. Chi mục Sitemap chinh thuc
+Sitemap: https://www.supportflastdev.io.vn/sitemap.xml
