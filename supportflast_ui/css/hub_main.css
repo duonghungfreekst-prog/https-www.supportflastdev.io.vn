@@ -9053,3 +9053,270 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
         padding: var(--space-3) var(--space-4) !important;
     }
 }
+
+
+/* ========================================================================== */
+/* FIX TRIỆT ĐỂ BỐ CỤC CARD ỨNG DỤNG, NỀN OBSIDIAN VÀ HEADER (HOTFIX 2026)     */
+/* ========================================================================== */
+
+/* 1. KHÔI PHỤC CHIỀU SÂU NỀN KHÔNG GIAN OBSIDIAN NEBULA */
+body {
+    background-color: #030712 !important;
+    background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 100% 40%, rgba(129, 140, 248, 0.10) 0%, transparent 45%),
+        radial-gradient(circle at 0% 80%, rgba(168, 85, 247, 0.10) 0%, transparent 45%),
+        linear-gradient(180deg, #030712 0%, #070d1e 50%, #030712 100%) !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
+}
+
+/* 2. ĐỒNG BỘ CLASS CHO CỤM GRADIENT MESH ORBS */
+.cyber-mesh-container,
+.cyber-nebula-mesh {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    overflow: hidden !important;
+    z-index: 0 !important;
+    mix-blend-mode: screen !important;
+}
+
+.mesh-orb,
+.nebula-orb {
+    position: absolute !important;
+    border-radius: 50% !important;
+    filter: blur(90px) !important;
+    opacity: 0.75 !important;
+    pointer-events: none !important;
+    will-change: transform !important;
+}
+
+.mesh-orb-cyan,
+.orb-cyan {
+    top: -10vh !important;
+    left: -10vw !important;
+    width: 60vw !important;
+    height: 60vw !important;
+    max-width: 800px !important;
+    max-height: 800px !important;
+    background: radial-gradient(circle, rgba(0, 229, 255, 0.25) 0%, rgba(14, 165, 233, 0.12) 45%, transparent 72%) !important;
+    animation: nebulaDriftOne 24s ease-in-out infinite alternate !important;
+}
+
+.mesh-orb-indigo,
+.orb-deep-blue {
+    bottom: -15vh !important;
+    left: 20vw !important;
+    width: 70vw !important;
+    height: 70vw !important;
+    max-width: 950px !important;
+    max-height: 950px !important;
+    background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, rgba(59, 130, 246, 0.14) 50%, transparent 75%) !important;
+    animation: nebulaDriftThree 30s ease-in-out infinite alternate !important;
+}
+
+.mesh-orb-purple,
+.orb-purple {
+    top: 15vh !important;
+    right: -10vw !important;
+    width: 65vw !important;
+    height: 65vw !important;
+    max-width: 850px !important;
+    max-height: 850px !important;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.22) 0%, rgba(139, 92, 246, 0.12) 45%, transparent 72%) !important;
+    animation: nebulaDriftTwo 28s ease-in-out infinite alternate-reverse !important;
+}
+
+.cyber-scanline-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02)) !important;
+    background-size: 100% 3px, 4px 100% !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+    opacity: 0.22 !important;
+}
+
+/* 3. CĂN CHỈNH HEADER & TOP RIBBON CHÍNH TÂM */
+.gemini-top-ribbon-inner {
+    max-width: 1536px !important;
+    margin: 0 auto !important;
+    justify-content: center !important;
+    position: relative !important;
+    padding: 0 54px !important;
+}
+
+.mega-ribbon-close {
+    position: absolute !important;
+    right: 20px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    margin: 0 !important;
+    z-index: 10 !important;
+}
+
+/* 4. CHỐNG BẸT CARD TRÊN TRANG CHỦ & TAB TẢI ỨNG DỤNG */
+#home-featured-apps-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 460px)) !important;
+    justify-content: center !important;
+    gap: 32px !important;
+    max-width: 1020px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+}
+
+#featured-apps-container {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+    gap: 28px !important;
+    max-width: 1440px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+}
+
+@media (min-width: 1280px) {
+    #featured-apps-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (min-width: 1536px) {
+    #featured-apps-container {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+}
+
+/* KHẮC PHỤC TRIỆT ĐỂ BẪY MAX-WIDTH 100% TRÊN THẺ CARD */
+.featured-app-card {
+    width: 100% !important;
+    max-width: 480px !important;
+    min-height: 440px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+}
+
+/* NÚT TẢI BỘ CÀI CHUẨN TỶ LỆ VÀNG, KHÔNG BẸT NHƯ THƯỚC KẺ */
+.btn-download-primary {
+    min-height: 48px !important;
+    border-radius: 12px !important;
+    font-size: 0.94rem !important;
+    font-weight: 800 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    letter-spacing: -0.2px !important;
+    box-shadow: 0 4px 20px rgba(0, 229, 255, 0.25) !important;
+}
+
+/* THANH CÔNG CỤ TÌM KIẾM VÀ BỘ LỌC KHO ỨNG DỤNG (#view-download) */
+.apps-catalog-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+    margin-bottom: 32px;
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 16px;
+    padding: 18px 24px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+@media (min-width: 768px) {
+    .apps-catalog-toolbar {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.apps-search-box {
+    position: relative;
+    flex: 1;
+    max-width: 480px;
+}
+
+.apps-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.apps-search-box input {
+    width: 100%;
+    background: rgba(3, 7, 18, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    padding: 10px 14px 10px 40px;
+    color: #fff;
+    font-size: 0.90rem;
+    font-family: inherit;
+    transition: all 0.25s ease;
+}
+
+.apps-search-box input:focus {
+    outline: none;
+    border-color: #00e5ff;
+    box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+    background: rgba(3, 7, 18, 0.95);
+}
+
+.apps-filter-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.app-chip-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    padding: 6px 14px;
+    color: #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.app-chip-btn:hover {
+    background: rgba(0, 229, 255, 0.12);
+    border-color: rgba(0, 229, 255, 0.4);
+    color: #00e5ff;
+}
+
+.app-chip-btn.active {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(59, 130, 246, 0.25));
+    border-color: #00e5ff;
+    color: #00e5ff;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
+}
+
+.chip-count {
+    background: rgba(0, 229, 255, 0.2);
+    color: #00e5ff;
+    border-radius: 999px;
+    padding: 1px 7px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+

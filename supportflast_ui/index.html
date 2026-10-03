@@ -33,12 +33,12 @@
     <canvas id="network-canvas"></canvas>
 
     <!-- KHỐI GRADIENT MESH CHUYỂN ĐỘNG & SCANLINE (CYBER NEBULA) -->
-    <div class="cyber-mesh-container" aria-hidden="true">
-        <div class="mesh-orb mesh-orb-cyan"></div>
-        <div class="mesh-orb mesh-orb-indigo"></div>
-        <div class="mesh-orb mesh-orb-purple"></div>
+    <div class="cyber-nebula-mesh cyber-mesh-container" aria-hidden="true">
+        <div class="nebula-orb orb-cyan mesh-orb mesh-orb-cyan"></div>
+        <div class="nebula-orb orb-purple mesh-orb mesh-orb-purple"></div>
+        <div class="nebula-orb orb-deep-blue mesh-orb mesh-orb-indigo"></div>
         <div class="cyber-scanline-overlay"></div>
-    </div>
+    </div></div>
 
     <!-- ============================================================== -->
     <!-- CỤM HEADER KÍNH LIỀN KHỐI (MONOLITHIC CYBER-GLASS DOCK)        -->
@@ -1076,6 +1076,9 @@
         <!-- ============================================== -->
         <!-- VIEW 3: TẢI ỨNG DỤNG (DEDICATED VIEW) -->
         <!-- ============================================== -->
+                <!-- ============================================== -->
+        <!-- VIEW 3: TẢI ỨNG DỤNG (DEDICATED VIEW) -->
+        <!-- ============================================== -->
         <main class="app-view" id="view-download">
             <div class="view-header">
                 <div>
@@ -1087,26 +1090,49 @@
                 </button>
             </div>
 
-            <!-- BẢNG TẢI CLIENT CHÍNH THỨC: ĐÃ ẨN KHỎI GIAO DIỆN CÔNG KHAI (API & TOOL DO ADMIN CẤP RIÊNG) -->
+            <!-- THANH TÌM KIẾM & BỘ LỌC NỀN TẢNG KHO ỨNG DỤNG -->
+            <div class="apps-catalog-toolbar">
+                <div class="apps-search-box">
+                    <span class="apps-search-icon">🔍</span>
+                    <input type="text" id="apps-search-input" placeholder="Tìm kiếm phần mềm theo tên, từ khóa, tác giả, nền tảng..." oninput="handleAppsSearchFilter(this.value)">
+                </div>
+                <div class="apps-filter-chips" id="apps-platform-filter-chips">
+                    <button class="app-chip-btn active" data-platform="all" onclick="filterAppsByPlatform('all')">
+                        <span>Tất Cả</span>
+                        <span class="chip-count" id="count-platform-all">4</span>
+                    </button>
+                    <button class="app-chip-btn" data-platform="windows" onclick="filterAppsByPlatform('windows')">
+                        <span>🪟 Windows</span>
+                        <span class="chip-count" id="count-platform-windows">3</span>
+                    </button>
+                    <button class="app-chip-btn" data-platform="android" onclick="filterAppsByPlatform('android')">
+                        <span>🤖 Android</span>
+                        <span class="chip-count" id="count-platform-android">3</span>
+                    </button>
+                    <button class="app-chip-btn" data-platform="system" onclick="filterAppsByPlatform('system')">
+                        <span>⚙️ Tiện Ích Hệ Thống</span>
+                        <span class="chip-count" id="count-platform-system">2</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- KHO ỨNG DỤNG NỔI BẬT (FEATURED APPS SHOWCASE) -->
-            <div style="margin-top: 40px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div style="margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <div style="font-size: 1.5rem; font-weight: 800; color: #fff;">Kho Ứng Dụng Nổi Bật Được Tin Dùng</div>
-                        <div style="color: var(--text-muted); font-size: 0.9rem;">Các phần mềm và công cụ lập trình hàng đầu đã được kiểm duyệt an ninh tuyệt đối trước khi phát hành.</div>
+                        <div style="font-size: 1.45rem; font-weight: 800; color: #fff;">Danh Mục Ứng Dụng Chính Thức (4+ Apps)</div>
+                        <div style="color: var(--text-muted); font-size: 0.88rem;">Toàn bộ phần mềm đã được kiểm định an ninh chữ ký số và sẵn sàng tải tức thì.</div>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <button class="btn-primary admin-only-inline" style="display: none; background: linear-gradient(135deg, #00e5ff, #3b82f6); border: none; font-size: 0.88rem; padding: 10px 18px;" onclick="openCreateAppModal()">
                             <span>➕</span> <span>Thêm Ứng Dụng Vào Kho</span>
                         </button>
-                        
                     </div>
                 </div>
 
                 <div class="featured-apps-grid" id="featured-apps-container">
                     <!-- APP 0: DMH Tools Enterprise Suite -->
-                    <div class="featured-app-card" id="app-card-APP-4964" data-app-id="APP-4964" data-app-name="DMH Tools Enterprise Suite" data-app-version="v1.1.3" data-app-platform="Windows 10 / 11 (x64)" data-app-category="Tiện Ích Hệ Thống, Bản Quyền &amp; Y Tế" data-app-desc="Bộ công cụ toàn diện: Kích hoạt &amp; Quản lý Bản Quyền Windows/Office (Online, OEM BIOS, CID), 41 Fixes lỗi Windows chuyên sâu (Driver, Spooler, LAN 0x11b, SFC/DISM), Sao lưu &amp; trích xuất Driver PnP DriverStore, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TTS, Nội soi AI 4K." data-app-author="Dương Mạnh Hùng (DMH Tech)" data-app-filename="DMH_Tools_Setup_1.1.3_Slim.exe" data-app-icon="🩺">
+                    <div class="featured-app-card" id="app-card-APP-4964" data-app-id="APP-4964" data-app-platform="windows" data-app-category="system">
                         <div class="border-beam" aria-hidden="true"></div>
                         <div class="card-spotlight" aria-hidden="true"></div>
                         <div class="card-spotlight-border" aria-hidden="true"></div>
@@ -1150,7 +1176,7 @@
                     </div>
 
                     <!-- APP 1: AI Equalizer Pro & Audio Processor -->
-                    <div class="featured-app-card" id="app-card-APP-7290" data-app-id="APP-7290" data-app-name="AI Equalizer Pro &amp; Audio Processor" data-app-version="v2.2.0" data-app-platform="Android 8.0+ &amp; Web Audio HUD" data-app-category="Âm thanh &amp; Đa phương tiện" data-app-desc="Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, hiệu ứng không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, nhạc nền Synth Ambient, thu âm Mic trực tiếp và lọc âm hệ thốngchuẩn xác không độ trễ." data-app-author="Dương Mạnh Hùng (DMH Tech &amp; Antigravity)" data-app-filename="APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip" data-app-icon="🎛️">
+                    <div class="featured-app-card" id="app-card-APP-7290" data-app-id="APP-7290" data-app-platform="android" data-app-category="multimedia">
                         <div class="border-beam" aria-hidden="true"></div>
                         <div class="card-spotlight" aria-hidden="true"></div>
                         <div class="card-spotlight-border" aria-hidden="true"></div>
@@ -1192,9 +1218,99 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- APP 2: Smart Alarm Clock Pro -->
+                    <div class="featured-app-card" id="app-card-APP-3820" data-app-id="APP-3820" data-app-platform="windows,android" data-app-category="productivity">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
+                            <div class="app-card-header">
+                                <div class="app-icon" id="app-icon-APP-3820">⏰</div>
+                                <div>
+                                    <div class="app-info-title" id="app-name-APP-3820">Smart Alarm Clock Pro</div>
+                                    <div class="app-info-dev" id="app-dev-APP-3820"><span class="dev-status-dot"></span> bởi SupportFlast Core Team • v1.2.0</div>
+                                </div>
+                            </div>
+                            <p class="app-desc-text" id="app-desc-APP-3820">Đồng hồ báo thức thông minh kết hợp trợ lý AI nhắc lịch, đồng bộ chuông báo tùy biến, dự báo thời tiết và nhắc nhở nhiệm vụ thông minh không làm phiền.</p>
+                            <div class="app-tags" id="app-tags-APP-3820">
+                                <span class="app-tag tag-platform">Win 10/11 &amp; Android</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">15.4 MB</span>
+                            </div>
+                        </div>
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-3820" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
+                                <span>📥</span> <span>Tải Bộ Cài (.exe 15.4 MB)</span> &rarr;
+                            </a>
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-3820')">
+                                    <span>📘</span> <span>Bài Viết HD</span>
+                                </button>
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-3820')">
+                                    <span>🎬</span> <span>Video HD</span>
+                                </button>
+                            </div>
+                            <div class="admin-app-actions admin-only" style="display: none;">
+                                <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-3820')" title="Chỉnh sửa thông tin ứng dụng">
+                                    <span>✏️</span> <span>Sửa</span>
+                                </button>
+                                <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-3820', 'Smart Alarm Clock Pro')" title="Xóa ứng dụng khỏi kho">
+                                    <span>🗑️</span> <span>Xoá</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- APP 3: Balance Notify & USB Bridge Suite -->
+                    <div class="featured-app-card" id="app-card-APP-5192" data-app-id="APP-5192" data-app-platform="windows,android" data-app-category="system">
+                        <div class="border-beam" aria-hidden="true"></div>
+                        <div class="card-spotlight" aria-hidden="true"></div>
+                        <div class="card-spotlight-border" aria-hidden="true"></div>
+                        <div class="card-content-wrap">
+                            <div class="app-card-header">
+                                <div class="app-icon" id="app-icon-APP-5192">⚡</div>
+                                <div>
+                                    <div class="app-info-title" id="app-name-APP-5192">Balance Notify &amp; USB Bridge</div>
+                                    <div class="app-info-dev" id="app-dev-APP-5192"><span class="dev-status-dot"></span> bởi SupportFlast Engineering • v1.0.5</div>
+                                </div>
+                            </div>
+                            <p class="app-desc-text" id="app-desc-APP-5192">Công cụ cầu nối phần cứng USB tốc độ cao, giám sát trạng thái truyền dữ liệu thời gian thực và thông báo số dư biến động tài khoản tức thì bảo mật hai lớp.</p>
+                            <div class="app-tags" id="app-tags-APP-5192">
+                                <span class="app-tag tag-platform">Win x64 &amp; Android</span>
+                                <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                                <span class="app-tag tag-size">8.2 MB</span>
+                            </div>
+                        </div>
+                        <div class="card-actions-wrap">
+                            <a href="/api/apps/download/APP-5192" class="btn-download-primary">
+                                <span class="btn-sweep-sheen"></span>
+                                <span>📥</span> <span>Tải Bộ Cài (.zip 8.2 MB)</span> &rarr;
+                            </a>
+                            <div class="card-action-subgrid">
+                                <button class="btn-card-sub" onclick="openAppGuideModal('APP-5192')">
+                                    <span>📘</span> <span>Bài Viết HD</span>
+                                </button>
+                                <button class="btn-card-sub btn-video" onclick="openAppVideoModal('APP-5192')">
+                                    <span>🎬</span> <span>Video HD</span>
+                                </button>
+                            </div>
+                            <div class="admin-app-actions admin-only" style="display: none;">
+                                <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('APP-5192')" title="Chỉnh sửa thông tin ứng dụng">
+                                    <span>✏️</span> <span>Sửa</span>
+                                </button>
+                                <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('APP-5192', 'Balance Notify & USB Bridge')" title="Xóa ứng dụng khỏi kho">
+                                    <span>🗑️</span> <span>Xoá</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
+
+        
 
         <!-- ============================================== -->
         <!-- VIEW 4: VIDEO & HƯỚNG DẪN (DEDICATED VIEW) -->

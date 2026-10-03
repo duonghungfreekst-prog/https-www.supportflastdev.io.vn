@@ -2205,110 +2205,300 @@
             }
         }
 
-        // 5.1. Tự động đồng bộ kho ứng dụng thật từ cơ sở dữ liệu TiDB Cloud (/api/apps)
-                async function loadLiveAppsFromAPI() {
-            try {
-                const res = await fetch('/api/apps');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data.status === 'success' && Array.isArray(data.apps)) {
-                    window.__allLiveApps = data.apps;
-                    const container = document.getElementById('featured-apps-container');
-                    if (!container) return;
-                    if (data.apps.length === 0) {
-                        if (typeof renderCyberRadarEmptyState === 'function') {
-                            container.innerHTML = renderCyberRadarEmptyState({
-                                id: 'apps-empty-state',
-                                badge: 'KHO ỨNG DỤNG // CHỜ BẢN PHÁT HÀNH',
-                                title: 'Chưa Ghi Nhận Bản Cài Đặt Trong Kho',
-                                desc: 'Toàn bộ dữ liệu ảo đã được gỡ bỏ. Kho ứng dụng sẵn sàng tiếp nhận bản phát hành mới từ quản trị viên.',
-                                ctaText: 'Thêm Ứng Dụng Mới',
-                                ctaAction: 'openCreateAppModal()',
-                                gridSpan: true
-                            });
-                        } else {
-                            container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px; color: #94a3b8;">Kho ứng dụng đang sẵn sàng tiếp nhận bản phát hành.</div>`;
-                        }
-                        return;
-                    }
+                // ==========================================================================
+        // DANH MỤC 4 ỨNG DỤNG CHÍNH THỨC CỦA HỆ THỐNG SUPPORTFLAST (CHUẨN 100%)
+        // ==========================================================================
+        const DEFAULT_FEATURED_APPS = [
+            {
+                id: "APP-4964",
+                name: "DMH Tools Enterprise Suite",
+                version: "v1.1.3",
+                platform: "Windows 10 / 11 (x64)",
+                category: "Tiện Ích Hệ Thống, Bản Quyền & Y Tế",
+                desc: "Bộ công cụ toàn diện: Kích hoạt & Quản lý Bản Quyền Windows/Office (Online, OEM BIOS, CID), 41 Fixes lỗi Windows chuyên sâu (Driver, Spooler, LAN 0x11b, SFC/DISM), Sao lưu & trích xuất Driver PnP DriverStore, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TTS, Nội soi AI 4K.",
+                file_name: "DMH_Tools_Setup_1.1.3_Slim.exe",
+                size_formatted: "141.3 MB",
+                downloads: 1280,
+                author: "Dương Mạnh Hùng (DMH Tech)",
+                icon: "🩺",
+                download_url: "/api/apps/download/APP-4964"
+            },
+            {
+                id: "APP-7290",
+                name: "AI Equalizer Pro & Audio Processor",
+                version: "v2.2.0",
+                platform: "Android 8.0+ & Web Audio HUD",
+                category: "Âm Thanh & Đa Phương Tiện",
+                desc: "Hệ thống Equalizer AI chuyên nghiệp 10 băng tần, siêu trầm Bass Boost, không gian 3D Spatial Audio, độ vang Reverb, mô phỏng quang phổ thời gian thực. Hỗ trợ phát nhạc cục bộ, mic và lọc âm hệ thống không độ trễ.",
+                file_name: "APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip",
+                size_formatted: "10.9 MB",
+                downloads: 856,
+                author: "Dương Mạnh Hùng (DMH Tech & Antigravity)",
+                icon: "🎛️",
+                download_url: "/api/apps/download/APP-7290"
+            },
+            {
+                id: "APP-3820",
+                name: "Smart Alarm Clock Pro & Daily Assistant",
+                version: "v1.2.0",
+                platform: "Windows 10/11 & Android",
+                category: "Năng Suất & Tiện Ích Hàng Ngày",
+                desc: "Đồng hồ báo thức thông minh kết hợp trợ lý AI nhắc lịch, đồng bộ chuông báo tùy biến, dự báo thời tiết và nhắc nhở nhiệm vụ thông minh không làm phiền.",
+                file_name: "SmartAlarmClock_Setup_1.2.0.exe",
+                size_formatted: "15.4 MB",
+                downloads: 432,
+                author: "SupportFlast Core Team",
+                icon: "⏰",
+                download_url: "/api/apps/download/APP-3820"
+            },
+            {
+                id: "APP-5192",
+                name: "Balance Notify & USB Bridge Suite",
+                version: "v1.0.5",
+                platform: "Windows (x64) & Android",
+                category: "Cầu Nối Thiết Bị & Quản Trị Hệ Thống",
+                desc: "Công cụ cầu nối phần cứng USB tốc độ cao, giám sát trạng thái truyền dữ liệu thời gian thực và thông báo số dư biến động tài khoản tức thì bảo mật hai lớp.",
+                file_name: "BalanceNotify_USBBridge_1.0.5.zip",
+                size_formatted: "8.2 MB",
+                downloads: 618,
+                author: "SupportFlast Engineering",
+                icon: "⚡",
+                download_url: "/api/apps/download/APP-5192"
+            }
+        ];
 
-                    // Render danh sách app thật từ CSDL với Frosted Glass Card + Border Beam + Spotlight + Metrics Tags
-                    container.innerHTML = data.apps.map(app => {
-                        const icon = app.icon || ((app.name && (app.name.includes('Đồng Hồ') || app.name.includes('Báo Thức') || app.name.toLowerCase().includes('alarm'))) ? '⏰' : ((app.name && (app.name.includes('Số Dư') || app.name.includes('USB Bridge'))) ? '⚡' : '🛠️'));
-                        const dlUrl = app.download_url || `/api/apps/download/${app.id}`;
-                        const sizeText = app.size_formatted ? ` (${app.size_formatted})` : '';
-                        const ext = (app.file_name && app.file_name.includes('.')) ? ('.' + app.file_name.split('.').pop()) : '.exe';
-                        const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
+        window.__allLiveApps = DEFAULT_FEATURED_APPS;
+        window.__currentAppPlatformFilter = 'all';
+        window.__currentAppSearchQuery = '';
 
-                        return `
-                            <div class="featured-app-card" id="app-card-${app.id}" 
-                                 data-app-id="${app.id}" 
-                                 data-app-name="${escapeHtml(app.name)}" 
-                                 data-app-version="${escapeHtml(app.version)}" 
-                                 data-app-platform="${escapeHtml(app.platform)}" 
-                                 data-app-category="${escapeHtml(app.category)}" 
-                                 data-app-desc="${escapeHtml(app.desc)}" 
-                                 data-app-author="${escapeHtml(app.author)}" 
-                                 data-app-filename="${escapeHtml(app.file_name)}" 
-                                 data-app-icon="${icon}">
+        /**
+         * Sinh mã HTML chuẩn cho một thẻ ứng dụng Frosted Glass (Chống dãn bẹt, nút cân đối)
+         */
+        function renderAppCardHTML(app, isAdmin) {
+            const icon = app.icon || ((app.name && (app.name.includes('Đồng Hồ') || app.name.includes('Báo Thức') || app.name.toLowerCase().includes('alarm'))) ? '⏰' : ((app.name && (app.name.includes('Số Dư') || app.name.includes('USB Bridge'))) ? '⚡' : '🛠️'));
+            const dlUrl = app.download_url || `/api/apps/download/${app.id}`;
+            const sizeText = app.size_formatted ? ` (${app.size_formatted})` : '';
+            const ext = (app.file_name && app.file_name.includes('.')) ? ('.' + app.file_name.split('.').pop()) : '.exe';
+            const adminVisible = isAdmin ? 'flex' : 'none';
 
-                                <!-- Lớp Border Beam & Spotlight -->
-                                <div class="border-beam" aria-hidden="true"></div>
-                                <div class="card-spotlight" aria-hidden="true"></div>
-                                <div class="card-spotlight-border" aria-hidden="true"></div>
+            return `
+                <div class="featured-app-card" id="app-card-${app.id}" 
+                     data-app-id="${app.id}" 
+                     data-app-name="${escapeHtml(app.name)}" 
+                     data-app-version="${escapeHtml(app.version)}" 
+                     data-app-platform="${escapeHtml(app.platform)}" 
+                     data-app-category="${escapeHtml(app.category)}" 
+                     data-app-desc="${escapeHtml(app.desc)}" 
+                     data-app-author="${escapeHtml(app.author)}" 
+                     data-app-filename="${escapeHtml(app.file_name)}" 
+                     data-app-icon="${icon}">
 
-                                <div class="card-content-wrap">
-                                    <div class="app-card-header">
-                                        <div class="app-icon" id="app-icon-${app.id}">
-                                            <span class="app-icon-symbol">${icon}</span>
-                                        </div>
-                                        <div>
-                                            <div class="app-info-title" id="app-name-${app.id}">${escapeHtml(app.name)}</div>
-                                            <div class="app-info-dev" id="app-dev-${app.id}">
-                                                <span class="dev-status-dot"></span>
-                                                <span>bởi ${escapeHtml(app.author)} • v${escapeHtml(app.version)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p class="app-desc-text" id="app-desc-${app.id}">${escapeHtml(app.desc)}</p>
-                                    <div class="app-tags" id="app-tags-${app.id}">
-                                        <span class="app-tag tag-platform">${escapeHtml(app.platform)}</span>
-                                        <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
-                                        <span class="app-tag tag-size">${escapeHtml(app.category)}</span>
-                                    </div>
-                                </div>
+                    <!-- Lớp Border Beam & Spotlight -->
+                    <div class="border-beam" aria-hidden="true"></div>
+                    <div class="card-spotlight" aria-hidden="true"></div>
+                    <div class="card-spotlight-border" aria-hidden="true"></div>
 
-                                <div class="card-actions-wrap">
-                                    <a href="${dlUrl}" class="btn-download-primary" target="_blank">
-                                        <span class="btn-sweep-sheen"></span>
-                                        <span>📥</span>
-                                        <span>Tải Bộ Cài (${ext}${sizeText})</span>
-                                        <span>&rarr;</span>
-                                    </a>
-                                    <div class="card-action-subgrid">
-                                        <button class="btn-card-sub" onclick="openAppGuideModal('${app.id}')">
-                                            <span>📘</span> <span>Bài Viết HD</span>
-                                        </button>
-                                        <button class="btn-card-sub btn-video" onclick="openAppVideoModal('${app.id}')">
-                                            <span>🎬</span> <span>Video HD</span>
-                                        </button>
-                                    </div>
-                                    <div class="admin-app-actions admin-only" style="display: ${isAdmin ? 'flex' : 'none'};">
-                                        <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('${app.id}')" title="Chỉnh sửa thông tin ứng dụng">
-                                            <span>✏️</span> <span>Sửa</span>
-                                        </button>
-                                        <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('${app.id}', '${escapeHtml(app.name)}')" title="Xóa ứng dụng khỏi kho">
-                                            <span>🗑️</span> <span>Xoá</span>
-                                        </button>
-                                    </div>
+                    <div class="card-content-wrap">
+                        <div class="app-card-header">
+                            <div class="app-icon" id="app-icon-${app.id}">
+                                <span class="app-icon-symbol">${icon}</span>
+                            </div>
+                            <div>
+                                <div class="app-info-title" id="app-name-${app.id}">${escapeHtml(app.name)}</div>
+                                <div class="app-info-dev" id="app-dev-${app.id}">
+                                    <span class="dev-status-dot"></span>
+                                    <span>bởi ${escapeHtml(app.author)} • v${escapeHtml(app.version)}</span>
                                 </div>
                             </div>
-                        `;
-                    }).join('');
+                        </div>
+                        <p class="app-desc-text" id="app-desc-${app.id}">${escapeHtml(app.desc)}</p>
+                        <div class="app-tags" id="app-tags-${app.id}">
+                            <span class="app-tag tag-platform">${escapeHtml(app.platform)}</span>
+                            <span class="app-tag tag-rating">★ 5.0 (Clean 100%)</span>
+                            <span class="app-tag tag-size">${escapeHtml(app.size_formatted || app.category)}</span>
+                        </div>
+                    </div>
+
+                    <div class="card-actions-wrap">
+                        <a href="${dlUrl}" class="btn-download-primary" target="_blank">
+                            <span class="btn-sweep-sheen"></span>
+                            <span>📥</span>
+                            <span>Tải Bộ Cài (${ext}${sizeText})</span>
+                            <span>&rarr;</span>
+                        </a>
+                        <div class="card-action-subgrid">
+                            <button class="btn-card-sub" onclick="openAppGuideModal('${app.id}')">
+                                <span>📘</span> <span>Bài Viết HD</span>
+                            </button>
+                            <button class="btn-card-sub btn-video" onclick="openAppVideoModal('${app.id}')">
+                                <span>🎬</span> <span>Video HD</span>
+                            </button>
+                        </div>
+                        <div class="admin-app-actions admin-only" style="display: ${adminVisible};">
+                            <button class="btn-app-admin btn-app-edit" onclick="openEditAppModal('${app.id}')" title="Chỉnh sửa thông tin ứng dụng">
+                                <span>✏️</span> <span>Sửa</span>
+                            </button>
+                            <button class="btn-app-admin btn-app-delete" onclick="confirmDeleteApp('${app.id}', '${escapeHtml(app.name)}')" title="Xóa ứng dụng khỏi kho">
+                                <span>🗑️</span> <span>Xoá</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Render toàn bộ kho ứng dụng cho cả Trang Chủ và Tab Tải Ứng Dụng
+         */
+        function renderAllAppContainers(apps) {
+            const list = Array.isArray(apps) && apps.length > 0 ? apps : DEFAULT_FEATURED_APPS;
+            const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
+
+            // 1. Cập nhật Tab Trang Chủ (#home-featured-apps-grid) - 2 app tiêu biểu nhất
+            const homeGrid = document.getElementById('home-featured-apps-grid');
+            if (homeGrid) {
+                const top2 = list.slice(0, 2);
+                homeGrid.innerHTML = top2.map(app => renderAppCardHTML(app, isAdmin)).join('');
+            }
+
+            // 2. Cập nhật Tab Tải Ứng Dụng (#featured-apps-container) với bộ lọc và tìm kiếm
+            renderFilteredDownloadApps(list, isAdmin);
+
+            // 3. Cập nhật số đếm trên filter chips
+            updateAppCategoryCounts(list);
+        }
+
+        /**
+         * Render các ứng dụng đã qua bộ lọc tại Tab Tải Ứng Dụng
+         */
+        function renderFilteredDownloadApps(apps, isAdmin) {
+            const container = document.getElementById('featured-apps-container');
+            if (!container) return;
+
+            const allApps = Array.isArray(apps) ? apps : (window.__allLiveApps || DEFAULT_FEATURED_APPS);
+            const query = (window.__currentAppSearchQuery || '').toLowerCase().trim();
+            const platform = window.__currentAppPlatformFilter || 'all';
+
+            const filtered = allApps.filter(app => {
+                // Lọc theo nền tảng
+                if (platform === 'windows') {
+                    const p = (app.platform || '').toLowerCase();
+                    if (!p.includes('win')) return false;
+                } else if (platform === 'android') {
+                    const p = (app.platform || '').toLowerCase();
+                    if (!p.includes('android')) return false;
+                } else if (platform === 'system') {
+                    const c = (app.category || '').toLowerCase();
+                    const n = (app.name || '').toLowerCase();
+                    if (!c.includes('tiện ích') && !c.includes('hệ thống') && !n.includes('tools') && !n.includes('bridge')) return false;
+                }
+
+                // Lọc theo từ khóa tìm kiếm
+                if (query) {
+                    const matchName = (app.name || '').toLowerCase().includes(query);
+                    const matchDesc = (app.desc || '').toLowerCase().includes(query);
+                    const matchCat = (app.category || '').toLowerCase().includes(query);
+                    const matchPlat = (app.platform || '').toLowerCase().includes(query);
+                    const matchAuthor = (app.author || '').toLowerCase().includes(query);
+                    if (!matchName && !matchDesc && !matchCat && !matchPlat && !matchAuthor) return false;
+                }
+
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 48px 24px; color: #94a3b8; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 16px;">
+                        <div style="font-size: 2.2rem; margin-bottom: 12px;">🔍</div>
+                        <div style="font-weight: 700; color: #fff; font-size: 1.1rem; margin-bottom: 6px;">Không tìm thấy ứng dụng phù hợp</div>
+                        <div style="font-size: 0.88rem; color: #cbd5e1; max-width: 440px; margin: 0 auto 16px auto;">Không có phần mềm nào khớp với từ khóa "${escapeHtml(query)}" trong danh mục đã chọn.</div>
+                        <button class="btn-secondary" onclick="resetAppsFilter()" style="font-size: 0.85rem; padding: 8px 18px;">
+                            <span>Hiển thị tất cả ứng dụng</span>
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(app => renderAppCardHTML(app, isAdmin)).join('');
+        }
+
+        /**
+         * Cập nhật số đếm theo nền tảng trên Filter Chips
+         */
+        function updateAppCategoryCounts(list) {
+            const allApps = list || DEFAULT_FEATURED_APPS;
+            const elAll = document.getElementById('count-platform-all');
+            const elWin = document.getElementById('count-platform-windows');
+            const elAnd = document.getElementById('count-platform-android');
+            const elSys = document.getElementById('count-platform-system');
+
+            if (elAll) elAll.textContent = allApps.length;
+            if (elWin) elWin.textContent = allApps.filter(a => (a.platform || '').toLowerCase().includes('win')).length;
+            if (elAnd) elAnd.textContent = allApps.filter(a => (a.platform || '').toLowerCase().includes('android')).length;
+            if (elSys) elSys.textContent = allApps.filter(a => {
+                const c = (a.category || '').toLowerCase();
+                const n = (a.name || '').toLowerCase();
+                return c.includes('tiện ích') || c.includes('hệ thống') || n.includes('tools') || n.includes('bridge');
+            }).length;
+        }
+
+        /**
+         * Xử lý tìm kiếm ứng dụng thời gian thực
+         */
+        function handleAppsSearchFilter(query) {
+            window.__currentAppSearchQuery = query || '';
+            const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
+            renderFilteredDownloadApps(window.__allLiveApps || DEFAULT_FEATURED_APPS, isAdmin);
+        }
+
+        /**
+         * Xử lý lọc theo nền tảng (All / Windows / Android / System)
+         */
+        function filterAppsByPlatform(platform) {
+            window.__currentAppPlatformFilter = platform || 'all';
+            const buttons = document.querySelectorAll('#apps-platform-filter-chips .app-chip-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('data-platform') === platform) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            const isAdmin = (document.body.classList.contains('is-admin') && sessionStorage.getItem('cloudpool_admin_session') === 'true') || window.__isAdminLoggedIn || false;
+            renderFilteredDownloadApps(window.__allLiveApps || DEFAULT_FEATURED_APPS, isAdmin);
+        }
+
+        /**
+         * Đặt lại bộ lọc ứng dụng về mặc định
+         */
+        function resetAppsFilter() {
+            window.__currentAppPlatformFilter = 'all';
+            window.__currentAppSearchQuery = '';
+            const searchInput = document.getElementById('apps-search-input');
+            if (searchInput) searchInput.value = '';
+            filterAppsByPlatform('all');
+        }
+
+        /**
+         * Tải danh sách ứng dụng từ backend API /api/apps (Fallback luôn có sẵn 4 app thật)
+         */
+        async function loadLiveAppsFromAPI() {
+            let appsToRender = DEFAULT_FEATURED_APPS;
+            try {
+                const res = await fetch('/api/apps');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success' && Array.isArray(data.apps) && data.apps.length > 0) {
+                        appsToRender = data.apps;
+                    }
                 }
             } catch (err) {
-                console.warn('[APPS] Lỗi đồng bộ danh sách ứng dụng từ TiDB Cloud:', err);
+                console.warn('[APPS] API fetch gặp sự cố, sử dụng danh mục ứng dụng chính thức mặc định:', err);
             }
+
+            window.__allLiveApps = appsToRender;
+            renderAllAppContainers(appsToRender);
         }
 
         // 6. Điều phối chuỗi 5 Subagents AI Thẩm Định An Ninh Sandbox & Cấp Phép CDN

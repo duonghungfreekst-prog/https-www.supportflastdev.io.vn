@@ -132,6 +132,15 @@ func openDatabaseLocked(dbPath string) (*sql.DB, error) {
 	if err := SeedInitialData(db, filepath.Dir(dbPath)); err != nil {
 		log.Printf("[ENGINE] [DATABASE] [WARN] SeedInitialData failed: %v", err)
 	}
+	if err := SeedInitialApps(db, filepath.Dir(dbPath)); err != nil {
+		log.Printf("[ENGINE] [DATABASE] [WARN] SeedInitialApps failed: %v", err)
+	}
+	if err := SeedInitialKeys(db, filepath.Dir(dbPath)); err != nil {
+		log.Printf("[ENGINE] [DATABASE] [WARN] SeedInitialKeys failed: %v", err)
+	}
+	if err := SeedInitialReleases(db, filepath.Dir(dbPath)); err != nil {
+		log.Printf("[ENGINE] [DATABASE] [WARN] SeedInitialReleases failed: %v", err)
+	}
 
 	log.Printf("[ENGINE] [DATABASE] SQLite initialized successfully at '%s' (journal_mode=%s, foreign_keys=ON)", dbPath, strings.ToUpper(activeMode))
 	return db, nil
