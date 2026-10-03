@@ -478,9 +478,11 @@ class CertificateVerifier:
                 "signers": signer_info,
                 "details": "Tệp tin có chữ ký số Authenticode hợp lệ." if not is_self_signed else "Chứng chỉ tự ký (Self-signed certificate)."
             }
-
         except Exception as e:
-            return {"is_signed": False, "status": "ERROR", "details": f"Lỗi khi đọc chữ ký số: {str(e)}"}
+            err_msg = str(e)
+            if "DOS Header" in err_msg or "magic not found" in err_msg.lower() or "not a valid pe" in err_msg.lower():
+                return {"is_signed": False, "status": "ERROR_OR_NOT_PE", "details": f"Tệp tin không thuộc định dạng PE: {err_msg}"}
+            return {"is_signed": False, "status": "ERROR", "details": f"Lỗi khi đọc chữ ký số: {err_msg}"}
 
     @classmethod
     def verify_package_signature(cls, file_path: Optional[str], package_info: Optional[Dict[str, Any]]) -> Dict[str, Any]:

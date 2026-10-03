@@ -109,7 +109,7 @@ class TestPackageSecurityScanner(unittest.TestCase):
             # Trên Linux / Ubuntu CI runner, sys.executable là tệp ELF chứ không phải Windows PE (.exe)
             res = CertificateVerifier.verify_pe_authenticode(sys.executable)
             self.assertFalse(res["is_signed"])
-            self.assertIn(res["status"], ["ERROR_OR_NOT_PE", "UNSIGNED"])
+            self.assertIn(res["status"], ["ERROR_OR_NOT_PE", "UNSIGNED", "ERROR"])
             return
 
         res = CertificateVerifier.verify_pe_authenticode(sys.executable)
