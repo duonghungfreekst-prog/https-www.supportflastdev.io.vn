@@ -5601,10 +5601,47 @@ nav {
 .k-char {
     display: inline-block;
     transform-origin: 50% 85%;
-    animation: letterJumpAssemble 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    animation-delay: calc(var(--i, 0) * 0.042s);
-    will-change: transform, opacity;
+    will-change: transform, filter;
+    animation: continuousLetterWave 2.8s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 0.085s);
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* SÓNG CHỮ 3D TỰ ĐỘNG CHẠY LIÊN TỤC 24/7 (KHÔNG CẦN RÊ CHUỘT) */
+@keyframes continuousLetterWave {
+    0%, 100% {
+        transform: translateY(0px) rotateX(0deg) scale(1);
+        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
+    }
+    30% {
+        transform: translateY(-14px) rotateX(-10deg) scale(1.12);
+        filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.95)) drop-shadow(0 0 28px rgba(168, 85, 247, 0.8));
+    }
+    60% {
+        transform: translateY(3px) rotateX(4deg) scale(0.97);
+        filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.9));
+    }
+}
+
+/* KHI RÊ CHUỘT: TĂNG TỐC ĐỘ VÀ BIÊN ĐỘ UỐN LƯỢN SÓNG 3D MẠNH HƠN NỮA */
+.hero-kinetic-title:hover .k-char {
+    animation: continuousLetterWaveHover 1.2s ease-in-out infinite !important;
+    animation-delay: calc(var(--i, 0) * 0.045s) !important;
+}
+
+@keyframes continuousLetterWaveHover {
+    0%, 100% {
+        transform: translateY(0px) rotateX(0deg) scale(1);
+    }
+    50% {
+        transform: translateY(-20px) rotateX(-14deg) scale(1.18);
+        filter: drop-shadow(0 0 22px rgba(0, 229, 255, 1)) drop-shadow(0 0 36px rgba(168, 85, 247, 0.95));
+    }
+}
+
+.k-char.re-jump {
+    animation: letterJumpAssemble 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+    animation-delay: calc(var(--i, 0) * 0.042s) !important;
 }
 
 @keyframes letterJumpAssemble {
@@ -5628,22 +5665,6 @@ nav {
         opacity: 1;
         transform: translateY(0) rotateX(0deg) scale(1);
     }
-}
-
-.hero-kinetic-title:hover .k-char {
-    animation: letterWaveJump 0.55s ease-in-out infinite alternate !important;
-    animation-delay: calc(var(--i, 0) * 0.035s) !important;
-}
-
-@keyframes letterWaveJump {
-    0% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-16px) scale(1.14); filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.95)); }
-    100% { transform: translateY(2px) scale(0.98); }
-}
-
-.k-char.re-jump {
-    animation: letterJumpAssemble 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
-    animation-delay: calc(var(--i, 0) * 0.042s) !important;
 }
 
 /* ĐOẠN DẪN HERO CHUẨN ĐỌC DỊU MẮT TƯƠNG PHẢN CAO */
@@ -5699,29 +5720,37 @@ p.desc {
     overflow: hidden;
     user-select: none;
     transform: translateY(-3px);
+    animation: ctaFloatingBreath 3.2s ease-in-out infinite !important;
 }
 
-/* Vòng sóng Neon Ripple nhấp nháy phát xung tròn */
+@keyframes ctaFloatingBreath {
+    0%, 100% {
+        transform: translateY(-3px) scale(1);
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.7), 0 4px 14px rgba(255, 255, 255, 0.35), 0 0 18px rgba(0, 229, 255, 0.35), inset 0 2px 1px #ffffff;
+        border-bottom-color: #94a3b8;
+    }
+    50% {
+        transform: translateY(-7px) scale(1.025);
+        box-shadow: 0 18px 40px -4px rgba(0, 229, 255, 0.75), 0 0 35px rgba(0, 229, 255, 0.6), inset 0 2.5px 2px #ffffff;
+        border-bottom-color: #00e5ff;
+    }
+}
+
+/* Vòng sóng Neon Ripple nhấp nháy phát xung tròn tự động 24/7 */
 .btn-hero-primary::before {
     content: '';
     position: absolute;
     inset: -6px;
     border-radius: 20px;
     border: 2px solid #00e5ff;
-    opacity: 0;
-    transform: scale(0.95);
     pointer-events: none;
-    transition: all 0.3s ease;
-}
-
-.btn-hero-primary:hover::before {
-    animation: neonRipplePulse 1.8s infinite cubic-bezier(0.1, 0.7, 0.3, 1);
+    animation: neonRipplePulse 2.2s infinite cubic-bezier(0.1, 0.7, 0.3, 1) !important;
 }
 
 @keyframes neonRipplePulse {
     0% {
         transform: scale(0.98);
-        opacity: 0.9;
+        opacity: 0.95;
         box-shadow: 0 0 15px #00e5ff;
     }
     100% {
