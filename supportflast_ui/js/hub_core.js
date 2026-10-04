@@ -86,8 +86,7 @@
                 ch.classList.add('re-jump');
             });
         }
-
-        // Chữ giữ trạng thái tĩnh lặng, nét căng sắc sảo chuẩn Typography hiện đại
+        window.triggerHeroLettersAssemble = triggerHeroLettersAssemble;
 
         function escapeHtml(str) {
             if (!str) return '';
