@@ -56,12 +56,12 @@
             --amber: #f59e0b;
             --amber-glow: rgba(245, 158, 11, 0.35);
 
-            /* 4. Viền tinh xảo & Card Glassmorphism Slate Obsidian */
-            --border: rgba(255, 255, 255, 0.08);
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --border-specular: rgba(56, 189, 248, 0.25);
-            --card-bg: rgba(15, 23, 42, 0.65);
-            --card-bg-hover: rgba(30, 41, 59, 0.75);
+            /* 4. Viền lân quang & Card Glassmorphism Deep Sapphire */
+            --border: rgba(0, 229, 255, 0.32);
+            --border-subtle: rgba(255, 255, 255, 0.16);
+            --border-specular: rgba(255, 255, 255, 0.45);
+            --card-bg: linear-gradient(135deg, rgba(16, 28, 64, 0.75) 0%, rgba(10, 20, 48, 0.88) 100%);
+            --card-bg-hover: linear-gradient(135deg, rgba(22, 38, 85, 0.85) 0%, rgba(14, 26, 62, 0.95) 100%);
         }
 
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -5028,9 +5028,17 @@ body {
     box-sizing: border-box;
 }
 
-/* Dải sợi quang Neon Led chạy dưới đáy dải ribbon ẩn đi để liền mạch */
+/* Dải sợi quang Neon Led chạy dưới đáy dải ribbon sống động 24/7 */
 .ribbon-neon-led-track {
-    display: none !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1.5px;
+    background: linear-gradient(90deg, #4f46e5, #00e5ff, #818cf8, #38bdf8, #4f46e5);
+    background-size: 250% 100%;
+    animation: ledIndigoCyanStream 4s linear infinite !important;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.8), 0 0 14px rgba(99, 102, 241, 0.6);
 }
 
 @keyframes ledIndigoCyanStream {
@@ -5531,13 +5539,14 @@ nav {
 .h1-line-silver,
 .h1-line-silver .k-char {
     color: #ffffff !important;
-    background: linear-gradient(180deg, #ffffff 30%, #cbd5e1 100%) !important;
-    background-size: 100% 100% !important;
+    background: linear-gradient(110deg, #94a3b8 0%, #ffffff 20%, #e2e8f0 38%, #ffffff 50%, #38bdf8 68%, #ffffff 82%, #cbd5e1 100%) !important;
+    background-size: 260% 100% !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
-    animation: none !important;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85)) !important; /* Zero Blur mờ mịt */
+    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, metallicSheenSweep 5s ease-in-out infinite !important;
+    animation-delay: calc(var(--i, 0) * 0.075s), calc(var(--i, 0) * 0.05s) !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.45)) !important;
     text-shadow: none !important;
 }
 
@@ -5553,13 +5562,14 @@ nav {
 .h1-line-neon,
 .h1-line-neon .k-char {
     color: #38bdf8 !important;
-    background: linear-gradient(180deg, #ffffff 15%, #38bdf8 65%, #0284c7 100%) !important;
-    background-size: 100% 100% !important;
+    background: linear-gradient(110deg, #38bdf8 0%, #ffffff 22%, #00f0ff 48%, #ffffff 62%, #0284c7 82%, #38bdf8 100%) !important;
+    background-size: 260% 100% !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
-    animation: none !important;
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.9)) !important; /* Zero Blur mờ mịt, giữ độ bén tối đa */
+    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, metallicSheenSweep 5s ease-in-out infinite alternate !important;
+    animation-delay: calc(var(--i, 0) * 0.075s), calc(var(--i, 0) * 0.05s) !important;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 8px rgba(0, 240, 255, 0.7)) drop-shadow(0 0 20px rgba(0, 229, 255, 0.35)) !important;
     text-shadow: none !important;
 }
 
@@ -5579,30 +5589,43 @@ nav {
 }
 
 .k-char {
-    display: inline-block;
-    transform-origin: 50% 85%;
-    will-change: transform;
-    animation: continuousLetterWave 2.8s ease-in-out infinite;
-    animation-delay: calc(var(--i, 0) * 0.085s);
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block !important;
+    transform-origin: 50% 85% !important;
+    will-change: transform, background-position !important;
+    transform-style: preserve-3d !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite !important;
+    animation-delay: calc(var(--i, 0) * 0.075s) !important;
+    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 /* SÓNG CHỮ 3D TỰ ĐỘNG CHẠY LIÊN TỤC 24/7 (SẮC NÉT TỪNG MILIMET, KHÔNG BỊ MỜ) */
-@keyframes continuousLetterWave {
+@keyframes continuousLetterWave3D {
     0%, 100% {
-        transform: translateY(0px) rotateX(0deg) scale(1);
+        transform: translateY(0px) rotateX(0deg) rotateZ(0deg) scale(1);
     }
-    30% {
-        transform: translateY(-10px) rotateX(-8deg) scale(1.08);
+    28% {
+        transform: translateY(-11px) rotateX(-9deg) rotateZ(-1.5deg) scale(1.07);
     }
-    60% {
-        transform: translateY(2px) rotateX(3deg) scale(0.98);
+    58% {
+        transform: translateY(2.5px) rotateX(3deg) rotateZ(0.5deg) scale(0.98);
+    }
+}
+
+/* KEYFRAMES: ÁNH KIM & NEON QUÉT QUA TỪNG CON CHỮ */
+@keyframes metallicSheenSweep {
+    0% {
+        background-position: 220% 0;
+    }
+    60%, 100% {
+        background-position: -40% 0;
     }
 }
 
 /* KHI RÊ CHUỘT: TĂNG TỐC ĐỘ VÀ BIÊN ĐỘ UỐN LƯỢN SÓNG 3D MẠNH MẼ VẪN GIỮ ĐỘ SẮC NÉT */
 .hero-kinetic-title:hover .k-char {
-    animation: continuousLetterWaveHover 1.2s ease-in-out infinite !important;
+    animation: continuousLetterWaveHover 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite !important;
     animation-delay: calc(var(--i, 0) * 0.045s) !important;
 }
 
@@ -5611,7 +5634,7 @@ nav {
         transform: translateY(0px) rotateX(0deg) scale(1);
     }
     50% {
-        transform: translateY(-16px) rotateX(-12deg) scale(1.14);
+        transform: translateY(-17px) rotateX(-14deg) scale(1.15);
     }
 }
 
@@ -5673,7 +5696,7 @@ p.desc {
 
 /* CẶP NÚT HERO CTA ĐỐI XỨNG CHUẨN MỰC (SYMMETRICAL BUTTONS DUO) */
 .btn-hero-primary {
-    position: relative;
+    position: relative !important;
     min-height: 48px !important;
     height: 48px !important;
     padding: 0 28px !important;
@@ -5691,16 +5714,35 @@ p.desc {
     justify-content: center !important;
     gap: 10px !important;
     transform: none !important;
-    animation: none !important;
+    animation: ctaPulseBreathing 3.6s ease-in-out infinite !important;
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
     text-shadow: none !important;
     user-select: none;
-    overflow: hidden;
+    overflow: hidden !important;
 }
 
-.btn-hero-primary::before,
-.btn-hero-primary::after {
-    display: none !important; /* Xóa bỏ gờ 3D thô và vệt chớp giật */
+/* Vệt sáng Shimmer quét qua định kỳ tự động 24/7 */
+.btn-hero-primary::after,
+.btn-hero-secondary::after {
+    display: block !important;
+    content: '' !important;
+    position: absolute !important;
+    top: -50% !important;
+    left: -120% !important;
+    width: 65% !important;
+    height: 200% !important;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.15) 30%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(0, 240, 255, 0.5) 70%,
+        transparent 100%
+    ) !important;
+    transform: rotate(25deg) !important;
+    pointer-events: none !important;
+    z-index: 4 !important;
+    animation: periodicButtonSheen 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
 }
 
 .btn-hero-primary:hover {
@@ -5726,7 +5768,7 @@ p.desc {
 
 /* NÚT 2: SECONDARY ACTION BUTTON FROSTED SLATE GLASS */
 .btn-hero-secondary {
-    position: relative;
+    position: relative !important;
     min-height: 48px !important;
     height: 48px !important;
     padding: 0 26px !important;
@@ -5746,15 +5788,11 @@ p.desc {
     justify-content: center !important;
     gap: 10px !important;
     transform: none !important;
-    animation: none !important;
+    animation: secondaryGlassPulse 4s ease-in-out infinite 0.8s !important;
     transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
     text-shadow: none !important;
     user-select: none;
-    overflow: hidden;
-}
-
-.btn-hero-secondary::after {
-    display: none !important;
+    overflow: hidden !important;
 }
 
 .btn-hero-secondary:hover {
@@ -5768,6 +5806,30 @@ p.desc {
 .btn-hero-secondary:active {
     transform: translateY(1px) !important;
     background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* KEYFRAMES: NHỊP THỞ PHÁT QUANG CHO NÚT PRIMARY 24/7 */
+@keyframes ctaPulseBreathing {
+    0%, 100% {
+        box-shadow: 0 0 14px rgba(0, 240, 255, 0.35), 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        border-color: rgba(0, 240, 255, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 28px rgba(0, 240, 255, 0.68), 0 0 45px rgba(14, 165, 233, 0.38), 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 0 #ffffff;
+        border-color: rgba(255, 255, 255, 0.9);
+    }
+}
+
+/* KEYFRAMES: NHỊP THỞ VIỀN KÍNH CHO NÚT SECONDARY 24/7 */
+@keyframes secondaryGlassPulse {
+    0%, 100% {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 22px rgba(139, 92, 246, 0.35), 0 0 35px rgba(0, 229, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        border-color: rgba(0, 229, 255, 0.5);
+    }
 }
 
 /* NÚT 3: GHOST BUTTON DÀNH RIÊNG ADMIN */
@@ -9061,7 +9123,7 @@ body {
     min-height: 100vh !important;
 }
 
-/* 2. NGUỒN SÁNG AMBIENT TRUNG TÂM TINH TẾ (XÓA SẠCH VẾT LOANG LỔ CHIA ĐÔI MÀN HÌNH) */
+/* 2. NGUỒN SÁNG AMBIENT TRUNG TÂM TINH TẾ (CỰC QUANG VŨ TRỤ HUYỀN ẢO, ĐỒNG NHẤT 100%) */
 .cyber-mesh-container,
 .cyber-nebula-mesh {
     position: fixed !important;
@@ -9070,44 +9132,49 @@ body {
     user-select: none !important;
     overflow: hidden !important;
     z-index: 0 !important;
-    mix-blend-mode: normal !important;
-    filter: none !important;
+    mix-blend-mode: screen !important;
     background: transparent !important;
 }
 
-/* Nguồn sáng trung tâm Soft Ambient Glow nằm ngay sau Hero */
+/* Khối Cực quang Trung tâm (Core Cyan Horizon Aurora) */
 .mesh-orb-cyan,
 .orb-cyan {
-    top: -100px !important;
+    display: block !important;
+    top: -80px !important;
     left: 50% !important;
     right: auto !important;
-    transform: translateX(-50%) !important;
-    width: 900px !important;
-    height: 500px !important;
-    max-width: 90vw !important;
-    background: radial-gradient(ellipse 65% 50% at 50% 30%, rgba(56, 189, 248, 0.12) 0%, rgba(99, 102, 241, 0.06) 50%, transparent 80%) !important;
-    filter: blur(80px) !important;
-    opacity: 0.9 !important;
-    animation: centralAmbientPulse 18s ease-in-out infinite alternate !important;
+    width: 1000px !important;
+    height: 580px !important;
+    max-width: 95vw !important;
+    border-radius: 50% !important;
+    background: radial-gradient(ellipse 65% 55% at 50% 35%, rgba(0, 240, 255, 0.18) 0%, rgba(56, 189, 248, 0.10) 45%, rgba(99, 102, 241, 0.04) 70%, transparent 85%) !important;
+    filter: blur(95px) !important;
+    opacity: 0.95 !important;
+    transform: translate3d(-50%, 0, 0) !important;
+    will-change: transform, opacity !important;
+    animation: cosmicCoreFloat 24s ease-in-out infinite alternate !important;
 }
 
-/* Lớp sương mờ phụ đồng điệu bệ đỡ */
+/* Khối Sương mờ Vũ trụ Đệm (Cosmic Violet Veil Aurora) */
 .mesh-orb-purple,
 .orb-purple {
-    top: 35vh !important;
+    display: block !important;
+    top: 32vh !important;
     left: 50% !important;
     right: auto !important;
-    transform: translateX(-50%) !important;
-    width: 800px !important;
-    height: 420px !important;
-    max-width: 85vw !important;
-    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(99, 102, 241, 0.05) 0%, rgba(56, 189, 248, 0.03) 45%, transparent 75%) !important;
-    filter: blur(90px) !important;
-    opacity: 0.8 !important;
-    animation: centralAmbientPulse 22s ease-in-out infinite alternate-reverse !important;
+    width: 950px !important;
+    height: 480px !important;
+    max-width: 90vw !important;
+    border-radius: 50% !important;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(139, 92, 246, 0.10) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 80%) !important;
+    filter: blur(105px) !important;
+    opacity: 0.85 !important;
+    transform: translate3d(-50%, 0, 0) !important;
+    will-change: transform, opacity !important;
+    animation: cosmicVeilFloat 28s ease-in-out infinite alternate-reverse !important;
 }
 
-/* Ẩn triệt để các quả cầu màu sắc đối chọi gây loang lổ */
+/* Ẩn triệt để các quả cầu đối chọi góc cũ để bảo vệ độ hòa quyện trung tâm */
 .mesh-orb-indigo,
 .orb-deep-blue,
 .mesh-orb-amber,
@@ -9115,9 +9182,35 @@ body {
     display: none !important;
 }
 
-@keyframes centralAmbientPulse {
-    0% { transform: translateX(-50%) scale(0.96); opacity: 0.75; }
-    100% { transform: translateX(-50%) scale(1.05); opacity: 0.95; }
+/* Chuyển động cực êm ái cho Tinh vân vũ trụ */
+@keyframes cosmicCoreFloat {
+    0% {
+        transform: translate3d(-50%, 0, 0) scale(0.96);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translate3d(-48%, 20px, 0) scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: translate3d(-52%, -15px, 0) scale(0.98);
+        opacity: 0.85;
+    }
+}
+
+@keyframes cosmicVeilFloat {
+    0% {
+        transform: translate3d(-50%, 0, 0) scale(1.04);
+        opacity: 0.75;
+    }
+    50% {
+        transform: translate3d(-52%, -25px, 0) scale(0.95);
+        opacity: 0.95;
+    }
+    100% {
+        transform: translate3d(-48%, 18px, 0) scale(1.02);
+        opacity: 0.8;
+    }
 }
 
 .cyber-scanline-overlay {
