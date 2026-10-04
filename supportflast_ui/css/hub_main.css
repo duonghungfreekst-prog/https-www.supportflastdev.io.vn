@@ -9,34 +9,39 @@
             overflow: hidden !important;
         }
 
-        /* Hiển thị chuẩn xác và hoàn chỉnh Cloudflare Turnstile, che phần cảnh báo test bên dưới nếu có */
-        .cf-turnstile-clean,
-        #cf-turnstile-login.cf-turnstile-clean,
-        #cf-turnstile-register.cf-turnstile-clean,
-        #cf-turnstile-storage-login.cf-turnstile-clean {
+        /* Hiển thị chuẩn xác, tự nhiên 100% Cloudflare Turnstile theo kích thước chuẩn 300x65px (Image 2) */
+        #cf-turnstile-login,
+        #cf-turnstile-register,
+        #cf-turnstile-storage-login,
+        .cf-turnstile-clean {
             position: relative !important;
             width: 300px !important;
             max-width: 100% !important;
-            height: 43px !important;
-            max-height: 43px !important;
-            min-height: 43px !important;
-            overflow: hidden !important;
-            display: inline-block !important;
+            min-height: 65px !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
             border-radius: 6px !important;
             box-sizing: border-box !important;
-            background: #2a2a2a !important;
-            border: 1px solid rgba(255, 255, 255, 0.22) !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
             margin: 0 auto !important;
         }
 
+        #cf-turnstile-login iframe,
+        #cf-turnstile-register iframe,
+        #cf-turnstile-storage-login iframe,
         .cf-turnstile-clean iframe,
         .cf-turnstile-clean > div {
             display: block !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             border: none !important;
             border-radius: 5px !important;
-            transform: translateY(0) !important;
+            transform: none !important;
         }
 
         :root {

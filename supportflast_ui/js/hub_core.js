@@ -1300,7 +1300,7 @@
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Nhập -->
                             <div style="margin-bottom:16px;display:flex;justify-content:center;width:100%;text-align:center;">
-                                <div id="cf-turnstile-login" class="cf-turnstile-clean"></div>
+                                <div id="cf-turnstile-login"></div>
                             </div>
                             <div id="admin-login-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <button type="submit" id="admin-login-btn-submit" style="width:100%;background:linear-gradient(135deg, #00e5ff, #3b82f6);color:#010308;padding:12px;border-radius:10px;font-weight:800;font-size:0.92rem;border:none;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 18px rgba(0,229,255,0.35);">
@@ -1337,7 +1337,7 @@
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Ký -->
                             <div style="margin-bottom:16px;display:flex;justify-content:center;width:100%;text-align:center;">
-                                <div id="cf-turnstile-register" class="cf-turnstile-clean"></div>
+                                <div id="cf-turnstile-register"></div>
                             </div>
                             <div id="admin-reg-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <div id="admin-reg-success" style="display:none;color:#4ade80;font-size:0.82rem;margin-bottom:14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);padding:9px 12px;border-radius:8px;"></div>
@@ -1365,7 +1365,7 @@
         }
 
         /* Cloudflare Turnstile Anti-Bot State & Handlers */
-        let turnstileSiteKey = '1x00000000000000000000AA';
+        let turnstileSiteKey = '0x4AAAAAAFNOQjeERzGCn47f';
         let turnstileEnabled = true;
         let turnstileLoginWidgetId = null;
         let turnstileRegisterWidgetId = null;
@@ -1385,13 +1385,9 @@
         }
 
         function applyTurnstileCleanStyle() {
-            const isTestKey = !turnstileSiteKey || turnstileSiteKey.startsWith('1x');
             ['cf-turnstile-login', 'cf-turnstile-register'].forEach(id => {
                 const el = document.getElementById(id);
-                if (!el) return;
-                if (isTestKey) {
-                    el.classList.add('cf-turnstile-clean');
-                } else {
+                if (el) {
                     el.classList.remove('cf-turnstile-clean');
                 }
             });
@@ -1426,6 +1422,7 @@
             try {
                 turnstileLoginWidgetId = turnstile.render('#cf-turnstile-login', {
                     sitekey: turnstileSiteKey,
+                    action: 'login',
                     theme: 'dark',
                     size: 'flexible',
                     callback: function(token) {
@@ -1483,6 +1480,7 @@
             try {
                 turnstileRegisterWidgetId = turnstile.render('#cf-turnstile-register', {
                     sitekey: turnstileSiteKey,
+                    action: 'signup',
                     theme: 'dark',
                     size: 'flexible',
                     callback: function(token) {
@@ -1637,48 +1635,37 @@
                     })
                 });
 
-                const data = await res.json();
                 if (res.ok && data.status === 'success') {
                     if (successEl) {
-                        successEl.innerHTML = `🎉 Đăng ký thành công tài khoản <strong>${escapeHtml(username)}</strong>! Đang tự động đăng nhập...`;
+                        successEl.innerHTML = `🎉 Đăng ký thành công tài khoản <strong>${escapeHtml(username)}</strong>! Đang kích hoạt phiên làm việc...`;
                         successEl.style.display = 'block';
                     }
 
-                    // Tự động gọi đăng nhập ngay sau khi đăng ký thành công
-                    setTimeout(async () => {
-                        try {
-                            const loginRes = await fetch('/api/auth/login', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ username: username, password: password, turnstile_token: regToken })
-                            });
-                            const loginData = await loginRes.json();
-                            if (loginRes.ok && loginData.status === 'success') {
-                                const isAdmin = loginData.user && (loginData.user.role === 'admin' || loginData.user.username === 'admin');
-                                if (isAdmin) {
-                                    sessionStorage.setItem('cloudpool_jwt_token', loginData.token || '');
-                                    sessionStorage.setItem('cloudpool_current_user', JSON.stringify(loginData.user));
-                                    sessionStorage.setItem('cloudpool_admin_session', 'true');
-                                    sessionStorage.setItem('auth_last_activity', Date.now().toString());
-                                    localStorage.removeItem('cloudpool_jwt_token');
-                                    localStorage.removeItem('cloudpool_current_user');
-                                    localStorage.removeItem('sf_admin_token');
-                                } else {
-                                    if (loginData.token) localStorage.setItem('cloudpool_jwt_token', loginData.token);
-                                    localStorage.setItem('cloudpool_current_user', JSON.stringify(loginData.user));
-                                    localStorage.setItem('auth_last_activity', Date.now().toString());
-                                }
-                                recordAuthActivity();
-                                updateAdminUI(isAdmin, loginData.user);
-                                document.getElementById('admin-login-modal').style.display = 'none';
-                                alert(`Chào mừng ${loginData.user.display_name || loginData.user.username}! Bạn đã đăng ký và đăng nhập thành công.`);
+                    setTimeout(() => {
+                        if (data.token && data.user) {
+                            const isAdmin = (data.user.role === 'admin' || data.user.username === 'admin');
+                            if (isAdmin) {
+                                sessionStorage.setItem('cloudpool_jwt_token', data.token || '');
+                                sessionStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
+                                sessionStorage.setItem('cloudpool_admin_session', 'true');
+                                sessionStorage.setItem('auth_last_activity', Date.now().toString());
+                                localStorage.removeItem('cloudpool_jwt_token');
+                                localStorage.removeItem('cloudpool_current_user');
+                                localStorage.removeItem('sf_admin_token');
                             } else {
-                                switchAuthTab('login');
-                                const userInp = document.getElementById('admin-login-user');
-                                if (userInp) userInp.value = username;
+                                if (data.token) localStorage.setItem('cloudpool_jwt_token', data.token);
+                                localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
+                                localStorage.setItem('auth_last_activity', Date.now().toString());
                             }
-                        } catch(e) {
+                            recordAuthActivity();
+                            updateAdminUI(isAdmin, data.user);
+                            const modal = document.getElementById('admin-login-modal');
+                            if (modal) modal.style.display = 'none';
+                            alert(`Chào mừng ${data.user.display_name || data.user.username}! Bạn đã đăng ký và đăng nhập thành công.`);
+                        } else {
                             switchAuthTab('login');
+                            const userInp = document.getElementById('admin-login-user');
+                            if (userInp) userInp.value = username;
                         }
                     }, 800);
                 } else {

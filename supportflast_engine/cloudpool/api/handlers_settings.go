@@ -397,10 +397,10 @@ func (s *Server) handleTurnstileConfig(w http.ResponseWriter, r *http.Request) {
 
 	settings, _ := s.db.GetSettings()
 	enabled := true
-	siteKey := "1x00000000000000000000AA"
+	siteKey := "0x4AAAAAAFNOQjeERzGCn47f"
 	if settings != nil {
 		enabled = settings.TurnstileEnabled
-		if settings.TurnstileSiteKey != "" {
+		if settings.TurnstileSiteKey != "" && !strings.HasPrefix(settings.TurnstileSiteKey, "1x") {
 			siteKey = settings.TurnstileSiteKey
 		}
 	}

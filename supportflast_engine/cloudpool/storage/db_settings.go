@@ -498,18 +498,18 @@ func (s *DB) getSettingsFromDB() (*models.Settings, error) {
 
 	turnstileEnabled := setMap["turnstile_enabled"] != "false"
 	turnstileSiteKey := setMap["turnstile_site_key"]
-	if turnstileSiteKey == "" {
+	if turnstileSiteKey == "" || strings.HasPrefix(turnstileSiteKey, "1x") {
 		turnstileSiteKey = strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY"))
-		if turnstileSiteKey == "" {
-			turnstileSiteKey = "1x00000000000000000000AA" // Cloudflare official testing site key
+		if turnstileSiteKey == "" || strings.HasPrefix(turnstileSiteKey, "1x") {
+			turnstileSiteKey = "0x4AAAAAAFNOQjeERzGCn47f" // Cloudflare official production site key
 		}
 	}
 
 	turnstileSecretKey := core.DecryptSecret(masterKey, setMap["turnstile_secret_key"])
-	if turnstileSecretKey == "" {
+	if turnstileSecretKey == "" || strings.HasPrefix(turnstileSecretKey, "1x") {
 		turnstileSecretKey = strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY"))
-		if turnstileSecretKey == "" {
-			turnstileSecretKey = "1x0000000000000000000000000000000AA" // Cloudflare official testing secret key
+		if turnstileSecretKey == "" || strings.HasPrefix(turnstileSecretKey, "1x") {
+			turnstileSecretKey = "0x4AAAAAAFNOQibGFJcVH4PmaAhCDLQhTLk" // Cloudflare official production secret key
 		}
 	}
 
@@ -634,7 +634,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 		if pt != "" {
 			turnstileSecret = pt
 		} else {
-			turnstileSecret = "1x0000000000000000000000000000000AA"
+			turnstileSecret = "0x4AAAAAAFNOQibGFJcVH4PmaAhCDLQhTLk"
 		}
 	} else if strings.HasPrefix(turnstileSecret, "ENC:") {
 		pt := core.DecryptSecret(oldKey, turnstileSecret)
@@ -647,11 +647,11 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 			}
 		}
 	}
-	if turnstileSecret == "" {
-		turnstileSecret = "1x0000000000000000000000000000000AA"
+	if turnstileSecret == "" || strings.HasPrefix(turnstileSecret, "1x") {
+		turnstileSecret = "0x4AAAAAAFNOQibGFJcVH4PmaAhCDLQhTLk"
 	}
-	if set.TurnstileSiteKey == "" {
-		set.TurnstileSiteKey = "1x00000000000000000000AA"
+	if set.TurnstileSiteKey == "" || strings.HasPrefix(set.TurnstileSiteKey, "1x") {
+		set.TurnstileSiteKey = "0x4AAAAAAFNOQjeERzGCn47f"
 	}
 
 	encClientID := core.EncryptSecret(masterKey, clientID)

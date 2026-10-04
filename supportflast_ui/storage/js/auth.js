@@ -6,7 +6,7 @@ const AuthManager = {
   currentUser: null,
   turnstileWidgetId: null,
   turnstileToken: '',
-  turnstileSiteKey: '1x00000000000000000000AA',
+  turnstileSiteKey: '0x4AAAAAAFNOQjeERzGCn47f',
   turnstileEnabled: true,
   turnstileRetryCount: 0,
   turnstileFailed: false,
@@ -20,9 +20,7 @@ const AuthManager = {
         this.turnstileEnabled = (data.enabled !== false);
         const container = document.getElementById('cf-turnstile-storage-login');
         if (container) {
-          const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
-          if (isTestKey) container.classList.add('cf-turnstile-clean');
-          else container.classList.remove('cf-turnstile-clean');
+          container.classList.remove('cf-turnstile-clean');
           if (!this.turnstileEnabled) {
             container.style.display = 'none';
           }
@@ -67,6 +65,7 @@ const AuthManager = {
     try {
       this.turnstileWidgetId = turnstile.render('#cf-turnstile-storage-login', {
         sitekey: this.turnstileSiteKey,
+        action: 'login',
         theme: 'dark',
         size: 'flexible',
         callback: (token) => {

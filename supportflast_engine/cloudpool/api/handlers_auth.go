@@ -193,7 +193,7 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "Vui lòng hoàn thành xác thực chống Bot (Cloudflare Turnstile)", nil)
 			return
 		}
-		if valid, err := security.VerifyTurnstileToken(settings.TurnstileSecretKey, tToken, getClientIP(r)); !valid || err != nil {
+		if valid, err := security.VerifyTurnstileToken(settings.TurnstileSecretKey, tToken, getClientIP(r), "login"); !valid || err != nil {
 			writeError(w, http.StatusBadRequest, "Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại.", err)
 			return
 		}
@@ -305,7 +305,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "Vui lòng hoàn thành xác thực chống Bot (Cloudflare Turnstile)", nil)
 			return
 		}
-		if valid, err := security.VerifyTurnstileToken(settings.TurnstileSecretKey, tToken, clientIP); !valid || err != nil {
+		if valid, err := security.VerifyTurnstileToken(settings.TurnstileSecretKey, tToken, clientIP, "login"); !valid || err != nil {
 			writeError(w, http.StatusBadRequest, "Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại.", err)
 			return
 		}

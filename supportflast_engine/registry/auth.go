@@ -736,12 +736,12 @@ func InitAuth() {
 func GetTurnstileConfig() (enabled bool, siteKey string, secretKey string) {
 	enabled = os.Getenv("TURNSTILE_ENABLED") != "false"
 	siteKey = strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY"))
-	if siteKey == "" {
-		siteKey = "1x00000000000000000000AA" // Cloudflare official testing site key
+	if siteKey == "" || strings.HasPrefix(siteKey, "1x") {
+		siteKey = "0x4AAAAAAFNOQjeERzGCn47f" // Cloudflare official production site key
 	}
 	secretKey = strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY"))
-	if secretKey == "" {
-		secretKey = "1x0000000000000000000000000000000AA" // Cloudflare official testing secret key
+	if secretKey == "" || strings.HasPrefix(secretKey, "1x") {
+		secretKey = "0x4AAAAAAFNOQibGFJcVH4PmaAhCDLQhTLk" // Cloudflare official production secret key
 	}
 	return enabled, siteKey, secretKey
 }
@@ -798,7 +798,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		clientIP := security.GetRealClientIP(r)
-		if valid, err := security.VerifyTurnstileToken(secretKey, tToken, clientIP); !valid || err != nil {
+		if valid, err := security.VerifyTurnstileToken(secretKey, tToken, clientIP, "signup"); !valid || err != nil {
 			http.Error(w, `{"error":"Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại."}`, http.StatusBadRequest)
 			return
 		}
@@ -953,7 +953,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			sendJSONError(w, "Vui lòng hoàn thành xác thực chống Bot (Cloudflare Turnstile)", http.StatusBadRequest)
 			return
 		}
-		if valid, err := security.VerifyTurnstileToken(secretKey, tToken, clientIP); !valid || err != nil {
+		if valid, err := security.VerifyTurnstileToken(secretKey, tToken, clientIP, "login"); !valid || err != nil {
 			sendJSONError(w, "Xác thực chống Bot thất bại hoặc mã đã hết hạn. Vui lòng thử lại.", http.StatusBadRequest)
 			return
 		}

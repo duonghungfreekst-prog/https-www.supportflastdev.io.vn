@@ -2,6 +2,7 @@ package security
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -87,5 +88,12 @@ func TestVerifyTurnstileToken(t *testing.T) {
 	valid, err = VerifyTurnstileToken("secret", "XXXX.DUMMY.TOKEN.XXXX", "127.0.0.1")
 	if !valid || err != nil {
 		t.Errorf("Expected success for dummy token, got valid=%v, err=%v", valid, err)
+	}
+
+	// 4. Token exceeding 2048 characters should fail pre-validation
+	longToken := strings.Repeat("A", 2049)
+	valid, err = VerifyTurnstileToken("secret", longToken, "127.0.0.1")
+	if valid || err == nil {
+		t.Errorf("Expected failure for token > 2048 chars, got valid=%v, err=%v", valid, err)
 	}
 }
