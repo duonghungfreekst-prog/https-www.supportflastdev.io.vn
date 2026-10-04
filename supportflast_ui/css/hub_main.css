@@ -5027,9 +5027,35 @@ body {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ============================================================== */
+/* KHỬ TRIỆT ĐỂ THANH CUỘN DỌC TRONG HEADER & CHO PHÉP DROPDOWN NỔI */
+/* ============================================================== */
+.cyber-monolith-header,
+.cyber-monolith-header .wrapper,
+.cyber-monolith-header .nav-inner-wrapper,
+.nav-inner-wrapper,
+.cyber-monolith-header nav,
+.cyber-monolith-header .nav-right,
+#nav-user-profile {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+}
+
 .nav-inner-wrapper {
-    padding: 0 18px;
-    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+    width: 100% !important;
+    max-width: 1536px !important;
+    margin: 0 auto !important;
+    padding-left: clamp(var(--space-3), 3vw, var(--space-6)) !important;
+    padding-right: clamp(var(--space-3), 3vw, var(--space-6)) !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+
+#user-dropdown-menu {
+    z-index: 9999 !important;
 }
 
 /* ========================================================================== */
