@@ -5529,7 +5529,7 @@ nav {
     gap: 8px;
 }
 
-/* Dòng 1: Pre-headline màu Bạch Kim Băng Giá */
+/* Dòng 1: Pre-headline màu Bạch Kim Băng Giá với ánh kim Metallic Sheen lấp lánh (sắc nét 100%) */
 .h1-tier-sub .h1-line {
     font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
     font-size: clamp(2rem, 4.4vw, 3.4rem);
@@ -5539,11 +5539,17 @@ nav {
 }
 
 .h1-line-silver {
-    color: #ffffff !important;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6) !important;
+    background: linear-gradient(120deg, #ffffff 0%, #f1f5f9 22%, #cbd5e1 42%, #ffffff 52%, #94a3b8 72%, #ffffff 100%) !important;
+    background-size: 260% 100% !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    animation: metallicSheenSweep 5.5s ease-in-out infinite alternate !important;
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.85)) !important;
+    text-shadow: none !important;
 }
 
-/* Dòng 2: Main Punchline màu Gradient Cyan Neon sang Deep Indigo */
+/* Dòng 2: Main Punchline màu Gradient Cyan Neon sang Deep Indigo & Tím Vũ Trụ */
 .h1-tier-main .h1-line {
     font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
     font-size: clamp(2.8rem, 6.2vw, 5.2rem);
@@ -5553,13 +5559,23 @@ nav {
 }
 
 .h1-line-neon {
-    color: #00e5ff;
-    background: linear-gradient(135deg, #ffffff 0%, #38bdf8 40%, #00e5ff 80%, #a855f7 100%) !important;
+    background: linear-gradient(120deg, #00f0ff 0%, #38bdf8 20%, #ffffff 45%, #00e5ff 68%, #c084fc 85%, #00e5ff 100%) !important;
+    background-size: 260% 100% !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
+    animation: metallicSheenSweep 4.5s ease-in-out infinite alternate-reverse !important;
+    filter: drop-shadow(0 2px 14px rgba(0, 240, 255, 0.35)) drop-shadow(0 0 26px rgba(168, 85, 247, 0.22)) !important;
     text-shadow: none !important;
-    filter: drop-shadow(0 2px 12px rgba(0, 240, 255, 0.22)) !important;
+}
+
+@keyframes metallicSheenSweep {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
 }
 
 .h1-glow {
@@ -9085,19 +9101,19 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
 /* FIX TRIỆT ĐỂ BỐ CỤC CARD ỨNG DỤNG, NỀN OBSIDIAN VÀ HEADER (HOTFIX 2026)     */
 /* ========================================================================== */
 
-/* 1. NỀN KHÔNG GIAN OBSIDIAN & MIDNIGHT SAPPHIRE TĨNH LẶNG, ÊM DỊU MẮT */
+/* 1. NỀN KHÔNG GIAN OBSIDIAN & MIDNIGHT SAPPHIRE TĨNH LẶNG, SÂU THẲM */
 body {
     background-color: #050914 !important;
     background-image: 
-        radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.12) 0%, transparent 60%),
-        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.10) 0%, transparent 55%),
-        radial-gradient(circle at 15% 75%, rgba(59, 130, 246, 0.10) 0%, transparent 55%),
-        linear-gradient(180deg, #050914 0%, #080f24 40%, #060c1d 75%, #040712 100%) !important;
+        radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.18) 0%, transparent 60%),
+        radial-gradient(circle at 85% 25%, rgba(168, 85, 247, 0.16) 0%, transparent 55%),
+        radial-gradient(circle at 15% 75%, rgba(59, 130, 246, 0.16) 0%, transparent 55%),
+        linear-gradient(180deg, #050914 0%, #080f26 40%, #060c20 75%, #040714 100%) !important;
     background-attachment: fixed !important;
     min-height: 100vh !important;
 }
 
-/* 2. ĐỒNG BỘ CLASS CHO CỤM GRADIENT MESH ORBS - TÁN SẮC MỀM MỊN NHƯ LỤA */
+/* 2. ĐỒNG BỘ CLASS CHO CỤM GRADIENT MESH ORBS - TÁN SẮC HUYỀN ẢO, SỐNG ĐỘNG */
 .cyber-mesh-container,
 .cyber-nebula-mesh {
     position: fixed !important;
@@ -9109,53 +9125,53 @@ body {
     user-select: none !important;
     overflow: hidden !important;
     z-index: 0 !important;
-    mix-blend-mode: normal !important;
-    opacity: 0.65 !important;
+    mix-blend-mode: screen !important;
+    opacity: 0.82 !important;
 }
 
 .mesh-orb,
 .nebula-orb {
     position: absolute !important;
     border-radius: 50% !important;
-    filter: blur(140px) !important;
-    opacity: 0.35 !important;
+    filter: blur(95px) !important;
+    opacity: 0.76 !important;
     pointer-events: none !important;
     will-change: transform !important;
 }
 
 .mesh-orb-cyan,
 .orb-cyan {
-    top: -12vh !important;
-    left: -10vw !important;
+    top: -10vh !important;
+    left: -8vw !important;
     width: 65vw !important;
     height: 65vw !important;
     max-width: 850px !important;
     max-height: 850px !important;
-    background: radial-gradient(circle, rgba(0, 240, 255, 0.16) 0%, rgba(14, 165, 233, 0.08) 45%, transparent 75%) !important;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.32) 0%, rgba(14, 165, 233, 0.16) 45%, transparent 75%) !important;
     animation: nebulaDriftOne 24s ease-in-out infinite alternate !important;
 }
 
 .mesh-orb-indigo,
 .orb-deep-blue {
-    bottom: -18vh !important;
+    bottom: -15vh !important;
     left: 15vw !important;
     width: 75vw !important;
     height: 75vw !important;
     max-width: 1000px !important;
     max-height: 1000px !important;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, rgba(79, 70, 229, 0.08) 50%, transparent 78%) !important;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.30) 0%, rgba(79, 70, 229, 0.15) 50%, transparent 78%) !important;
     animation: nebulaDriftThree 30s ease-in-out infinite alternate !important;
 }
 
 .mesh-orb-purple,
 .orb-purple {
     top: 10vh !important;
-    right: -12vw !important;
+    right: -10vw !important;
     width: 65vw !important;
     height: 65vw !important;
     max-width: 850px !important;
     max-height: 850px !important;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.13) 0%, rgba(139, 92, 246, 0.06) 45%, transparent 75%) !important;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(139, 92, 246, 0.14) 45%, transparent 75%) !important;
     animation: nebulaDriftTwo 28s ease-in-out infinite alternate-reverse !important;
 }
 
@@ -9167,7 +9183,7 @@ body {
     height: 45vw !important;
     max-width: 600px !important;
     max-height: 600px !important;
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.11) 0%, rgba(217, 119, 6, 0.04) 45%, transparent 70%) !important;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.09) 45%, transparent 70%) !important;
     animation: nebulaDriftFour 32s ease-in-out infinite alternate !important;
 }
 
@@ -9561,5 +9577,111 @@ body {
     transform: translateY(-2px) scale(1.02);
     box-shadow: 0 8px 26px rgba(0, 229, 255, 0.45);
 }
+
+/* ========================================================================== */
+/* BỔ SUNG: BORDER BEAM LASER HOLOGRAPHIC CHO TẤT CẢ CARD BENTO VÀ FEATURED  */
+/* ========================================================================== */
+.card,
+.featured-app-card {
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.card .border-beam,
+.featured-app-card .border-beam {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    z-index: 2;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    overflow: hidden;
+    opacity: 0.65;
+    transition: opacity 0.4s ease;
+}
+
+.card:hover .border-beam,
+.featured-app-card:hover .border-beam {
+    opacity: 1;
+}
+
+.card .border-beam::after,
+.featured-app-card .border-beam::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 250%;
+    height: 250%;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        transparent 55deg,
+        rgba(0, 229, 255, 0.95) 85deg,
+        rgba(139, 92, 246, 0.95) 120deg,
+        transparent 150deg,
+        transparent 360deg
+    );
+    transform: translate(-50%, -50%) rotate(0deg);
+    animation: borderBeamSpin 4.5s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.8));
+}
+
+.card:hover .border-beam::after,
+.featured-app-card:hover .border-beam::after {
+    animation-duration: 2.6s;
+}
+
+/* HIỆU ỨNG GƯƠNG PHẢN CHIẾU QUANG HỌC (SPECULAR GLARE REFLEX) KHI DI CHUỘT */
+.card::before,
+.featured-app-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: inherit;
+    background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.08) 0%, rgba(0, 229, 255, 0.06) 35%, transparent 65%);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover::before,
+.featured-app-card:hover::before {
+    opacity: 1;
+}
+
+/* TỰ ĐỘNG QUÉT SHIMMER ĐỊNH KỲ CHO NÚT BẤM HERO CTA VÀ NAVBAR */
+@keyframes periodicButtonSheen {
+    0%, 75% {
+        left: -100%;
+        opacity: 0;
+    }
+    76% {
+        opacity: 0.8;
+    }
+    90% {
+        left: 200%;
+        opacity: 0.8;
+    }
+    100% {
+        left: 200%;
+        opacity: 0;
+    }
+}
+
+.btn-hero-primary::after,
+.btn-hero-secondary::after,
+.btn-nav-upload::after {
+    animation: periodicButtonSheen 5.5s ease-in-out infinite;
+}
+
 
 

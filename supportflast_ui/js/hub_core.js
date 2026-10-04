@@ -17,6 +17,7 @@
                 const card = e.target.closest(tiltSelector);
                 if (card) {
                     if (activeTiltCard && activeTiltCard !== card) {
+                        activeTiltCard.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
                         activeTiltCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
                     }
                     activeTiltCard = card;
@@ -26,13 +27,15 @@
                     
                     const centerX = rect.width / 2;
                     const centerY = rect.height / 2;
-                    const rotateX = ((y - centerY) / centerY) * -7.5;
-                    const rotateY = ((x - centerX) / centerX) * 7.5;
+                    const rotateX = ((y - centerY) / centerY) * -8;
+                    const rotateY = ((x - centerX) / centerX) * 8;
                     
-                    card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.025, 1.025, 1.025)`;
+                    card.style.transition = 'transform 0.08s ease-out';
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.028, 1.028, 1.028)`;
                     card.style.setProperty('--mouse-x', `${x}px`);
                     card.style.setProperty('--mouse-y', `${y}px`);
                 } else if (activeTiltCard) {
+                    activeTiltCard.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
                     activeTiltCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
                     activeTiltCard = null;
                 }
@@ -40,6 +43,7 @@
 
             document.addEventListener('mouseleave', () => {
                 if (activeTiltCard) {
+                    activeTiltCard.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
                     activeTiltCard.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
                     activeTiltCard = null;
                 }
@@ -4629,7 +4633,7 @@ function renderCyberRadarEmptyState(options) {
                         if (distSq < CONNECT_DISTANCE_SQ) {
                             const dist = Math.sqrt(distSq);
                             const factor = 1 - (dist / CONNECT_DISTANCE);
-                            const lineAlpha = factor * 0.22;
+                            const lineAlpha = factor * 0.38;
 
                             ctx.beginPath();
                             // Tạo gradient nối mượt mà giữa màu 2 hạt
@@ -4638,7 +4642,7 @@ function renderCyberRadarEmptyState(options) {
                             lineGrad.addColorStop(1, `rgba(${p2.rgb}, ${lineAlpha * p2.currentAlpha})`);
 
                             ctx.strokeStyle = lineGrad;
-                            ctx.lineWidth = factor * 1.1;
+                            ctx.lineWidth = factor * 1.25;
                             ctx.moveTo(p.x, p.y);
                             ctx.lineTo(p2.x, p2.y);
                             ctx.stroke();
