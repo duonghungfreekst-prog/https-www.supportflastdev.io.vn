@@ -1299,8 +1299,8 @@
                                 <input type="password" id="admin-login-pass" placeholder="Nhập mật khẩu..." required style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:0.9rem;outline:none;" onfocus="this.style.borderColor='#00e5ff'" onblur="this.style.borderColor='rgba(255,255,255,0.15)'">
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Nhập -->
-                            <div style="margin-bottom:16px;display:flex;justify-content:center;width:100%;text-align:center;">
-                                <div id="cf-turnstile-login"></div>
+                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;overflow:visible;">
+                                <div id="cf-turnstile-login" style="width:300px;min-width:300px;height:65px;min-height:65px;max-height:65px;margin:0 auto;display:flex;justify-content:center;align-items:center;background:transparent;border:none;box-shadow:none;overflow:visible;"></div>
                             </div>
                             <div id="admin-login-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <button type="submit" id="admin-login-btn-submit" style="width:100%;background:linear-gradient(135deg, #00e5ff, #3b82f6);color:#010308;padding:12px;border-radius:10px;font-weight:800;font-size:0.92rem;border:none;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 18px rgba(0,229,255,0.35);">
@@ -1336,8 +1336,8 @@
                                 </div>
                             </div>
                             <!-- Cloudflare Turnstile Anti-Bot Verification cho Đăng Ký -->
-                            <div style="margin-bottom:16px;display:flex;justify-content:center;width:100%;text-align:center;">
-                                <div id="cf-turnstile-register"></div>
+                            <div style="margin-bottom:16px;display:flex;justify-content:center;align-items:center;width:100%;min-height:65px;overflow:visible;">
+                                <div id="cf-turnstile-register" style="width:300px;min-width:300px;height:65px;min-height:65px;max-height:65px;margin:0 auto;display:flex;justify-content:center;align-items:center;background:transparent;border:none;box-shadow:none;overflow:visible;"></div>
                             </div>
                             <div id="admin-reg-err" style="display:none;color:#ef4444;font-size:0.82rem;margin-bottom:14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:9px 12px;border-radius:8px;"></div>
                             <div id="admin-reg-success" style="display:none;color:#4ade80;font-size:0.82rem;margin-bottom:14px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);padding:9px 12px;border-radius:8px;"></div>
@@ -1424,7 +1424,7 @@
                     sitekey: turnstileSiteKey,
                     action: 'login',
                     theme: 'dark',
-                    size: 'flexible',
+                    size: 'normal',
                     callback: function(token) {
                         turnstileLoginToken = token;
                         const err = document.getElementById('admin-login-err');
@@ -1482,7 +1482,7 @@
                     sitekey: turnstileSiteKey,
                     action: 'signup',
                     theme: 'dark',
-                    size: 'flexible',
+                    size: 'normal',
                     callback: function(token) {
                         turnstileRegisterToken = token;
                         const err = document.getElementById('admin-reg-err');

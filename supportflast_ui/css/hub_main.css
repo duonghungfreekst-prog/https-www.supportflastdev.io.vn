@@ -13,13 +13,22 @@
         #cf-turnstile-login,
         #cf-turnstile-register,
         #cf-turnstile-storage-login,
-        .cf-turnstile-clean {
+        #cf-turnstile-login > div,
+        #cf-turnstile-register > div,
+        #cf-turnstile-storage-login > div,
+        #cf-turnstile-login iframe,
+        #cf-turnstile-register iframe,
+        #cf-turnstile-storage-login iframe,
+        .cf-turnstile-clean,
+        .cf-turnstile-clean > div,
+        .cf-turnstile-clean iframe {
             position: relative !important;
             width: 300px !important;
+            min-width: 300px !important;
             max-width: 100% !important;
+            height: 65px !important;
             min-height: 65px !important;
-            height: auto !important;
-            max-height: none !important;
+            max-height: 65px !important;
             overflow: visible !important;
             display: flex !important;
             justify-content: center !important;
@@ -35,13 +44,15 @@
         #cf-turnstile-login iframe,
         #cf-turnstile-register iframe,
         #cf-turnstile-storage-login iframe,
-        .cf-turnstile-clean iframe,
-        .cf-turnstile-clean > div {
+        .cf-turnstile-clean iframe {
             display: block !important;
+            width: 300px !important;
+            height: 65px !important;
             margin: 0 auto !important;
             border: none !important;
             border-radius: 5px !important;
             transform: none !important;
+            overflow: visible !important;
         }
 
         :root {

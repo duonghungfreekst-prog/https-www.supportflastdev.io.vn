@@ -67,7 +67,7 @@ const AuthManager = {
         sitekey: this.turnstileSiteKey,
         action: 'login',
         theme: 'dark',
-        size: 'flexible',
+        size: 'normal',
         callback: (token) => {
           this.turnstileToken = token;
           this.turnstileFailed = false;

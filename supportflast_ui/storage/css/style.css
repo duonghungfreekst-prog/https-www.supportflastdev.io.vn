@@ -2716,13 +2716,18 @@ html[data-touch="true"] .file-card {
 
 /* Hiển thị chuẩn xác, tự nhiên 100% Cloudflare Turnstile theo kích thước chuẩn 300x65px (Image 2) */
 #cf-turnstile-storage-login,
-.cf-turnstile-clean {
+#cf-turnstile-storage-login > div,
+#cf-turnstile-storage-login iframe,
+.cf-turnstile-clean,
+.cf-turnstile-clean > div,
+.cf-turnstile-clean iframe {
     position: relative !important;
     width: 300px !important;
+    min-width: 300px !important;
     max-width: 100% !important;
+    height: 65px !important;
     min-height: 65px !important;
-    height: auto !important;
-    max-height: none !important;
+    max-height: 65px !important;
     overflow: visible !important;
     display: flex !important;
     justify-content: center !important;
@@ -2736,13 +2741,15 @@ html[data-touch="true"] .file-card {
 }
 
 #cf-turnstile-storage-login iframe,
-.cf-turnstile-clean iframe,
-.cf-turnstile-clean > div {
+.cf-turnstile-clean iframe {
     display: block !important;
+    width: 300px !important;
+    height: 65px !important;
     margin: 0 auto !important;
     border: none !important;
     border-radius: 5px !important;
     transform: none !important;
+    overflow: visible !important;
 }
 
 /* ==========================================================================
