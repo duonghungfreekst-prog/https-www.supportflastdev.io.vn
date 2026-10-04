@@ -4520,35 +4520,49 @@
             font-size: 1.1rem;
         }
 
-        /* FLOATING ZALO PULSE WIDGET */
+        /* ==========================================================================
+           FLOATING ZALO PULSE WIDGET - CYBER GLASSMORPHISM & TRIPLE RADAR PULSE
+           Tối ưu hóa GPU 60FPS - Viền quang học kép Cyan/Tím - A11y WCAG AAA
+           ========================================================================== */
         .floating-zalo-widget {
             position: fixed;
             bottom: 84px;
             right: 20px;
-            z-index: 9999;
+            z-index: 995;
             display: flex;
             align-items: center;
             text-decoration: none;
             cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            outline: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s ease;
         }
+
+        /* 1. KHỐI TRÒN AVATAR GLASSMORPHISM */
         .floating-zalo-circle {
-            width: 62px;
-            height: 62px;
+            width: 66px;
+            height: 66px;
             border-radius: 50%;
             background: #060913;
             border: 2px solid #00e5ff;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 229, 255, 0.6), 0 0 35px rgba(168, 85, 247, 0.45);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7),
+                        0 0 25px rgba(0, 229, 255, 0.6),
+                        0 0 35px rgba(168, 85, 247, 0.45);
             position: relative;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translate3d(0, 0, 0);
+            transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        border-color 0.25s ease,
+                        box-shadow 0.35s ease;
+            will-change: transform, box-shadow;
         }
-        .floating-zalo-widget:hover .floating-zalo-circle {
-            transform: scale(1.1);
-            border-color: #ffffff;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 229, 255, 0.9), 0 0 50px rgba(168, 85, 247, 0.7);
-        }
+
+        /* 2. AVATAR VECTOR SVG SIÊU SẮC NÉT BÊN TRONG */
         .floating-gemini-avatar {
             width: 100%;
             height: 100%;
@@ -4556,79 +4570,319 @@
             border-radius: 50%;
             display: block;
             pointer-events: none;
+            transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+            will-change: transform;
         }
+
+        /* 3. HUY HIỆU GÓC ZALO CHUẨN XÁC NHẬN DIỆN */
         .floating-zalo-corner-badge {
             position: absolute;
             bottom: -2px;
             right: -2px;
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
-            border: 2px solid #ffffff;
-            background: #0068ff;
+            border: none;
+            background: transparent;
+            padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.65), 0 0 10px rgba(0, 104, 255, 0.45);
             z-index: 5;
-            transition: transform 0.25s ease;
+            transform-origin: center center;
+            transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+            will-change: transform, box-shadow;
         }
-        .floating-zalo-widget:hover .floating-zalo-corner-badge {
-            transform: scale(1.18);
+
+        .floating-zalo-corner-badge svg {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
-        .floating-zalo-wave, .floating-zalo-wave-2 {
+
+        /* 4. SÓNG XUNG KÍCH RADAR 3 TẦNG (TRIPLE CONCENTRIC RADAR PULSE) - GPU 60FPS */
+        .floating-zalo-wave, 
+        .floating-zalo-wave-2,
+        .floating-zalo-wave-3 {
             position: absolute;
             inset: -5px;
             border-radius: 50%;
-            border: 2px solid #00e5ff;
-            opacity: 0;
             pointer-events: none;
-            animation: zalo-ripple 2.4s infinite cubic-bezier(0, 0.2, 0.8, 1);
+            opacity: 0;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            animation: zalo-radar-ripple 3s infinite cubic-bezier(0, 0.2, 0.8, 1);
         }
+
+        /* Vòng 1: Cyan #00e5ff (Delay 0s) - Khởi phát tín hiệu trung tâm */
+        .floating-zalo-wave,
+        .floating-zalo-wave-1 {
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.6), inset 0 0 8px rgba(0, 229, 255, 0.25);
+            animation-delay: 0s;
+        }
+
+        /* Vòng 2: Indigo #6366f1 (Delay 1.0s) - Tầng truyền dẫn tần số cao */
         .floating-zalo-wave-2 {
-            animation-delay: 1.2s;
-            border-color: #a855f7;
+            border: 2px solid #6366f1;
+            box-shadow: 0 0 18px rgba(99, 102, 241, 0.6), inset 0 0 10px rgba(99, 102, 241, 0.25);
+            animation-delay: 1.0s;
         }
+
+        /* Vòng 3: Magenta/Purple #a855f7 (Delay 2.0s) - Sóng tỏa rộng bao phủ 24/7 */
+        .floating-zalo-wave-3 {
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.65), inset 0 0 12px rgba(168, 85, 247, 0.3);
+            animation-delay: 2.0s;
+        }
+
+        /* 5. THANH PILL THÔNG ĐIỆP TƯ VẤN (GLASSMORPHISM + ĐUÔI CHỈ HƯỚNG) */
         .floating-zalo-pill {
             position: absolute;
-            right: 74px;
-            background: rgba(11, 17, 32, 0.96);
-            border: 1px solid rgba(0, 229, 255, 0.6);
-            padding: 8px 16px;
-            border-radius: 999px;
+            right: 78px;
+            background: rgba(7, 13, 30, 0.92);
+            border: 1px solid rgba(0, 229, 255, 0.65);
+            padding: 9px 18px 10px 16px;
+            border-radius: 18px;
             white-space: nowrap;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 229, 255, 0.3);
-            backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75), 
+                        0 0 20px rgba(0, 229, 255, 0.35), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             display: flex;
             flex-direction: column;
-            pointer-events: none;
-            transition: all 0.3s ease;
+            gap: 3px;
+            pointer-events: auto;
             transform-origin: right center;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 10;
         }
+
+        .floating-zalo-pill > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Đuôi chỉ hướng nối liền sang Avatar */
+        .floating-zalo-pill::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -7px;
+            width: 14px;
+            height: 14px;
+            background: rgba(7, 13, 30, 0.92);
+            border-top: 1px solid rgba(0, 229, 255, 0.65);
+            border-right: 1px solid rgba(0, 229, 255, 0.65);
+            transform: translateY(-50%) rotate(45deg);
+            border-radius: 0 3px 0 0;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 1;
+        }
+
+        /* Đèn LED trạng thái kỹ thuật viên */
+        .floating-zalo-pill-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #34d399;
+            letter-spacing: 0.3px;
+            line-height: 1;
+            margin-bottom: 1px;
+        }
+
+        .zalo-status-dot {
+            position: relative;
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            background-color: #00e676;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00e676, 0 0 14px rgba(0, 230, 118, 0.6);
+            flex-shrink: 0;
+            animation: led-glow 2s ease-in-out infinite;
+        }
+
+        .zalo-status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            background: rgba(0, 230, 118, 0.45);
+            animation: led-pulse 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+
+        .zalo-status-text {
+            line-height: 1;
+            user-select: none;
+        }
+
+        /* Typography tiêu đề Cyan siêu sáng */
         .floating-zalo-pill-title {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 800;
-            color: #00e5ff;
+            color: #00f0ff;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            letter-spacing: 0.3px;
+            line-height: 1.25;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.75), 0 0 20px rgba(0, 229, 255, 0.4);
+            user-select: none;
+        }
+
+        /* Typography dòng phụ */
+        .floating-zalo-pill-sub {
+            font-size: 0.73rem;
+            color: #cbd5e1;
+            font-weight: 600;
+            line-height: 1.25;
             display: flex;
             align-items: center;
             gap: 4px;
-            letter-spacing: 0.3px;
-        }
-        .floating-zalo-pill-sub {
-            font-size: 0.72rem;
-            color: #cbd5e1;
-            font-weight: 600;
+            user-select: none;
         }
 
-        /* Animations */
+        .pill-sub-arrow {
+            display: inline-block;
+            color: #00e5ff;
+            transition: transform 0.25s ease, color 0.25s ease;
+        }
+
+        /* 6. HOVER ĐỒNG BỘ (SYNCHRONIZED SPRING HOVER) */
+        .floating-zalo-widget:hover .floating-zalo-circle {
+            transform: translateY(-4px) scale(1.08);
+            border-color: #ffffff;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.85),
+                        0 0 35px rgba(0, 229, 255, 0.95),
+                        0 0 55px rgba(168, 85, 247, 0.75);
+        }
+
+        .floating-zalo-widget:hover .floating-gemini-avatar {
+            transform: scale(1.06) rotate(3deg);
+        }
+
+        .floating-zalo-widget:hover .floating-zalo-pill {
+            transform: translateX(-6px) scale(1.02);
+            border-color: #00e5ff;
+            background: rgba(11, 20, 40, 0.98);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85),
+                        0 0 25px rgba(0, 229, 255, 0.65),
+                        inset 0 0 12px rgba(0, 229, 255, 0.2);
+        }
+
+        .floating-zalo-widget:hover .floating-zalo-pill::after {
+            border-color: #00e5ff;
+        }
+
+        .floating-zalo-widget:hover .pill-sub-arrow {
+            transform: translateX(4px);
+            color: #ffffff;
+        }
+
+        .floating-zalo-widget:hover .floating-zalo-corner-badge {
+            transform: scale(1.24) rotate(12deg);
+            box-shadow: 0 6px 18px rgba(0, 104, 255, 0.9), 0 0 16px rgba(0, 229, 255, 0.8);
+        }
+
+        /* 7. PHẢN HỒI XÚC GIÁC KHI CLICK (ACTIVE STATE) */
+        .floating-zalo-widget:active {
+            transform: scale(0.93) translateY(2px);
+            transition: transform 0.08s ease-out;
+        }
+
+        .floating-zalo-widget:active .floating-zalo-circle {
+            transform: scale(0.95);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 229, 255, 0.5);
+        }
+
+        /* 8. BÀN PHÍM FOCUS RING (WCAG AAA DUAL-LAYER) */
+        .floating-zalo-widget:focus {
+            outline: none;
+        }
+
+        .floating-zalo-widget:focus-visible .floating-zalo-circle {
+            outline: 3px solid #ffffff;
+            outline-offset: 4px;
+            box-shadow: 0 0 0 7px #0068ff, 0 0 30px rgba(0, 229, 255, 1), 0 12px 40px rgba(0, 0, 0, 0.9);
+            transform: translateY(-4px) scale(1.08);
+        }
+
+        .floating-zalo-widget:focus-visible .floating-zalo-pill {
+            display: flex;
+            transform: translateX(-6px) scale(1.02);
+            border-color: #ffffff;
+            box-shadow: 0 0 0 3px #0068ff, 0 0 20px rgba(0, 229, 255, 0.8), 0 12px 35px rgba(0, 0, 0, 0.85);
+        }
+
+        /* 9. KEYFRAMES HOẠT HỌA */
+        @keyframes zalo-radar-ripple {
+            0% {
+                transform: scale(0.92) translateZ(0);
+                opacity: 0.9;
+            }
+            50% {
+                opacity: 0.45;
+            }
+            100% {
+                transform: scale(1.85) translateZ(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes zalo-ripple {
+            0% {
+                transform: scale(0.92) translateZ(0);
+                opacity: 0.9;
+            }
+            50% {
+                opacity: 0.45;
+            }
+            100% {
+                transform: scale(1.85) translateZ(0);
+                opacity: 0;
+            }
+        }
+
+        @keyframes led-glow {
+            0%, 100% {
+                opacity: 1;
+                box-shadow: 0 0 8px #00e676, 0 0 14px rgba(0, 230, 118, 0.6);
+            }
+            50% {
+                opacity: 0.65;
+                box-shadow: 0 0 3px #00e676, 0 0 7px rgba(0, 230, 118, 0.3);
+            }
+        }
+
+        @keyframes led-pulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.9;
+            }
+            55% {
+                transform: scale(2.2);
+                opacity: 0.2;
+            }
+            100% {
+                transform: scale(2.8);
+                opacity: 0;
+            }
+        }
+
         @keyframes ring-pulse {
             0% { transform: scale(1); opacity: 0.9; }
             100% { transform: scale(1.12); opacity: 0; }
         }
-        @keyframes zalo-ripple {
-            0% { transform: scale(0.9); opacity: 0.9; }
-            100% { transform: scale(1.6); opacity: 0; }
-        }
+
         @keyframes pulse-gemini {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.2); }
@@ -4676,16 +4930,42 @@
             .poster-image-wrap {
                 aspect-ratio: 4 / 5;
             }
-            .floating-zalo-pill {
-                display: none;
-            }
+            /* TỐI ƯU CÔNG THÁI HỌC MOBILE: AVATAR 52PX, MINI CAPSULE PILL THÔNG MINH */
             .floating-zalo-widget {
-                bottom: 74px;
-                right: 14px;
+                bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+                right: calc(14px + env(safe-area-inset-right, 0px));
             }
             .floating-zalo-circle {
-                width: 48px;
-                height: 48px;
+                width: 52px;
+                height: 52px;
+            }
+            .floating-zalo-corner-badge {
+                width: 22px;
+                height: 22px;
+                bottom: -2px;
+                right: -2px;
+            }
+            .floating-zalo-pill {
+                display: flex;
+                right: 62px;
+                padding: 5px 12px;
+                border-radius: 999px;
+                max-width: 135px;
+                background: rgba(11, 17, 32, 0.94);
+                border: 1px solid rgba(0, 229, 255, 0.5);
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 229, 255, 0.25);
+            }
+            .floating-zalo-pill-sub,
+            .floating-zalo-pill-status,
+            .floating-zalo-pill::after {
+                display: none !important;
+            }
+            .floating-zalo-pill-title {
+                font-size: 0.72rem;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .gemini-top-ribbon-mega {
                 height: auto;
@@ -9038,7 +9318,7 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
 }
 
 /* will-change có chủ đích cho các đối tượng hoạt họa liên tục */
-.ribbon-neon-led-track, .ribbon-light-shimmer, .floating-zalo-wave, .floating-zalo-wave-2 {
+.ribbon-neon-led-track, .ribbon-light-shimmer, .floating-zalo-wave, .floating-zalo-wave-2, .floating-zalo-wave-3 {
     will-change: transform, opacity;
 }
 

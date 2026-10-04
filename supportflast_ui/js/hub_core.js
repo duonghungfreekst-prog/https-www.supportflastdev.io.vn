@@ -6653,3 +6653,25 @@ function renderCyberRadarEmptyState(options) {
             } catch (e) {}
         })();
 
+        // Hỗ trợ phím Spacebar cho nút Zalo nổi khi đạt focus bàn phím (A11y WAI-ARIA)
+        (function initFloatingZaloA11y() {
+            function bindZaloKey() {
+                const zaloFloatingBtn = document.getElementById('floating-zalo-btn');
+                if (zaloFloatingBtn && !zaloFloatingBtn.__a11yBound) {
+                    zaloFloatingBtn.__a11yBound = true;
+                    zaloFloatingBtn.addEventListener('keydown', function(e) {
+                        if (e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+                            e.preventDefault();
+                            zaloFloatingBtn.click();
+                        }
+                    });
+                }
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindZaloKey);
+            } else {
+                bindZaloKey();
+            }
+        })();
+
+
