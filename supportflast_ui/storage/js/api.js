@@ -223,8 +223,9 @@ const API = {
     return this.request('/api/accounts');
   },
 
-  getOAuthURL() {
-    return this.request('/api/accounts/oauth/url');
+  getOAuthURL(loginHint = '') {
+    const ep = loginHint ? `/api/accounts/oauth/url?login_hint=${encodeURIComponent(loginHint)}` : '/api/accounts/oauth/url';
+    return this.request(ep);
   },
 
   submitOAuthCallback(code) {
@@ -256,6 +257,20 @@ const API = {
 
   refreshAccount(id = '') {
     return this.request(`/api/accounts/refresh?id=${encodeURIComponent(id)}`);
+  },
+
+  cleanupAccounts() {
+    return this.request('/api/accounts/cleanup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  },
+
+  repairAccounts() {
+    return this.request('/api/accounts/repair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
   },
 
   listFiles(parentId = 'root', userId = '') {

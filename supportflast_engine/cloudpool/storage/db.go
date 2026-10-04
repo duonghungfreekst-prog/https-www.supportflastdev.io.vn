@@ -724,6 +724,13 @@ func (s *DB) migrateTiDB() error {
     INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
 `)
 
+	// Đảm bảo UNIQUE KEY uk_accounts_email_hash tồn tại trên bảng accounts
+	var idxCount int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'accounts' AND index_name = 'uk_accounts_email_hash'").Scan(&idxCount)
+	if idxCount == 0 {
+		_, _ = s.db.Exec("ALTER TABLE accounts ADD UNIQUE KEY uk_accounts_email_hash (email_hash)")
+	}
+
 	return nil
 }
 
@@ -791,6 +798,7 @@ func (s *DB) migrateSQLite() error {
 			updated_at DATETIME
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS uk_accounts_email_hash ON accounts(email_hash);`,
 		`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_parent ON virtual_files(parent_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_vfiles_path ON virtual_files(path);`,

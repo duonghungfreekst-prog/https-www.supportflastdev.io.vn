@@ -21,6 +21,7 @@ type Account struct {
 	UsagePercent       float64    `json:"usage_percent"`
 	Status             string     `json:"status"` // "active", "disabled", "error", "full"
 	IsUploadExcluded   bool       `json:"is_upload_excluded"` // true: Né lưu trữ khi tải lên (bảo vệ chống đầy)
+	IsReconnected      bool       `json:"is_reconnected,omitempty"` // true: Tài khoản đã tồn tại và được kết nối lại
 	HealthStatus       string     `json:"health_status"` // "healthy", "warning", "dead"
 	LastError          string     `json:"last_error,omitempty"`
 	FailCount          int        `json:"fail_count"`
@@ -44,7 +45,8 @@ func (a *Account) IsUploadExcludedAccount() bool {
 	}
 
 	switch a.ID {
-	case "acc_18cf4b1b8adc5be4", // duongmanhhung9900@gmail.com
+	case "acc_18cf4b1b8adc5be4", // duongmanhhung9900@gmail.com (ID cũ)
+		"acc_18cf4b203cef83ac", // duongmanhhung9900@gmail.com (ID Master)
 		"acc_18d9741a9a288708", // duongmanhhunghospital@gmail.com
 		"acc_18cf4b57bb6f3d58": // phephabaylac@gmail.com
 		return true

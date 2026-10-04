@@ -6,7 +6,7 @@
   <meta name="googlebot" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CloudPool - Kho Lưu Trữ Đa Google Drive Hợp Nhất</title>
-  <link rel="stylesheet" href="css/style.css?v=3.0.3">
+  <link rel="stylesheet" href="css/style.css?v=3.0.4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
@@ -195,10 +195,18 @@
 
       <div class="section-title">
         <span>Cụm Tài khoản Google Drive</span>
-        <button id="btn-refresh-all-quotas" class="btn btn-secondary btn-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-          <span>Quét lại dung lượng</span>
-        </button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-cleanup-accounts-dash" class="btn btn-secondary btn-sm" onclick="AccountsManager.cleanupAccounts()" title="Dọn dẹp các tài khoản trùng lặp và tài khoản lỗi">
+            <span>🧹 Dọn dẹp tài khoản trùng / lỗi</span>
+          </button>
+          <button id="btn-repair-accounts-dash" class="btn btn-secondary btn-sm" onclick="AccountsManager.repairAccounts()" title="Tự động kiểm tra và phục hồi kết nối các tài khoản bị lỗi">
+            <span>🔄 Tự động sửa lỗi</span>
+          </button>
+          <button id="btn-refresh-all-quotas" class="btn btn-secondary btn-sm" title="Quét và cập nhật dung lượng tất cả tài khoản">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Quét lại dung lượng</span>
+          </button>
+        </div>
       </div>
 
       <div id="dashboard-accounts-grid" class="accounts-grid">
@@ -360,13 +368,23 @@
           <span>Quản lý Tài khoản Google Drive kết nối</span>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-cleanup-accounts" class="btn btn-secondary btn-sm" onclick="AccountsManager.cleanupAccounts()" title="Dọn dẹp các tài khoản trùng lặp và tài khoản lỗi">
+            <span>🧹 Dọn dẹp tài khoản trùng / lỗi</span>
+          </button>
+          <button id="btn-repair-accounts" class="btn btn-secondary btn-sm" onclick="AccountsManager.repairAccounts()" title="Tự động kiểm tra và phục hồi kết nối các tài khoản bị lỗi">
+            <span>🔄 Tự động sửa lỗi</span>
+          </button>
+          <button id="btn-refresh-all-quotas-tab" class="btn btn-secondary btn-sm" onclick="AccountsManager.refreshAllQuotas()" title="Quét và cập nhật dung lượng tất cả tài khoản">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Quét lại dung lượng</span>
+          </button>
           <button id="btn-import-all-drive" class="btn btn-secondary btn-sm" onclick="AccountsManager.importAllDriveFiles()" title="Tự động quét và nạp tất cả các tệp có sẵn từ 10 tài khoản Google Drive vào CloudPool">
             <span style="color: #38bdf8;">⚡</span>
             <span>Nạp Tệp Có Sẵn Từ Drive</span>
           </button>
           <button id="btn-add-account-top" class="btn btn-primary btn-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span>Thêm Tài khoản Mới</span>
+            <span>+ Thêm Tài khoản</span>
           </button>
           <button id="btn-add-account-main" style="display:none;"></button>
         </div>
@@ -1743,9 +1761,9 @@
 <script src="js/xlsx.full.min.js?v=3.0.2"></script>
 <script src="js/docx-preview.min.js?v=3.0.2"></script>
 <script src="js/mammoth.browser.min.js?v=3.0.2"></script>
-<script src="js/api.js?v=3.0.2"></script>
+<script src="js/api.js?v=3.0.4"></script>
 <script src="js/auth.js?v=3.0.2"></script>
-<script src="js/accounts.js?v=3.0.2"></script>
+<script src="js/accounts.js?v=3.0.4"></script>
 <script src="js/upload_manager.js?v=3.0.2"></script>
 <script src="js/download_manager.js?v=3.0.2"></script>
 <script src="js/files.js?v=3.0.2"></script>

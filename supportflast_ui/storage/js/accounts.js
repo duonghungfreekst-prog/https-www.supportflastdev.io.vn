@@ -16,18 +16,25 @@ const AccountsManager = {
   togglePrivacyMode() { /* Đã vô hiệu hóa — luôn ẩn danh */ },
   updatePrivacyButton() { /* Đã vô hiệu hóa — không có nút toggle */ },
 
-  // Che email: chỉ giữ 1 ký tự đầu + domain bị che một phần
+  // Che email: giữ 2 ký tự đầu và 2 ký tự cuối trước @ (ví dụ: du••••st@gmail.com và du••••00@gmail.com)
   maskEmail(email) {
     if (!email) return '••••••@••••••';
     const parts = email.split('@');
     if (parts.length !== 2) return '••••••';
     const name = parts[0];
-    const domainParts = parts[1].split('.');
-    const domainMasked = domainParts.map((seg, i) =>
-      i === domainParts.length - 1 ? seg : seg[0] + '•'.repeat(Math.max(2, seg.length - 1))
-    ).join('.');
-    // Chỉ hiện ký tự đầu tiên + số lượng ký tự bị che
-    return `${name[0]}${'•'.repeat(Math.min(name.length - 1, 6))}@${domainMasked}`;
+    const domain = parts[1];
+
+    let maskedName = '';
+    if (name.length <= 2) {
+      maskedName = name[0] + '••';
+    } else if (name.length <= 4) {
+      maskedName = name[0] + '••' + name.slice(-1);
+    } else {
+      const prefix = name.slice(0, 2);
+      const suffix = name.slice(-2);
+      maskedName = `${prefix}••••${suffix}`;
+    }
+    return `${maskedName}@${domain}`;
   },
 
   // Che tên: chỉ hiện chữ cái đầu mỗi từ + dấu chấm
@@ -86,6 +93,17 @@ const AccountsManager = {
     if (btnRefreshAll) {
       btnRefreshAll.addEventListener('click', () => this.refreshAllQuotas());
     }
+
+    // Cleanup & Repair Buttons
+    const btnCleanup = document.getElementById('btn-cleanup-accounts');
+    if (btnCleanup) btnCleanup.addEventListener('click', () => this.cleanupAccounts());
+    const btnCleanupDash = document.getElementById('btn-cleanup-accounts-dash');
+    if (btnCleanupDash) btnCleanupDash.addEventListener('click', () => this.cleanupAccounts());
+
+    const btnRepair = document.getElementById('btn-repair-accounts');
+    if (btnRepair) btnRepair.addEventListener('click', () => this.repairAccounts());
+    const btnRepairDash = document.getElementById('btn-repair-accounts-dash');
+    if (btnRepairDash) btnRepairDash.addEventListener('click', () => this.repairAccounts());
   },
 
   getCanonicalRedirectURI() {
@@ -162,6 +180,7 @@ const AccountsManager = {
     const totalFormatted = Utils.formatBytes(acc.total_quota_bytes);
     const percent = Math.min(100, Math.round(acc.usage_percent || 0));
     const isPaused = acc.status === 'paused';
+    const isError = acc.status === 'error' || (acc.status !== 'active' && acc.status !== 'paused' && acc.status !== 'full');
     const badgeClass = isPaused ? 'badge-full' : (acc.status === 'active' ? 'badge-active' : (acc.status === 'full' ? 'badge-full' : 'badge-error'));
     const badgeText = isPaused ? 'Tạm dừng' : (acc.status === 'active' ? 'Hoạt động' : (acc.status === 'full' ? 'Đã đầy' : 'Lỗi'));
     const authTypeLabel = acc.auth_type === 'service_account' ? 'Service Account' : 'Google OAuth';
@@ -221,13 +240,22 @@ const AccountsManager = {
               <span style="color: #38bdf8;">⚡ Nạp tệp</span>
             </button>
           </div>
-          <div style="display: flex; gap: 4px;">
-            <button class="btn btn-secondary btn-sm" onclick="AccountsManager.toggleAccount('${acc.id}')" title="${isPaused ? 'Kích hoạt lại' : 'Tạm dừng ghi'}">
-              <span>${isPaused ? '▶ Bật' : '⏸ Tắt'}</span>
-            </button>
-            <button class="btn btn-secondary btn-sm" onclick="AccountsManager.refreshAccount('${acc.id}')" title="Cập nhật dung lượng">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-            </button>
+          <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+            ${isError ? `
+              <button class="btn btn-primary btn-sm" onclick="AccountsManager.reauthAccount('${acc.id}', '${acc.email || ''}')" title="Cấp lại quyền Google OAuth ngay cho tài khoản này" style="background: linear-gradient(135deg, #f59e0b, #ea580c); border-color: #f59e0b; color: #fff; padding: 4px 9px; font-size: 11px; font-weight: 600;">
+                <span>⚡ Kết nối lại</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="AccountsManager.refreshAccount('${acc.id}')" title="Thử kiểm tra và kết nối lại tài khoản">
+                <span>🔄 Thử lại</span>
+              </button>
+            ` : `
+              <button class="btn btn-secondary btn-sm" onclick="AccountsManager.toggleAccount('${acc.id}')" title="${isPaused ? 'Kích hoạt lại' : 'Tạm dừng ghi'}">
+                <span>${isPaused ? '▶ Bật' : '⏸ Tắt'}</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="AccountsManager.refreshAccount('${acc.id}')" title="Cập nhật dung lượng">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              </button>
+            `}
             <button class="btn btn-danger btn-sm" onclick="AccountsManager.deleteAccount('${acc.id}')" title="Xóa tài khoản">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
@@ -248,11 +276,16 @@ const AccountsManager = {
     }
   },
 
-  async startOAuthFlow() {
+  async startOAuthFlow(loginHint = '') {
     try {
-      const res = await API.getOAuthURL();
-      if (res.auth_url) {
-        window.location.href = res.auth_url;
+      const res = await API.getOAuthURL(loginHint);
+      let authUrl = res.auth_url;
+      if (authUrl) {
+        if (loginHint && !authUrl.includes('login_hint=')) {
+          const sep = authUrl.includes('?') ? '&' : '?';
+          authUrl += `${sep}login_hint=${encodeURIComponent(loginHint)}`;
+        }
+        window.location.href = authUrl;
       }
     } catch (err) {
       const errMsg = err.message || '';
@@ -273,6 +306,16 @@ const AccountsManager = {
       } else {
         Toast.error(errMsg || 'Lỗi khởi tạo đăng nhập Google OAuth');
       }
+    }
+  },
+
+  async reauthAccount(id, email) {
+    try {
+      const emailDisplay = email ? ` cho ${this.maskEmail(email)}` : '';
+      Toast.info(`⚡ Đang chuyển hướng xác thực lại${emailDisplay}...`);
+      await this.startOAuthFlow(email || '');
+    } catch (err) {
+      Toast.error('Lỗi khi kết nối lại tài khoản: ' + (err.message || err));
     }
   },
 
@@ -370,6 +413,53 @@ const AccountsManager = {
       this.loadAccounts();
     } catch (err) {
       Toast.error('Lỗi nạp tệp: ' + err.message);
+    }
+  },
+
+  async cleanupAccounts() {
+    if (!confirm('Bạn có chắc chắn muốn dọn dẹp các tài khoản Google Drive bị trùng lặp hoặc lỗi không thể phục hồi?\n\nHệ thống sẽ hợp nhất tài khoản trùng email và loại bỏ bản ghi lỗi không thể kết nối.')) {
+      return;
+    }
+    try {
+      Toast.info('🧹 Đang quét dọn tài khoản trùng / lỗi...');
+      const res = await API.cleanupAccounts();
+      const cleaned = res.cleaned_count !== undefined ? res.cleaned_count : (res.removed_count || 0);
+      const merged = res.merged_count !== undefined ? res.merged_count : 0;
+      let msg = res.message;
+      if (!msg) {
+        msg = `Đã dọn dẹp xong: ${cleaned} tài khoản lỗi đã được dọn${merged > 0 ? `, ${merged} tài khoản trùng đã được gộp` : ''}.`;
+      }
+      Toast.success(msg);
+      await this.loadAccounts();
+      if (typeof App !== 'undefined' && App.refreshStats) {
+        App.refreshStats();
+      }
+    } catch (err) {
+      Toast.error('Lỗi khi dọn dẹp tài khoản: ' + (err.message || err));
+    }
+  },
+
+  async repairAccounts() {
+    try {
+      Toast.info('🔄 Đang tự động kiểm tra và phục hồi kết nối các tài khoản Google Drive...');
+      const res = await API.repairAccounts();
+      const repaired = res.repaired_count !== undefined ? res.repaired_count : (res.success_count || 0);
+      const details = res.details || (res.repaired_accounts && res.repaired_accounts.length > 0 ? res.repaired_accounts.join(', ') : '');
+      let msg = res.message;
+      if (!msg) {
+        if (repaired > 0) {
+          msg = `🎉 Đã phục hồi thành công ${repaired} tài khoản${details ? `: ${details}` : ''}!`;
+        } else {
+          msg = 'Hệ thống đã kiểm tra xong: Các tài khoản đang hoạt động bình thường hoặc cần cấp lại quyền OAuth.';
+        }
+      }
+      Toast.success(msg);
+      await this.loadAccounts();
+      if (typeof App !== 'undefined' && App.refreshStats) {
+        App.refreshStats();
+      }
+    } catch (err) {
+      Toast.error('Lỗi khi tự động sửa lỗi tài khoản: ' + (err.message || err));
     }
   },
 };

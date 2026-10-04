@@ -203,6 +203,7 @@ var allTables = []TableDef{
     ` + "`updated_at`" + ` VARCHAR(64),
     ` + "`email_hash`" + ` VARCHAR(128) DEFAULT '',
     ` + "`name_hash`" + ` VARCHAR(128) DEFAULT '',
+    UNIQUE KEY uk_accounts_email_hash (email_hash),
     INDEX idx_accounts_email (email(191)),
     INDEX idx_accounts_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,

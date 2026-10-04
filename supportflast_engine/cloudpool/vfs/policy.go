@@ -20,7 +20,8 @@ var ExcludedUploadAccounts = map[string]bool{
 
 // ExcludedUploadAccountIDs danh sách ID tương ứng của các tài khoản bị cấm
 var ExcludedUploadAccountIDs = map[string]bool{
-	"acc_18cf4b1b8adc5be4": true, // duongmanhhung9900@gmail.com
+	"acc_18cf4b1b8adc5be4": true, // duongmanhhung9900@gmail.com (ID cũ)
+	"acc_18cf4b203cef83ac": true, // duongmanhhung9900@gmail.com (ID Master)
 	"acc_18d9741a9a288708": true, // duongmanhhunghospitol@gmail.com
 	"acc_18cf4b57bb6f3d58": true, // phephabaylac@gmail.com
 }

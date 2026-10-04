@@ -19,67 +19,100 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Chuẩn hóa email về chữ thường và xóa khoảng trắng thừa
+	acc.Email = strings.ToLower(strings.TrimSpace(acc.Email))
+
 	now := time.Now()
 	if acc.CreatedAt.IsZero() {
 		acc.CreatedAt = now
 	}
 	acc.UpdatedAt = now
 	masterKey := s.getMasterKey()
-	
+
 	encEmail := core.EncryptSecret(masterKey, acc.Email)
 	encName := core.EncryptSecret(masterKey, acc.Name)
 	encAvatar := core.EncryptSecret(masterKey, acc.AvatarURL)
 	encCreds := core.EncryptSecret(masterKey, acc.CredentialsJSON)
 	encToken := core.EncryptSecret(masterKey, acc.TokenJSON)
-	
+
 	emailHash := core.BlindIndexHash(masterKey, acc.Email)
 	nameHash := core.BlindIndexHash(masterKey, acc.Name)
 
-	var query string
-	if s.IsMySQLOrTiDB() {
-		query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			email=VALUES(email),
-			email_hash=VALUES(email_hash),
-			name=VALUES(name),
-			name_hash=VALUES(name_hash),
-			avatar_url=VALUES(avatar_url),
-			credentials_json=VALUES(credentials_json),
-			token_json=VALUES(token_json),
-			root_folder_id=VALUES(root_folder_id),
-			total_quota_bytes=VALUES(total_quota_bytes),
-			used_quota_bytes=VALUES(used_quota_bytes),
-			free_quota_bytes=VALUES(free_quota_bytes),
-			status=VALUES(status),
-			last_error=VALUES(last_error),
-			updated_at=VALUES(updated_at)`
-	} else {
-		query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			email=excluded.email,
-			email_hash=excluded.email_hash,
-			name=excluded.name,
-			name_hash=excluded.name_hash,
-			avatar_url=excluded.avatar_url,
-			credentials_json=excluded.credentials_json,
-			token_json=excluded.token_json,
-			root_folder_id=excluded.root_folder_id,
-			total_quota_bytes=excluded.total_quota_bytes,
-			used_quota_bytes=excluded.used_quota_bytes,
-			free_quota_bytes=excluded.free_quota_bytes,
-			status=excluded.status,
-			last_error=excluded.last_error,
-			updated_at=excluded.updated_at`
+	// Kiểm tra xem tài khoản đã tồn tại qua email_hash hay chưa để đảm bảo ID đồng nhất
+	var existingID string
+	var rawCreated interface{}
+	errLookup := s.db.QueryRow(`SELECT id, created_at FROM accounts WHERE email_hash = ? LIMIT 1`, emailHash).Scan(&existingID, &rawCreated)
+	if errLookup == nil && existingID != "" {
+		// Bảo tồn ID nguyên bản và thời gian tạo của tài khoản đã tồn tại
+		acc.ID = existingID
+		if createdTime := parseFlexibleTime(rawCreated); !createdTime.IsZero() {
+			acc.CreatedAt = createdTime
+		}
 	}
 
-	_, err := s.db.Exec(query,
-		acc.ID, encEmail, emailHash, encName, nameHash, encAvatar, acc.AuthType,
-		encCreds, encToken, acc.RootFolderID,
-		acc.TotalQuotaBytes, acc.UsedQuotaBytes, acc.FreeQuotaBytes,
-		acc.Status, acc.LastError, acc.CreatedAt, acc.UpdatedAt,
-	)
+	var err error
+	if existingID != "" {
+		// Đã tồn tại: Cập nhật in-place tuyệt đối an toàn
+		updateQuery := `UPDATE accounts SET 
+			email=?, email_hash=?, name=?, name_hash=?, avatar_url=?, 
+			credentials_json=?, token_json=?, root_folder_id=?, 
+			total_quota_bytes=?, used_quota_bytes=?, free_quota_bytes=?, 
+			status=?, last_error=?, updated_at=?
+		WHERE id=?`
+		_, err = s.db.Exec(updateQuery,
+			encEmail, emailHash, encName, nameHash, encAvatar,
+			encCreds, encToken, acc.RootFolderID,
+			acc.TotalQuotaBytes, acc.UsedQuotaBytes, acc.FreeQuotaBytes,
+			acc.Status, acc.LastError, acc.UpdatedAt, acc.ID,
+		)
+	} else {
+		// Thêm mới hoàn toàn
+		var query string
+		if s.IsMySQLOrTiDB() {
+			query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				email=VALUES(email),
+				email_hash=VALUES(email_hash),
+				name=VALUES(name),
+				name_hash=VALUES(name_hash),
+				avatar_url=VALUES(avatar_url),
+				credentials_json=VALUES(credentials_json),
+				token_json=VALUES(token_json),
+				root_folder_id=VALUES(root_folder_id),
+				total_quota_bytes=VALUES(total_quota_bytes),
+				used_quota_bytes=VALUES(used_quota_bytes),
+				free_quota_bytes=VALUES(free_quota_bytes),
+				status=VALUES(status),
+				last_error=VALUES(last_error),
+				updated_at=VALUES(updated_at)`
+		} else {
+			query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				email=excluded.email,
+				email_hash=excluded.email_hash,
+				name=excluded.name,
+				name_hash=excluded.name_hash,
+				avatar_url=excluded.avatar_url,
+				credentials_json=excluded.credentials_json,
+				token_json=excluded.token_json,
+				root_folder_id=excluded.root_folder_id,
+				total_quota_bytes=excluded.total_quota_bytes,
+				used_quota_bytes=excluded.used_quota_bytes,
+				free_quota_bytes=excluded.free_quota_bytes,
+				status=excluded.status,
+				last_error=excluded.last_error,
+				updated_at=excluded.updated_at`
+		}
+		_, err = s.db.Exec(query,
+			acc.ID, encEmail, emailHash, encName, nameHash, encAvatar, acc.AuthType,
+			encCreds, encToken, acc.RootFolderID,
+			acc.TotalQuotaBytes, acc.UsedQuotaBytes, acc.FreeQuotaBytes,
+			acc.Status, acc.LastError, acc.CreatedAt, acc.UpdatedAt,
+		)
+	}
+
 	if err == nil {
 		s.InvalidateAccountsCache()
 	}
@@ -252,6 +285,145 @@ func (s *DB) ToggleAccountStatus(id, newStatus string) error {
 		s.InvalidateAccountsCache()
 	}
 	return err
+}
+
+// CleanupDuplicateAccounts quét dọn các tài khoản rác/test/fake có 0 chunks và gộp các tài khoản trùng lặp an toàn
+func (s *DB) CleanupDuplicateAccounts() (cleanedCount int, mergedCount int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 1. Chuyển chunks nếu phát hiện tài khoản cũ acc_18cf4b1b8adc5be4 còn tồn đọng sang Master acc_18cf4b203cef83ac
+	var oldChunks int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM file_chunks WHERE account_id = 'acc_18cf4b1b8adc5be4'").Scan(&oldChunks)
+	if oldChunks > 0 {
+		_, err := s.db.Exec("UPDATE file_chunks SET account_id = 'acc_18cf4b203cef83ac' WHERE account_id = 'acc_18cf4b1b8adc5be4'")
+		if err == nil {
+			mergedCount++
+		}
+	}
+
+	// 2. Gộp các tài khoản trùng lặp theo email_hash
+	dupRows, err := s.db.Query(`SELECT email_hash, COUNT(*) as cnt FROM accounts GROUP BY email_hash HAVING cnt > 1`)
+	if err == nil {
+		var dupHashes []string
+		for dupRows.Next() {
+			var h string
+			var c int
+			_ = dupRows.Scan(&h, &c)
+			dupHashes = append(dupHashes, h)
+		}
+		dupRows.Close()
+
+		for _, h := range dupHashes {
+			type GrpAcc struct {
+				ID       string
+				Status   string
+				HasToken bool
+				Chunks   int64
+			}
+			grpRows, err := s.db.Query(`SELECT id, status, token_json FROM accounts WHERE email_hash = ? ORDER BY (status = 'active') DESC`, h)
+			if err != nil {
+				continue
+			}
+			var list []GrpAcc
+			for grpRows.Next() {
+				var gid, gstat string
+				var gtok sql.NullString
+				_ = grpRows.Scan(&gid, &gstat, &gtok)
+				var chunkCnt int64
+				_ = s.db.QueryRow("SELECT COUNT(*) FROM file_chunks WHERE account_id = ?", gid).Scan(&chunkCnt)
+				list = append(list, GrpAcc{
+					ID:       gid,
+					Status:   gstat,
+					HasToken: gtok.Valid && len(strings.TrimSpace(gtok.String)) > 10,
+					Chunks:   chunkCnt,
+				})
+			}
+			grpRows.Close()
+
+			if len(list) > 1 {
+				master := list[0]
+				for _, sub := range list[1:] {
+					if sub.Chunks > 0 {
+						_, _ = s.db.Exec("UPDATE file_chunks SET account_id = ? WHERE account_id = ?", master.ID, sub.ID)
+					}
+					delRes, err := s.db.Exec("DELETE FROM accounts WHERE id = ? AND id NOT IN (SELECT DISTINCT account_id FROM file_chunks)", sub.ID)
+					if err == nil {
+						aff, _ := delRes.RowsAffected()
+						if aff > 0 {
+							cleanedCount++
+							mergedCount++
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Xóa các tài khoản rác/test/fake có 0 chunks và không có token
+	delJunkQuery := `DELETE FROM accounts 
+	WHERE (
+		id IN ('acc_01', 'acc_02', 'acc_03', 'acc_test', 'acc_regular', 'acc_drive_native', 
+		       'acc_banned_1', 'acc_banned_2', 'acc_banned_3', 'acc_worker_1', 'acc_worker_2', 'acc_ex_1', 'acc_ex_2', 'acc_ex_3', 'acc_18cf4b1b8adc5be4')
+		OR id LIKE 'acc_banned_%'
+		OR id LIKE 'acc_ex_%'
+		OR id LIKE 'acc_worker_%'
+		OR id LIKE 'acc_test%'
+	)
+	AND id NOT IN (SELECT DISTINCT account_id FROM file_chunks)`
+
+	delJunkRes, err := s.db.Exec(delJunkQuery)
+	if err == nil {
+		aff, _ := delJunkRes.RowsAffected()
+		cleanedCount += int(aff)
+	}
+
+	// 4. Cập nhật lại used_quota_bytes cho tất cả các tài khoản dựa trên dung lượng chunks thực tế
+	accListRows, err := s.db.Query("SELECT id FROM accounts")
+	if err == nil {
+		var ids []string
+		for accListRows.Next() {
+			var aid string
+			_ = accListRows.Scan(&aid)
+			ids = append(ids, aid)
+		}
+		accListRows.Close()
+
+		for _, aid := range ids {
+			var actualUsed int64
+			_ = s.db.QueryRow("SELECT COALESCE(SUM(chunk_size_bytes), 0) FROM file_chunks WHERE account_id = ?", aid).Scan(&actualUsed)
+			_, _ = s.db.Exec(`UPDATE accounts SET 
+				used_quota_bytes = ?, 
+				free_quota_bytes = CASE WHEN total_quota_bytes > 0 THEN total_quota_bytes - ? ELSE free_quota_bytes END,
+				updated_at = ? 
+				WHERE id = ?`, actualUsed, actualUsed, time.Now(), aid)
+		}
+	}
+
+	s.InvalidateAccountsCache()
+	return cleanedCount, mergedCount, nil
+}
+
+// RepairAccounts kiểm tra và thử phục hồi trạng thái cho các tài khoản Google Drive
+func (s *DB) RepairAccounts(refreshFn func(accountID string) error) (repairedCount int, repairedAccounts []string, err error) {
+	// Không giữ lock toàn cục trong suốt thời gian gọi API ngoài Google Drive
+	accounts, err := s.ListAccounts()
+	if err != nil {
+		return 0, nil, err
+	}
+
+	for _, a := range accounts {
+		// Thử refresh quota / token cho tài khoản đang báo error hoặc cần kiểm tra
+		if refreshFn != nil {
+			if err := refreshFn(a.ID); err == nil {
+				repairedCount++
+				repairedAccounts = append(repairedAccounts, a.Email)
+			}
+		}
+	}
+
+	s.InvalidateAccountsCache()
+	return repairedCount, repairedAccounts, nil
 }
 
 

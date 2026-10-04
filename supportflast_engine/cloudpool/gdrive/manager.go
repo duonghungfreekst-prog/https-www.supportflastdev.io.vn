@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -327,7 +328,7 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 		return nil, fmt.Errorf("failed to fetch user info from drive: %w", err)
 	}
 
-	email := about.User.EmailAddress
+	email := strings.ToLower(strings.TrimSpace(about.User.EmailAddress))
 	name := about.User.DisplayName
 	avatar := about.User.PhotoLink
 
@@ -357,8 +358,10 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 	}
 
 	accID := ""
+	isReconnected := false
 	if existingAcc != nil {
 		accID = existingAcc.ID
+		isReconnected = true
 		// Nếu Google không trả về refresh_token mới (do tái kết nối), bảo tồn refresh_token cũ
 		if token.RefreshToken == "" && existingAcc.TokenJSON != "" {
 			var oldToken oauth2.Token
@@ -369,6 +372,7 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 				}
 			}
 		}
+		log.Printf("[ENGINE] [OAUTH] Tái kết nối tài khoản Google %s (%s). Cập nhật in-place token và quota, status=active", email, accID)
 	} else {
 		accID = "acc_" + fmt.Sprintf("%x", time.Now().UnixNano())
 		// Tài khoản mới kết nối lần đầu: Bắt buộc phải có refresh_token
@@ -389,7 +393,12 @@ func (m *Manager) HandleOAuthCallback(ctx context.Context, clientID, clientSecre
 		UsedQuotaBytes:  usedQuota,
 		FreeQuotaBytes:  freeQuota,
 		Status:          "active",
+		LastError:       "",
+		IsReconnected:   isReconnected,
 		HealthStatus:    "healthy",
+	}
+	if existingAcc != nil {
+		acc.CreatedAt = existingAcc.CreatedAt
 	}
 
 	if m.db != nil {
@@ -444,7 +453,7 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 		return nil, fmt.Errorf("failed to fetch user info with SA: %w", err)
 	}
 
-	email := about.User.EmailAddress
+	email := strings.ToLower(strings.TrimSpace(about.User.EmailAddress))
 	name := about.User.DisplayName
 	if name == "" {
 		name = "Service Account"
@@ -467,7 +476,22 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 		return nil, fmt.Errorf("failed to ensure CloudPool folder: %w", err)
 	}
 
-	accID := "sa_" + fmt.Sprintf("%x", time.Now().UnixNano())
+	// Kiểm tra tài khoản đã tồn tại qua email hay chưa
+	var existingAcc *models.Account
+	if m.db != nil {
+		existingAcc, _ = m.db.GetAccountByEmail(email)
+	}
+
+	accID := ""
+	isReconnected := false
+	if existingAcc != nil {
+		accID = existingAcc.ID
+		isReconnected = true
+		log.Printf("[ENGINE] [SA] Tái cập nhật Service Account %s (%s). Cập nhật in-place credentials và quota", email, accID)
+	} else {
+		accID = "sa_" + fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+
 	acc := &models.Account{
 		ID:              accID,
 		Email:           email,
@@ -480,7 +504,12 @@ func (m *Manager) AddServiceAccount(ctx context.Context, saJSON []byte) (*models
 		UsedQuotaBytes:  usedQuota,
 		FreeQuotaBytes:  freeQuota,
 		Status:          "active",
+		LastError:       "",
+		IsReconnected:   isReconnected,
 		HealthStatus:    "healthy",
+	}
+	if existingAcc != nil {
+		acc.CreatedAt = existingAcc.CreatedAt
 	}
 
 	if m.db != nil {

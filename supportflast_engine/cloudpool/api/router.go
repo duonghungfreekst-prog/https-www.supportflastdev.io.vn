@@ -146,6 +146,8 @@ func (s *Server) setupSubMuxes() {
 	m.accountsMux.HandleFunc("/api/accounts/delete", s.handleDeleteAccount)
 	m.accountsMux.HandleFunc("/api/accounts/refresh", s.handleRefreshAccount)
 	m.accountsMux.HandleFunc("/api/accounts/toggle", s.handleToggleAccount)
+	m.accountsMux.HandleFunc("/api/accounts/cleanup", s.handleCleanupAccounts)
+	m.accountsMux.HandleFunc("/api/accounts/repair", s.handleRepairAccounts)
 
 	// 3. Stats Sub-Mux
 	m.statsMux = http.NewServeMux()

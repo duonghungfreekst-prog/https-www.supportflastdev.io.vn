@@ -218,6 +218,75 @@ func (s *Server) handleRefreshAccount(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, acc)
 }
 
+func (s *Server) handleCleanupAccounts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Chỉ chấp nhận phương thức POST", nil)
+		return
+	}
+
+	user := s.getUserFromRequest(r)
+	if user != nil && user.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền dọn dẹp tài khoản", nil)
+		return
+	}
+
+	cleaned, merged, err := s.db.CleanupDuplicateAccounts()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Lỗi khi dọn dẹp tài khoản: "+err.Error(), err)
+		return
+	}
+
+	msg := fmt.Sprintf("Đã dọn dẹp thành công: %d tài khoản rác/lỗi, %d tài khoản trùng lặp đã được gộp.", cleaned, merged)
+	log.Printf("[ENGINE] [ACCOUNTS] [CLEANUP] %s", msg)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":        "success",
+		"cleaned_count": cleaned,
+		"removed_count": cleaned,
+		"merged_count":  merged,
+		"message":       msg,
+	})
+}
+
+func (s *Server) handleRepairAccounts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "Chỉ chấp nhận phương thức POST", nil)
+		return
+	}
+
+	user := s.getUserFromRequest(r)
+	if user != nil && user.Role != "admin" {
+		writeError(w, http.StatusForbidden, "Chỉ Quản trị viên mới có quyền sửa lỗi tài khoản", nil)
+		return
+	}
+
+	repairedCount, repairedAccs, err := s.db.RepairAccounts(func(accountID string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		return s.gd.RefreshAccountQuota(ctx, accountID)
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Lỗi khi kiểm tra phục hồi tài khoản: "+err.Error(), err)
+		return
+	}
+
+	msg := ""
+	if repairedCount > 0 {
+		msg = fmt.Sprintf("Đã phục hồi và làm mới quota thành công %d tài khoản!", repairedCount)
+	} else {
+		msg = "Hệ thống đã kiểm tra: Các tài khoản đang hoạt động bình thường."
+	}
+	log.Printf("[ENGINE] [ACCOUNTS] [REPAIR] %s", msg)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"status":            "success",
+		"repaired_count":    repairedCount,
+		"success_count":     repairedCount,
+		"repaired_accounts": repairedAccs,
+		"message":           msg,
+	})
+}
+
 
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {

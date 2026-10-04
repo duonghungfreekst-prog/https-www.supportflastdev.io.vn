@@ -1609,3 +1609,171 @@ func TestQueryOptimizer_LargeDirectory_NoNPlusOne(t *testing.T) {
 		}
 	}
 }
+
+func TestSaveAccount_PreventDuplicateEmail(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_dup_accounts.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Lưu tài khoản đầu tiên với email hoa và có khoảng trắng thừa
+	acc1 := &models.Account{
+		ID:              "acc_initial_01",
+		Email:           "  MyGoogleDrive@Gmail.Com  ",
+		Name:            "Account 1",
+		AuthType:        "oauth",
+		TokenJSON:       `{"access_token":"token_1"}`,
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  15 * 1024 * 1024 * 1024,
+		Status:          "active",
+	}
+	if err := db.SaveAccount(acc1); err != nil {
+		t.Fatalf("SaveAccount acc1 failed: %v", err)
+	}
+
+	// 2. Thử lưu tài khoản thứ hai với ID mới toanh nhưng cùng email
+	acc2 := &models.Account{
+		ID:              "acc_random_id_9999",
+		Email:           "mygoogledrive@gmail.com",
+		Name:            "Account 1 Updated",
+		AuthType:        "oauth",
+		TokenJSON:       `{"access_token":"token_2_refreshed"}`,
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		FreeQuotaBytes:  10 * 1024 * 1024 * 1024,
+		Status:          "active",
+	}
+	if err := db.SaveAccount(acc2); err != nil {
+		t.Fatalf("SaveAccount acc2 failed (lỗi khi UPSERT theo email_hash): %v", err)
+	}
+
+	// 3. Kiểm tra acc2 phải được cập nhật in-place vào ID cũ acc_initial_01
+	if acc2.ID != "acc_initial_01" {
+		t.Errorf("Expected acc2.ID to be reused as 'acc_initial_01', got '%s'", acc2.ID)
+	}
+
+	// 4. Danh sách tài khoản trong DB chỉ được phép có đúng 1 tài khoản
+	accounts, err := db.ListAccounts()
+	if err != nil {
+		t.Fatalf("ListAccounts failed: %v", err)
+	}
+	if len(accounts) != 1 {
+		t.Errorf("Expected exactly 1 account in database, found %d", len(accounts))
+	}
+
+	// 5. Kiểm tra token đã được cập nhật thành token mới
+	loaded, err := db.GetAccount("acc_initial_01")
+	if err != nil {
+		t.Fatalf("GetAccount failed: %v", err)
+	}
+	if loaded.Name != "Account 1 Updated" {
+		t.Errorf("Expected Name updated, got: %s", loaded.Name)
+	}
+	if loaded.TokenJSON != `{"access_token":"token_2_refreshed"}` {
+		t.Errorf("Expected TokenJSON updated, got: %s", loaded.TokenJSON)
+	}
+}
+
+func TestCleanupAndRepairAccounts(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_cleanup_repair.db")
+
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB failed: %v", err)
+	}
+	defer db.Close()
+
+	// 1. Tạo tài khoản Master acc_18cf4b203cef83ac và tài khoản cũ acc_18cf4b1b8adc5be4
+	masterAcc := &models.Account{
+		ID:              "acc_18cf4b203cef83ac",
+		Email:           "master_drive@gmail.com",
+		Name:            "Master Drive",
+		AuthType:        "oauth",
+		TokenJSON:       `{"access_token":"valid_token"}`,
+		TotalQuotaBytes: 100 * 1024 * 1024 * 1024,
+		Status:          "active",
+	}
+	_ = db.SaveAccount(masterAcc)
+
+	oldAcc := &models.Account{
+		ID:              "acc_18cf4b1b8adc5be4",
+		Email:           "old_orphan@gmail.com",
+		Name:            "Old Orphan Drive",
+		AuthType:        "oauth",
+		TokenJSON:       "",
+		TotalQuotaBytes: 15 * 1024 * 1024 * 1024,
+		Status:          "error",
+	}
+	_ = db.SaveAccount(oldAcc)
+
+	// Tạo tài khoản rác không có chunks
+	junkAcc := &models.Account{
+		ID:        "acc_banned_1",
+		Email:     "banned@example.com",
+		Name:      "Banned Fake",
+		AuthType:  "oauth",
+		TokenJSON: "",
+		Status:    "error",
+	}
+	_ = db.SaveAccount(junkAcc)
+
+	// 2. Tạo virtual file và file chunk thuộc về oldAcc
+	vf := &models.VirtualFile{
+		ID:        "file_test_cleanup_1",
+		Name:      "test.dat",
+		Path:      "/test.dat",
+		SizeBytes: 2048,
+	}
+	_ = db.SaveVirtualFile(vf)
+
+	chunk := &models.FileChunk{
+		ChunkID:            "chunk_cleanup_01",
+		FileID:             "file_test_cleanup_1",
+		ChunkIndex:         0,
+		AccountID:          "acc_18cf4b1b8adc5be4",
+		GDriveFileID:       "gdrive_file_99",
+		ChunkSizeBytes:     2048,
+		EncryptedSizeBytes: 2048,
+		Status:             "uploaded",
+	}
+	_ = db.SaveChunks([]models.FileChunk{*chunk})
+
+	// 3. Thực thi CleanupDuplicateAccounts
+	cleaned, merged, err := db.CleanupDuplicateAccounts()
+	if err != nil {
+		t.Fatalf("CleanupDuplicateAccounts failed: %v", err)
+	}
+	if cleaned == 0 && merged == 0 {
+		t.Errorf("Expected cleaned or merged > 0, got cleaned=%d, merged=%d", cleaned, merged)
+	}
+
+	// 4. Kiểm tra chunk_cleanup_01 đã được chuyển sang acc_18cf4b203cef83ac
+	var updatedAccID string
+	_ = db.SQLDB().QueryRow("SELECT account_id FROM file_chunks WHERE chunk_id = 'chunk_cleanup_01'").Scan(&updatedAccID)
+	if updatedAccID != "acc_18cf4b203cef83ac" {
+		t.Errorf("Expected chunk account_id to be 'acc_18cf4b203cef83ac', got '%s'", updatedAccID)
+	}
+
+	// 5. Kiểm tra acc_banned_1 đã bị xóa khỏi accounts
+	bannedCheck, _ := db.GetAccount("acc_banned_1")
+	if bannedCheck != nil {
+		t.Errorf("Expected acc_banned_1 to be deleted from accounts")
+	}
+
+	// 6. Kiểm tra RepairAccounts
+	repairedCount, repairedEmails, err := db.RepairAccounts(func(accountID string) error {
+		return db.UpdateAccountQuota(accountID, 100*1024*1024*1024, 2048, 100*1024*1024*1024-2048, "active", "")
+	})
+	if err != nil {
+		t.Fatalf("RepairAccounts failed: %v", err)
+	}
+	if repairedCount == 0 {
+		t.Errorf("Expected at least 1 repaired account")
+	}
+	t.Logf("Repaired count: %d, emails: %v", repairedCount, repairedEmails)
+}
+
