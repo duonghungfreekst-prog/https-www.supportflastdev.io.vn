@@ -2720,9 +2720,9 @@ html[data-touch="true"] .file-card {
     position: relative !important;
     width: 300px !important;
     max-width: 100% !important;
-    height: 52px !important;
-    max-height: 52px !important;
-    min-height: 52px !important;
+    height: 43px !important;
+    max-height: 43px !important;
+    min-height: 43px !important;
     overflow: hidden !important;
     display: inline-block !important;
     border-radius: 6px !important;
