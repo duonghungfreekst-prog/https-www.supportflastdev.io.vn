@@ -53,27 +53,30 @@
         /* ============================================================== */
         /* 3. HIỆU ỨNG SCRAMBLE BADGE & CHỮ NHẢY XẾP CHỮ CHO TIÊU ĐỀ HERO */
         /* ============================================================== */
-        // Hiệu ứng Scramble Text cho Badge gốc
+        // Hiệu ứng Scramble Text an toàn cho Badge gốc (chỉ áp dụng cho text label, giữ nguyên DOM con)
         const badge = document.getElementById('scramble-badge');
         if (badge) {
-            const originalBadgeText = badge.innerText.trim();
-            const scrambleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_#@&";
-            badge.addEventListener("mouseenter", () => {
-                let iterations = 0;
-                const interval = setInterval(() => {
-                    badge.innerText = badge.innerText.split("")
-                        .map((letter, index) => {
-                            if (index < iterations) return originalBadgeText[index] || letter;
-                            return scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
-                        })
-                        .join("");
-                    if (iterations >= originalBadgeText.length) {
-                        clearInterval(interval);
-                        badge.innerText = originalBadgeText;
-                    }
-                    iterations += 1 / 2;
-                }, 30);
-            });
+            const textLabel = badge.querySelector('.radar-text-label');
+            if (textLabel) {
+                const originalText = textLabel.textContent.trim();
+                const scrambleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_#@&";
+                badge.addEventListener("mouseenter", () => {
+                    let iterations = 0;
+                    const interval = setInterval(() => {
+                        textLabel.textContent = textLabel.textContent.split("")
+                            .map((letter, index) => {
+                                if (index < iterations) return originalText[index] || letter;
+                                return scrambleChars[Math.floor(Math.random() * scrambleChars.length)];
+                            })
+                            .join("");
+                        if (iterations >= originalText.length) {
+                            clearInterval(interval);
+                            textLabel.textContent = originalText;
+                        }
+                        iterations += 1 / 2;
+                    }, 30);
+                });
+            }
         }
 
         // Kích hoạt chữ nhảy xếp chữ cho 2 dòng tiêu đề Hero
