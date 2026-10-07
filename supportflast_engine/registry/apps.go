@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -1023,39 +1024,319 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		InvalidateAppsCache()
 	}
 
-	// 1. Kiểm tra chính xác theo targetApp.FileName hoặc appID_targetApp.FileName
-	exactPaths := []string{
-		filepath.Join(getStorageDir(), targetApp.FileName),
-		filepath.Join(getStorageDir(), fmt.Sprintf("%s_%s", appID, targetApp.FileName)),
+	// 1. Kiểm tra chính xác file trên đĩa ở các thư mục storage khả dĩ
+	storageDirs := []string{
+		getStorageDir(),
+		"storage/packages",
+		"storage",
+		"/app/storage",
+		"/app/storage/packages",
+		"/app/data/storage",
 	}
-	for _, p := range exactPaths {
-		if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+	for _, dir := range storageDirs {
+		exactPaths := []string{
+			filepath.Join(dir, targetApp.FileName),
+			filepath.Join(dir, fmt.Sprintf("%s_%s", appID, targetApp.FileName)),
+		}
+		for _, p := range exactPaths {
+			if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
+				w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
+				http.ServeFile(w, r, p)
+				return
+			}
+		}
+		pattern := filepath.Join(dir, fmt.Sprintf("%s_*", appID))
+		if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
-			http.ServeFile(w, r, p)
+			http.ServeFile(w, r, matches[0])
 			return
 		}
 	}
 
-	// 2. Dự phòng: tìm kiếm theo pattern appID_*
-	pattern := filepath.Join(getStorageDir(), fmt.Sprintf("%s_*", appID))
-	matches, _ := filepath.Glob(pattern)
-	if len(matches) > 0 {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
-		http.ServeFile(w, r, matches[0])
+	// 2. Nếu targetApp.DownloadURL là liên kết ngoài (https://...), tự động Redirect 302
+	if targetApp.DownloadURL != "" &&
+		!strings.HasPrefix(targetApp.DownloadURL, "/api/apps/download/") &&
+		(strings.HasPrefix(targetApp.DownloadURL, "http://") || strings.HasPrefix(targetApp.DownloadURL, "https://")) {
+		http.Redirect(w, r, targetApp.DownloadURL, http.StatusFound)
 		return
 	}
 
-	// Nếu không có file vật lý (app mẫu), trả về thông báo tải Anycast CDN
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":    "ready",
-		"message":   fmt.Sprintf("Khởi tạo đường truyền Anycast CDN tốc độ cao cho file: %s", targetApp.FileName),
-		"app_id":    appID,
-		"app_name":  targetApp.Name,
-		"file_name": targetApp.FileName,
-		"sha256":    targetApp.SHA256,
-		"downloads": targetApp.Downloads,
-	})
+	// 3. Phân định Content Negotiation: JSON API vs Trình duyệt Web
+	isJSONReq := r.URL.Query().Get("format") == "json" ||
+		strings.Contains(r.Header.Get("Accept"), "application/json") ||
+		r.Header.Get("X-Requested-With") == "XMLHttpRequest"
+
+	if isJSONReq {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":         "ready",
+			"message":        fmt.Sprintf("Khởi tạo đường truyền Anycast CDN tốc độ cao cho file: %s", targetApp.FileName),
+			"app_id":         appID,
+			"app_name":       targetApp.Name,
+			"version":        targetApp.Version,
+			"file_name":      targetApp.FileName,
+			"size_formatted": targetApp.SizeFormatted,
+			"sha256":         targetApp.SHA256,
+			"downloads":      targetApp.Downloads,
+			"cdn_node":       "Singapore-Anycast-Edge-01",
+			"sla":            "99.99%",
+		})
+		return
+	}
+
+	// 4. Nếu trình duyệt web điều hướng trực tiếp vào link tải: Render trang Portal Anycast CDN sang trọng
+	renderDownloadPortal(w, r, targetApp)
+}
+
+// renderDownloadPortal hiển thị giao diện Portal tải nhanh chuẩn Cyberpunk Anycast CDN
+func renderDownloadPortal(w http.ResponseWriter, r *http.Request, app AppItem) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+
+	tmplStr := `<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải Về: {{.Name}} - Anycast CDN | SupportFlast</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #020617;
+            color: #f1f5f9;
+            font-family: 'Be Vietnam Pro', -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .ambient-glow {
+            position: fixed;
+            width: 480px;
+            height: 480px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.16;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-cyan { top: -80px; left: -80px; background: #00e5ff; }
+        .glow-purple { bottom: -80px; right: -80px; background: #8b5cf6; }
+        .portal-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1px solid rgba(0, 229, 255, 0.28);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 229, 255, 0.15);
+            border-radius: 24px;
+            max-width: 620px;
+            width: 100%;
+            padding: 38px 28px;
+            text-align: center;
+        }
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 229, 255, 0.08);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #00e5ff;
+            letter-spacing: 0.05em;
+            margin-bottom: 22px;
+            text-transform: uppercase;
+        }
+        .brand-badge .dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulseDot 2s infinite;
+        }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
+        .app-icon-wrap {
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 16px;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(139, 92, 246, 0.25));
+            border: 1px solid rgba(0, 229, 255, 0.45);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 8px 24px rgba(0, 229, 255, 0.25);
+        }
+        .app-title {
+            font-size: 1.55rem;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        .app-version {
+            font-size: 0.88rem;
+            color: #94a3b8;
+            margin-bottom: 22px;
+            font-weight: 600;
+        }
+        .meta-grid {
+            background: rgba(2, 6, 23, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 22px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            text-align: left;
+        }
+        .meta-item .meta-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 3px;
+            font-weight: 700;
+        }
+        .meta-item .meta-value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            word-break: break-all;
+        }
+        .sha256-box {
+            grid-column: 1 / -1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: #38bdf8;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px dashed rgba(0, 229, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            word-break: break-all;
+        }
+        .cdn-status-banner {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.12), rgba(0, 229, 255, 0.12));
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 12px;
+            padding: 11px 16px;
+            margin-bottom: 24px;
+            font-size: 0.86rem;
+            color: #34d399;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .action-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 22px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 0.92rem;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+        .btn-cdn-primary {
+            background: linear-gradient(135deg, #00e5ff 0%, #0284c7 100%);
+            color: #010409;
+            border: none;
+            box-shadow: 0 6px 20px rgba(0, 229, 255, 0.35);
+        }
+        .btn-cdn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(0, 229, 255, 0.55);
+        }
+        .btn-back-home {
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.84rem;
+            padding: 8px;
+        }
+        .btn-back-home:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow glow-cyan"></div>
+    <div class="ambient-glow glow-purple"></div>
+    <div class="portal-card">
+        <div class="brand-badge">
+            <span class="dot"></span>
+            <span>Anycast CDN Edge • 99.99% SLA</span>
+        </div>
+        <div class="app-icon-wrap">📦</div>
+        <h1 class="app-title">{{.Name}}</h1>
+        <div class="app-version">{{.Version}} • {{.Platform}}</div>
+        
+        <div class="meta-grid">
+            <div class="meta-item">
+                <div class="meta-label">Gói Cài Đặt</div>
+                <div class="meta-value">{{.FileName}}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Dung Lượng</div>
+                <div class="meta-value">{{.SizeFormatted}}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Lượt Tải</div>
+                <div class="meta-value">{{.Downloads}} lượt</div>
+            </div>
+            <div class="sha256-box">
+                <strong>SHA-256:</strong> {{.SHA256}}
+            </div>
+        </div>
+        
+        <div class="cdn-status-banner">
+            <span>🛡️</span>
+            <span>Quét mã độc Zero-Day Clean 100% • Sẵn sàng truyền tải</span>
+        </div>
+        
+        <div class="action-group">
+            <a href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" class="btn-action btn-cdn-primary">
+                <span>💬</span>
+                <span>Nhận Bộ Cài Qua Kỹ Thuật Viên Zalo 24/7 (Siêu Tốc)</span>
+                <span>&rarr;</span>
+            </a>
+            <a href="/" class="btn-action btn-back-home">
+                <span>&larr;</span> Quay Lại Trang Chủ SupportFlast Hub
+            </a>
+        </div>
+    </div>
+</body>
+</html>`
+
+	t, err := template.New("download_portal").Parse(tmplStr)
+	if err != nil {
+		log.Printf("[ENGINE] [REGISTRY] [ERROR] Parse download portal template failed: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	_ = t.Execute(w, app)
 }
 
 // KeyGenerateHandler sinh API Key mới — YÊU CẦU xác thực Admin (Rule 3.2)

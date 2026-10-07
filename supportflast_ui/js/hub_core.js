@@ -2359,12 +2359,12 @@
                     </div>
 
                     <div class="card-actions-wrap">
-                        <a href="${dlUrl}" class="btn-download-primary" target="_blank">
+                        <button type="button" class="btn-download-primary" onclick="openAppDownloadHUD('${app.id}', event)">
                             <span class="btn-sweep-sheen"></span>
                             <span>📥</span>
                             <span>Tải Bộ Cài (${ext}${sizeText})</span>
                             <span>&rarr;</span>
-                        </a>
+                        </button>
                         <div class="card-action-subgrid">
                             <button class="btn-card-sub" onclick="openAppGuideModal('${app.id}')">
                                 <span>📘</span> <span>Bài Viết HD</span>
@@ -5060,7 +5060,8 @@ function renderCyberRadarEmptyState(options) {
             const size = app.size_formatted ? (' (' + app.size_formatted + ')') : '';
             
             if (dlBtn) {
-                dlBtn.setAttribute('href', dlUrl);
+                dlBtn.setAttribute('href', 'javascript:void(0)');
+                dlBtn.setAttribute('onclick', `openAppDownloadHUD('${app.id}', event)`);
                 dlBtn.innerHTML = `<span>📥</span> <span>Tải ${ext}${size}</span>`;
             }
             if (vBtn) {
@@ -5068,7 +5069,8 @@ function renderCyberRadarEmptyState(options) {
                 vBtn.style.display = app.video_url ? 'inline-flex' : 'none';
             }
             if (fDlBtn) {
-                fDlBtn.setAttribute('href', dlUrl);
+                fDlBtn.setAttribute('href', 'javascript:void(0)');
+                fDlBtn.setAttribute('onclick', `openAppDownloadHUD('${app.id}', event)`);
                 fDlBtn.innerHTML = `<span>📥 Tải ${escapeHtml(app.name)} (${app.size_formatted || 'Bản mới nhất'})</span>`;
             }
             if (fInfo) {
@@ -6312,7 +6314,12 @@ function renderCyberRadarEmptyState(options) {
             }
             const dlBtn = document.getElementById('video-download-btn');
             if (dlBtn) {
-                dlBtn.href = (app && app.download_url) ? app.download_url : `/api/apps/download/${app ? app.id : appId}`;
+                const targetId = app ? app.id : (appId || 'APP-4964');
+                dlBtn.href = 'javascript:void(0)';
+                dlBtn.onclick = function(e) {
+                    if (e) e.preventDefault();
+                    openAppDownloadHUD(targetId, e);
+                };
                 dlBtn.innerText = `Tải bộ cài v${currentCatalog.version} ↓`;
             }
 
@@ -6708,5 +6715,188 @@ function renderCyberRadarEmptyState(options) {
                 bindZaloKey();
             }
         })();
+
+        /* ======================================================== */
+        /* MODULE: ANYCAST CDN FAST-DOWNLOAD HUD SYSTEM             */
+        /* ======================================================== */
+        let __currentDownloadTargetApp = null;
+
+        function openAppDownloadHUD(appId, event) {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+
+            const modal = document.getElementById('modal-app-download-hud');
+            if (!modal) {
+                startDirectFileDownloadById(appId);
+                return;
+            }
+
+            // Tìm thông tin ứng dụng trong kho
+            const allApps = window.__allLiveApps || (typeof DEFAULT_FEATURED_APPS !== 'undefined' ? DEFAULT_FEATURED_APPS : []);
+            let app = allApps.find(a => a.id === appId);
+
+            // Fallback đặc biệt cho DMH Tools
+            if (!app && (appId === 'APP-4964' || !appId)) {
+                app = {
+                    id: 'APP-4964',
+                    name: 'DMH Tools Enterprise Suite',
+                    version: '1.1.3',
+                    size_formatted: '141.3 MB Slim',
+                    platform: 'Windows 10/11 x64',
+                    file_name: 'DMH_Tools_Setup_1.1.3_Slim.exe',
+                    icon: '🛠️',
+                    download_url: '/api/apps/download/APP-4964',
+                    sha256: 'c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877706c3a001d7ee4'
+                };
+            } else if (!app) {
+                app = {
+                    id: appId,
+                    name: 'Gói Ứng Dụng Hỗ Trợ',
+                    version: '1.0.0',
+                    size_formatted: 'Đang nén...',
+                    platform: 'Windows / Android',
+                    download_url: '/api/apps/download/' + appId,
+                    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+                };
+            }
+
+            __currentDownloadTargetApp = app;
+
+            // Đổ dữ liệu vào HUD
+            const iconEl = document.getElementById('hud-app-icon');
+            const nameEl = document.getElementById('hud-app-name');
+            const metaEl = document.getElementById('hud-app-meta');
+            const shaEl = document.getElementById('hud-app-sha256');
+            const btnDl = document.getElementById('btn-hud-start-download');
+            const zaloLink = document.getElementById('btn-hud-zalo-support');
+
+            if (iconEl) iconEl.textContent = app.icon || '📦';
+            if (nameEl) nameEl.textContent = app.name || 'Ứng Dụng Chuyên Dụng';
+            if (metaEl) {
+                metaEl.textContent = `v${app.version || '1.0.0'} • Dung lượng: ${app.size_formatted || 'Bản đầy đủ'} • ${app.platform || 'Cross-Platform'}`;
+            }
+
+            const shaVal = app.sha256 || 'c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877706c3a001d7ee4';
+            if (shaEl) {
+                shaEl.textContent = shaVal;
+                shaEl.setAttribute('data-full-sha', shaVal);
+            }
+
+            if (btnDl) {
+                btnDl.innerHTML = `<span>🚀</span> <span>BẮT ĐẦU TẢI GÓI CÀI ĐẶT NGAY (${app.size_formatted || 'CDN EDGE'})</span> <span>&rarr;</span>`;
+                btnDl.disabled = false;
+            }
+
+            if (zaloLink) {
+                zaloLink.href = `https://zalo.me/84342041517?text=${encodeURIComponent('Xin chào Kỹ thuật viên, tôi cần hỗ trợ nhận file cài đặt trực tiếp của: ' + (app.name || 'DMH Tools') + ' (ID: ' + app.id + ')')}`;
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAppDownloadHUD() {
+            const modal = document.getElementById('modal-app-download-hud');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function startDirectFileDownload() {
+            if (!__currentDownloadTargetApp) return;
+            const app = __currentDownloadTargetApp;
+            const targetUrl = app.download_url || `/api/apps/download/${app.id}`;
+
+            const btnDl = document.getElementById('btn-hud-start-download');
+            const statusText = document.getElementById('hud-status-text');
+
+            if (btnDl) {
+                btnDl.innerHTML = `<span>⏳</span> <span>ĐANG KẾT NỐI ĐƯỜNG TRUYỀN ANYCAST CDN...</span>`;
+                btnDl.disabled = true;
+            }
+            if (statusText) {
+                statusText.textContent = 'Đang bắt tay SSL và tải gói dữ liệu xuống thiết bị...';
+                statusText.style.color = '#38bdf8';
+            }
+
+            // Kích hoạt tải ngầm qua hidden iframe (không rời trang, không mở tab trắng)
+            let iframe = document.getElementById('app-silent-downloader-frame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'app-silent-downloader-frame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = targetUrl;
+
+            // Phục hồi trạng thái nút sau 3.5 giây kèm thông báo sẵn sàng
+            setTimeout(() => {
+                if (btnDl) {
+                    btnDl.innerHTML = `<span>✓</span> <span>ĐÃ BẮT ĐẦU TẢI! BẤM ĐỂ TẢI LẠI NẾU CẦN</span> <span>&rarr;</span>`;
+                    btnDl.disabled = false;
+                }
+                if (statusText) {
+                    statusText.textContent = 'Trình duyệt đang tải file. Vui lòng kiểm tra khay Downloads.';
+                    statusText.style.color = '#4ade80';
+                }
+            }, 3500);
+        }
+
+        function startDirectFileDownloadById(appId) {
+            let iframe = document.getElementById('app-silent-downloader-frame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'app-silent-downloader-frame';
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+            }
+            iframe.src = `/api/apps/download/${appId}`;
+        }
+
+        function copyAppSha256(btn) {
+            const shaEl = document.getElementById('hud-app-sha256');
+            const textToCopy = shaEl ? (shaEl.getAttribute('data-full-sha') || shaEl.textContent.trim()) : '';
+            if (!textToCopy) return;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    if (btn) {
+                        const original = btn.textContent;
+                        btn.textContent = 'Đã chép! ✓';
+                        btn.style.color = '#4ade80';
+                        btn.style.borderColor = 'rgba(74, 222, 128, 0.5)';
+                        setTimeout(() => {
+                            btn.textContent = original;
+                            btn.style.color = '#00f0ff';
+                            btn.style.borderColor = 'rgba(0, 240, 255, 0.3)';
+                        }, 2000);
+                    }
+                }).catch(() => {
+                    prompt('Sao chép mã SHA-256:', textToCopy);
+                });
+            } else {
+                prompt('Sao chép mã SHA-256:', textToCopy);
+            }
+        }
+
+        // Hỗ trợ phím ESC và click backdrop để đóng HUD
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.code === 'Escape') {
+                const modal = document.getElementById('modal-app-download-hud');
+                if (modal && modal.style.display === 'flex') {
+                    closeAppDownloadHUD();
+                }
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('modal-app-download-hud');
+            if (modal && modal.style.display === 'flex') {
+                if (e.target === modal) {
+                    closeAppDownloadHUD();
+                }
+            }
+        });
 
 

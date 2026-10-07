@@ -25,7 +25,7 @@
         })();
     </script>
 
-    <link rel="stylesheet" href="/css/hub_main.css?v=20261007_1200">
+    <link rel="stylesheet" href="/css/hub_main.css?v=20261007_1530">
 </head>
 <body>
 
@@ -980,10 +980,10 @@
                             </div>
                         </div>
                         <div class="card-actions-wrap">
-                            <a href="/api/apps/download/APP-4964" class="btn-download-primary">
+                            <button type="button" class="btn-download-primary" onclick="openAppDownloadHUD('APP-4964', event)">
                                 <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.exe 141.3 MB)</span> &rarr;
-                            </a>
+                            </button>
                             <div class="card-action-subgrid">
                                 <button class="btn-card-sub" onclick="openAppGuideModal('APP-4964')">
                                     <span>📘</span> <span>Bài Viết HD</span>
@@ -1024,10 +1024,10 @@
                             </div>
                         </div>
                         <div class="card-actions-wrap">
-                            <a href="/api/apps/download/APP-7290" class="btn-download-primary">
+                            <button type="button" class="btn-download-primary" onclick="openAppDownloadHUD('APP-7290', event)">
                                 <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.zip 10.9 MB)</span> &rarr;
-                            </a>
+                            </button>
                             <div class="card-action-subgrid">
                                 <button class="btn-card-sub" onclick="openAppGuideModal('APP-7290')">
                                     <span>📘</span> <span>Bài Viết HD</span>
@@ -1068,10 +1068,10 @@
                             </div>
                         </div>
                         <div class="card-actions-wrap">
-                            <a href="/api/apps/download/APP-3820" class="btn-download-primary">
+                            <button type="button" class="btn-download-primary" onclick="openAppDownloadHUD('APP-3820', event)">
                                 <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.exe 15.4 MB)</span> &rarr;
-                            </a>
+                            </button>
                             <div class="card-action-subgrid">
                                 <button class="btn-card-sub" onclick="openAppGuideModal('APP-3820')">
                                     <span>📘</span> <span>Bài Viết HD</span>
@@ -1112,10 +1112,10 @@
                             </div>
                         </div>
                         <div class="card-actions-wrap">
-                            <a href="/api/apps/download/APP-5192" class="btn-download-primary">
+                            <button type="button" class="btn-download-primary" onclick="openAppDownloadHUD('APP-5192', event)">
                                 <span class="btn-sweep-sheen"></span>
                                 <span>📥</span> <span>Tải Bộ Cài (.zip 8.2 MB)</span> &rarr;
-                            </a>
+                            </button>
                             <div class="card-action-subgrid">
                                 <button class="btn-card-sub" onclick="openAppGuideModal('APP-5192')">
                                     <span>📘</span> <span>Bài Viết HD</span>
@@ -1520,9 +1520,9 @@
                     </div>
                 </div>
                 <div class="guide-header-actions" style="display: flex; align-items: center; gap: 10px;">
-                    <a href="/api/apps/download/APP-4964" class="btn-primary guide-download-btn" style="padding: 8px 16px; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); color: #000; font-weight: 700; border-radius: 8px;">
+                    <button type="button" class="btn-primary guide-download-btn" onclick="openAppDownloadHUD('APP-4964', event)" style="padding: 8px 16px; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #00e5ff, #0077b6); color: #000; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">
                         <span>📥</span> <span>Tải Cài Đặt (.exe)</span>
-                    </a>
+                    </button>
                     <button class="btn-secondary guide-video-btn" style="padding: 8px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; border-color: rgba(234, 179, 8, 0.5); color: #fde047;" onclick="closeAppGuideModal(); openAppVideoModal('APP-4964');">
                         <span>🎬</span> <span>Video Hướng Dẫn 4K</span>
                     </button>
@@ -1911,9 +1911,9 @@
                     💡 Xuất bản trên cổng <strong>supportflastdev.io.vn</strong> • Bản quyền DMH Hospital Tools 2026
                 </div>
                 <div class="guide-footer-actions" style="display: flex; gap: 10px;">
-                    <a href="/api/apps/download/APP-4964" class="btn-primary guide-footer-download-btn" style="padding: 8px 18px; font-size: 0.84rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: #00e5ff; color: #000; font-weight: 700; border-radius: 8px;">
+                    <button type="button" class="btn-primary guide-footer-download-btn" onclick="openAppDownloadHUD('APP-4964', event)" style="padding: 8px 18px; font-size: 0.84rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: #00e5ff; color: #000; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">
                         <span>📥 Tải DMH Tools Setup (141 MB)</span>
-                    </a>
+                    </button>
                     <button class="guide-footer-close-btn" onclick="closeAppGuideModal()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #fff; padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 0.84rem; cursor: pointer;">Đóng</button>
                 </div>
             </div>
@@ -2046,7 +2046,7 @@
                                     <span id="voice-icon">🔊</span> <span id="voice-label">Thuyết Minh: BẬT</span>
                                 </button>
                                 <span style="color: #facc15; font-size: 0.78rem; font-weight: 700;">★ 4K 60FPS</span>
-                                <a id="video-download-btn" href="/api/apps/download/APP-4964" style="color: #00e5ff; font-weight: 700; text-decoration: none; font-size: 0.82rem;">Tải bộ cài &darr;</a>
+                                <button type="button" id="video-download-btn" onclick="openAppDownloadHUD('APP-4964', event)" style="color: #00e5ff; font-weight: 700; text-decoration: none; font-size: 0.82rem; background: none; border: none; cursor: pointer; padding: 0;">Tải bộ cài &darr;</button>
                             </div>
                         </div>
                     </div>
@@ -2415,7 +2415,79 @@
 
 
 
-    <script src="/js/hub_core.js?v=20261007_1200"></script>
+    <!-- ======================================================== -->
+    <!-- MODAL: CỔNG TẢI ANYCAST CDN FAST-DOWNLOAD HUD BẢO MẬT    -->
+    <!-- ======================================================== -->
+    <div id="modal-app-download-hud" style="display: none; position: fixed; inset: 0; background: rgba(5, 10, 24, 0.88); z-index: 10005; align-items: center; justify-content: center; backdrop-filter: blur(20px); padding: 16px;">
+        <div class="app-download-hud-card" style="background: linear-gradient(145deg, rgba(13, 24, 54, 0.96) 0%, rgba(8, 14, 34, 0.98) 100%); border: 1px solid rgba(0, 240, 255, 0.5); border-radius: 20px; max-width: 620px; width: 100%; box-shadow: 0 30px 90px rgba(0,0,0,0.85), 0 0 50px rgba(0,240,255,0.3); position: relative; overflow: hidden; backdrop-filter: blur(24px) saturate(180%); padding: 24px;">
+            <!-- Viền cực quang phát sáng -->
+            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #00f0ff, #a855f7, #00f0ff); background-size: 200% 100%; animation: borderSheen 4s linear infinite;"></div>
+
+            <!-- Header HUD -->
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div id="hud-app-icon" style="width: 50px; height: 50px; border-radius: 14px; background: rgba(0, 240, 255, 0.12); border: 1px solid rgba(0, 240, 255, 0.4); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 0 20px rgba(0, 240, 255, 0.25); flex-shrink: 0;">📦</div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: #00f0ff; background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.35); padding: 2px 8px; border-radius: 6px;">⚡ ANYCAST CDN ACCELERATOR</span>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #4ade80; background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.35); padding: 2px 8px; border-radius: 6px;">✓ ZERO-DAY CLEAN</span>
+                        </div>
+                        <h3 id="hud-app-name" style="color: #fff; font-size: 1.25rem; font-weight: 800; margin: 6px 0 2px 0; letter-spacing: -0.3px;">Ứng Dụng Chuyên Dụng</h3>
+                        <div id="hud-app-meta" style="color: #94a3b8; font-size: 0.82rem;">v1.0.0 • Dung lượng: 0 MB • Windows/Android</div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAppDownloadHUD()" style="background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.borderColor='#ef4444';" onmouseout="this.style.color='#94a3b8'; this.style.borderColor='rgba(255, 255, 255, 0.15)';" aria-label="Đóng cửa sổ">✕</button>
+            </div>
+
+            <!-- Trạng thái băng thông CDN -->
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 8px;">
+                    <span style="color: #94a3b8; display: flex; align-items: center; gap: 6px;">
+                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block; box-shadow: 0 0 8px #4ade80;"></span>
+                        <span>Đường truyền: <strong>Hong Kong / Singapore Edge (Anycast v6)</strong></span>
+                    </span>
+                    <span style="color: #00f0ff; font-weight: 700;">Độ trễ: &lt; 15ms</span>
+                </div>
+                <div style="height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; position: relative;">
+                    <div id="hud-download-progress-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #00f0ff, #38bdf8, #a855f7); border-radius: 99px; animation: progressPulse 2s ease-in-out infinite;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #64748b; margin-top: 6px;">
+                    <span id="hud-status-text">Đã mở luồng băng thông đa điểm tốc độ cao</span>
+                    <span>Bảo mật AES-256-GCM End-to-End</span>
+                </div>
+            </div>
+
+            <!-- Mã kiểm định SHA-256 -->
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 10px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div style="min-width: 0;">
+                    <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Mã Băm Kiểm Định An Toàn (SHA-256):</div>
+                    <div id="hud-app-sha256" style="font-family: monospace; font-size: 0.78rem; color: #38bdf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;">c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877706c3a001d7ee4</div>
+                </div>
+                <button type="button" onclick="copyAppSha256(this)" style="background: rgba(0,240,255,0.12); border: 1px solid rgba(0,240,255,0.3); color: #00f0ff; border-radius: 6px; padding: 6px 10px; font-size: 0.74rem; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.2s;">
+                    Sao chép
+                </button>
+            </div>
+
+            <!-- Các nút hành động chính -->
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" id="btn-hud-start-download" onclick="startDirectFileDownload()" style="width: 100%; padding: 13px 20px; background: linear-gradient(135deg, #00f0ff 0%, #0077b6 100%); color: #000; font-weight: 800; font-size: 0.95rem; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 10px 30px rgba(0, 240, 255, 0.35); transition: transform 0.2s, box-shadow 0.2s;">
+                    <span>🚀</span> <span>BẮT ĐẦU TẢI GÓI CÀI ĐẶT NGAY (CDN EDGE)</span> <span>&rarr;</span>
+                </button>
+
+                <a id="btn-hud-zalo-support" href="https://zalo.me/84342041517" target="_blank" rel="noopener noreferrer" style="width: 100%; padding: 12px 20px; background: rgba(0, 104, 255, 0.15); border: 1px solid rgba(0, 104, 255, 0.4); color: #60a5fa; font-weight: 700; font-size: 0.88rem; border-radius: 12px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; transition: background 0.2s, border-color 0.2s;">
+                    <span>💬</span> <span>Nhận File Gốc Trực Tiếp Qua Zalo Kỹ Thuật Viên (24/7)</span>
+                </a>
+            </div>
+
+            <div style="margin-top: 14px; text-align: center; color: #64748b; font-size: 0.75rem;">
+                Tự động kiểm tra tính toàn vẹn chữ ký số SHA-256 trước khi xuất gói cài đặt
+            </div>
+        </div>
+    </div>
+    <!-- Hidden iframe để kích hoạt tải file ngầm mà không mở tab trắng -->
+    <iframe id="app-silent-downloader-frame" style="display: none; width: 0; height: 0; border: none;" aria-hidden="true"></iframe>
+
+    <script src="/js/hub_core.js?v=20261007_1530"></script>
 
     <!-- NÚT ZALO NỔI THƯỜNG TRỰC CẢ TRANG (GEMINI AI CORE STAR & ZALO CORNER BADGE - A11Y WCAG AAA) -->
     <a href="https://zalo.me/84342041517"
