@@ -368,17 +368,32 @@ func SaveReleaseToDB(rel ReleaseItem, buildHash string) error {
 	notesBytes, _ := json.Marshal(meta)
 	notesStr := string(notesBytes)
 
-	query := `
-		INSERT INTO system_releases (
-			version, title, date, build_hash, notes, published_by
-		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(version) DO UPDATE SET
-			title = excluded.title,
-			date = excluded.date,
-			build_hash = excluded.build_hash,
-			notes = excluded.notes,
-			published_by = excluded.published_by
-	`
+	var query string
+	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+		query = `
+			INSERT INTO system_releases (
+				version, title, date, build_hash, notes, published_by
+			) VALUES (?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				title = VALUES(title),
+				date = VALUES(date),
+				build_hash = VALUES(build_hash),
+				notes = VALUES(notes),
+				published_by = VALUES(published_by)
+		`
+	} else {
+		query = `
+			INSERT INTO system_releases (
+				version, title, date, build_hash, notes, published_by
+			) VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(version) DO UPDATE SET
+				title = excluded.title,
+				date = excluded.date,
+				build_hash = excluded.build_hash,
+				notes = excluded.notes,
+				published_by = excluded.published_by
+		`
+	}
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return fmt.Errorf("prepare upsert system_releases failed: %w", err)

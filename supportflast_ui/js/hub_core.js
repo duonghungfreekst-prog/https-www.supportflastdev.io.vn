@@ -3925,6 +3925,20 @@ function renderCyberRadarEmptyState(options) {
 
         const DEFAULT_SYSTEM_RELEASES = [
             {
+                id: "rel-dmh-1.1.3",
+                version: "v1.1.3",
+                title: "DMH Tools v1.1.3: Sửa Lỗi compare_server ENOENT và Tách Cột CCT Biểu 01 BHYT",
+                date: "2026-10-07",
+                badge: "Mới Nhất",
+                type: "fix",
+                changes: [
+                    "[fix] Khắc phục triệt để lỗi spawn compare_server.exe ENOENT khiến máy chủ Python bị sập ngầm",
+                    "[feat] Phân tách chuẩn xác 2 cột Bệnh nhân cùng chi trả (CCT - T_BNCCT) và Bệnh nhân tự trả (TT - T_BNTT) theo Biểu 01 BHYT",
+                    "[feat] Tự động khớp 100% các cột chuẩn Biểu 01 giữa Cổng Giám Định BHYT và HIS Nội bộ bệnh viện",
+                    "[perf] Tối ưu hóa hiệu năng đối chiếu song song và đóng gói sẵn tệp thực thi trong bản cài đặt 153MB"
+                ]
+            },
+            {
                 id: "rel-2.6.0",
                 version: "v2.6.0",
                 title: "Nâng Cấp Toàn Diện Kiến Trúc Polyglot TiDB Cloud & Anycast CDN",
