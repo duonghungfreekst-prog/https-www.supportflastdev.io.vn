@@ -983,9 +983,17 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stmt.Close()
 
+	// Ánh xạ alias ID giữa HTML giao diện và Database
+	queryID := appID
+	if appID == "APP-5192" {
+		queryID = "APP-5036"
+	} else if appID == "APP-3820" {
+		queryID = "APP-5152"
+	}
+
 	var targetApp AppItem
 	var uid string
-	err = stmt.QueryRow(appID).Scan(
+	err = stmt.QueryRow(queryID).Scan(
 		&targetApp.ID,
 		&targetApp.Name,
 		&targetApp.Version,
@@ -1005,6 +1013,70 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		&targetApp.Guide,
 		&uid,
 	)
+	if err == sql.ErrNoRows && queryID != appID {
+		// Thử tìm lại bằng appID gốc nếu queryID không ra
+		err = stmt.QueryRow(appID).Scan(
+			&targetApp.ID,
+			&targetApp.Name,
+			&targetApp.Version,
+			&targetApp.Platform,
+			&targetApp.Category,
+			&targetApp.Desc,
+			&targetApp.FileName,
+			&targetApp.SizeBytes,
+			&targetApp.SizeFormatted,
+			&targetApp.SHA256,
+			&targetApp.Author,
+			&targetApp.Downloads,
+			&targetApp.Status,
+			&targetApp.PublishedAt,
+			&targetApp.DownloadURL,
+			&targetApp.VideoURL,
+			&targetApp.Guide,
+			&uid,
+		)
+	}
+
+	// Fallback đối với các ứng dụng mặc định nếu chưa kịp nạp vào DB
+	if err == sql.ErrNoRows {
+		switch appID {
+		case "APP-4964":
+			targetApp = AppItem{
+				ID: "APP-4964", Name: "DMH Tools Enterprise Suite", Version: "1.1.3",
+				FileName: "DMH_Tools_Setup_1.1.3_Slim.exe", SizeFormatted: "141.3 MB",
+				SHA256: "c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877786c3a001d7ee4",
+			}
+			err = nil
+		case "APP-5036", "APP-5192":
+			targetApp = AppItem{
+				ID: "APP-5036", Name: "Thông Báo Số Dư & USB Bridge", Version: "2.1.0",
+				FileName: "ThongBaoSoDu_v2.1.0_FullPackage.zip", SizeFormatted: "56.0 MB",
+				SHA256: "6d20e1daaadfcc7d9f774f42afc5b305c74c030cb3661b1616534f88ea3e480f",
+			}
+			err = nil
+		case "APP-7290":
+			targetApp = AppItem{
+				ID: "APP-7290", Name: "AI Equalizer Pro & Audio Processor", Version: "2.2.0",
+				FileName: "APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip", SizeFormatted: "10.9 MB",
+				SHA256: "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+			}
+			err = nil
+		case "APP-5152", "APP-3820":
+			targetApp = AppItem{
+				ID: "APP-5152", Name: "Smart Alarm Clock Pro", Version: "1.2.0",
+				FileName: "DongHoBaoThuc_v1.0.1_FullPackage.zip", SizeFormatted: "36.7 MB",
+				SHA256: "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d",
+			}
+			err = nil
+		case "APP-0909":
+			targetApp = AppItem{
+				ID: "APP-0909", Name: "Mẫu 09 BHYT", Version: "1.0.0",
+				FileName: "APP-0909_Mau09_v1.0.0_FullPackage.zip", SizeFormatted: "69.2 MB",
+			}
+			err = nil
+		}
+	}
+
 	if err == sql.ErrNoRows {
 		http.Error(w, "App not found", http.StatusNotFound)
 		return
@@ -1019,7 +1091,7 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	updStmt, err := db.Prepare("UPDATE apps SET downloads = downloads + 1 WHERE id = ?")
 	if err == nil {
 		defer updStmt.Close()
-		updStmt.Exec(appID)
+		updStmt.Exec(targetApp.ID)
 		targetApp.Downloads++
 		InvalidateAppsCache()
 	}
@@ -1037,6 +1109,8 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		exactPaths := []string{
 			filepath.Join(dir, targetApp.FileName),
 			filepath.Join(dir, fmt.Sprintf("%s_%s", appID, targetApp.FileName)),
+			filepath.Join(dir, fmt.Sprintf("%s_%s", queryID, targetApp.FileName)),
+			filepath.Join(dir, fmt.Sprintf("%s_%s", targetApp.ID, targetApp.FileName)),
 		}
 		for _, p := range exactPaths {
 			if fi, err := os.Stat(p); err == nil && !fi.IsDir() {
@@ -1045,11 +1119,18 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		pattern := filepath.Join(dir, fmt.Sprintf("%s_*", appID))
-		if matches, _ := filepath.Glob(pattern); len(matches) > 0 {
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
-			http.ServeFile(w, r, matches[0])
-			return
+		// Thử tìm theo mẫu wildcard
+		patterns := []string{
+			filepath.Join(dir, fmt.Sprintf("%s_*", appID)),
+			filepath.Join(dir, fmt.Sprintf("%s_*", queryID)),
+			filepath.Join(dir, fmt.Sprintf("%s_*", targetApp.ID)),
+		}
+		for _, pt := range patterns {
+			if matches, _ := filepath.Glob(pt); len(matches) > 0 {
+				w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetApp.FileName))
+				http.ServeFile(w, r, matches[0])
+				return
+			}
 		}
 	}
 

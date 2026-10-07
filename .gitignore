@@ -47,7 +47,17 @@ data/subagents_audit_*.json
 storage/packages/*
 !storage/packages/.gitkeep
 !storage/packages/*.part*
-!storage/packages/APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip
+!storage/packages/APP-4964_*
+!storage/packages/APP-5036_*
+!storage/packages/APP-5192_*
+!storage/packages/APP-7290_*
+!storage/packages/APP-5152_*
+!storage/packages/APP-3820_*
+!storage/packages/APP-0909_*
+!storage/packages/*ThongBaoSoDu*
+!storage/packages/*AIEqualizer*
+!storage/packages/*DongHoBaoThuc*
+!storage/packages/*Mau09*
 storage/uploads/*
 !storage/uploads/.gitkeep
 storage/chunks/*
@@ -62,6 +72,7 @@ storage/temp/*
 *.out
 *.test
 *.zip
+!storage/packages/*.zip
 *.tar.gz
 *.7z
 *.apk
