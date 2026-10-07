@@ -25,14 +25,11 @@
         })();
     </script>
 
-    <link rel="stylesheet" href="/css/hub_main.css?v=20261004_1430">
+    <link rel="stylesheet" href="/css/hub_main.css?v=20261007_1200">
 </head>
 <body>
 
-    <div id="mouse-aura"></div>
-    <canvas id="network-canvas"></canvas>
-
-    <!-- KHỐI GRADIENT MESH CHUYỂN ĐỘNG & SCANLINE (CYBER NEBULA) -->
+    <!-- 1. KHỐI CỰC QUANG VŨ TRỤ CHUYỂN ĐỘNG & SCANLINE (CYBER NEBULA MESH) -->
     <div class="cyber-nebula-mesh cyber-mesh-container" aria-hidden="true">
         <div class="nebula-orb orb-cyan mesh-orb mesh-orb-cyan"></div>
         <div class="nebula-orb orb-purple mesh-orb mesh-orb-purple"></div>
@@ -40,6 +37,12 @@
         <div class="nebula-orb orb-amber mesh-orb mesh-orb-amber"></div>
         <div class="cyber-scanline-overlay"></div>
     </div>
+
+    <!-- 2. CANVAS MẠNG LƯỚI SAO & SAO BĂNG RƠI 60FPS -->
+    <canvas id="network-canvas"></canvas>
+
+    <!-- 3. HIỆU ỨNG HÀO QUANG THEO CHUỘT TƯƠNG TÁC -->
+    <div id="mouse-aura" class="interactive-mouse-aura"></div>
 
     <!-- ============================================================== -->
     <!-- CỤM HEADER KÍNH LIỀN KHỐI (MONOLITHIC CYBER-GLASS DOCK)        -->
@@ -231,8 +234,7 @@
                 <h1 class="hero-kinetic-title" onclick="triggerHeroLettersAssemble()" title="Nhấp để kích hoạt hiệu ứng chữ nhảy xếp chữ">
                     <!-- Dòng 1: Pre-Headline Bạch Kim Băng Giá (Platinum Frost) -->
                     <div class="h1-tier-sub">
-                        <span class="h1-line h1-line-silver">
-                            <span class="k-word"><span class="k-char" style="--i:0">Đ</span><span class="k-char" style="--i:1">Ă</span><span class="k-char" style="--i:2">N</span><span class="k-char" style="--i:3">G</span></span>
+                        <span class="h1-line h1-line-silver"><span class="k-word"><span class="k-char" style="--i:0">Đ</span><span class="k-char" style="--i:1">Ă</span><span class="k-char" style="--i:2">N</span><span class="k-char" style="--i:3">G</span></span>
                             <span class="k-space">&nbsp;</span>
                             <span class="k-word"><span class="k-char" style="--i:4">T</span><span class="k-char" style="--i:5">Ả</span><span class="k-char" style="--i:6">I</span></span>
                             <span class="k-space">&nbsp;</span>
@@ -243,8 +245,7 @@
                     </div>
                     <!-- Dòng 2: Main Punchline Rực Sáng Gradient Cyan Neon sang Deep Indigo -->
                     <div class="h1-tier-main">
-                        <span class="h1-line h1-glow h1-line-neon">
-                            <span class="k-word"><span class="k-char" style="--i:15">P</span><span class="k-char" style="--i:16">H</span><span class="k-char" style="--i:17">Â</span><span class="k-char" style="--i:18">N</span></span>
+                        <span class="h1-line h1-glow h1-line-neon"><span class="k-word"><span class="k-char" style="--i:15">P</span><span class="k-char" style="--i:16">H</span><span class="k-char" style="--i:17">Â</span><span class="k-char" style="--i:18">N</span></span>
                             <span class="k-space">&nbsp;</span>
                             <span class="k-word"><span class="k-char" style="--i:19">P</span><span class="k-char" style="--i:20">H</span><span class="k-char" style="--i:21">Ố</span><span class="k-char" style="--i:22">I</span></span>
                             <span class="k-space">&nbsp;</span>
@@ -2414,7 +2415,7 @@
 
 
 
-    <script src="/js/hub_core.js?v=20261004_1430"></script>
+    <script src="/js/hub_core.js?v=20261007_1200"></script>
 
     <!-- NÚT ZALO NỔI THƯỜNG TRỰC CẢ TRANG (GEMINI AI CORE STAR & ZALO CORNER BADGE - A11Y WCAG AAA) -->
     <a href="https://zalo.me/84342041517"

@@ -740,7 +740,7 @@
         
         .h1-line {
             display: inline-block;
-            font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
+            font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-size: clamp(2.5rem, 5.8vw, 4.8rem);
             font-weight: 900;
             line-height: 1.25;
@@ -783,30 +783,7 @@
             }
         }
 
-        /* Khi rê chuột vào tiêu đề: các con chữ nhảy sóng nhịp nhàng theo tay chuột */
-        .hero-kinetic-title:hover .k-char {
-            animation: letterWaveJump 0.55s ease-in-out infinite alternate !important;
-            animation-delay: calc(var(--i, 0) * 0.035s) !important;
-        }
-
-        @keyframes letterWaveJump {
-            0% {
-                transform: translateY(0) scale(1);
-            }
-            50% {
-                transform: translateY(-18px) scale(1.15);
-                filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.95));
-            }
-            100% {
-                transform: translateY(2px) scale(0.98);
-            }
-        }
-
-        /* Class kích hoạt chu kỳ nhảy xếp chữ lặp lại */
-        .k-char.re-jump {
-            animation: letterJumpAssemble 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
-            animation-delay: calc(var(--i, 0) * 0.042s) !important;
-        }
+        /* He thong animation Kinetic Title duoc tap trung quan ly tai dong 5906+ */
         
         p.desc { font-size: 1.25rem; color: var(--text-muted); max-width: 750px; margin: 0 auto 40px; font-weight: 400; }
         
@@ -5258,31 +5235,36 @@ body {
 /* Tối ưu hóa hiệu năng trên thiết bị di động */
 @media (max-width: 768px) {
     .cyber-nebula-mesh {
-        opacity: 0.65;
+        opacity: 0.70;
     }
-    .nebula-orb {
-        filter: blur(60px);
+    .nebula-orb, .mesh-orb {
+        filter: blur(55px) !important;
     }
-    .orb-cyan {
-        width: 90vw;
-        height: 90vw;
+    .orb-cyan, .mesh-orb-cyan {
+        width: 90vw !important;
+        height: 90vw !important;
     }
-    .orb-purple {
-        width: 95vw;
-        height: 95vw;
+    .orb-purple, .mesh-orb-purple {
+        width: 95vw !important;
+        height: 95vw !important;
     }
-    .orb-deep-blue {
-        width: 100vw;
-        height: 100vw;
+    .orb-deep-blue, .mesh-orb-indigo {
+        width: 95vw !important;
+        height: 95vw !important;
+    }
+    .orb-amber, .mesh-orb-amber {
+        width: 85vw !important;
+        height: 85vw !important;
     }
     #network-canvas {
-        opacity: 0.75;
+        opacity: 0.85 !important;
     }
 }
 
 /* Hỗ trợ chế độ tiết kiệm chuyển động */
 @media (prefers-reduced-motion: reduce) {
-    .nebula-orb {
+    .nebula-orb,
+    .mesh-orb {
         animation: none !important;
     }
 }
@@ -5909,15 +5891,25 @@ nav {
 }
 
 /* Dòng 1: Pre-headline màu Bạch Kim Băng Giá Sắc Nét */
+.h1-tier-sub {
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
 .h1-tier-sub .h1-line {
-    font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     font-size: clamp(2rem, 4.4vw, 3.4rem);
     font-weight: 800;
     letter-spacing: -0.025em;
     line-height: 1.2;
 }
 
-.h1-line-silver,
+/* KHÔNG áp dụng background-clip lên thẻ cha .h1-line-silver để triệt tiêu vệt ô vuông đè chữ Đ */
+.h1-line-silver {
+    background: none !important;
+    filter: none !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
 .h1-line-silver .k-char {
     color: #ffffff !important;
     background: linear-gradient(110deg, #94a3b8 0%, #ffffff 20%, #e2e8f0 38%, #ffffff 50%, #38bdf8 68%, #ffffff 82%, #cbd5e1 100%) !important;
@@ -5925,22 +5917,31 @@ nav {
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
-    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, metallicSheenSweep 5s ease-in-out infinite !important;
-    animation-delay: calc(var(--i, 0) * 0.075s), calc(var(--i, 0) * 0.05s) !important;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.45)) !important;
+    filter: none !important;
     text-shadow: none !important;
+    display: inline-block !important;
 }
 
 /* Dòng 2: Main Punchline màu Gradient Sky Blue sang Electric Cyan Căng Sắc */
+.h1-tier-main {
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 14px rgba(0, 240, 255, 0.85)) drop-shadow(0 0 28px rgba(0, 229, 255, 0.5));
+}
+
 .h1-tier-main .h1-line {
-    font-family: 'Space Grotesk', 'Be Vietnam Pro', 'Inter', sans-serif;
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
     font-size: clamp(2.8rem, 6.2vw, 5.2rem);
     font-weight: 900;
     letter-spacing: -0.03em;
     line-height: 1.15;
 }
 
-.h1-line-neon,
+/* KHÔNG áp dụng background-clip lên thẻ cha .h1-line-neon để triệt tiêu vệt ô vuông đè chữ P */
+.h1-line-neon {
+    background: none !important;
+    filter: none !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
 .h1-line-neon .k-char {
     color: #38bdf8 !important;
     background: linear-gradient(110deg, #38bdf8 0%, #ffffff 22%, #00f0ff 48%, #ffffff 62%, #0284c7 82%, #38bdf8 100%) !important;
@@ -5948,10 +5949,9 @@ nav {
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
     background-clip: text !important;
-    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, metallicSheenSweep 5s ease-in-out infinite alternate !important;
-    animation-delay: calc(var(--i, 0) * 0.075s), calc(var(--i, 0) * 0.05s) !important;
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 8px rgba(0, 240, 255, 0.7)) drop-shadow(0 0 20px rgba(0, 229, 255, 0.35)) !important;
+    filter: none !important;
     text-shadow: none !important;
+    display: inline-block !important;
 }
 
 .h1-glow {
@@ -5973,11 +5973,8 @@ nav {
     display: inline-block !important;
     transform-origin: 50% 85% !important;
     will-change: transform, background-position !important;
-    transform-style: preserve-3d !important;
-    backface-visibility: hidden !important;
-    -webkit-backface-visibility: hidden !important;
-    animation: continuousLetterWave3D 3.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite !important;
-    animation-delay: calc(var(--i, 0) * 0.075s) !important;
+    animation: continuousLetterWave3D 2.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, metallicSheenSweep 4.5s ease-in-out infinite !important;
+    animation-delay: calc(var(--i, 0) * 0.075s), calc(var(--i, 0) * 0.055s) !important;
     transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
@@ -5987,10 +5984,10 @@ nav {
         transform: translateY(0px) rotateX(0deg) rotateZ(0deg) scale(1);
     }
     28% {
-        transform: translateY(-11px) rotateX(-9deg) rotateZ(-1.5deg) scale(1.07);
+        transform: translateY(-13px) rotateX(-10deg) rotateZ(-1.5deg) scale(1.08);
     }
     58% {
-        transform: translateY(2.5px) rotateX(3deg) rotateZ(0.5deg) scale(0.98);
+        transform: translateY(3px) rotateX(3.5deg) rotateZ(0.5deg) scale(0.97);
     }
 }
 
@@ -6006,8 +6003,8 @@ nav {
 
 /* KHI RÊ CHUỘT: TĂNG TỐC ĐỘ VÀ BIÊN ĐỘ UỐN LƯỢN SÓNG 3D MẠNH MẼ VẪN GIỮ ĐỘ SẮC NÉT */
 .hero-kinetic-title:hover .k-char {
-    animation: continuousLetterWaveHover 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite !important;
-    animation-delay: calc(var(--i, 0) * 0.045s) !important;
+    animation: continuousLetterWaveHover 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) infinite, metallicSheenSweep 2.5s ease-in-out infinite !important;
+    animation-delay: calc(var(--i, 0) * 0.04s), calc(var(--i, 0) * 0.03s) !important;
 }
 
 @keyframes continuousLetterWaveHover {
@@ -6015,7 +6012,7 @@ nav {
         transform: translateY(0px) rotateX(0deg) scale(1);
     }
     50% {
-        transform: translateY(-17px) rotateX(-14deg) scale(1.15);
+        transform: translateY(-18px) rotateX(-14deg) scale(1.15);
     }
 }
 
@@ -6027,19 +6024,19 @@ nav {
 @keyframes letterJumpAssemble {
     0% {
         opacity: 0;
-        transform: translateY(-80px) rotateX(60deg) scale(0.45);
+        transform: translateY(-90px) rotateX(65deg) scale(0.4);
         filter: blur(8px);
     }
     52% {
         opacity: 1;
-        transform: translateY(18px) rotateX(-12deg) scale(1.18);
+        transform: translateY(20px) rotateX(-12deg) scale(1.2);
         filter: blur(0);
     }
     72% {
-        transform: translateY(-8px) scale(0.95);
+        transform: translateY(-9px) scale(0.94);
     }
     88% {
-        transform: translateY(3px) scale(1.02);
+        transform: translateY(4px) scale(1.03);
     }
     100% {
         opacity: 1;
@@ -9494,13 +9491,13 @@ button, a, input, select, textarea, .card, .btn-primary, .btn-secondary,
 /* 1. NỀN KHÔNG GIAN DARK OBSIDIAN SLATE ĐỒNG NHẤT TOÀN DIỆN */
 body {
     background-color: #030712 !important;
-    background-image: radial-gradient(circle at 50% -20%, rgba(30, 58, 138, 0.18) 0%, rgba(3, 7, 18, 0.95) 70%, #030712 100%) !important;
+    background-image: radial-gradient(circle at 50% -10%, rgba(30, 58, 138, 0.22) 0%, rgba(3, 7, 18, 0.96) 72%, #030712 100%) !important;
     background-attachment: fixed !important;
     background-size: 100% 100% !important;
     min-height: 100vh !important;
 }
 
-/* 2. NGUỒN SÁNG AMBIENT TRUNG TÂM TINH TẾ (CỰC QUANG VŨ TRỤ HUYỀN ẢO, ĐỒNG NHẤT 100%) */
+/* 2. HỆ THỐNG CỰC QUANG VŨ TRỤ 4 CHIỀU TOÀN CẢNH (CYBER NEBULA MESH - 60FPS) */
 .cyber-mesh-container,
 .cyber-nebula-mesh {
     position: fixed !important;
@@ -9511,83 +9508,171 @@ body {
     z-index: 0 !important;
     mix-blend-mode: screen !important;
     background: transparent !important;
+    will-change: transform !important;
 }
 
-/* Khối Cực quang Trung tâm (Core Cyan Horizon Aurora) */
+/* Kiểu dáng chung cho các khối Cực quang */
+.nebula-orb,
+.mesh-orb {
+    position: absolute !important;
+    border-radius: 50% !important;
+    pointer-events: none !important;
+    will-change: transform, opacity !important;
+    backface-visibility: hidden !important;
+    -webkit-backface-visibility: hidden !important;
+}
+
+/* Orb 1: Cyan Horizon Aurora (Góc Tây Bắc & Hero Header) */
 .mesh-orb-cyan,
 .orb-cyan {
     display: block !important;
-    top: -80px !important;
-    left: 50% !important;
+    top: -12vh !important;
+    left: -6vw !important;
     right: auto !important;
-    width: 1000px !important;
-    height: 580px !important;
-    max-width: 95vw !important;
-    border-radius: 50% !important;
-    background: radial-gradient(ellipse 65% 55% at 50% 35%, rgba(0, 240, 255, 0.18) 0%, rgba(56, 189, 248, 0.10) 45%, rgba(99, 102, 241, 0.04) 70%, transparent 85%) !important;
-    filter: blur(95px) !important;
-    opacity: 0.95 !important;
-    transform: translate3d(-50%, 0, 0) !important;
-    will-change: transform, opacity !important;
+    bottom: auto !important;
+    width: 68vw !important;
+    height: 68vw !important;
+    max-width: 960px !important;
+    max-height: 960px !important;
+    background: radial-gradient(circle at 45% 45%, rgba(0, 240, 255, 0.35) 0%, rgba(14, 165, 233, 0.18) 42%, rgba(3, 7, 18, 0) 75%) !important;
+    filter: blur(85px) !important;
+    opacity: 0.90 !important;
     animation: cosmicCoreFloat 24s ease-in-out infinite alternate !important;
 }
 
-/* Khối Sương mờ Vũ trụ Đệm (Cosmic Violet Veil Aurora) */
+/* Orb 2: Quantum Violet Veil (Góc Đông Bắc & Thân Trên) */
 .mesh-orb-purple,
 .orb-purple {
     display: block !important;
-    top: 32vh !important;
-    left: 50% !important;
-    right: auto !important;
-    width: 950px !important;
-    height: 480px !important;
-    max-width: 90vw !important;
-    border-radius: 50% !important;
-    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(139, 92, 246, 0.10) 0%, rgba(56, 189, 248, 0.05) 50%, transparent 80%) !important;
-    filter: blur(105px) !important;
+    top: 6vh !important;
+    right: -8vw !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: 66vw !important;
+    height: 66vw !important;
+    max-width: 920px !important;
+    max-height: 920px !important;
+    background: radial-gradient(circle at 55% 45%, rgba(168, 85, 247, 0.30) 0%, rgba(139, 92, 246, 0.16) 45%, rgba(3, 7, 18, 0) 75%) !important;
+    filter: blur(90px) !important;
     opacity: 0.85 !important;
-    transform: translate3d(-50%, 0, 0) !important;
-    will-change: transform, opacity !important;
     animation: cosmicVeilFloat 28s ease-in-out infinite alternate-reverse !important;
 }
 
-/* Ẩn triệt để các quả cầu đối chọi góc cũ để bảo vệ độ hòa quyện trung tâm */
+/* Orb 3: Deep Sapphire Abyss (Góc Tây Nam & Nửa Dưới Catalog Cards) */
 .mesh-orb-indigo,
-.orb-deep-blue,
-.mesh-orb-amber,
-.orb-amber {
-    display: none !important;
+.orb-deep-blue {
+    display: block !important;
+    bottom: -15vh !important;
+    left: 8vw !important;
+    top: auto !important;
+    right: auto !important;
+    width: 75vw !important;
+    height: 75vw !important;
+    max-width: 1080px !important;
+    max-height: 1080px !important;
+    background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.32) 0%, rgba(30, 58, 138, 0.18) 48%, rgba(3, 7, 18, 0) 78%) !important;
+    filter: blur(95px) !important;
+    opacity: 0.85 !important;
+    animation: cosmicAbyssFloat 32s ease-in-out infinite alternate !important;
 }
 
-/* Chuyển động cực êm ái cho Tinh vân vũ trụ */
+/* Orb 4: Solar Amber Warm Radiance (Góc Đông Nam & Khu Vực Tải Ứng Dụng / Tech Tree) */
+.mesh-orb-amber,
+.orb-amber {
+    display: block !important;
+    bottom: 5vh !important;
+    right: 4vw !important;
+    top: auto !important;
+    left: auto !important;
+    width: 52vw !important;
+    height: 52vw !important;
+    max-width: 740px !important;
+    max-height: 740px !important;
+    background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.24) 0%, rgba(217, 119, 6, 0.11) 45%, rgba(3, 7, 18, 0) 72%) !important;
+    filter: blur(85px) !important;
+    opacity: 0.82 !important;
+    animation: cosmicAmberFloat 30s ease-in-out infinite alternate-reverse !important;
+}
+
+/* Keyframes Chuyển Động Trôi Dạt Cực Quang 60FPS Mượt Mà */
 @keyframes cosmicCoreFloat {
     0% {
-        transform: translate3d(-50%, 0, 0) scale(0.96);
-        opacity: 0.8;
+        transform: translate3d(0, 0, 0) scale(0.96);
+        opacity: 0.82;
     }
     50% {
-        transform: translate3d(-48%, 20px, 0) scale(1.05);
-        opacity: 1;
+        transform: translate3d(5vw, 4vh, 0) scale(1.08);
+        opacity: 0.95;
     }
     100% {
-        transform: translate3d(-52%, -15px, 0) scale(0.98);
+        transform: translate3d(-3vw, 8vh, 0) scale(0.98);
         opacity: 0.85;
     }
 }
 
 @keyframes cosmicVeilFloat {
     0% {
-        transform: translate3d(-50%, 0, 0) scale(1.04);
+        transform: translate3d(0, 0, 0) scale(1.04);
+        opacity: 0.78;
+    }
+    50% {
+        transform: translate3d(-6vw, 6vh, 0) scale(0.94);
+        opacity: 0.92;
+    }
+    100% {
+        transform: translate3d(3vw, -4vh, 0) scale(1.02);
+        opacity: 0.82;
+    }
+}
+
+@keyframes cosmicAbyssFloat {
+    0% {
+        transform: translate3d(0, 0, 0) scale(0.98);
         opacity: 0.75;
     }
     50% {
-        transform: translate3d(-52%, -25px, 0) scale(0.95);
-        opacity: 0.95;
+        transform: translate3d(-4vw, -5vh, 0) scale(1.12);
+        opacity: 0.90;
     }
     100% {
-        transform: translate3d(-48%, 18px, 0) scale(1.02);
-        opacity: 0.8;
+        transform: translate3d(6vw, 3vh, 0) scale(0.95);
+        opacity: 0.80;
     }
+}
+
+@keyframes cosmicAmberFloat {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1.02);
+        opacity: 0.76;
+    }
+    50% {
+        transform: translate3d(-5vw, 6vh, 0) scale(1.10);
+        opacity: 0.88;
+    }
+    100% {
+        transform: translate3d(4vw, -4vh, 0) scale(0.96);
+        opacity: 0.78;
+    }
+}
+
+/* Đảm bảo Canvas sao băng và hạt luôn nổi bật trên nền cực quang */
+#network-canvas {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+    touch-action: pan-y !important;
+    opacity: 0.96 !important;
+    filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.35)) !important;
+}
+
+#mouse-aura {
+    z-index: 2 !important;
 }
 
 .cyber-scanline-overlay {

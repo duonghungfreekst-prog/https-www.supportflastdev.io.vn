@@ -88,8 +88,24 @@
                 void ch.offsetWidth; // Trigger DOM reflow để kích hoạt lại animation
                 ch.classList.add('re-jump');
             });
+
+            // Tự động gỡ bỏ re-jump sau khi hoàn tất hiệu ứng nhảy để trả lại sóng 3D và ánh kim quét liên tục
+            const totalDuration = 1100 + (chars.length * 42) + 200;
+            if (window._heroAssembleTimer) clearTimeout(window._heroAssembleTimer);
+            window._heroAssembleTimer = setTimeout(() => {
+                chars.forEach(ch => ch.classList.remove('re-jump'));
+            }, totalDuration);
         }
         window.triggerHeroLettersAssemble = triggerHeroLettersAssemble;
+
+        // Tự động kích hoạt hiệu ứng chữ nhảy xếp chữ điện ảnh khi vào trang
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(triggerHeroLettersAssemble, 350);
+            });
+        } else {
+            setTimeout(triggerHeroLettersAssemble, 350);
+        }
 
         function escapeHtml(str) {
             if (!str) return '';
@@ -4326,355 +4342,374 @@ function renderCyberRadarEmptyState(options) {
         /* 60FPS Optimization | Spatial Bounding | Zero Battery Waste     */
         /* ============================================================== */
         (function initCyberNebulaCanvas() {
-            const canvas = document.getElementById('network-canvas');
-            if (!canvas) return;
+            try {
+                const canvas = document.getElementById('network-canvas');
+                if (!canvas) return;
 
-            // Đảm bảo DOM Gradient Mesh tồn tại nếu HTML chưa khai báo
-            if (!document.querySelector('.cyber-nebula-mesh')) {
-                const meshContainer = document.createElement('div');
-                meshContainer.className = 'cyber-nebula-mesh';
-                meshContainer.setAttribute('aria-hidden', 'true');
-                meshContainer.innerHTML = `
-                    <div class="nebula-orb orb-cyan"></div>
-                    <div class="nebula-orb orb-purple"></div>
-                    <div class="nebula-orb orb-deep-blue"></div>
-                `;
-                canvas.parentNode.insertBefore(meshContainer, canvas);
-            }
-
-            const ctx = canvas.getContext('2d', { alpha: true });
-            if (!ctx) return;
-
-            // Biến môi trường và cấu hình hiệu năng
-            let width = 0;
-            let height = 0;
-            let dpr = 1;
-            let animationFrameId = null;
-            let isTabVisible = !document.hidden;
-
-            const isTouchScreen = window.innerWidth <= 768 || 
-                window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-            
-            // Thiết lập số lượng hạt thích ứng theo cấu hình thiết bị
-            const PARTICLE_COUNT = isTouchScreen ? 36 : 82;
-            const CONNECT_DISTANCE = isTouchScreen ? 115 : 145;
-            const CONNECT_DISTANCE_SQ = CONNECT_DISTANCE * CONNECT_DISTANCE; // Tối ưu: Bỏ căn bậc hai
-            const MOUSE_RADIUS = isTouchScreen ? 120 : 220;
-
-            const particles = [];
-            const meteors = [];
-            let nextMeteorTime = performance.now() + 2000;
-
-            // Định vị tương tác chuột / Aura
-            const mouse = { x: -9999, y: -9999, radius: MOUSE_RADIUS };
-            const auraEl = document.getElementById('mouse-aura');
-
-            function resizeCanvas() {
-                dpr = Math.min(window.devicePixelRatio || 1, 2); // Clamp tối đa 2 để chống giật lag Retina
-                width = window.innerWidth;
-                height = window.innerHeight;
-
-                canvas.width = Math.floor(width * dpr);
-                canvas.height = Math.floor(height * dpr);
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
-
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.scale(dpr, dpr);
-            }
-
-            resizeCanvas();
-            window.addEventListener('resize', debounce(resizeCanvas, 150), { passive: true });
-
-            function debounce(fn, ms) {
-                let timer;
-                return function() {
-                    clearTimeout(timer);
-                    timer = setTimeout(() => fn.apply(this, arguments), ms);
-                };
-            }
-
-            // Lắng nghe chuột desktop
-            if (!isTouchScreen) {
-                window.addEventListener('mousemove', (e) => {
-                    mouse.x = e.clientX;
-                    mouse.y = e.clientY;
-                }, { passive: true });
-
-                window.addEventListener('mouseleave', () => {
-                    mouse.x = -9999;
-                    mouse.y = -9999;
-                }, { passive: true });
-            }
-
-            /* --- LỚP HẠT SÁNG VŨ TRỤ (STAR DUST & CYBER NODES) --- */
-            class CyberParticle {
-                constructor() {
-                    this.init(true);
+                // Đảm bảo DOM Gradient Mesh tồn tại nếu HTML chưa khai báo
+                if (!document.querySelector('.cyber-nebula-mesh')) {
+                    const meshContainer = document.createElement('div');
+                    meshContainer.className = 'cyber-nebula-mesh cyber-mesh-container';
+                    meshContainer.setAttribute('aria-hidden', 'true');
+                    meshContainer.innerHTML = `
+                        <div class="nebula-orb orb-cyan mesh-orb mesh-orb-cyan"></div>
+                        <div class="nebula-orb orb-purple mesh-orb mesh-orb-purple"></div>
+                        <div class="nebula-orb orb-deep-blue mesh-orb mesh-orb-indigo"></div>
+                        <div class="nebula-orb orb-amber mesh-orb mesh-orb-amber"></div>
+                        <div class="cyber-scanline-overlay"></div>
+                    `;
+                    canvas.parentNode.insertBefore(meshContainer, canvas);
                 }
 
-                init(isFirstRun = false) {
-                    this.x = Math.random() * width;
-                    this.y = isFirstRun ? Math.random() * height : (Math.random() > 0.5 ? -10 : height + 10);
-                    
-                    // Tốc độ trôi dạt êm dịu
-                    const speed = Math.random() * 0.45 + 0.2;
-                    const angle = Math.random() * Math.PI * 2;
-                    this.vx = Math.cos(angle) * speed;
-                    this.vy = Math.sin(angle) * speed;
+                const ctx = canvas.getContext('2d', { alpha: true });
+                if (!ctx) return;
 
-                    // Phân tầng: 40% là Bụi sao siêu mịn, 60% là Nút mạng năng lượng
-                    this.isStarDust = Math.random() < 0.4;
-                    this.radius = this.isStarDust ? (Math.random() * 0.8 + 0.5) : (Math.random() * 1.6 + 1.2);
-                    
-                    // Bảng màu Cyber: Cyan hoặc Neon Purple hoặc Slate Ice
-                    const colorPick = Math.random();
-                    if (colorPick < 0.55) {
-                        this.baseColor = '#00e5ff'; // Cyan Neon
-                        this.rgb = '0, 229, 255';
-                    } else if (colorPick < 0.85) {
-                        this.baseColor = '#a855f7'; // Neon Violet
-                        this.rgb = '168, 85, 247';
-                    } else {
-                        this.baseColor = '#38bdf8'; // Sky Ice
-                        this.rgb = '56, 189, 248';
+                // Biến môi trường và cấu hình hiệu năng
+                let width = 0;
+                let height = 0;
+                let dpr = 1;
+                let animationFrameId = null;
+                let isTabVisible = !document.hidden;
+
+                const isTouchScreen = window.innerWidth <= 768 || 
+                    window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+                
+                // Thiết lập số lượng hạt thích ứng theo cấu hình thiết bị (Đảm bảo phủ đều khắp trang)
+                const PARTICLE_COUNT = isTouchScreen ? 48 : 118;
+                const CONNECT_DISTANCE = isTouchScreen ? 135 : 185;
+                const CONNECT_DISTANCE_SQ = CONNECT_DISTANCE * CONNECT_DISTANCE; // Tối ưu: Bỏ căn bậc hai
+                const MOUSE_RADIUS = isTouchScreen ? 110 : 200;
+
+                const particles = [];
+                const meteors = [];
+                let nextMeteorTime = performance.now() + 600; // Xuất hiện sao băng đầu tiên sớm
+
+                // Định vị tương tác chuột độc lập và an toàn (Không bị bẫy tọa độ tĩnh)
+                const mouse = { x: -9999, y: -9999, active: false, radius: MOUSE_RADIUS };
+
+                function resizeCanvas() {
+                    dpr = Math.min(window.devicePixelRatio || 1, 2); // Clamp tối đa 2 để chống giật lag Retina
+                    width = window.innerWidth;
+                    height = window.innerHeight;
+
+                    canvas.width = Math.floor(width * dpr);
+                    canvas.height = Math.floor(height * dpr);
+                    canvas.style.width = width + 'px';
+                    canvas.style.height = height + 'px';
+
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.scale(dpr, dpr);
+
+                    // Khi resize, đưa các hạt nằm ngoài biên trở lại màn hình hiển thị
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        if (p.x > width) p.x = Math.random() * width;
+                        if (p.y > height) p.y = Math.random() * height;
+                    }
+                }
+
+                resizeCanvas();
+                window.addEventListener('resize', debounce(resizeCanvas, 150), { passive: true });
+
+                function debounce(fn, ms) {
+                    let timer;
+                    return function() {
+                        clearTimeout(timer);
+                        timer = setTimeout(() => fn.apply(this, arguments), ms);
+                    };
+                }
+
+                // Lắng nghe chuột desktop chính xác theo trạng thái hover
+                if (!isTouchScreen) {
+                    window.addEventListener('mousemove', (e) => {
+                        mouse.x = e.clientX;
+                        mouse.y = e.clientY;
+                        mouse.active = true;
+                    }, { passive: true });
+
+                    window.addEventListener('mouseleave', () => {
+                        mouse.x = -9999;
+                        mouse.y = -9999;
+                        mouse.active = false;
+                    }, { passive: true });
+                }
+
+                /* --- LỚP HẠT SÁNG VŨ TRỤ (STAR DUST & CYBER NODES) --- */
+                class CyberParticle {
+                    constructor() {
+                        this.init(true);
                     }
 
-                    // Tần số nhấp nháy phát quang
-                    this.twinkleSpeed = Math.random() * 0.025 + 0.01;
-                    this.twinklePhase = Math.random() * Math.PI * 2;
-                    this.baseAlpha = Math.random() * 0.35 + 0.35;
+                    init(isFirstRun = false) {
+                        this.x = Math.random() * width;
+                        this.y = isFirstRun ? Math.random() * height : Math.random() * height;
+                        
+                        // Tốc độ trôi dạt sinh động rõ ràng (0.6 - 1.15 px/frame), không bị cảm giác đứng yên
+                        const speed = Math.random() * 0.55 + 0.6;
+                        const angle = Math.random() * Math.PI * 2;
+                        this.vx = Math.cos(angle) * speed;
+                        this.vy = Math.sin(angle) * speed;
+
+                        // Đảm bảo vận tốc tối thiểu trên mỗi trục để hạt luôn lướt liên tục
+                        if (Math.abs(this.vx) < 0.25) this.vx = (this.vx < 0 ? -0.35 : 0.35);
+                        if (Math.abs(this.vy) < 0.25) this.vy = (this.vy < 0 ? -0.35 : 0.35);
+
+                        // Phân tầng: 30% là Bụi sao mịn, 70% là Nút mạng năng lượng
+                        this.isStarDust = Math.random() < 0.30;
+                        this.radius = this.isStarDust ? (Math.random() * 0.8 + 1.2) : (Math.random() * 1.5 + 2.0);
+                        
+                        // Bảng màu Cyber: Cyan Neon, Neon Violet, Sky Ice sắc nét
+                        const colorPick = Math.random();
+                        if (colorPick < 0.55) {
+                            this.baseColor = '#00f0ff'; // Cyan Neon rực rỡ
+                            this.rgb = '0, 240, 255';
+                        } else if (colorPick < 0.85) {
+                            this.baseColor = '#c084fc'; // Neon Purple tươi sáng
+                            this.rgb = '192, 132, 252';
+                        } else {
+                            this.baseColor = '#38bdf8'; // Sky Ice
+                            this.rgb = '56, 189, 248';
+                        }
+
+                        // Tần số nhấp nháy phát quang
+                        this.twinkleSpeed = Math.random() * 0.03 + 0.015;
+                        this.twinklePhase = Math.random() * Math.PI * 2;
+                        this.baseAlpha = Math.random() * 0.3 + 0.65;
+                    }
+
+                    update(timestamp) {
+                        this.x += this.vx;
+                        this.y += this.vy;
+
+                        // Phản xạ biên mềm mại (Soft Boundary Bounce): Hạt chạm mép sẽ tự động đổi hướng
+                        // quay lại không gian màn hình, triệt tiêu hoàn toàn hiện tượng hạt trôi dạt kẹt ở mép
+                        if (this.x <= 0) {
+                            this.x = 0;
+                            this.vx = Math.abs(this.vx);
+                        } else if (this.x >= width) {
+                            this.x = width;
+                            this.vx = -Math.abs(this.vx);
+                        }
+
+                        if (this.y <= 0) {
+                            this.y = 0;
+                            this.vy = Math.abs(this.vy);
+                        } else if (this.y >= height) {
+                            this.y = height;
+                            this.vy = -Math.abs(this.vy);
+                        }
+
+                        // Tương tác lực đẩy chuột: CHỈ kích hoạt khi chuột thực sự di chuyển trên màn hình
+                        if (!isTouchScreen && mouse.active && mouse.x >= 0 && mouse.y >= 0) {
+                            const dx = mouse.x - this.x;
+                            const dy = mouse.y - this.y;
+                            const distSq = dx * dx + dy * dy;
+
+                            if (distSq < mouse.radius * mouse.radius && distSq > 0) {
+                                const dist = Math.sqrt(distSq);
+                                const force = (mouse.radius - dist) / mouse.radius;
+                                const normalX = dx / dist;
+                                const normalY = dy / dist;
+                                // Đẩy nhẹ nhàng để hạt lướt né chuột duyên dáng, không bị bắn văng kẹt mép
+                                this.x -= normalX * force * 1.6;
+                                this.y -= normalY * force * 1.6;
+                            }
+                        }
+
+                        // Tính độ sáng nhấp nháy quang học
+                        this.twinklePhase += this.twinkleSpeed;
+                        this.currentAlpha = Math.max(0.4, Math.min(1.0, this.baseAlpha + Math.sin(this.twinklePhase) * 0.25));
+                    }
+
+                    draw() {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                        
+                        if (this.isStarDust) {
+                            ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha * 0.85})`;
+                            ctx.fill();
+                        } else {
+                            // Tạo vầng phát sáng rõ nét cho hạt mạng
+                            ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha})`;
+                            ctx.shadowColor = `rgba(${this.rgb}, 0.85)`;
+                            ctx.shadowBlur = 10;
+                            ctx.fill();
+                        }
+                        ctx.restore();
+                    }
                 }
 
-                update(timestamp) {
-                    this.x += this.vx;
-                    this.y += this.vy;
+                /* --- LỚP SAO BĂNG TINH TẾ (CYBER SHOOTING STARS / METEORS) --- */
+                class CyberMeteor {
+                    constructor() {
+                        this.init();
+                    }
 
-                    // Đảo chiều mượt khi chạm biên màn hình
-                    if (this.x < 0) this.x = width;
-                    else if (this.x > width) this.x = 0;
-                    if (this.y < 0) this.y = height;
-                    else if (this.y > height) this.y = 0;
+                    init() {
+                        // Xuất phát từ cạnh trên hoặc cạnh bên phải để bay quét qua vùng trung tâm
+                        const startFromTop = Math.random() > 0.45;
+                        if (startFromTop) {
+                            this.x = Math.random() * (width * 0.85) + (width * 0.1);
+                            this.y = -15;
+                        } else {
+                            this.x = width + 15;
+                            this.y = Math.random() * (height * 0.65);
+                        }
 
-                    // Tương tác lực đẩy từ con trỏ chuột / Mouse Aura
-                    let targetX = mouse.x;
-                    let targetY = mouse.y;
+                        // Góc bay chéo tự nhiên hướng xuống góc trái dưới
+                        const angleRad = (Math.PI / 180) * (Math.random() * 14 + 130); 
+                        const velocity = Math.random() * 5 + 9; // Tốc độ lướt mượt mà
 
-                    // Tương thích với vị trí Aura nếu có
-                    if (auraEl && auraEl.style.left && !isTouchScreen) {
-                        const auraX = parseFloat(auraEl.style.left);
-                        const auraY = parseFloat(auraEl.style.top);
-                        if (!isNaN(auraX) && !isNaN(auraY)) {
-                            targetX = auraX;
-                            targetY = auraY;
+                        this.vx = -Math.cos(angleRad - Math.PI / 2) * velocity;
+                        this.vy = Math.sin(angleRad - Math.PI / 2) * velocity;
+
+                        this.length = Math.random() * 70 + 110; // Vệt đuôi dài ấn tượng (110 - 180px)
+                        this.thickness = Math.random() * 1.2 + 1.6;
+                        this.alpha = 1.0;
+                        this.decay = Math.random() * 0.007 + 0.009; // Tốc độ tan biến dịu dàng, quan sát được lâu
+                        this.alive = true;
+
+                        // Tông màu sao băng: Cyan điện quang hoặc Neon Violet
+                        this.isCyan = Math.random() > 0.35;
+                    }
+
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.alpha -= this.decay;
+
+                        if (this.alpha <= 0 || this.x < -120 || this.y > height + 120) {
+                            this.alive = false;
                         }
                     }
 
-                    const dx = targetX - this.x;
-                    const dy = targetY - this.y;
-                    const distSq = dx * dx + dy * dy;
+                    draw() {
+                        if (!this.alive || this.alpha <= 0) return;
 
-                    if (distSq < mouse.radius * mouse.radius && distSq > 0) {
-                        const dist = Math.sqrt(distSq);
-                        const force = (mouse.radius - dist) / mouse.radius;
-                        const normalX = dx / dist;
-                        const normalY = dy / dist;
-                        // Đẩy nhẹ nhàng không giật
-                        this.x -= normalX * force * 2.8;
-                        this.y -= normalY * force * 2.8;
-                    }
+                        // Tính tọa độ đuôi vệt sao băng
+                        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                        const dirX = this.vx / speed;
+                        const dirY = this.vy / speed;
+                        const tailX = this.x - dirX * this.length;
+                        const tailY = this.y - dirY * this.length;
 
-                    // Tính độ sáng nhấp nháy quang học
-                    this.twinklePhase += this.twinkleSpeed;
-                    this.currentAlpha = Math.max(0.15, Math.min(0.9, this.baseAlpha + Math.sin(this.twinklePhase) * 0.22));
-                }
+                        ctx.save();
+                        const gradient = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
+                        
+                        if (this.isCyan) {
+                            gradient.addColorStop(0, 'rgba(0, 240, 255, 0)');
+                            gradient.addColorStop(0.65, `rgba(0, 240, 255, ${this.alpha * 0.6})`);
+                            gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha})`);
+                        } else {
+                            gradient.addColorStop(0, 'rgba(192, 132, 252, 0)');
+                            gradient.addColorStop(0.65, `rgba(192, 132, 252, ${this.alpha * 0.6})`);
+                            gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha})`);
+                        }
 
-                draw() {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                    
-                    if (this.isStarDust) {
-                        ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha * 0.75})`;
+                        ctx.beginPath();
+                        ctx.moveTo(tailX, tailY);
+                        ctx.lineTo(this.x, this.y);
+                        ctx.strokeStyle = gradient;
+                        ctx.lineWidth = this.thickness;
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+
+                        // Điểm cầu sáng phát quang ở đầu sao băng
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.thickness * 1.4, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                        ctx.shadowColor = this.isCyan ? 'rgba(0, 240, 255, 0.95)' : 'rgba(192, 132, 252, 0.95)';
+                        ctx.shadowBlur = 12;
                         ctx.fill();
-                    } else {
-                        // Tạo vầng phát sáng nhẹ cho hạt lớn
-                        ctx.fillStyle = `rgba(${this.rgb}, ${this.currentAlpha})`;
-                        ctx.shadowColor = `rgba(${this.rgb}, 0.5)`;
-                        ctx.shadowBlur = 6;
-                        ctx.fill();
-                    }
-                    ctx.restore();
-                }
-            }
-
-            /* --- LỚP SAO BĂNG TINH TẾ (CYBER SHOOTING STARS / METEORS) --- */
-            class CyberMeteor {
-                constructor() {
-                    this.init();
-                }
-
-                init() {
-                    // Xuất phát từ góc trên hoặc bên phải
-                    const startFromTop = Math.random() > 0.4;
-                    if (startFromTop) {
-                        this.x = Math.random() * (width * 0.9) + (width * 0.1);
-                        this.y = -20;
-                    } else {
-                        this.x = width + 20;
-                        this.y = Math.random() * (height * 0.4);
-                    }
-
-                    // Góc bay tự nhiên: chéo từ trên phải xuống dưới trái (-135° ~ -145°) hoặc từ trên trái sang phải
-                    const angleRad = (Math.PI / 180) * (Math.random() * 12 + 130); 
-                    const velocity = Math.random() * 7 + 10; // Tốc độ lướt nhanh nhưng thanh thoát
-
-                    this.vx = -Math.cos(angleRad - Math.PI / 2) * velocity;
-                    this.vy = Math.sin(angleRad - Math.PI / 2) * velocity;
-
-                    this.length = Math.random() * 85 + 75; // Độ dài vệt sao băng (px)
-                    this.thickness = Math.random() * 1.2 + 1.1;
-                    this.alpha = 1.0;
-                    this.decay = Math.random() * 0.012 + 0.014; // Tốc độ tan biến
-                    this.alive = true;
-
-                    // Tông màu sao băng: Trắng pha Cyan hoặc Electric Purple
-                    this.isCyan = Math.random() > 0.35;
-                }
-
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    this.alpha -= this.decay;
-
-                    if (this.alpha <= 0 || this.x < -100 || this.y > height + 100) {
-                        this.alive = false;
+                        ctx.restore();
                     }
                 }
 
-                draw() {
-                    if (!this.alive || this.alpha <= 0) return;
-
-                    // Tính tọa độ đuôi vệt sao băng
-                    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                    const dirX = this.vx / speed;
-                    const dirY = this.vy / speed;
-                    const tailX = this.x - dirX * this.length;
-                    const tailY = this.y - dirY * this.length;
-
-                    ctx.save();
-                    const gradient = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
-                    
-                    if (this.isCyan) {
-                        gradient.addColorStop(0, 'rgba(0, 229, 255, 0)');
-                        gradient.addColorStop(0.65, `rgba(0, 229, 255, ${this.alpha * 0.4})`);
-                        gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha * 0.95})`);
-                    } else {
-                        gradient.addColorStop(0, 'rgba(168, 85, 247, 0)');
-                        gradient.addColorStop(0.65, `rgba(168, 85, 247, ${this.alpha * 0.4})`);
-                        gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha * 0.95})`);
-                    }
-
-                    ctx.beginPath();
-                    ctx.moveTo(tailX, tailY);
-                    ctx.lineTo(this.x, this.y);
-                    ctx.strokeStyle = gradient;
-                    ctx.lineWidth = this.thickness;
-                    ctx.lineCap = 'round';
-                    ctx.stroke();
-
-                    // Chấm sáng rực rỡ ở đầu sao băng
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.thickness * 1.3, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
-                    ctx.shadowColor = this.isCyan ? 'rgba(0, 229, 255, 0.8)' : 'rgba(168, 85, 247, 0.8)';
-                    ctx.shadowBlur = 8;
-                    ctx.fill();
-                    ctx.restore();
+                // Khởi tạo các hạt ban đầu
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    particles.push(new CyberParticle());
                 }
-            }
 
-            // Khởi tạo các hạt ban đầu
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                particles.push(new CyberParticle());
-            }
+                /* --- VÒNG LẶP RENDER HOẠT HỌA 60FPS CHUẨN MỰC --- */
+                function animate(timestamp) {
+                    if (!isTabVisible) return;
 
-            /* --- VÒNG LẶP RENDER HOẠT HỌA 60FPS CHUẨN MỰC --- */
-            function animate(timestamp) {
-                if (!isTabVisible) return;
+                    ctx.clearRect(0, 0, width, height);
 
-                ctx.clearRect(0, 0, width, height);
+                    // 1. Cập nhật và vẽ các hạt sáng
+                    const pCount = particles.length;
+                    for (let i = 0; i < pCount; i++) {
+                        const p = particles[i];
+                        p.update(timestamp);
+                        p.draw();
 
-                // 1. Cập nhật và vẽ các hạt sáng
-                const pCount = particles.length;
-                for (let i = 0; i < pCount; i++) {
-                    const p = particles[i];
-                    p.update(timestamp);
-                    p.draw();
+                        // 2. Vẽ các đường liên kết mạng lưới (Constellation Neural Lines)
+                        for (let j = i + 1; j < pCount; j++) {
+                            const p2 = particles[j];
+                            const dx = p.x - p2.x;
+                            const dy = p.y - p2.y;
+                            const distSq = dx * dx + dy * dy;
 
-                    // 2. Vẽ các đường liên kết mạng lưới (Constellation Neural Lines)
-                    for (let j = i + 1; j < pCount; j++) {
-                        const p2 = particles[j];
-                        const dx = p.x - p2.x;
-                        const dy = p.y - p2.y;
-                        const distSq = dx * dx + dy * dy;
+                            if (distSq < CONNECT_DISTANCE_SQ) {
+                                const dist = Math.sqrt(distSq);
+                                const factor = 1 - (dist / CONNECT_DISTANCE);
+                                const lineAlpha = factor * 0.58; // Rõ nét, không bị tàng hình
 
-                        if (distSq < CONNECT_DISTANCE_SQ) {
-                            const dist = Math.sqrt(distSq);
-                            const factor = 1 - (dist / CONNECT_DISTANCE);
-                            const lineAlpha = factor * 0.38;
+                                ctx.beginPath();
+                                // Tạo gradient nối mượt mà giữa màu 2 hạt
+                                const lineGrad = ctx.createLinearGradient(p.x, p.y, p2.x, p2.y);
+                                lineGrad.addColorStop(0, `rgba(${p.rgb}, ${Math.min(1.0, lineAlpha * 1.2)})`);
+                                lineGrad.addColorStop(1, `rgba(${p2.rgb}, ${Math.min(1.0, lineAlpha * 1.2)})`);
 
-                            ctx.beginPath();
-                            // Tạo gradient nối mượt mà giữa màu 2 hạt
-                            const lineGrad = ctx.createLinearGradient(p.x, p.y, p2.x, p2.y);
-                            lineGrad.addColorStop(0, `rgba(${p.rgb}, ${lineAlpha * p.currentAlpha})`);
-                            lineGrad.addColorStop(1, `rgba(${p2.rgb}, ${lineAlpha * p2.currentAlpha})`);
-
-                            ctx.strokeStyle = lineGrad;
-                            ctx.lineWidth = factor * 1.25;
-                            ctx.moveTo(p.x, p.y);
-                            ctx.lineTo(p2.x, p2.y);
-                            ctx.stroke();
+                                ctx.strokeStyle = lineGrad;
+                                ctx.lineWidth = factor * 1.5 + 0.4;
+                                ctx.moveTo(p.x, p.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                ctx.stroke();
+                            }
                         }
                     }
-                }
 
-                // 3. Quản lý chu kỳ xuất hiện sao băng (Shooting Stars Spawner)
-                if (timestamp >= nextMeteorTime) {
-                    // Giới hạn tối đa 2 vệt đồng thời để tinh tế, không rối mắt
-                    if (meteors.length < (isTouchScreen ? 1 : 2)) {
-                        meteors.push(new CyberMeteor());
+                    // 3. Quản lý chu kỳ xuất hiện sao băng (Shooting Stars Spawner)
+                    if (timestamp >= nextMeteorTime) {
+                        // Tối đa 3 vệt trên Desktop, 1 vệt trên Mobile
+                        if (meteors.length < (isTouchScreen ? 1 : 3)) {
+                            meteors.push(new CyberMeteor());
+                        }
+                        // Chu kỳ xuất hiện đều đặn 1.2s - 2.8s
+                        nextMeteorTime = timestamp + Math.random() * 1600 + 1200;
                     }
-                    // Khoảng thời gian ngẫu nhiên 2.5s - 5.5s
-                    nextMeteorTime = timestamp + Math.random() * 3000 + 2500;
-                }
 
-                // 4. Cập nhật và vẽ sao băng
-                for (let i = meteors.length - 1; i >= 0; i--) {
-                    const m = meteors[i];
-                    m.update();
-                    m.draw();
-                    if (!m.alive) {
-                        meteors.splice(i, 1);
+                    // 4. Cập nhật và vẽ sao băng
+                    for (let i = meteors.length - 1; i >= 0; i--) {
+                        const m = meteors[i];
+                        m.update();
+                        m.draw();
+                        if (!m.alive) {
+                            meteors.splice(i, 1);
+                        }
                     }
-                }
 
-                animationFrameId = requestAnimationFrame(animate);
-            }
-
-            // Quản lý trạng thái tab (Tiết kiệm 100% tài nguyên khi người dùng rời tab)
-            document.addEventListener('visibilitychange', () => {
-                isTabVisible = !document.hidden;
-                if (isTabVisible) {
-                    cancelAnimationFrame(animationFrameId);
                     animationFrameId = requestAnimationFrame(animate);
-                } else {
-                    cancelAnimationFrame(animationFrameId);
                 }
-            });
 
-            // Bắt đầu chu trình render
-            animationFrameId = requestAnimationFrame(animate);
+                // Quản lý trạng thái tab (Tiết kiệm 100% tài nguyên khi người dùng rời tab)
+                document.addEventListener('visibilitychange', () => {
+                    isTabVisible = !document.hidden;
+                    if (isTabVisible) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = requestAnimationFrame(animate);
+                    } else {
+                        cancelAnimationFrame(animationFrameId);
+                    }
+                });
+
+                // Bắt đầu chu trình render
+                animationFrameId = requestAnimationFrame(animate);
+            } catch (err) {
+                console.warn('[ENGINE] Không thể khởi tạo canvas nền:', err);
+            }
         })();
 
         /* ========================================================================== */
