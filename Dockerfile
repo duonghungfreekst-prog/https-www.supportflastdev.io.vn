@@ -78,6 +78,19 @@ COPY --chown=appuser:appgroup supportflast_ui /app/supportflast_ui
 # Copy thư mục storage/ (chứa các gói phần mềm packages được phân phối qua CDN)
 COPY --chown=appuser:appgroup storage /app/storage
 
+# Tự động ghép các gói cài đặt lớn được phân mảnh (< 100MB cho GitHub) thành file nguyên bản
+RUN if ls /app/storage/packages/*.part* 1> /dev/null 2>&1; then \
+        echo "[BUILD] Phat hien goi phan manh, dang tien hanh ghep file..."; \
+        for f in /app/storage/packages/*.part1; do \
+            if [ -f "$f" ]; then \
+                target="${f%.part1}"; \
+                echo "[BUILD] Dang ghep file: $target"; \
+                cat "${target}.part1" "${target}.part2" > "$target" && rm -f "${target}.part1" "${target}.part2"; \
+                echo "[BUILD] Ghep hoan tat: $target"; \
+            fi; \
+        done; \
+    fi
+
 # Phân quyền chặt chẽ & Bảo vệ dữ liệu runtime:
 # - Chuẩn hóa line endings (LF) cho entrypoint wrapper
 # - Cấp quyền thực thi cho binary Go Monolith Engine và entrypoint.sh

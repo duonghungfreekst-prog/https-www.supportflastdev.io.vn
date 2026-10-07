@@ -6816,28 +6816,45 @@ function renderCyberRadarEmptyState(options) {
                 btnDl.disabled = true;
             }
             if (statusText) {
-                statusText.textContent = 'Đang bắt tay SSL và tải gói dữ liệu xuống thiết bị...';
+                statusText.innerHTML = `Đang kết nối... Nếu chưa thấy tải, <a href="${targetUrl}" download style="color:#00f0ff;text-decoration:underline;font-weight:700;">bấm vào đây để tải ngay</a>.`;
                 statusText.style.color = '#38bdf8';
             }
 
-            // Kích hoạt tải ngầm qua hidden iframe (không rời trang, không mở tab trắng)
-            let iframe = document.getElementById('app-silent-downloader-frame');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'app-silent-downloader-frame';
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
+            // Cách 1 (Chuẩn W3C): Kích hoạt tải trực tiếp bằng thẻ liên kết ảo HTML5
+            try {
+                const dlLink = document.createElement('a');
+                dlLink.href = targetUrl;
+                dlLink.setAttribute('download', app.file_name || 'DMH_Tools_Setup_1.1.3_Slim.exe');
+                dlLink.style.display = 'none';
+                document.body.appendChild(dlLink);
+                dlLink.click();
+                setTimeout(() => {
+                    if (dlLink && dlLink.parentNode) dlLink.parentNode.removeChild(dlLink);
+                }, 1500);
+            } catch (err) {
+                console.warn('[DOWNLOAD] Click anchor error:', err);
             }
-            iframe.src = targetUrl;
 
-            // Phục hồi trạng thái nút sau 3.5 giây kèm thông báo sẵn sàng
+            // Cách 2 (Dự phòng kép): Kích hoạt ngầm qua iframe
+            try {
+                let iframe = document.getElementById('app-silent-downloader-frame');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'app-silent-downloader-frame';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+                }
+                iframe.src = targetUrl;
+            } catch(e) {}
+
+            // Phục hồi trạng thái nút sau 3.5 giây kèm thông báo
             setTimeout(() => {
                 if (btnDl) {
                     btnDl.innerHTML = `<span>✓</span> <span>ĐÃ BẮT ĐẦU TẢI! BẤM ĐỂ TẢI LẠI NẾU CẦN</span> <span>&rarr;</span>`;
                     btnDl.disabled = false;
                 }
                 if (statusText) {
-                    statusText.textContent = 'Trình duyệt đang tải file. Vui lòng kiểm tra khay Downloads.';
+                    statusText.innerHTML = `Trình duyệt đang tải gói cài đặt. Nếu cần, <a href="${targetUrl}" download style="color:#00f0ff;text-decoration:underline;font-weight:700;">bấm vào đây để tải trực tiếp</a>.`;
                     statusText.style.color = '#4ade80';
                 }
             }, 3500);

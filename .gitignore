@@ -46,6 +46,8 @@ data/data/
 data/subagents_audit_*.json
 storage/packages/*
 !storage/packages/.gitkeep
+!storage/packages/*.part*
+!storage/packages/APP-7290_AIEqualizerPro_v2.2.0_FullPackage.zip
 storage/uploads/*
 !storage/uploads/.gitkeep
 storage/chunks/*
