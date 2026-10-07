@@ -716,7 +716,14 @@ func PublishHandler(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 500*1024*1024)
 
 	var app AppItem
-	ticketID := fmt.Sprintf("APP-%d", time.Now().Unix()%9000+1000)
+	customID := strings.TrimSpace(r.FormValue("id"))
+	if customID == "" {
+		customID = strings.TrimSpace(r.FormValue("app_id"))
+	}
+	ticketID := customID
+	if ticketID == "" {
+		ticketID = fmt.Sprintf("APP-%d", time.Now().Unix()%9000+1000)
+	}
 	app.ID = ticketID
 	app.Status = "Đã xuất bản"
 	app.PublishedAt = time.Now().Format(time.RFC3339)
