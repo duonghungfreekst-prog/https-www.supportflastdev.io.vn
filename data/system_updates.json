@@ -3,16 +3,19 @@
     {
       "id": "rel-dmh-1.2.0",
       "version": "v1.2.0",
-      "title": "DMH Tools v1.2.0: Động Cơ Giám Định BHYT, OTA Updater & Bố Cục Dồn Gọn",
+      "title": "DMH Tools v1.2.0: Tự Động Kích Hoạt Bộ Cài & Cập Nhật Trực Quan",
       "date": "2026-10-09",
       "badge": "Mới Nhất",
       "type": "feat",
       "author": "Dương Mạnh Hùng (DMH Tech)",
+      "sha256": "30c90587ea2980832aba40b9fecc07f8f9f5be3a0fcb3190602437078347310a",
       "changes": [
+        "[fix] Tự động kích hoạt bộ cài đặt độc lập (Detached Script Launcher + UAC RunAs), khắc phục triệt để lỗi không tự chạy cài mà phải cài bằng tay",
+        "[feat] Tự động khởi chạy bộ cài sau khi tải hoàn tất (Zero-touch OTA 1-chạm)",
+        "[fix] Ứng dụng tự động đóng êm ái và giải phóng toàn bộ tài nguyên trước khi bộ cài NSIS ghi đè",
         "[feat] Nâng cấp động cơ đối chiếu và giám định BHYT Biểu 01/02 chuyên sâu với tốc độ xử lý song song vượt trội",
-        "[feat] Tích hợp OTA Updater tự động kiểm tra và cập nhật phiên bản mới một chạm",
-        "[fix] Tái cấu trúc bố cục dồn gọn trực quan, tối ưu không gian hiển thị trên màn hình độ phân giải đa dạng",
-        "[perf] Tối ưu hóa giải phóng bộ nhớ RAM và đóng gói bản cài đặt Slim 153MB siêu nhẹ"
+        "[feat] Tái cấu trúc bố cục dồn gọn trực quan, tối ưu không gian hiển thị trên màn hình độ phân giải đa dạng",
+        "[perf] Tối ưu hóa giải phóng bộ nhớ RAM và đóng gói bản cài đặt Slim 153.5MB siêu nhẹ"
       ]
     },
     {
