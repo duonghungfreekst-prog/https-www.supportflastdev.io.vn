@@ -1049,8 +1049,8 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 		switch appID {
 		case "APP-4964":
 			targetApp = AppItem{
-				ID: "APP-4964", Name: "DMH Tools Enterprise Suite", Version: "1.1.3",
-				FileName: "DMH_Tools_Setup_1.1.3_Slim.exe", SizeFormatted: "141.3 MB",
+				ID: "APP-4964", Name: "DMH Tools Enterprise Suite", Version: "1.2.0",
+				FileName: "DMH_Tools_Setup_1.2.0_Slim.exe", SizeFormatted: "141.3 MB",
 				SHA256: "c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877786c3a001d7ee4",
 			}
 			err = nil

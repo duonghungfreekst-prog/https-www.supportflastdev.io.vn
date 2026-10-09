@@ -2251,11 +2251,11 @@
             {
                 id: "APP-4964",
                 name: "DMH Tools Enterprise Suite",
-                version: "v1.1.3",
+                version: "v1.2.0",
                 platform: "Windows 10 / 11 (x64)",
                 category: "Tiện Ích Hệ Thống, Bản Quyền & Y Tế",
                 desc: "Bộ công cụ toàn diện: Kích hoạt & Quản lý Bản Quyền Windows/Office (Online, OEM BIOS, CID), 41 Fixes lỗi Windows chuyên sâu (Driver, Spooler, LAN 0x11b, SFC/DISM), Sao lưu & trích xuất Driver PnP DriverStore, Cứu hộ Máy in LAN và Trợ lý Gọi Bệnh Nhân TTS, Nội soi AI 4K.",
-                file_name: "DMH_Tools_Setup_1.1.3_Slim.exe",
+                file_name: "DMH_Tools_Setup_1.2.0_Slim.exe",
                 size_formatted: "141.3 MB",
                 downloads: 1280,
                 author: "Dương Mạnh Hùng (DMH Tech)",
@@ -2776,7 +2776,7 @@
             if (firstCard) {
                 const id = firstCard.getAttribute('data-app-id') || 'APP-4964';
                 const name = firstCard.getAttribute('data-app-name') || 'DMH Tools Enterprise Suite';
-                const ver = firstCard.getAttribute('data-app-version') || 'v1.1.3';
+                const ver = firstCard.getAttribute('data-app-version') || 'v1.2.0';
                 const desc = firstCard.getAttribute('data-app-desc') || 'Bộ công cụ quản trị, tự động hóa và hỗ trợ kỹ thuật chuyên nghiệp SupportFlast DMH Tools Suite.';
                 triggerAppSubagentsAudit(id, name, ver, desc);
             } else {
@@ -3925,11 +3925,40 @@ function renderCyberRadarEmptyState(options) {
 
         const DEFAULT_SYSTEM_RELEASES = [
             {
+                id: "rel-dmh-1.2.0",
+                version: "v1.2.0",
+                title: "DMH Tools v1.2.0: Động Cơ Giám Định BHYT, OTA Updater & Bố Cục Dồn Gọn",
+                date: "2026-10-09",
+                badge: "Mới Nhất",
+                type: "feat",
+                author: "Dương Mạnh Hùng (DMH Tech)",
+                changes: [
+                    "[feat] Nâng cấp động cơ đối chiếu và giám định BHYT Biểu 01/02 chuyên sâu với tốc độ xử lý song song vượt trội",
+                    "[feat] Tích hợp OTA Updater tự động kiểm tra và cập nhật phiên bản mới một chạm",
+                    "[fix] Tái cấu trúc bố cục dồn gọn trực quan, tối ưu không gian hiển thị trên màn hình độ phân giải đa dạng",
+                    "[perf] Tối ưu hóa giải phóng bộ nhớ RAM và đóng gói bản cài đặt Slim 153MB siêu nhẹ"
+                ]
+            },
+            {
+                id: "rel-dmh-1.1.4",
+                version: "v1.1.4",
+                title: "DMH Tools v1.1.4: Nâng Cấp Toàn Diện & Tối Ưu Hóa Giao Diện",
+                date: "2026-10-08",
+                badge: "Ổn Định",
+                type: "fix",
+                author: "Dương Mạnh Hùng (DMH Tech)",
+                changes: [
+                    "[feat] Phát hành chính thức bản cập nhật v1.1.4 tối ưu hóa hiệu năng",
+                    "[fix] Khắc phục triệt để lỗi bố cục hiển thị khu vực Triển Khai & Cài Đặt (PcToolsTab)",
+                    "[feat] Hoàn thiện giao diện đối chiếu BHYT chuyên sâu và tải OTA ngầm 1-chạm"
+                ]
+            },
+            {
                 id: "rel-dmh-1.1.3",
                 version: "v1.1.3",
                 title: "DMH Tools v1.1.3: Sửa Lỗi compare_server ENOENT và Tách Cột CCT Biểu 01 BHYT",
                 date: "2026-10-07",
-                badge: "Mới Nhất",
+                badge: "Ổn Định",
                 type: "fix",
                 changes: [
                     "[fix] Khắc phục triệt để lỗi spawn compare_server.exe ENOENT khiến máy chủ Python bị sập ngầm",
@@ -6756,10 +6785,10 @@ function renderCyberRadarEmptyState(options) {
                 app = {
                     id: 'APP-4964',
                     name: 'DMH Tools Enterprise Suite',
-                    version: '1.1.3',
+                    version: '1.2.0',
                     size_formatted: '141.3 MB Slim',
                     platform: 'Windows 10/11 x64',
-                    file_name: 'DMH_Tools_Setup_1.1.3_Slim.exe',
+                    file_name: 'DMH_Tools_Setup_1.2.0_Slim.exe',
                     icon: '🛠️',
                     download_url: '/api/apps/download/APP-4964',
                     sha256: 'c7da316b94bcabbf2fc9250ff7c4ca2517df54333157fe1877706c3a001d7ee4'
@@ -6838,7 +6867,7 @@ function renderCyberRadarEmptyState(options) {
             try {
                 const dlLink = document.createElement('a');
                 dlLink.href = targetUrl;
-                dlLink.setAttribute('download', app.file_name || 'DMH_Tools_Setup_1.1.3_Slim.exe');
+                dlLink.setAttribute('download', app.file_name || 'DMH_Tools_Setup_1.2.0_Slim.exe');
                 dlLink.style.display = 'none';
                 document.body.appendChild(dlLink);
                 dlLink.click();

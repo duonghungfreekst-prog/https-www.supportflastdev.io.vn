@@ -1,6 +1,35 @@
 {
   "releases": [
     {
+      "id": "rel-dmh-1.2.0",
+      "version": "v1.2.0",
+      "title": "DMH Tools v1.2.0: Động Cơ Giám Định BHYT, OTA Updater & Bố Cục Dồn Gọn",
+      "date": "2026-10-09",
+      "badge": "Mới Nhất",
+      "type": "feat",
+      "author": "Dương Mạnh Hùng (DMH Tech)",
+      "changes": [
+        "[feat] Nâng cấp động cơ đối chiếu và giám định BHYT Biểu 01/02 chuyên sâu với tốc độ xử lý song song vượt trội",
+        "[feat] Tích hợp OTA Updater tự động kiểm tra và cập nhật phiên bản mới một chạm",
+        "[fix] Tái cấu trúc bố cục dồn gọn trực quan, tối ưu không gian hiển thị trên màn hình độ phân giải đa dạng",
+        "[perf] Tối ưu hóa giải phóng bộ nhớ RAM và đóng gói bản cài đặt Slim 153MB siêu nhẹ"
+      ]
+    },
+    {
+      "id": "rel-dmh-1.1.4",
+      "version": "v1.1.4",
+      "title": "DMH Tools v1.1.4: Nâng Cấp Toàn Diện & Tối Ưu Hóa Giao Diện",
+      "date": "2026-10-08",
+      "badge": "Ổn Định",
+      "type": "fix",
+      "author": "Dương Mạnh Hùng (DMH Tech)",
+      "changes": [
+        "[feat] Phát hành chính thức bản cập nhật v1.1.4 tối ưu hóa hiệu năng",
+        "[fix] Khắc phục triệt để lỗi bố cục hiển thị khu vực Triển Khai & Cài Đặt (PcToolsTab)",
+        "[feat] Hoàn thiện giao diện đối chiếu BHYT chuyên sâu và tải OTA ngầm 1-chạm"
+      ]
+    },
+    {
       "id": "rel-dmh-1.1.3",
       "version": "v1.1.3",
       "title": "DMH Tools v1.1.3: Sửa Lỗi compare_server ENOENT và Tách Cột CCT Biểu 01 BHYT",
