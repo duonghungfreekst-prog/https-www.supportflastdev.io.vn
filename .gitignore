@@ -76,6 +76,7 @@ storage/temp/*
 *.tar.gz
 *.7z
 *.apk
+!storage/packages/*.apk
 *.msi
 *.iso
 supportflast

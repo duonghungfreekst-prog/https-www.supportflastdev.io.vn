@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "id": "rel-eq-2.2.0",
+      "version": "v2.2.0",
+      "title": "AI Equalizer Pro v2.2: Tự Động Lọc Toàn Bộ Âm Thanh & Chống Vỡ Tiếng Anti-Clipping",
+      "date": "2026-10-14",
+      "badge": "Mới Nhất",
+      "type": "feat",
+      "author": "Dương Mạnh Hùng (DMH Tech & Antigravity)",
+      "sha256": "e9acfa8fbae9a64a59601db3980284aa1156fd6fcf5938c609c6a00bb8c332f6",
+      "changes": [
+        "[feat] Tự động kích hoạt lọc âm thanh toàn bộ ứng dụng điện thoại (YouTube, TikTok, Spotify, Game...) ngay khi mở app",
+        "[feat] Cấp quyền 1-chạm trực tiếp trên màn hình điện thoại (In-app Permission), loại bỏ hoàn toàn việc cắm cáp USB hay chạy lệnh ADB",
+        "[feat] Tích hợp thuật toán Anti-Clipping Auto Headroom Protection, triệt tiêu hoàn toàn hiện tượng vỡ tiếng/rè âm khi boost cực đại",
+        "[feat] Bổ sung biểu đồ phổ sóng âm thanh thời gian thực (Real-time FFT Spectrum Visualizer) 28 cột màu Gradient Neon",
+        "[feat] Lưu trữ và khôi phục vĩnh viễn 100% thiết lập người dùng qua SharedPreferences Persistence kèm Highlight Preset",
+        "[perf] Smart WakeLock tự động gia hạn khi phát nhạc và cơ chế tự hồi sinh Foreground Service chống tắt ngầm"
+      ]
+    },
+    {
       "id": "rel-dmh-1.2.0",
       "version": "v1.2.0",
       "title": "DMH Tools v1.2.0: Tự Động Kích Hoạt Bộ Cài & Cập Nhật Trực Quan",
