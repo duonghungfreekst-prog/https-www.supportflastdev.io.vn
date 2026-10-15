@@ -1,127 +1,195 @@
 @echo off
-title SupportFlast - Tu Dong Dinh Tuyen Antigravity IDE (1-Click)
+title SupportFlast - Tu Dong Kich Hoat Antigravity IDE (MITM Gateway)
 
+set "HOSTS_PATH=%SystemRoot%\System32\drivers\etc\hosts"
 set "CONFIG_PATH=%USERPROFILE%\.gemini\config\config.json"
-set "DEFAULT_GATEWAY=https://supportflastdev.io.vn/v1"
-set "MASTER_KEY=sk-supportflastdev.io.vn-master-live"
 set "LOCAL_GATEWAY=http://localhost:20128/v1"
 set "LOCAL_KEY=9router"
 
-REM Kiem tra file config Antigravity
-if not exist "%CONFIG_PATH%" (
-    echo.
-    echo ==============================================================================
-    echo   [!] KHONG TIM THAY FILE CAU HINH ANTIGRAVITY
-    echo   Duong dan kiem tra: %CONFIG_PATH%
-    echo   Vui long khoi dong Antigravity IDE it nhat 1 lan truoc khi chay lenh nay.
-    echo ==============================================================================
-    echo.
-    goto do_end
-)
-
 REM Xu ly lenh theo tham so
 set "ACTION=%~1"
-set "PARAM_KEY=%~2"
 
 if /i "%ACTION%"=="--status" goto do_status
 if /i "%ACTION%"=="status" goto do_status
 if /i "%ACTION%"=="-s" goto do_status
+
+if /i "%ACTION%"=="--reset" goto do_reset
+if /i "%ACTION%"=="reset" goto do_reset
+if /i "%ACTION%"=="restore" goto do_reset
 
 if /i "%ACTION%"=="--local" goto do_local
 if /i "%ACTION%"=="local" goto do_local
 if /i "%ACTION%"=="loco" goto do_local
 if /i "%ACTION%"=="--loco" goto do_local
 
-if /i "%ACTION%"=="--reset" goto do_reset
-if /i "%ACTION%"=="reset" goto do_reset
-if /i "%ACTION%"=="restore" goto do_reset
+REM Mac dinh: Kich hoat Gateway (hosts file MITM)
+goto do_activate
 
-REM Mac dinh: Tro ve Web Gateway SupportFlast
-goto do_web
-
-:do_web
-set "TARGET_KEY=%ACTION%"
-if "%TARGET_KEY%"=="" set "TARGET_KEY=%MASTER_KEY%"
-if /i "%TARGET_KEY%"=="web" (
-    if not "%PARAM_KEY%"=="" (
-        set "TARGET_KEY=%PARAM_KEY%"
-    ) else (
-        set "TARGET_KEY=%MASTER_KEY%"
-    )
-)
-
+:do_activate
 echo.
 echo ==============================================================================
-echo       SUPPORTFLAST.DEV - TU DONG TRO ANTIGRAVITY VE WEB GATEWAY
+echo       SUPPORTFLAST.DEV - KICH HOAT ANTIGRAVITY IDE QUA GATEWAY
 echo ==============================================================================
-echo   [*] May chu Gateway:  %DEFAULT_GATEWAY%
-echo   [*] Khoa API Key:     %TARGET_KEY%
-echo   [*] Tep cau hinh:     %CONFIG_PATH%
+echo   Co che: Hosts file MITM - redirect DNS Google ve OmniRouter local
+echo   IDE gui request den daily-cloudcode-pa.googleapis.com
+echo   Hosts file chuyen ve 127.0.0.1 - OmniRouter proxy qua IP that
 echo ==============================================================================
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.apiEndpoint = '%DEFAULT_GATEWAY%'; $c.apiKey = '%TARGET_KEY%'; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config.json thanh cong!' -ForegroundColor Green; exit 0 } else { exit 1 }"
+REM Kiem tra quyen Administrator
+net session >nul 2>&1
 if errorlevel 1 (
+    echo   [!] CAN QUYEN ADMINISTRATOR de chinh sua hosts file.
+    echo   [!] Hay click chuot phai -^> "Run as Administrator"
     echo.
-    echo   [LOI] Co loi xay ra khi cap nhat cau hinh.
+    echo   CACH LAM: Click phai file nay -^> "Run as Administrator"
     echo.
-) else (
-    echo.
-    echo   [OK] THANH CONG: Google Antigravity da tu dong tro den Web Gateway.
-    echo   [OK] Moi request tu Antigravity se duoc tinh Quota truc tiep tren Web.
-    echo   [OK] Khong can phai cau hinh bang tay tren giao dien Antigravity IDE.
-    echo.
+    goto do_end
 )
+
+REM Kiem tra xem hosts file da co entry chua
+findstr /C:"daily-cloudcode-pa.googleapis.com" "%HOSTS_PATH%" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [OK] Hosts file DA CO entry redirect - Antigravity IDE da duoc kich hoat!
+    echo.
+    goto do_check_router
+)
+
+REM Them entry vao hosts file
+echo.>> "%HOSTS_PATH%"
+echo 127.0.0.1 daily-cloudcode-pa.googleapis.com>> "%HOSTS_PATH%"
+echo 127.0.0.1 cloudcode-pa.googleapis.com>> "%HOSTS_PATH%"
+echo.
+echo   [OK] Da them entry redirect vao hosts file thanh cong!
+echo.
+
+:do_check_router
+REM Kiem tra OmniRouter co dang chay khong
+echo   [*] Kiem tra OmniRouter...
+netstat -anp tcp 2>nul | findstr "0.0.0.0:443.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [OK] OmniRouter dang lang nghe tren port 443 - HOAN HAO!
+) else (
+    echo   [!] CANH BAO: OmniRouter CHUA CHAY tren port 443
+    echo   [!] Hay khoi dong OmniRouter truoc: RUN_FULL_SYSTEM.bat
+)
+
+netstat -anp tcp 2>nul | findstr "0.0.0.0:20128.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [OK] OmniRouter dang lang nghe tren port 20128 - HOAN HAO!
+) else (
+    echo   [!] CANH BAO: OmniRouter CHUA CHAY tren port 20128
+)
+
+echo.
+echo   ==========================================================
+echo   THANH CONG! Antigravity IDE da duoc kich hoat qua Gateway.
+echo   Moi request tu IDE se duoc proxy qua tai khoan AI pool.
+echo   ==========================================================
+echo.
+
+REM Xoa DNS cache de hosts file co hieu luc ngay
+ipconfig /flushdns >nul 2>&1
+echo   [OK] Da xoa DNS cache de ap dung ngay lap tuc.
+echo.
 goto do_end
 
 :do_local
 echo.
 echo ==============================================================================
-echo       SUPPORTFLAST.DEV - TU DONG TRO ANTIGRAVITY VE LOCAL ROUTER - RUN LOCO
-echo ==============================================================================
-echo   [*] May chu Local:    %LOCAL_GATEWAY%
-echo   [*] Khoa API Key:     %LOCAL_KEY%
-echo   [*] Tep cau hinh:     %CONFIG_PATH%
+echo       SUPPORTFLAST.DEV - TRO ANTIGRAVITY VE CONFIG CUC BO (Run Loco)
 echo ==============================================================================
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.apiEndpoint = '%LOCAL_GATEWAY%'; $c.apiKey = '%LOCAL_KEY%'; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da tro ve Local Router port 20128 thanh cong.' -ForegroundColor Green; exit 0 } else { exit 1 }"
-if errorlevel 1 (
+if not exist "%CONFIG_PATH%" (
+    echo   [!] KHONG TIM THAY file config.json Antigravity IDE
+    echo   [!] Duong dan: %CONFIG_PATH%
     echo.
-    echo   [LOI] Co loi xay ra khi cap nhat cau hinh.
-    echo.
-) else (
-    echo.
-    echo   [OK] THANH CONG: Antigravity da tro ve che do chay Cuc Bo - Run Loco.
-    echo.
+    goto do_end
 )
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.apiEndpoint = '%LOCAL_GATEWAY%'; $c.apiKey = '%LOCAL_KEY%'; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da tro Antigravity ve Local Router port 20128.' -ForegroundColor Green; exit 0 } else { exit 1 }"
+if errorlevel 1 (
+    echo   [LOI] Co loi khi cap nhat config.json
+) else (
+    echo   [OK] THANH CONG: Antigravity da tro ve che do chay Cuc Bo - Run Loco.
+)
+echo.
 goto do_end
 
 :do_reset
 echo.
 echo ==============================================================================
-echo       SUPPORTFLAST.DEV - KHOI PHUC ANTIGRAVITY VE MAC DINH CUA GOOGLE
+echo       SUPPORTFLAST.DEV - VO HIEU HOA GATEWAY VA KHOI PHUC MAC DINH
 echo ==============================================================================
 echo.
 
-powershell -NoProfile -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da go bo cau hinh Gateway, tro ve mac dinh Google.' -ForegroundColor Yellow; exit 0 } else { exit 1 }"
+REM Kiem tra quyen Administrator
+net session >nul 2>&1
 if errorlevel 1 (
+    echo   [!] CAN QUYEN ADMINISTRATOR de chinh sua hosts file.
+    echo   [!] Hay click chuot phai -^> "Run as Administrator"
     echo.
-    echo   [LOI] Co loi xay ra khi cap nhat cau hinh.
-    echo.
-) else (
-    echo.
-    echo   [OK] THANH CONG: Antigravity da duoc khoi phuc ve mac dinh goc.
-    echo.
+    goto do_end
 )
+
+REM Xoa entry khoi hosts file
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$h = Get-Content '%HOSTS_PATH%' -Raw; $lines = $h -split [Environment]::NewLine; $cleaned = $lines | Where-Object { $_ -notmatch 'daily-cloudcode-pa\.googleapis\.com' -and $_ -notmatch 'cloudcode-pa\.googleapis\.com' }; ($cleaned -join [Environment]::NewLine).TrimEnd() | Set-Content '%HOSTS_PATH%' -Encoding ASCII; Write-Host '  [OK] Da xoa entry redirect khoi hosts file.' -ForegroundColor Yellow; exit 0"
+
+REM Xoa apiEndpoint khoi config.json (neu co)
+if exist "%CONFIG_PATH%" (
+    powershell -NoProfile -Command "$p = '%CONFIG_PATH%'; $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da go bo apiEndpoint/apiKey khoi config.json' -ForegroundColor Yellow; exit 0"
+)
+
+ipconfig /flushdns >nul 2>&1
+echo.
+echo   [OK] THANH CONG: Antigravity IDE da duoc khoi phuc ve mac dinh Google.
+echo   [OK] DNS cache da duoc xoa sach.
+echo.
 goto do_end
 
 :do_status
 echo.
 echo ==============================================================================
-echo       KIEM TRA TRANG THAI CAU HINH ANTIGRAVITY IDE HIEN TAI
+echo       KIEM TRA TRANG THAI ANTIGRAVITY IDE GATEWAY
 echo ==============================================================================
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; Write-Host ('  - Tep cau hinh: ' + $p); Write-Host ('  - apiEndpoint:  ' + $c.apiEndpoint) -ForegroundColor Cyan; Write-Host ('  - apiKey:       ' + $c.apiKey) -ForegroundColor Yellow; if ($c.apiEndpoint -like '*supportflastdev.io.vn*') { Write-Host '  => Trang thai: DANG KET NOI VOI WEB GATEWAY SUPPORTFLAST' -ForegroundColor Green } elseif ($c.apiEndpoint -like '*localhost*' -or $c.apiEndpoint -like '*127.0.0.1*') { Write-Host '  => Trang thai: DANG CHAY CUC BO - RUN LOCAL / LOCO' -ForegroundColor Green } else { Write-Host '  => Trang thai: MAC DINH HOAC CHUA TRO' -ForegroundColor Gray } } else { Write-Host '  [!] Khong tim thay tep cau hinh' }"
+echo.
+
+echo   --- HOSTS FILE ---
+findstr /C:"daily-cloudcode-pa.googleapis.com" "%HOSTS_PATH%" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [ACTIVE] Hosts file DA redirect daily-cloudcode-pa.googleapis.com ve 127.0.0.1
+    echo   =^> IDE dang duoc proxy qua OmniRouter Gateway
+) else (
+    echo   [INACTIVE] Hosts file KHONG co entry redirect
+    echo   =^> IDE dang ket noi truc tiep den Google
+)
+echo.
+
+echo   --- OMNIROUTER ---
+netstat -anp tcp 2>nul | findstr "0.0.0.0:443.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [RUNNING] OmniRouter port 443: DANG CHAY
+) else (
+    echo   [STOPPED] OmniRouter port 443: KHONG CHAY
+)
+
+netstat -anp tcp 2>nul | findstr "0.0.0.0:20128.*LISTENING" >nul 2>&1
+if %errorlevel%==0 (
+    echo   [RUNNING] OmniRouter port 20128: DANG CHAY
+) else (
+    echo   [STOPPED] OmniRouter port 20128: KHONG CHAY
+)
+echo.
+
+echo   --- CONFIG.JSON ---
+if exist "%CONFIG_PATH%" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$c = Get-Content '%CONFIG_PATH%' -Raw | ConvertFrom-Json; Write-Host ('  apiEndpoint: ' + $c.apiEndpoint) -ForegroundColor Cyan; Write-Host ('  apiKey:      ' + $c.apiKey) -ForegroundColor Yellow"
+) else (
+    echo   [!] File config.json khong ton tai
+)
+
+echo.
 echo ==============================================================================
 echo.
 goto do_end

@@ -177,6 +177,17 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
 	mux.HandleFunc("/v1/models/stt", HandleSTTModels)
 
+	// 10.2 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua hosts file)
+	// IDE gửi request thẳng đến daily-cloudcode-pa.googleapis.com/v1internal:...
+	// Hosts file redirect về 127.0.0.1 → request đến OmniRouter port 443
+	// Handler này thay OAuth token của user bằng token tài khoản AI pool,
+	// forward qua IP thật, pipe SSE response nguyên bản về IDE
+	geminiProxyHandler := HandleGeminiNativeProxy(db)
+	mux.HandleFunc("/v1internal:", geminiProxyHandler) // Catch: /v1internal:streamGenerateContent, /v1internal:generateContent, ...
+	mux.HandleFunc("/v1internal/", geminiProxyHandler) // Catch: /v1internal/models/xxx
+	mux.HandleFunc("/v1beta/", geminiProxyHandler)     // Catch: /v1beta/models/xxx:generateContent
+	log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã đăng ký Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
+
 	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp (/providers/ và /router/providers/)
 	providersCandidates := []string{
 		filepath.Join(uiDir, "providers"),
