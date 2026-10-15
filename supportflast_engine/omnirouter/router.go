@@ -68,9 +68,12 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
 	mux.HandleFunc("/v1/models/stt", HandleSTTModels)
 
-	// 10. Giao diện Web Dashboard Quản lý 9Router (/router)
+	// 10. Giao diện Web Dashboard Quản lý 9Router (/router, /router/, /router/index.html)
 	routerUIFile := filepath.Join(uiDir, "router", "index.html")
 	routerHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if _, err := os.Stat(routerUIFile); err == nil {
 			http.ServeFile(w, r, routerUIFile)
@@ -90,6 +93,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 
 	mux.HandleFunc("/router", routerHandler)
 	mux.HandleFunc("/router/", routerHandler)
+	mux.HandleFunc("/router/index.html", routerHandler)
 
 	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 10 cổng định tuyến 9Router Master Gateway")
 }
