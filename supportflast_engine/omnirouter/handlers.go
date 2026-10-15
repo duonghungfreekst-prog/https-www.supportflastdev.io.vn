@@ -1267,49 +1267,22 @@ func GetDefaultModelsForProvider(provider string) []ProviderModelItem {
 			{ID: "command-light", Name: "Cohere Command Light", FullModel: "command-light", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
 		}
 	default:
-		// Bộ danh mục đầy đủ Antigravity & Google Gemini
+		// Danh mục 14 Model Chính Thức cho Antigravity
 		return []ProviderModelItem{
-			// Thế hệ Gemini 3.x cao cấp (Thinking & Pro)
-			{ID: "gemini-3.8-pro", Name: "Gemini 3.8 Pro (Next-Gen Flagship)", FullModel: "gemini-3.8-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-pro-high", Name: "Gemini 3.8 Pro (High Thinking 32k)", FullModel: "gemini-3.8-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash", Name: "Gemini 3.8 Flash (Ultra Fast)", FullModel: "gemini-3.8-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-3.8-flash-thinking", Name: "Gemini 3.8 Flash (Thinking Adaptive)", FullModel: "gemini-3.8-flash-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High Thinking)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium Thinking)", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low Thinking)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash", Name: "Gemini 3.7 Flash (Hybrid Speed)", FullModel: "gemini-3.7-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-3.7-flash-thinking", Name: "Gemini 3.7 Flash Thinking", FullModel: "gemini-3.7-flash-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High Thinking)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium Thinking)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low Thinking)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High Thinking)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro (High Thinking)", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.1-flash-image", Name: "Gemini 3.1 Flash Image (Vision Specialist)", FullModel: "gemini-3.1-flash-image", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-
-			// Thế hệ Gemini 2.x & 1.5 chuẩn Google AI Studio
-			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro (State-of-the-Art Coding)", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash (Adaptive Reasoning)", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-2.0-flash", Name: "Gemini 2.0 Flash (Next-Gen Multimodal)", FullModel: "gemini-2.0-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-2.0-flash-lite", Name: "Gemini 2.0 Flash Lite (Cost-Efficient)", FullModel: "gemini-2.0-flash-lite", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-2.0-flash-thinking-exp-01-21", Name: "Gemini 2.0 Flash Thinking Exp", FullModel: "gemini-2.0-flash-thinking-exp-01-21", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.0-pro-exp-02-05", Name: "Gemini 2.0 Pro Experimental", FullModel: "gemini-2.0-pro-exp-02-05", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-1.5-pro", Name: "Gemini 1.5 Pro (2M Context Window)", FullModel: "gemini-1.5-pro", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-1.5-flash", Name: "Gemini 1.5 Flash (1M Fast)", FullModel: "gemini-1.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-1.5-flash-8b", Name: "Gemini 1.5 Flash 8B (Sub-second)", FullModel: "gemini-1.5-flash-8b", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-
-			// Các mô hình hàng đầu tích hợp Antigravity Router Bridge
-			{ID: "claude-3-7-sonnet", Name: "Claude 3.7 Sonnet (Hybrid Thinking)", FullModel: "claude-3-7-sonnet", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "claude-3-5-haiku", Name: "Claude 3.5 Haiku Fast", FullModel: "claude-3-5-haiku", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium) / Default", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.6-flash-medium", Name: "Gemini 3.6 Flash (Medium)", FullModel: "gemini-3.6-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "4-argon", Name: "4 Argon", FullModel: "4-argon", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-pro-agent", Name: "Gemini 3.1 Pro (High)", FullModel: "gemini-pro-agent", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gpt-4o", Name: "GPT-4o Omnimodal", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gpt-4o-mini", Name: "GPT-4o Mini Fast", FullModel: "gpt-4o-mini", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "o3-mini", Name: "OpenAI o3-mini (High Coding Intelligence)", FullModel: "o3-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
-			{ID: "o1", Name: "OpenAI o1 Reasoning", FullModel: "o1", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "deepseek-r1", Name: "DeepSeek R1 (Full Reasoning)", FullModel: "deepseek-r1", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
-			{ID: "deepseek-v3", Name: "DeepSeek V3 MoE 671B", FullModel: "deepseek-v3", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
-			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium Thinking)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "claude-sonnet-5-5", Name: "Claude Sonnet 5.5 (Thinking)", FullModel: "claude-sonnet-5-5", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-opus-5-5", Name: "Claude Opus 5.5 (Thinking)", FullModel: "claude-opus-5-5", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
 		}
 	}
 }

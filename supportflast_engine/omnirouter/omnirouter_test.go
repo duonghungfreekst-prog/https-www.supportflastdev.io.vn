@@ -326,11 +326,11 @@ func TestProviderModelsEndpoint(t *testing.T) {
 		t.Fatalf("Kỳ vọng 0 disabled models, nhận được %d", len(resp.DisabledModels))
 	}
 
-	// 2. Tắt 1 model (gemini-2.5-flash)
+	// 2. Tắt 1 model (gemini-3.8-flash-low)
 	activeFalse := false
 	payloadDisable, _ := json.Marshal(map[string]interface{}{
 		"provider": "antigravity",
-		"modelId":  "gemini-2.5-flash",
+		"modelId":  "gemini-3.8-flash-low",
 		"active":   &activeFalse,
 	})
 	reqPostDisable := httptest.NewRequest("POST", "/api/models/provider", bytes.NewReader(payloadDisable))
@@ -349,7 +349,7 @@ func TestProviderModelsEndpoint(t *testing.T) {
 	if len(resp.AvailableModels) != expectedTotal-1 || len(resp.DisabledModels) != 1 {
 		t.Fatalf("Kỳ vọng %d available và 1 disabled, nhận được: %d / %d", expectedTotal-1, len(resp.AvailableModels), len(resp.DisabledModels))
 	}
-	if resp.DisabledModels[0].ID != "gemini-2.5-flash" {
+	if resp.DisabledModels[0].ID != "gemini-3.8-flash-low" {
 		t.Fatalf("Disabled model ID không đúng: %s", resp.DisabledModels[0].ID)
 	}
 

@@ -3999,7 +3999,7 @@
       <div class="flex items-center gap-2 border-b border-white/10 pb-2">
         <button id="tab-btn-provider-models" onclick="switchProviderDetailSubTab('models')" class="px-4 py-2 rounded-xl font-bold font-mono text-xs flex items-center gap-2 transition-all bg-cyan-950/80 text-cyan-300 border border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.3)] cursor-pointer">
           <span>🤖 Available Models</span>
-          <span id="provider-models-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 font-bold">15</span>
+          <span id="provider-models-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 font-bold">14</span>
         </button>
         <button id="tab-btn-provider-accounts" onclick="switchProviderDetailSubTab('accounts')" class="px-4 py-2 rounded-xl font-bold font-mono text-xs flex items-center gap-2 transition-all bg-white/5 text-slate-400 border border-white/5 hover:text-white hover:border-white/20 cursor-pointer">
           <span>👥 Tài Khoản Đã Kết Nối</span>
@@ -7055,49 +7055,22 @@ curl -X POST "${v1Url}/chat/completions" \\
         ];
       }
 
-      // Mặc định: Danh mục đầy đủ Antigravity & Google Gemini
+      // Mặc định: Danh mục 14 Model Chính Thức Antigravity
       return [
-        // Thế hệ Gemini 3.x cao cấp (Thinking & Pro)
-        { id: 'gemini-3.8-pro', name: 'Gemini 3.8 Pro (Next-Gen Flagship)', fullModel: 'gemini-3.8-pro', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.8-pro-high', name: 'Gemini 3.8 Pro (High Thinking 32k)', fullModel: 'gemini-3.8-pro-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Ultra Fast)', fullModel: 'gemini-3.8-flash', caps: { thinking: false, vision: true } },
-        { id: 'gemini-3.8-flash-thinking', name: 'Gemini 3.8 Flash (Thinking Adaptive)', fullModel: 'gemini-3.8-flash-thinking', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High Thinking)', fullModel: 'gemini-3.8-flash-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium Thinking)', fullModel: 'gemini-3.8-flash-medium', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low Thinking)', fullModel: 'gemini-3.8-flash-low', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash (Hybrid Speed)', fullModel: 'gemini-3.7-flash', caps: { thinking: false, vision: true } },
-        { id: 'gemini-3.7-flash-thinking', name: 'Gemini 3.7 Flash Thinking', fullModel: 'gemini-3.7-flash-thinking', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High Thinking)', fullModel: 'gemini-3.7-flash-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.7-flash-medium', name: 'Gemini 3.7 Flash (Medium Thinking)', fullModel: 'gemini-3.7-flash-medium', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.7-flash-low', name: 'Gemini 3.7 Flash (Low Thinking)', fullModel: 'gemini-3.7-flash-low', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High Thinking)', fullModel: 'gemini-3.6-flash-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High Thinking)', fullModel: 'gemini-3.1-pro-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Vision Specialist)', fullModel: 'gemini-3.1-flash-image', caps: { thinking: false, vision: true } },
-
-        // Thế hệ Gemini 2.x & 1.5 chuẩn Google AI Studio
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (State-of-the-Art Coding)', fullModel: 'gemini-2.5-pro', caps: { thinking: true, vision: true } },
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Adaptive Reasoning)', fullModel: 'gemini-2.5-flash', caps: { thinking: false, vision: true } },
-        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Next-Gen Multimodal)', fullModel: 'gemini-2.0-flash', caps: { thinking: false, vision: true } },
-        { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite (Cost-Efficient)', fullModel: 'gemini-2.0-flash-lite', caps: { thinking: false, vision: true } },
-        { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking Exp', fullModel: 'gemini-2.0-flash-thinking-exp-01-21', caps: { thinking: true, vision: true } },
-        { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Experimental', fullModel: 'gemini-2.0-pro-exp-02-05', caps: { thinking: true, vision: true } },
-        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (2M Context Window)', fullModel: 'gemini-1.5-pro', caps: { thinking: false, vision: true } },
-        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (1M Fast)', fullModel: 'gemini-1.5-flash', caps: { thinking: false, vision: true } },
-        { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B (Sub-second)', fullModel: 'gemini-1.5-flash-8b', caps: { thinking: false, vision: true } },
-
-        // Các mô hình hàng đầu tích hợp Antigravity Router Bridge
-        { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Thinking)', fullModel: 'claude-3-7-sonnet', caps: { thinking: true, vision: true } },
-        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
-        { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku Fast', fullModel: 'claude-3-5-haiku', caps: { thinking: false, vision: true } },
+        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', fullModel: 'gemini-3.8-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium) / Default', fullModel: 'gemini-3.8-flash-medium', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)', fullModel: 'gemini-3.8-flash-low', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High)', fullModel: 'gemini-3.7-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-medium', name: 'Gemini 3.7 Flash (Medium)', fullModel: 'gemini-3.7-flash-medium', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-low', name: 'Gemini 3.7 Flash (Low)', fullModel: 'gemini-3.7-flash-low', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High)', fullModel: 'gemini-3.6-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.6-flash-medium', name: 'Gemini 3.6 Flash (Medium)', fullModel: 'gemini-3.6-flash-medium', caps: { thinking: true, vision: true } },
+        { id: '4-argon', name: '4 Argon', fullModel: '4-argon', isNew: true, caps: { thinking: true, vision: true } },
+        { id: 'gemini-pro-agent', name: 'Gemini 3.1 Pro (High)', fullModel: 'gemini-pro-agent', caps: { thinking: true, vision: true } },
         { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', fullModel: 'claude-sonnet-4-6', caps: { thinking: true, vision: true } },
-        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', fullModel: 'claude-opus-4-6-thinking', caps: { thinking: true, vision: true } },
-        { id: 'gpt-4o', name: 'GPT-4o Omnimodal', fullModel: 'gpt-4o', caps: { thinking: false, vision: true } },
-        { id: 'gpt-4o-mini', name: 'GPT-4o Mini Fast', fullModel: 'gpt-4o-mini', caps: { thinking: false, vision: true } },
-        { id: 'o3-mini', name: 'OpenAI o3-mini (High Coding Intelligence)', fullModel: 'o3-mini', caps: { thinking: true, vision: false } },
-        { id: 'o1', name: 'OpenAI o1 Reasoning', fullModel: 'o1', caps: { thinking: true, vision: true } },
-        { id: 'deepseek-r1', name: 'DeepSeek R1 (Full Reasoning)', fullModel: 'deepseek-r1', caps: { thinking: true, vision: false } },
-        { id: 'deepseek-v3', name: 'DeepSeek V3 MoE 671B', fullModel: 'deepseek-v3', caps: { thinking: false, vision: false } },
-        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium Thinking)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } }
+        { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5 (Thinking)', fullModel: 'claude-sonnet-5-5', caps: { thinking: true, vision: true } },
+        { id: 'claude-opus-5-5', name: 'Claude Opus 5.5 (Thinking)', fullModel: 'claude-opus-5-5', caps: { thinking: true, vision: true } },
+        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } }
       ];
     }
 
@@ -7156,6 +7129,7 @@ curl -X POST "${v1Url}/chat/completions" \\
           const isThinking = m.caps?.thinking || modelId.includes('thinking') || modelId.includes('r1') || modelId.includes('o1') || modelId.includes('o3') || modelId.includes('high') || modelId.includes('medium');
           const isVision = m.caps?.vision || modelId.includes('vision') || modelId.includes('flash') || modelId.includes('image') || modelId.includes('4o');
           const isHigh = modelId.includes('high') || modelId.includes('pro');
+          const isNew = m.isNew || modelId.includes('4-argon') || (m.name && m.name.includes('Argon'));
 
           card.innerHTML = `
             <div class="flex items-center gap-3 min-w-0 flex-1 pr-2">
@@ -7163,14 +7137,16 @@ curl -X POST "${v1Url}/chat/completions" \\
                 ⚡
               </div>
               <div class="min-w-0 flex-1">
-                <!-- Dòng 1: Mã Model ID đầy đủ sắc nét không bị cắt chữ -->
+                <!-- Dòng 1: Tên Model & Mã Model ID chuẩn xác không bị cắt chữ -->
                 <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-xs font-mono font-bold text-white tracking-tight break-all select-all hover:text-cyan-300 transition-colors" title="${escapeHtml(modelId)}">${escapeHtml(modelId)}</span>
+                  ${isNew ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40 uppercase">NEW</span>' : ''}
+                  <span class="text-xs font-sans font-semibold text-slate-200">${escapeHtml(m.name || m.id)}</span>
+                  <span class="text-slate-500 text-xs font-mono">→</span>
+                  <span class="text-xs font-mono font-bold text-cyan-300 tracking-tight break-all select-all hover:underline cursor-pointer" onclick="copyModelIdToClipboard('${escapeHtml(modelId)}')" title="Sao chép: ${escapeHtml(modelId)}">${escapeHtml(modelId)}</span>
                   <button onclick="copyModelIdToClipboard('${escapeHtml(modelId)}')" class="text-slate-400 hover:text-cyan-300 text-xs cursor-pointer p-0.5 transition-colors" title="Sao chép mã model">📋</button>
                 </div>
-                <!-- Dòng 2: Tên mô tả và các Badges thông minh -->
+                <!-- Dòng 2: Badges thông minh (Thinking, Vision) -->
                 <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
-                  <span class="text-slate-300 font-sans font-medium">${escapeHtml(m.name || m.id)}</span>
                   ${isThinking ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold ${isHigh ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}">Thinking</span>` : ''}
                   ${isVision ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">Vision</span>' : ''}
                 </div>
