@@ -126,11 +126,26 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
 	mux.HandleFunc("/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
-	// 9. API Đồng bộ và Báo cáo dành riêng cho App Go PC / Termux
+	// 9. API Đồng bộ, Cấu hình MITM & DNS và Báo cáo dành riêng cho App PC / Termux / CMD
+	clientConfigHandler := HandleClientConfig(db)
+	mux.HandleFunc("/api/v1/client/config", clientConfigHandler)
+	mux.HandleFunc("/api/v1/client/config.json", clientConfigHandler)
+	mux.HandleFunc("/api/v1/client/setup.bat", clientConfigHandler)
+	mux.HandleFunc("/api/v1/client/setup.sh", clientConfigHandler)
+	mux.HandleFunc("/api/v1/config", clientConfigHandler)
+	mux.HandleFunc("/api/v1/mitm-dns", clientConfigHandler)
 	mux.HandleFunc("/api/v1/client/sync", HandleClientSync(db))
 	mux.HandleFunc("/api/v1/client/report", HandleClientReport(db))
 	mux.HandleFunc("/api/v1/sync", HandleClientSync(db))
 	mux.HandleFunc("/api/v1/report", HandleClientReport(db))
+
+	// 9.1 API Tra cứu Quota & Ping DNS trực tiếp qua CMD / Terminal / cURL
+	clientQuotaHandler := HandleClientQuotaCLI(db)
+	mux.HandleFunc("/api/v1/client/quota", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/client/quota.bat", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/client/ping", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/quota", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/ping", clientQuotaHandler)
 
 	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)

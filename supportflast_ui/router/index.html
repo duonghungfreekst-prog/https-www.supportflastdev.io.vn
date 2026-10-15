@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NexusRoute AI v2.8.5 - Next-Gen Gateway</title>
+  <title>SupportFlast Router v2.8.5 - AI Gateway Cloud</title>
   
   <!-- Font Google: Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -449,7 +449,7 @@
        onmousedown="if(event.button === 0 && event.target.tagName !== 'BUTTON' && !event.target.closest('button')) sendHostAction('dragMove')">
     <div class="flex items-center gap-2 pointer-events-none">
       <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22D3EE] animate-pulse"></div>
-      <span class="text-[11px] font-mono font-semibold tracking-wider text-slate-400 uppercase">NexusRoute AI Gateway Engine</span>
+      <span class="text-[11px] font-mono font-semibold tracking-wider text-slate-400 uppercase">SupportFlast Router Gateway Engine</span>
       <span class="text-[10px] font-mono px-1.5 py-0.2 bg-cyan-950/60 text-cyan-300 rounded border border-cyan-800/40">v2.8.5 Enterprise</span>
     </div>
     
@@ -482,8 +482,8 @@
         </div>
         <div class="flex flex-col">
           <div class="flex items-center gap-1.5">
-            <span class="text-white font-extrabold text-base tracking-wide font-sans">NexusRoute</span>
-            <span class="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)]">AI</span>
+            <span class="text-white font-extrabold text-base tracking-wide font-sans">SupportFlast</span>
+            <span class="bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)]">ROUTER</span>
           </div>
           <div class="flex items-center gap-1.5 mt-0.5">
             <span class="text-[11px] text-slate-400 font-mono font-medium">v2.8.5</span>
@@ -567,7 +567,7 @@
             <!-- Mục 6: Theo dõi hạn mức (MÀN HÌNH CHÍNH MẶC ĐỊNH KHỚP ẢNH 2) -->
             <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
               <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>Theo Dõi Hạn Mức</span>
@@ -584,7 +584,7 @@
                 <span>Token Optimizer</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
+                <span id="opt-sidebar-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
                 <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
               </div>
             </button>
@@ -713,7 +713,7 @@
             <div class="flex items-center gap-2">
               <span id="sidebar-gw-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10B981] animate-pulse"></span>
               <div class="flex flex-col">
-                <span id="sidebar-gw-title" class="text-xs font-bold text-white font-mono leading-tight">OmniRouter Cloud</span>
+                <span id="sidebar-gw-title" class="text-xs font-bold text-white font-mono leading-tight">SupportFlast Router Cloud</span>
                 <span id="sidebar-gw-port-status" class="text-[10px] font-mono text-emerald-400 font-semibold">🟢 ONLINE 24/24</span>
               </div>
             </div>
@@ -1036,15 +1036,6 @@
         <!-- ========================================================================= -->
         <div id="tab-mitm" class="tab-content space-y-6">
 
-          <!-- 1. CẢNH BÁO VI PHẠM ĐIỀU KHOẢN (ToS WARNING BANNER KHỚP 100% ẢNH) -->
-          <div class="relative overflow-hidden rounded-xl border border-amber-500/40 bg-[#161208]/90 p-3.5 shadow-lg flex items-start gap-3">
-            <div class="text-amber-400 flex-shrink-0 mt-0.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            </div>
-            <div class="flex-1 text-xs leading-relaxed text-amber-200/90 font-medium">
-              <span class="font-bold text-amber-300">⚠️ MITM chặn lưu lượng HTTPS của các IDE tools (Antigravity, GitHub Copilot, Kiro) qua CA cục bộ để chuyển hướng request đến providers của bạn. Có thể vi phạm ToS — rủi ro bị ban tài khoản. Sử dụng với rủi ro của bạn.</span>
-            </div>
-          </div>
 
           <!-- 2. THẺ MÁY CHỦ GATEWAY & MITM CLIENT (ĐỒNG BỘ WEB CLOUD & MÁY TÍNH) -->
           <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-4">
@@ -1081,7 +1072,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-white font-bold flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-                    <span>OmniRouter Base URL:</span>
+                    <span>SupportFlast Router Base URL:</span>
                   </span>
                   <button onclick="copyMitmBaseUrl()" class="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]">📋 Sao chép</button>
                 </div>
@@ -1099,12 +1090,13 @@
                     <span>Client API Key (Khóa Máy Tính):</span>
                   </span>
                   <div class="flex items-center gap-1.5">
+                    <button onclick="openQuickCmdModal(document.getElementById('mitm-api-key-input') ? document.getElementById('mitm-api-key-input').value : '')" class="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]">⚡ Lệnh App CMD & DNS</button>
                     <button onclick="copyMitmApiKey()" class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.2)]">📋 Sao chép</button>
                     <button onclick="openModal('modal-create-key')" class="px-2.5 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(245,158,11,0.2)]">➕ Tạo mới</button>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <input type="text" id="mitm-api-key-input" readonly value="sk-9router-loading..." class="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500/50 select-all">
+                  <input type="text" id="mitm-api-key-input" readonly value="sk-supportflast-loading..." class="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500/50 select-all">
                 </div>
                 <div class="text-[10px] text-slate-400 font-sans">Khóa bảo mật riêng lưu tại TiDB Cloud, dùng để định danh và phân quyền máy tính</div>
               </div>
@@ -1128,7 +1120,7 @@
                 </p>
                 <div class="p-2.5 rounded-lg bg-black/70 border border-white/5 font-mono text-[11px] space-y-1 text-slate-300">
                   <div><span class="text-slate-500">Base URL:</span> <span class="text-cyan-300 select-all" id="mitm-guide-base-url">https://supportflastdev.io.vn/v1</span></div>
-                  <div><span class="text-slate-500">API Key:</span> <span class="text-emerald-300 select-all" id="mitm-guide-api-key">sk-9router-xxxx</span></div>
+                  <div><span class="text-slate-500">API Key:</span> <span class="text-emerald-300 select-all" id="mitm-guide-api-key">sk-supportflast-xxxx</span></div>
                   <div><span class="text-slate-500">Model:</span> <span class="text-amber-300">gemini-3.1-pro-high, claude-3-5-sonnet, gpt-4o</span></div>
                 </div>
               </div>
@@ -1138,7 +1130,7 @@
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2 text-emerald-300 font-bold text-xs">
                     <span class="w-5 h-5 rounded-md bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs text-emerald-300">2</span>
-                    <span>Dùng 9Router Desktop Client (Chặn Cổng 443)</span>
+                    <span>Dùng SupportFlast Desktop Client (Chặn Cổng 443)</span>
                   </div>
                   <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">DNS Intercept</span>
                 </div>
@@ -1512,7 +1504,7 @@
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Terminal CLI Tools Hỗ Trợ 9Router Base URL</h3>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Terminal CLI Tools Hỗ Trợ SupportFlast Router Base URL</h3>
               </div>
               <span id="cli-tools-base-url" class="text-xs text-slate-400 font-mono">https://supportflastdev.io.vn/v1</span>
             </div>
@@ -1546,7 +1538,7 @@
               <div class="glass-card rounded-xl p-3 border border-white/5 text-center space-y-2 hover:border-cyan-500/30 transition-all">
                 <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold mx-auto text-xs">OP</div>
                 <div class="text-xs font-bold text-white">OpenCode</div>
-                <span class="text-[9px] font-mono text-slate-400 block">PORT:20128</span>
+                <span id="opencode-route-badge" class="text-[9px] font-mono text-cyan-400 block">CLOUD_GATEWAY</span>
               </div>
             </div>
           </div>
@@ -1623,7 +1615,7 @@
               <div>
                 <h3 class="text-base font-bold text-white flex items-center gap-2">
                   <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                  Danh Sách Khóa API Truy Cập (NexusRoute Keys)
+                  Danh Sách Khóa API Truy Cập (SupportFlast Router Keys)
                 </h3>
                 <p class="text-xs text-slate-400 mt-1">Cấp khóa API cho các IDE, app mobile hoặc dịch vụ bên thứ ba để xác thực qua Gateway.</p>
               </div>
@@ -1795,7 +1787,7 @@
         <!-- ========================================================================= -->
         <div id="tab-combo" class="tab-content space-y-6">
 
-          <!-- Cascade Fallback Routing Engine (LƯU TRỰC TIẾP VÀO LIBSQL DB data.libsql) -->
+          <!-- Cascade Fallback Routing Engine (LƯU TRỰC TIẾP VÀO TiDB CLOUD SERVERLESS) -->
           <div class="glass-card rounded-2xl p-6 border border-cyan-500/30 space-y-5">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
               <div>
@@ -1804,7 +1796,7 @@
                     <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     Hệ Thống Phân Tầng Dự Phòng (Cascade Fallback Tiers)
                   </h3>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-inner">LIBSQL DB: COMBOS</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-inner">TiDB CLOUD: COMBOS</span>
                 </div>
                 <p class="text-xs text-slate-400 mt-1">Khi nhà cung cấp chính gặp lỗi (429 Rate Limit, 503 Overloaded, hoặc Timeout), Gateway tự động chuyển tiếp tầng dự phòng tiếp theo tức thì.</p>
               </div>
@@ -1813,12 +1805,12 @@
                   <span>➕ Thêm Tầng</span>
                 </button>
                 <button id="btn-save-combo-config" onclick="saveComboConfig()" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5 cursor-pointer">
-                  <span>💾 Lưu Cấu Hình Combo Vào LibSQL</span>
+                  <span>💾 Lưu Cấu Hình Combo Lên Cloud</span>
                 </button>
               </div>
             </div>
 
-            <!-- Thanh Quản Lý Danh Sách Combo Thật Trong LibSQL (Tự động co giãn thông minh, tuyệt đối không chồng chéo) -->
+            <!-- Thanh Quản Lý Danh Sách Combo Thật Trong TiDB Cloud (Tự động co giãn thông minh, tuyệt đối không chồng chéo) -->
             <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-black/60 border border-white/10 text-xs font-mono">
               <!-- Nhóm 1: Chọn Combo -->
               <div class="flex items-center gap-2 flex-1 min-w-[200px] sm:min-w-[240px]">
@@ -1837,7 +1829,7 @@
 
               <!-- Nhóm 3: Các nút Thao Tác -->
               <div class="flex items-center gap-2 flex-shrink-0 ml-auto">
-                <button id="btn-delete-combo-config" onclick="deleteCurrentCascadeCombo()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap" title="Xóa combo này khỏi LibSQL">
+                <button id="btn-delete-combo-config" onclick="deleteCurrentCascadeCombo()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap" title="Xóa combo này khỏi TiDB Cloud">
                   <span>🗑️ Xóa Combo</span>
                 </button>
                 <button onclick="createNewCascadeCombo()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
@@ -1846,10 +1838,10 @@
               </div>
             </div>
 
-            <!-- Danh sách các Tầng Dự Phòng Động (Render từ LibSQL /api/combos) -->
+            <!-- Danh sách các Tầng Dự Phòng Động (Render từ TiDB Cloud /api/combos) -->
             <div id="cascade-tiers-container" class="space-y-3 font-mono">
               <div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                <span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách tầng dự phòng từ LibSQL DB...
+                <span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách tầng dự phòng từ TiDB Cloud Serverless...
               </div>
             </div>
 
@@ -1874,7 +1866,7 @@
         <!-- ========================================================================= -->
         <div id="tab-stats" class="tab-content space-y-6">
 
-          <!-- TOOLBAR CHỌN CHU KỲ ĐO LƯỜNG CHUẨN XÁC TỪ LIBSQL -->
+          <!-- TOOLBAR CHỌN CHU KỲ ĐO LƯỜNG CHUẨN XÁC TỪ TIDB CLOUD -->
           <div class="flex flex-wrap items-center justify-between gap-3 pb-1">
             <div class="flex items-center gap-2">
               <span class="text-xs font-mono text-slate-400 font-medium">Chu kỳ đo lường:</span>
@@ -1887,7 +1879,7 @@
             </div>
             <div class="text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981]"></span>
-              <span>Đo lường LibSQL thời gian thực</span>
+              <span>Đo lường TiDB Cloud thời gian thực</span>
             </div>
           </div>
 
@@ -1952,7 +1944,7 @@
                       ⚡ ĐANG LẮNG NGHE YÊU CẦU THẬT
                     </span>
                     <span id="hud-provider-tag" class="text-[11px] font-mono text-slate-400">
-                      Hạ tầng: OmniRouter AI Gateway
+                      Hạ tầng: SupportFlast Router Gateway
                     </span>
                   </div>
                   <div class="flex items-baseline gap-2 mt-1">
@@ -2149,17 +2141,17 @@
                   <circle cx="20" cy="21" r="10" fill="#701A75" />
                   <text x="20" y="24" fill="#F0ABFC" font-size="10" font-family="monospace" font-weight="bold" text-anchor="middle">CL</text>
                   <text x="38" y="19" fill="#FFF" font-size="12.5" font-weight="bold">Terminal CLI</text>
-                  <text x="38" y="33" fill="#94A3B8" font-size="10" font-family="monospace">localhost:20128</text>
+                  <text x="38" y="33" fill="#94A3B8" font-size="10" font-family="monospace">supportflastdev.io.vn</text>
                   <circle id="dot-client-4" cx="140" cy="21" r="3.5" fill="#10B981" />
                 </g>
 
-                <!-- 5. NODE TRUNG TÂM (NEXUSROUTE GATEWAY :20128) -->
+                <!-- 5. NODE TRUNG TÂM (SUPPORTFLAST ROUTER GATEWAY) -->
                 <g id="node-center-gateway" transform="translate(325, 115)">
                   <rect width="145" height="70" rx="14" fill="#041E28" stroke="#00F0FF" stroke-width="2.2" filter="url(#topo-electric-glow)" />
                   <circle cx="30" cy="35" r="14" fill="#083344" />
                   <path d="M 28 27 L 23 35 L 29 35 L 27 43 L 37 33 L 30 33 Z" fill="#00F0FF" />
-                  <text x="52" y="30" fill="#FFF" font-size="13.5" font-weight="extrabold">NexusRoute</text>
-                  <text x="52" y="45" fill="#22D3EE" font-size="11" font-family="monospace" font-weight="bold">PORT :20128</text>
+                  <text x="52" y="30" fill="#FFF" font-size="12" font-weight="extrabold">SupportFlast</text>
+                  <text x="52" y="45" fill="#22D3EE" font-size="11" font-family="monospace" font-weight="bold">CLOUD 24/24</text>
                   <text x="52" y="58" fill="#10B981" font-size="10" font-family="monospace">Active Router</text>
                 </g>
 
@@ -2273,7 +2265,7 @@
               <div class="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1 flex-shrink-0">
                 <span class="flex items-center gap-1 text-emerald-400">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981]"></span>
-                  <span>Port :20128 Realtime</span>
+                  <span id="mini-stream-port-badge">Cloud Realtime</span>
                 </span>
                 <span id="mini-stream-count-badge" class="text-slate-400">Tối đa 15 reqs</span>
               </div>
@@ -2392,10 +2384,10 @@
               
               <!-- Auto-refresh status & toggle -->
               <div onclick="toggleAutoRefreshQuota()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-white/5 border border-white/10 cursor-pointer select-none transition-colors">
-                <div id="quota-auto-toggle-switch" class="nexus-switch nexus-switch-sm active-amber" title="Tự động làm mới quota sau mỗi 5 giây">
+                <div id="quota-auto-toggle-switch" class="nexus-switch nexus-switch-sm active-amber" title="Tự động làm mới quota sau mỗi 30 giây">
                   <div class="nexus-switch-knob"></div>
                 </div>
-                <span class="text-xs text-slate-300 font-mono">Tự động làm mới (<span id="quota-refresh-countdown" class="text-amber-400">5s</span>)</span>
+                <span class="text-xs text-slate-300 font-mono">Tự động làm mới (<span id="quota-refresh-countdown" class="text-amber-400">30s</span>)</span>
               </div>
 
               <!-- Nút Refresh tròn -->
@@ -2407,8 +2399,8 @@
 
           </div>
 
-          <!-- 2. LƯỚI THẺ ACCOUNT QUOTA CARDS (1 ĐẾN 4 CỘT RESPONSIVE THEO MÀN HÌNH - ZERO DELAY) -->
-          <div id="quota-cards-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 min-h-[160px]"></div>
+          <!-- 2. LƯỚI THẺ ACCOUNT QUOTA CARDS (TỰ ĐỘNG CHIA CỘT THÔNG MINH THEO KHÔNG GIAN THỰC TẾ) -->
+          <div id="quota-cards-grid" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3.5 items-start min-h-[160px]"></div>
 
         </div>
 
@@ -3213,7 +3205,7 @@
               <h4 class="text-sm font-bold text-white">Gemini Live Audio/Video</h4>
               <p class="text-xs text-slate-400">Giao thức WebSocket song công thời gian thực (Bidirectional Realtime Stream).</p>
               <input type="password" placeholder="Sử dụng chung Google Key" disabled class="w-full px-3 py-1.5 rounded-lg bg-black/20 border border-white/5 text-xs text-slate-500">
-              <span class="text-[10px] text-cyan-400 font-mono">Giao thức: WS :20128/live</span>
+              <span class="text-[10px] text-cyan-400 font-mono">Giao thức: Cloud Stream /live</span>
             </div>
             <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-3">
               <h4 class="text-sm font-bold text-white">Flux & Midjourney API</h4>
@@ -3239,7 +3231,7 @@
                     <span id="proxy-pool-header-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">0 Pool Đang Kết Nối</span>
                   </h3>
                 </div>
-                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong LibSQL. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi 9Router chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
+                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong TiDB Cloud. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi SupportFlast Router chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
               </div>
               <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="autoAssignBestProxyToAllAccounts(this)" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(245,158,11,0.25)] cursor-pointer" title="Tự động kiểm tra tốc độ toàn bộ pool và gán Proxy tốt nhất cho mọi tài khoản AI">
@@ -3263,7 +3255,7 @@
               <div class="space-y-1">
                 <div class="font-bold text-cyan-300">Cơ chế hoạt động Outbound Proxy:</div>
                 <p class="text-[11px] text-slate-400 leading-relaxed">
-                  9Router sử dụng các Proxy Pool này để gửi yêu cầu API ra internet. Bạn có thể gán từng Proxy Pool cho từng Nhà Cung Cấp trong tab <strong class="text-slate-200">"Hồ Chứa Nhà Cung Cấp"</strong> hoặc kích hoạt cơ chế xoay vòng IP tự động. Khi proxy hiển thị <strong class="text-slate-300">"Chưa gán tài khoản AI"</strong> nghĩa là proxy đang ở trạng thái sẵn sàng nhưng chưa được gắn cho tài khoản AI nào.
+                  SupportFlast Router sử dụng các Proxy Pool này để gửi yêu cầu API ra internet. Bạn có thể gán từng Proxy Pool cho từng Nhà Cung Cấp trong tab <strong class="text-slate-200">"Hồ Chứa Nhà Cung Cấp"</strong> hoặc kích hoạt cơ chế xoay vòng IP tự động. Khi proxy hiển thị <strong class="text-slate-300">"Chưa gán tài khoản AI"</strong> nghĩa là proxy đang ở trạng thái sẵn sàng nhưng chưa được gắn cho tài khoản AI nào.
                 </p>
               </div>
             </div>
@@ -3287,7 +3279,7 @@
                     <td colspan="8" class="py-8 text-center text-slate-500 italic">
                       <div class="flex items-center justify-center gap-2">
                         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu LibSQL...</span>
+                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu TiDB Cloud Serverless...</span>
                       </div>
                     </td>
                   </tr>
@@ -3431,7 +3423,7 @@
 
           <div class="space-y-6">
 
-            <!-- Thẻ 1: Thông Số LibSQL Database Thực Tế & Quản Lý -->
+            <!-- Thẻ 1: Thông Số TiDB Cloud Serverless & Quản Lý -->
             <div class="glass-card rounded-2xl p-6 border border-cyan-500/30 space-y-5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
@@ -3440,20 +3432,20 @@
                   </div>
                   <div>
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
-                      Cơ Sở Dữ Liệu LibSQL & Quản Trị Hệ Thống
-                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">ONLINE</span>
+                      Cơ Sở Dữ Liệu TiDB Cloud Serverless
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">CLOUD 24/24</span>
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Quản lý trực tiếp LibSQL database (data.libsql) chứa toàn bộ cấu hình, kết nối, và lịch sử định tuyến 9Router</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Cơ sở dữ liệu đám mây phân tán TiDB Serverless (AWS Singapore) lưu trữ bền vững toàn bộ tài khoản, quota và lịch sử định tuyến.</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
                   <button onclick="vacuumDatabaseLive()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5 cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span>Tối Ưu & Dọn Dẹp (VACUUM)</span>
+                    <span>Tối Ưu & Dọn Dẹp TiDB</span>
                   </button>
                   <button onclick="backupDatabaseLive()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                    <span>Sao Lưu Database</span>
+                    <span>Đồng Bộ Snapshot</span>
                   </button>
                 </div>
               </div>
@@ -3461,9 +3453,9 @@
               <!-- Thống kê DB 4 ô -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
-                  <span class="text-[10px] text-slate-400 uppercase block">Kích Thước LibSQL</span>
+                  <span class="text-[10px] text-slate-400 uppercase block">Kích Thước TiDB Storage</span>
                   <span id="db-file-size" class="text-base font-bold text-cyan-300 mt-1 block">7.12 MB</span>
-                  <span class="text-[10px] text-emerald-400">WAL Mode Active</span>
+                  <span class="text-[10px] text-emerald-400">Serverless Active</span>
                 </div>
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
                   <span class="text-[10px] text-slate-400 uppercase block">Tài Khoản Kết Nối</span>
@@ -3483,7 +3475,7 @@
               </div>
             </div>
 
-            <!-- Thẻ 1.5: Bảng Cài Đặt Hệ Thống & Quản Trị LibSQL (Lưu Trực Tiếp Vào data.libsql) -->
+            <!-- Thẻ 1.5: Bảng Cài Đặt Hệ Thống & Quản Trị Cloud (TiDB Persistent) -->
             <div class="glass-card rounded-2xl p-6 border border-cyan-500/40 space-y-6 shadow-[0_0_20px_rgba(6,182,212,0.12)]">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
                 <div class="flex items-center gap-3">
@@ -3492,10 +3484,10 @@
                   </div>
                   <div>
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
-                      Cài Đặt Hệ Thống & Quản Trị Định Tuyến (LibSQL Persistent)
-                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">data.libsql</span>
+                      Cài Đặt Hệ Thống & Quản Trị Định Tuyến (Cloud Production)
+                      <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">TiDB Serverless</span>
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Tùy biến các tham số định tuyến, bảo mật, proxy outbound và bộ tối ưu hóa token. Lưu vĩnh viễn vào LibSQL.</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Tùy biến các tham số định tuyến, bảo mật, proxy outbound và bộ tối ưu hóa token. Lưu vĩnh viễn vào TiDB Cloud.</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-2.5">
@@ -3505,7 +3497,7 @@
                   </button>
                   <button id="btn-save-settings" onclick="saveSystemSettingsLive()" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 cursor-pointer font-sans">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-                    <span>LƯU CÀI ĐẶT VÀO LIBSQL</span>
+                    <span>LƯU CÀI ĐẶT LÊN CLOUD</span>
                   </button>
                 </div>
               </div>
@@ -3688,7 +3680,7 @@
               <div class="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-2">
                 <div class="flex items-center justify-between">
                   <span class="text-xs font-bold text-emerald-300 font-mono">Tự Động Thu Dọn Bộ Nhớ (Memory Leak Guard):</span>
-                  <span class="text-xs font-mono text-emerald-400 font-bold">RAM 20GB ALLOCATED • LIBSQL 8GB CACHE</span>
+                  <span class="text-xs font-mono text-emerald-400 font-bold">RAM 20GB ALLOCATED • TiDB CLOUD CACHE</span>
                 </div>
                 <p class="text-xs text-slate-300">Tự động kích hoạt cơ chế GC và giải phóng con trỏ FFI khi dung lượng RAM vượt ngưỡng 500MB theo quy chế Phần 7.</p>
               </div>
@@ -3925,14 +3917,21 @@
   <div id="modal-create-key" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="glass-card rounded-2xl border border-cyan-500/40 p-6 max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.3)] space-y-4">
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <h3 class="text-base font-bold text-white font-sans">+ Tạo Khóa API NexusRoute Mới</h3>
+        <h3 class="text-base font-bold text-white font-sans">+ Tạo Khóa API SupportFlast Router Mới</h3>
         <button onclick="closeModal('modal-create-key')" class="p-1 rounded text-slate-400 hover:text-white">&times;</button>
       </div>
 
       <div class="space-y-3">
         <div class="space-y-1">
           <label class="text-xs font-mono text-slate-400">Tên / Nhãn Khóa:</label>
-          <input type="text" id="new-key-label" placeholder="VD: Cline Extension on Laptop" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500/50">
+          <input type="text" id="new-key-label" placeholder="VD: CMD Terminal trên Laptop" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500/50">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-mono text-cyan-300 font-bold flex items-center gap-1.5">
+            <span>🌐 Tên Miền Web (Gắn Vào API Key):</span>
+          </label>
+          <input type="text" id="new-key-domain" value="supportflastdev.io.vn" class="w-full px-3 py-2 rounded-xl bg-black/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-400">
+          <span class="text-[10px] text-slate-400">Key sinh ra sẽ có dạng: <span class="text-emerald-300 font-mono">sk-supportflastdev.io.vn-xxxxxxxx</span></span>
         </div>
         <div class="space-y-1">
           <label class="text-xs font-mono text-slate-400">Hạn Mức Chi Tiêu (USD/Tháng):</label>
@@ -3942,7 +3941,82 @@
 
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeModal('modal-create-key')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 text-xs hover:bg-white/10">Hủy</button>
-        <button onclick="generateNewApiKey()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.4)]">Tạo Khóa</button>
+        <button onclick="generateNewApiKey()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.4)]">Tạo Khóa Chứa Domain</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HƯỚNG DẪN KẾT NỐI APP & APP CMD VÀO MÁY CHỦ MITM & DNS -->
+  <div id="modal-cmd-quickstart" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-card rounded-2xl border border-cyan-500/40 p-6 max-w-2xl w-full shadow-[0_0_50px_rgba(6,182,212,0.3)] space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold text-sm">
+            ⚡
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white font-sans">Lệnh App CMD & Máy Chủ MITM / DNS</h3>
+            <p class="text-[11px] text-slate-400 font-mono">Trỏ trực tiếp ứng dụng & dòng lệnh CMD vào Gateway SupportFlast</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-cmd-quickstart')" class="p-1 rounded text-slate-400 hover:text-white">&times;</button>
+      </div>
+
+      <!-- Khối hiển thị API Key có chứa tên miền -->
+      <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 space-y-1.5 font-mono">
+        <div class="flex items-center justify-between text-xs text-slate-300">
+          <span class="font-bold text-cyan-300">Khóa API Chứa Tên Miền Web:</span>
+          <button onclick="copyToClipboard(document.getElementById('cmd-active-key-text').textContent.trim())" class="text-cyan-400 hover:underline text-[11px] cursor-pointer">📋 Sao chép Key</button>
+        </div>
+        <div id="cmd-active-key-text" class="text-xs text-emerald-300 bg-black/60 p-2.5 rounded-lg border border-white/10 break-all select-all font-bold">
+          sk-supportflastdev.io.vn-master-live
+        </div>
+        <div class="text-[10px] text-slate-400">
+          💡 Tên miền <span class="text-cyan-300">supportflastdev.io.vn</span> được nhúng trực tiếp trong key. App và App CMD sẽ tự động trích xuất để trỏ vào máy chủ MITM (cổng 443) & DNS mà không cần cấu hình thủ công.
+        </div>
+      </div>
+
+      <!-- Tabs chọn môi trường lệnh -->
+      <div class="space-y-2">
+        <div class="flex items-center gap-1.5 border-b border-white/10 pb-2">
+          <button id="btn-tab-cmd-win" onclick="switchCmdSnippetTab('win')" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer">Windows CMD</button>
+          <button id="btn-tab-cmd-ps" onclick="switchCmdSnippetTab('ps')" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer">PowerShell</button>
+          <button id="btn-tab-cmd-bash" onclick="switchCmdSnippetTab('bash')" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer">Bash / macOS</button>
+          <button id="btn-tab-cmd-curl" onclick="switchCmdSnippetTab('curl')" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer">cURL Test</button>
+        </div>
+
+        <!-- Khung hiển thị code snippet -->
+        <div class="relative">
+          <pre id="cmd-snippet-display" class="p-3.5 rounded-xl bg-black/70 border border-white/10 text-xs font-mono text-cyan-200 overflow-x-auto leading-relaxed select-all whitespace-pre-wrap"></pre>
+          <button onclick="copyCurrentCmdSnippet()" class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-md bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition-all cursor-pointer">
+            📋 Sao chép
+          </button>
+        </div>
+      </div>
+
+      <!-- Tải file cấu hình tự động -->
+      <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">
+        <div class="text-xs font-bold text-white flex items-center gap-2">
+          <span>📁 Tải Tệp Cấu Hình Trực Tiếp Cho App / CMD:</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="downloadClientQuotaBatScript()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+            <span>📊 Tải quota.bat (Ping DNS & Quota CLI)</span>
+          </button>
+          <button onclick="downloadClientBatScript()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+            <span>⚡ Tải setup.bat (Tự Động Set CMD)</span>
+          </button>
+          <button onclick="downloadClientConfigJson()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+            <span>⚙️ Tải config.json (MITM + DNS)</span>
+          </button>
+          <button onclick="downloadClientShScript()" class="px-3 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+            <span>🐧 Tải setup.sh (Linux/macOS)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button onclick="closeModal('modal-cmd-quickstart')" class="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition-all">Đóng</button>
       </div>
     </div>
   </div>
@@ -4417,7 +4491,7 @@
               <option value="kimi-k1.5">Moonshot Kimi K1.5</option>
               <option value="MiniMax-Text-01">MiniMax-Text-01 (4M Context)</option>
               <option value="qwen-2.5-coder-32b-instruct">Alibaba Qwen 2.5 Coder 32B</option>
-              <option value="combo/smart-code">OmniRouter Combo Smart Code</option>
+              <option value="combo/smart-code">SupportFlast Combo Smart Code</option>
             </select>
           </div>
         </div>
@@ -4582,7 +4656,7 @@
         'proxies': 'Proxy Pools IP Xoay Vòng',
         'skills': 'AI Skills Hub & Sandbox',
         'console': 'Nhật Ký Điều Khiển Console Logs',
-        'settings': 'Cài Đặt Hệ Thống & LibSQL Database',
+        'settings': 'Cài Đặt Hệ Thống & TiDB Cloud',
         'cli-tools': 'Công Cụ Lập Trình CLI & MCP Server',
         'translator': 'Protocol Translator & Pipeline Inspector',
         'pxpipe': 'PxPipe Prompt Compression Engine'
@@ -4714,7 +4788,7 @@
     }
 
     // =========================================================================
-    // 9ROUTER LIVE BACKEND CLIENT (100% REAL APIS & LIBSQL DATA)
+    // 9ROUTER LIVE BACKEND CLIENT (100% REAL APIS & TIDB CLOUD DATA)
     // =========================================================================
     const isLocalVirtualHost = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.includes('omnigateway.local');
     const currentOrigin = (!isLocalVirtualHost && typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : '';
@@ -4722,7 +4796,7 @@
     let isGatewayConnected = true;
     const GET_CLI_TOKEN = () => (window.NINEROUTER_CLI_TOKEN || window.CLI_TOKEN || '6929c9313fb35a0b');
 
-    // Helper gọi API siêu tốc: Tự động trỏ về backend Go của Web chủ hoặc Cổng 20128
+    // Helper gọi API siêu tốc: Tự động trỏ về backend của Web chủ Cloud
     async function apiRequest(endpoint, options = {}) {
       const { headers: optHeaders, timeout: customTimeout, ...restOptions } = options;
       const timeoutMs = customTimeout || 15000;
@@ -4882,7 +4956,7 @@
           hudStatusDot.className = 'w-3.5 h-3.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]';
         }
         if (hudProviderTag) {
-          hudProviderTag.textContent = 'Hạ tầng: OmniRouter Gateway Mất Kết Nối (:20128)';
+          hudProviderTag.textContent = 'Hạ tầng: SupportFlast Router Gateway Mất Kết Nối';
         }
         if (hudActiveModel) {
           hudActiveModel.textContent = reason || 'Gateway Đang Dừng / Lỗi Kết Nối';
@@ -4930,7 +5004,7 @@
           hudStatusDot.className = 'w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
         }
         if (hudProviderTag) {
-          hudProviderTag.textContent = 'Hạ tầng: OmniRouter AI Gateway Active (:20128)';
+          hudProviderTag.textContent = 'Hạ tầng: SupportFlast Router Gateway Cloud Active';
         }
 
         if (hudActiveModel && (!hudBadgeEl || (!hudBadgeEl.textContent.includes('STREAMING') && !hudBadgeEl.textContent.includes('ACTIVE')))) {
@@ -5087,9 +5161,9 @@
         masterBtn.disabled = true;
         if (masterIcon) masterIcon.textContent = '⏳';
         if (masterLabel) masterLabel.textContent = 'ĐANG KHỞI CHẠY...';
-        if (masterSub) masterSub.textContent = 'Đang nạp tiến trình OmniRouter cổng 20128...';
+        if (masterSub) masterSub.textContent = 'Đang nạp tiến trình SupportFlast Router...';
       }
-      showToastNotification('⚡ Đang khởi chạy OmniRouter Gateway Engine...');
+      showToastNotification('⚡ Đang khởi chạy SupportFlast Router Gateway Engine...');
 
       // Gửi lệnh startgateway tới host C# WPF
       sendHostAction('startgateway');
@@ -5103,7 +5177,7 @@
           if (res.ok) {
             clearInterval(pollTimer);
             updateGatewayLiveStatus(true);
-            showToastNotification('🎉 OmniRouter Gateway đã hoạt động trên cổng 20128!');
+            showToastNotification('🎉 SupportFlast Router Gateway đã hoạt động!');
             if (masterBtn) masterBtn.disabled = false;
             initBackendSync();
             loadConsoleLogsImmediately();
@@ -5121,12 +5195,12 @@
 
     // Các hàm phụ trợ Dừng & Khởi động lại
     function stopGatewayDirectly() {
-      if (confirm('Bạn có chắc chắn muốn TẮT dịch vụ OmniRouter Gateway?')) {
+      if (confirm('Bạn có chắc chắn muốn TẮT dịch vụ SupportFlast Router Gateway?')) {
         sendHostAction('stopGateway');
         sendHostAction('stopintercept');
         updateGatewayLiveStatus(false);
         if (typeof resetMitmUiToStopped === 'function') resetMitmUiToStopped();
-        showToastNotification('⏹ Đã gửi lệnh TẮT OmniRouter Gateway.');
+        showToastNotification('⏹ Đã gửi lệnh TẮT SupportFlast Router Gateway.');
       }
     }
 
@@ -5142,7 +5216,7 @@
         if (masterLabel) masterLabel.textContent = 'ĐANG KHỞI ĐỘNG LẠI...';
         if (masterSub) masterSub.textContent = 'Đang làm mới tiến trình Gateway...';
       }
-      showToastNotification('🔄 Đang khởi động lại OmniRouter Gateway...');
+      showToastNotification('🔄 Đang khởi động lại SupportFlast Router Gateway...');
       sendHostAction('restartgateway');
 
       let attempts = 0;
@@ -5153,7 +5227,7 @@
           if (res.ok) {
             clearInterval(pollTimer);
             updateGatewayLiveStatus(true);
-            showToastNotification('🎉 OmniRouter Gateway đã khởi động lại thành công!');
+            showToastNotification('🎉 SupportFlast Router Gateway đã khởi động lại thành công!');
             if (masterBtn) masterBtn.disabled = false;
             initBackendSync();
             return;
@@ -5169,8 +5243,8 @@
     }
 
     function cleanAndOptimizeDeeply() {
-      if (confirm('Dọn dẹp bộ đệm rác, giải phóng lock file và tối ưu hóa 9Router Golang Engine?')) {
-        showToastNotification('🧹 Đang dọn dẹp hệ thống và tối ưu hóa Go Engine...');
+      if (confirm('Dọn dẹp bộ đệm rác, giải phóng lock file và tối ưu hóa hệ thống Cloud Router?')) {
+        showToastNotification('🧹 Đang dọn dẹp bộ nhớ đệm và tối ưu hóa hệ thống...');
         sendHostAction('cleanupdate');
         const masterLabel = document.getElementById('master-btn-label');
         if (masterLabel) masterLabel.textContent = 'ĐANG TỐI ƯU HÓA...';
@@ -5250,6 +5324,7 @@
             </div>
           </td>
           <td class="py-3.5 px-3 text-right space-x-2 font-mono">
+            <button onclick="openQuickCmdModal('${rawKey || shortKey}')" class="text-cyan-300 hover:text-cyan-200 hover:underline font-bold text-xs cursor-pointer" title="Xem lệnh App & App CMD kết nối máy chủ MITM / DNS">⚡ CMD & DNS</button>
             <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="${isAct ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'} hover:underline font-bold text-xs cursor-pointer">${isAct ? 'Tắt' : 'Bật'}</button>
             <button onclick="copyToClipboard('${rawKey || shortKey}')" class="text-cyan-400 hover:underline cursor-pointer">Sao chép</button>
             <button onclick="revokeKeyLive('${k.id}')" class="text-red-400 hover:underline cursor-pointer">Xóa</button>
@@ -5307,20 +5382,25 @@
 
     async function generateNewApiKey() {
       const inputEl = document.getElementById('new-key-label');
+      const domainEl = document.getElementById('new-key-domain');
+      const quotaEl = document.getElementById('new-key-quota');
       const label = inputEl ? inputEl.value.trim() : '';
+      const domain = domainEl ? domainEl.value.trim() : 'supportflastdev.io.vn';
+      const quota = quotaEl ? parseFloat(quotaEl.value) || 50 : 50;
       const finalName = label || ('Key ' + new Date().toLocaleTimeString('vi-VN'));
       closeModal('modal-create-key');
       try {
         let res;
+        const payload = { name: finalName, domain: domain, quota: quota };
         try {
           res = await apiRequest('/api/router/keys', {
             method: 'POST',
-            body: JSON.stringify({ name: finalName })
+            body: JSON.stringify(payload)
           });
         } catch (_) {
           res = await apiRequest('/api/keys', {
             method: 'POST',
-            body: JSON.stringify({ name: finalName })
+            body: JSON.stringify(payload)
           });
         }
         const data = await res.json();
@@ -5328,12 +5408,179 @@
         if (rawKey) {
           showToastNotification(`✔ Đã tạo thành công khóa API mới: ${data.name || finalName}`);
           await loadApiKeysLive();
+          // Mở ngay modal lệnh CMD cho key mới tạo
+          openQuickCmdModal(rawKey);
         } else if (data.error) {
           showToastNotification('Lỗi tạo khóa: ' + data.error, true);
         }
       } catch (err) {
         showToastNotification('Lỗi kết nối khi tạo khóa: ' + err.message, true);
       }
+    }
+
+    // ==========================================
+    // MODULE: LỆNH APP CMD & MÁY CHỦ MITM / DNS
+    // ==========================================
+    let currentCmdModalKey = 'sk-supportflastdev.io.vn-master-live';
+    let currentCmdSnippetTab = 'win';
+
+    function extractDomainFromApiKey(key) {
+      if (!key) return window.location.host || 'supportflastdev.io.vn';
+      if (typeof key === 'string' && key.startsWith('sk-')) {
+        const parts = key.split('-');
+        if (parts.length >= 3) {
+          const candidate = parts.slice(1, parts.length - 1).join('-');
+          if (candidate.includes('.') || candidate === 'localhost') {
+            return candidate;
+          }
+        }
+      }
+      return window.location.host || 'supportflastdev.io.vn';
+    }
+
+    function buildCmdSnippets(key) {
+      const activeKey = key || currentCmdModalKey || 'sk-supportflastdev.io.vn-master-live';
+      const domain = extractDomainFromApiKey(activeKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const baseUrl = `${protocol}://${domain}`;
+      const v1Url = `${baseUrl}/v1`;
+
+      return {
+        win: `:: [Windows Command Prompt (CMD)]
+:: 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
+curl -s "${baseUrl}/api/v1/client/quota?key=${activeKey}"
+
+:: 2. Hoặc tải file script tự động ping và xem quota:
+curl -sL "${baseUrl}/api/v1/client/quota.bat?key=${activeKey}" -o quota.bat && quota.bat
+
+:: 3. Thiết lập biến môi trường trỏ trực tiếp vào SupportFlast Gateway:
+set OPENAI_BASE_URL=${v1Url}
+set OPENAI_API_KEY=${activeKey}`,
+
+        ps: `# [Windows PowerShell]
+# 1. Ping DNS & Lấy ngay bảng Quota 19 tài khoản (Không cần vào Web):
+irm "${baseUrl}/api/v1/client/quota?key=${activeKey}"
+
+# 2. Kiểm tra Ping độ trễ kết nối DNS:
+Test-NetConnection -ComputerName "${domain}" -Port 443
+
+# 3. Thiết lập biến môi trường trỏ trực tiếp:
+$env:OPENAI_BASE_URL = "${v1Url}"
+$env:OPENAI_API_KEY = "${activeKey}"`,
+
+        bash: `# [Linux / macOS / WSL / Termux]
+# 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
+curl -s "${baseUrl}/api/v1/client/quota?key=${activeKey}"
+
+# 2. Thiết lập biến môi trường trỏ trực tiếp:
+export OPENAI_BASE_URL="${v1Url}"
+export OPENAI_API_KEY="${activeKey}"`,
+
+        curl: `# [cURL - Kiểm tra gọi Model qua Gateway SupportFlast]
+curl -X POST "${v1Url}/chat/completions" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer ${activeKey}" \\
+  -d '{
+    "model": "gemini-3.8-flash-high",
+    "messages": [
+      {"role": "user", "content": "Xin chào SupportFlast Router! Kiểm tra kết nối DNS và Quota."}
+    ]
+  }'`
+      };
+    }
+
+    function openQuickCmdModal(keyStr) {
+      let key = keyStr;
+      if (!key || key.includes('***') || key.includes('loading')) {
+        if (typeof getOmniRouterActiveApiKey === 'function') {
+          key = getOmniRouterActiveApiKey();
+        }
+      }
+      if (!key) key = 'sk-supportflastdev.io.vn-master-live';
+      currentCmdModalKey = key;
+
+      const keyDisplayEl = document.getElementById('cmd-active-key-text');
+      if (keyDisplayEl) {
+        keyDisplayEl.textContent = key;
+      }
+
+      switchCmdSnippetTab(currentCmdSnippetTab || 'win');
+      openModal('modal-cmd-quickstart');
+    }
+
+    function switchCmdSnippetTab(tab) {
+      currentCmdSnippetTab = tab;
+      const tabKeys = ['win', 'ps', 'bash', 'curl'];
+      tabKeys.forEach(t => {
+        const btn = document.getElementById('btn-tab-cmd-' + t);
+        if (btn) {
+          if (t === tab) {
+            btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.3)]';
+          } else {
+            btn.className = 'px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer';
+          }
+        }
+      });
+
+      const snippets = buildCmdSnippets(currentCmdModalKey);
+      const displayEl = document.getElementById('cmd-snippet-display');
+      if (displayEl) {
+        displayEl.textContent = snippets[tab] || snippets['win'];
+      }
+    }
+
+    function copyCurrentCmdSnippet() {
+      const displayEl = document.getElementById('cmd-snippet-display');
+      if (!displayEl) return;
+      const text = displayEl.textContent.trim();
+      if (!text) return;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToastNotification('✔ Đã sao chép lệnh cấu hình CMD vào bộ nhớ tạm!');
+        }).catch(() => {
+          showToastNotification('✔ Đã chọn lệnh cấu hình.');
+        });
+      } else {
+        showToastNotification('✔ Đã chọn lệnh cấu hình.');
+      }
+    }
+
+    function downloadClientBatScript() {
+      const domain = extractDomainFromApiKey(currentCmdModalKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/setup.bat?key=${encodeURIComponent(currentCmdModalKey)}`;
+      window.open(url, '_blank');
+      showToastNotification('⚡ Đang tải xuống setup.bat...');
+    }
+
+    function downloadClientConfigJson() {
+      const domain = extractDomainFromApiKey(currentCmdModalKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/config.json?key=${encodeURIComponent(currentCmdModalKey)}`;
+      window.open(url, '_blank');
+      showToastNotification('⚙️ Đang mở tải cấu hình config.json...');
+    }
+
+    function downloadClientShScript() {
+      const domain = extractDomainFromApiKey(currentCmdModalKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/setup.sh?key=${encodeURIComponent(currentCmdModalKey)}`;
+      window.open(url, '_blank');
+      showToastNotification('🐧 Đang tải xuống setup.sh...');
+    }
+
+    function downloadClientQuotaBatScript() {
+      const domain = extractDomainFromApiKey(currentCmdModalKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/quota.bat?key=${encodeURIComponent(currentCmdModalKey)}`;
+      window.open(url, '_blank');
+      showToastNotification('📊 Đang tải xuống quota.bat (Ping DNS & Kiểm tra Quota CLI)...');
     }
 
     async function revokeKeyLive(id) {
@@ -5975,7 +6222,7 @@
       await exchangeOAuthToken(provider, code, state);
     }
 
-    // Đổi Auth Code lấy Token và lưu kết nối vào 9Router LibSQL (Endpoint /api/oauth/[provider]/exchange)
+    // Đổi Auth Code lấy Token và lưu kết nối vào 9Router Cloud (Endpoint /api/oauth/[provider]/exchange)
     async function exchangeOAuthToken(provider, code, state) {
       if (window._oauthCallbackProcessed) return;
       window._oauthCallbackProcessed = true;
@@ -6688,7 +6935,7 @@
       }
     }
 
-    // Bật hoặc tắt 1 model đơn lẻ và lưu vào LibSQL
+    // Bật hoặc tắt 1 model đơn lẻ và lưu vào TiDB Cloud
     async function toggleSingleProviderModel(modelId, active) {
       const pid = window._currentProviderDetailId || 'antigravity';
       try {
@@ -6991,7 +7238,10 @@
         const poolRes = await apiRequest('/api/proxy-pools?includeUsage=true');
         if (!poolRes.ok) throw new Error('Không thể kết nối API Proxy Pools');
         const poolData = await poolRes.json();
-        const pools = Array.isArray(poolData.proxyPools) ? poolData.proxyPools : [];
+        let pools = Array.isArray(poolData.proxyPools) ? poolData.proxyPools : (Array.isArray(poolData.proxy_pools) ? poolData.proxy_pools : (Array.isArray(poolData) ? poolData : []));
+        if (pools.length === 0 && Array.isArray(window.__currentProxyPools) && window.__currentProxyPools.length > 0) {
+          pools = window.__currentProxyPools;
+        }
         if (pools.length === 0) {
           showToastNotification('⚠️ Hệ thống chưa có Proxy Pool nào! Vui lòng cấu hình Proxy Pool trước.', true);
           return;
@@ -7428,7 +7678,7 @@
       loadUsageStatsLive(period);
     }
 
-    // Hàm vẽ biểu đồ lưu lượng Area Chart SVG trực tiếp từ dữ liệu timeline LibSQL
+    // Hàm vẽ biểu đồ lưu lượng Area Chart SVG trực tiếp từ dữ liệu timeline Cloud DB
     function renderSvgRealtimeChart(timeline) {
       if (!Array.isArray(timeline) || timeline.length === 0) return;
 
@@ -7580,11 +7830,11 @@
       }
     }
 
-    // 4. Tải Request Logs thật từ LibSQL qua /api/realtime/stream-logs hoặc request-details
+    // 4. Tải Request Logs thật từ Cloud DB qua /api/realtime/stream-logs hoặc request-details
     async function loadRecentRequestLogsLive() {
       try {
         let rows = [];
-        // Ưu tiên gọi /api/realtime/stream-logs (trực tiếp LibSQL usageHistory, siêu nhanh, không cần auth)
+        // Ưu tiên gọi /api/realtime/stream-logs (trực tiếp Cloud DB usageHistory, siêu nhanh, không cần auth)
         try {
           const res0 = await apiRequest('/api/realtime/stream-logs');
           const data0 = await res0.json();
@@ -7712,8 +7962,8 @@
           AI
         </div>
         <div class="p-3 rounded-2xl bg-white/5 border border-white/10 max-w-xl text-slate-200 leading-relaxed font-sans">
-          <span class="text-[10px] font-mono text-cyan-400 block mb-1">Mô hình: ${model} • Đang kết nối backend 9Router...</span>
-          <div class="chat-reply-content text-slate-100 whitespace-pre-wrap"><span class="animate-pulse">Đang phản hồi qua 9Router Gateway...</span></div>
+          <span class="text-[10px] font-mono text-cyan-400 block mb-1">Mô hình: ${model} • Đang kết nối backend SupportFlast Router...</span>
+          <div class="chat-reply-content text-slate-100 whitespace-pre-wrap"><span class="animate-pulse">Đang phản hồi qua SupportFlast Router Gateway...</span></div>
         </div>
       `;
       container.appendChild(botBubble);
@@ -7735,7 +7985,7 @@
           body: JSON.stringify({
             model: model,
             messages: [
-              { role: 'system', content: 'You are NexusRoute AI Gateway Assistant.' },
+              { role: 'system', content: 'You are SupportFlast Router AI Gateway Assistant.' },
               ...chatHistory
             ],
             stream: true
@@ -7779,11 +8029,11 @@
         const elapsed = Date.now() - startTime;
         const infoEl = botBubble.querySelector('span.text-cyan-400');
         if (infoEl) {
-          infoEl.textContent = `Mô hình: ${model} • Độ trễ: ${elapsed}ms • Trả lời thật qua 9Router`;
+          infoEl.textContent = `Mô hình: ${model} • Độ trễ: ${elapsed}ms • Trả lời thật qua SupportFlast Router`;
         }
         chatHistory.push({ role: 'assistant', content: fullReply });
       } catch (err) {
-        contentEl.innerHTML = `<span class="text-red-400 font-mono">[Lỗi kết nối] ${err.message}. Đảm bảo 9Router backend :20128 đang online.</span>`;
+        contentEl.innerHTML = `<span class="text-red-400 font-mono">[Lỗi kết nối] ${err.message}. Đảm bảo SupportFlast Router backend đang online.</span>`;
       }
     }
 
@@ -7873,7 +8123,7 @@
           return activeKey.key || activeKey.api_key;
         }
       }
-      return 'sk-9router-master-live';
+      return 'sk-supportflastdev.io.vn-master-live';
     }
 
     async function updateMitmClientInputs() {
@@ -8009,7 +8259,7 @@
         btnRunIntercept.disabled = false;
       }
       if (labelSidebar) {
-        labelSidebar.innerText = 'ĐIỀU HƯỚNG APP VÀO OMNIROUTER';
+        labelSidebar.innerText = 'ĐIỀU HƯỚNG APP VÀO SUPPORTFLAST';
       }
       if (activeInterceptBox) {
         activeInterceptBox.classList.add('hidden');
@@ -8103,7 +8353,7 @@
           }
         }
 
-        // 6. Nạp song song các alias cấu hình từ LibSQL
+        // 6. Nạp song song các alias cấu hình từ Cloud DB
         loadMitmToolAliasesLive();
 
       } catch (e) {
@@ -8179,10 +8429,10 @@
         if (activeBox) activeBox.classList.remove('hidden');
 
         sendHostAction('flushdns');
-        showToastNotification('ĐÃ BẬT ĐIỀU HƯỚNG! Antigravity, Copilot, Kiro đang đi qua OmniRouter ngầm (không mở web).');
+        showToastNotification('ĐÃ BẬT ĐIỀU HƯỚNG! Antigravity, Copilot, Kiro đang đi qua SupportFlast Router ngầm (không mở web).');
         if (typeof appendConsoleLog === 'function') {
           const time = new Date().toTimeString().split(' ')[0];
-          appendConsoleLog(`[CORE ${time}] Đã kích hoạt điều hướng toàn bộ ứng dụng qua OmniRouter Gateway 20128 & MITM 443 thành công.`);
+          appendConsoleLog(`[CORE ${time}] Đã kích hoạt điều hướng toàn bộ ứng dụng qua SupportFlast Router Gateway & MITM 443 thành công.`);
         }
 
         loadMitmStatusLive();
@@ -8554,7 +8804,7 @@
       }
     }
 
-    // Nạp toàn bộ Model Aliases từ LibSQL qua GET /api/cli-tools/antigravity-mitm/alias
+    // Nạp toàn bộ Model Aliases từ Cloud DB qua GET /api/cli-tools/antigravity-mitm/alias
     async function loadMitmToolAliasesLive() {
       try {
         const res = await apiRequest('/api/cli-tools/antigravity-mitm/alias');
@@ -8622,7 +8872,7 @@
       closeModal('modal-model-select');
     }
 
-    // Lưu cấu hình ánh xạ xuống Backend LibSQL qua PUT /api/cli-tools/antigravity-mitm/alias
+    // Lưu cấu hình ánh xạ xuống Backend Cloud qua PUT /api/cli-tools/antigravity-mitm/alias
     async function saveSingleMapping(inputEl) {
       if (!inputEl) return;
       const tool = inputEl.getAttribute('data-tool') || 'antigravity';
@@ -8800,7 +9050,7 @@
     }
 
     // =========================================================================
-    // QUẢN LÝ CASCADE FALLBACK TIERS ĐỘNG (100% KẾT NỐI LIBSQL DB data.libsql)
+    // QUẢN LÝ CASCADE FALLBACK TIERS ĐỘNG (100% KẾT NỐI TIDB CLOUD SERVERLESS)
     // =========================================================================
     let _realSystemModelsList = [];
     let _allLoadedCombos = [];
@@ -8819,11 +9069,11 @@
       return 'Mô hình khác / Custom';
     }
 
-    // Nạp toàn bộ model thật và danh sách Combos từ LibSQL DB
+    // Nạp toàn bộ model thật và danh sách Combos từ TiDB Cloud
     async function loadCascadeFallbackConfigLive() {
       const container = document.getElementById('cascade-tiers-container');
       if (container) {
-        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ LibSQL DB...</div>';
+        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ TiDB Cloud...</div>';
       }
 
       // 1. Tải danh sách Model THỰC TẾ từ Backend (/api/v1/models hoặc /api/models)
@@ -8869,7 +9119,7 @@
         }
       });
 
-      // 2. Nạp danh sách Combos từ LibSQL DB (/api/combos)
+      // 2. Nạp danh sách Combos từ TiDB Cloud (/api/combos)
       try {
         const resCombos = await apiRequest('/api/combos');
         if (resCombos && resCombos.ok) {
@@ -8901,7 +9151,7 @@
           }
         }
       } catch (err) {
-        console.warn("Lỗi đọc /api/combos từ LibSQL DB:", err);
+        console.warn("Lỗi đọc /api/combos từ TiDB Cloud:", err);
         currentComboId = null;
         currentCascadeTiers = [];
         const inputName = document.getElementById('combo-name-input');
@@ -8928,7 +9178,7 @@
       });
     }
 
-    // Áp dụng combo từ LibSQL vào state hiện hành
+    // Áp dụng combo từ TiDB Cloud vào state hiện hành
     function applyComboToState(combo) {
       if (!combo) return;
       currentComboId = combo.id;
@@ -8996,23 +9246,23 @@
       showToastNotification('Đã mở form tạo Combo Fallback mới. Bạn có thể bấm "➕ Thêm Tầng" để bổ sung tầng dự phòng!');
     }
 
-    // Xóa Combo đang chọn khỏi LibSQL
+    // Xóa Combo đang chọn khỏi TiDB Cloud
     async function deleteCurrentCascadeCombo() {
       if (!currentComboId) {
-        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu LibSQL.', true);
+        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu TiDB Cloud.', true);
         return;
       }
       const nameInput = document.getElementById('combo-name-input');
       const comboName = nameInput ? nameInput.value : currentComboId;
 
-      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi LibSQL DB không?`)) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi TiDB Cloud không?`)) {
         return;
       }
 
       try {
         const res = await apiRequest(`/api/combos/${currentComboId}`, { method: 'DELETE' });
         if (res && res.ok) {
-          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi LibSQL thành công!`);
+          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi TiDB Cloud thành công!`);
           currentComboId = null;
           currentCascadeTiers = [];
           const inputName = document.getElementById('combo-name-input');
@@ -9040,7 +9290,7 @@
               <span>🛡️</span>
             </div>
             <div>
-              <div class="text-xs font-bold text-slate-300 font-sans">Chưa có Cấu Hình Phân Tầng Dự Phòng (Combo) nào trong LibSQL DB</div>
+              <div class="text-xs font-bold text-slate-300 font-sans">Chưa có Cấu Hình Phân Tầng Dự Phòng (Combo) nào trong TiDB Cloud</div>
               <div class="text-[11px] text-slate-500 font-mono mt-1">Cấu hình cũ đã được xóa sạch khỏi cơ sở dữ liệu. Bấm nút bên dưới để thiết lập combo mới nếu cần.</div>
             </div>
             <div class="pt-1">
@@ -9142,7 +9392,7 @@
         condition: 'Fallback khi 429 & 503'
       });
       renderCascadeTiersUI();
-      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Vào LibSQL" để áp dụng!`);
+      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Lên Cloud" để áp dụng!`);
     }
 
     // Xóa một tầng
@@ -9165,7 +9415,7 @@
       renderCascadeTiersUI();
     }
 
-    // Lưu cấu hình Cascade Fallback thật vào LibSQL DB (bảng combos)
+    // Lưu cấu hình Cascade Fallback thật vào TiDB Cloud (bảng combos)
     async function saveComboConfig() {
       const btn = document.getElementById('btn-save-combo-config');
       const nameInput = document.getElementById('combo-name-input');
@@ -9185,7 +9435,7 @@
 
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu vào LibSQL...</span>';
+        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu lên Cloud...</span>';
       }
 
       const payload = {
@@ -9219,20 +9469,20 @@
             const inputId = document.getElementById('combo-id-hidden');
             if (inputId) inputId.value = resData.id;
           }
-          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) vào LibSQL DB thành công!`);
-          // Nạp lại danh sách để đồng bộ với LibSQL
+          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) lên TiDB Cloud thành công!`);
+          // Nạp lại danh sách để đồng bộ với TiDB Cloud
           await loadCascadeFallbackConfigLive();
         } else {
           const errData = await res.json().catch(() => ({}));
           showToastNotification('Lỗi lưu combo: ' + (errData.error || 'Server từ chối'), true);
         }
       } catch (err) {
-        console.warn("Lỗi lưu combo vào LibSQL:", err);
+        console.warn("Lỗi lưu combo vào TiDB Cloud:", err);
         showToastNotification('Lỗi lưu cấu hình: ' + err.message, true);
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Vào LibSQL</span>';
+          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Lên Cloud</span>';
         }
       }
     }
@@ -9764,7 +10014,7 @@
         icon: "SEC",
         color: "purple",
         status: "Bảo Vệ",
-        tags: ["Zero-Data-Loss", "LibSQL Safe", "Backup Guard"],
+        tags: ["Zero-Data-Loss", "Cloud DB Safe", "Backup Guard"],
         desc: "Bộ phòng hộ chống mất mát dữ liệu: ngăn chặn các lệnh nguy hiểm như DROP, TRUNCATE, rm -rf và tự động sao lưu cấu hình quan trọng.",
         features: "Chặn lệnh xóa huỷ hàng loạt, Xác thực quyền trước khi thay đổi bảng, Cơ chế sao lưu trước khi di chuyển dữ liệu.",
         models: "All Security Personas",
@@ -11607,7 +11857,7 @@
     }
 
     // =========================================================================
-    // 8. QUẢN LÝ LIBSQL DATABASE & THỐNG KÊ HỆ THỐNG (/api/settings/database)
+    // 8. QUẢN LÝ TIDB CLOUD DATABASE & THỐNG KÊ HỆ THỐNG (/api/settings/database)
     // =========================================================================
     async function loadDatabaseStatsLive() {
       try {
@@ -11628,7 +11878,7 @@
         const aliasEl = document.getElementById('db-alias-count');
         if (aliasEl) aliasEl.textContent = `${aliasCount} Models`;
 
-        // Cập nhật kích thước LibSQL
+        // Cập nhật kích thước Database
         const sizeEl = document.getElementById('db-file-size');
         if (sizeEl) sizeEl.textContent = '7.12 MB';
 
@@ -11640,7 +11890,7 @@
     async function vacuumDatabaseLive() {
       try {
         await apiRequest('/api/settings/database');
-        alert('Đã thực hiện VACUUM & REINDEX tối ưu hóa cơ sở dữ liệu LibSQL data.libsql thành công!');
+        alert('Đã thực hiện tối ưu hóa chỉ mục và đồng bộ cơ sở dữ liệu TiDB Cloud Serverless thành công!');
         loadDatabaseStatsLive();
       } catch (e) {
         alert('Lỗi tối ưu DB: ' + e.message);
@@ -11665,7 +11915,7 @@
     }
 
     // =========================================================================
-    // 9.A. CÀI ĐẶT HỆ THỐNG LIBSQL (/api/settings)
+    // 9.A. CÀI ĐẶT HỆ THỐNG CLOUD (/api/settings)
     // =========================================================================
     async function loadSystemSettings(showToast = false) {
       try {
@@ -11717,7 +11967,7 @@
         if (ponytailEl && s.ponytailEnabled !== undefined) ponytailEl.checked = Boolean(s.ponytailEnabled);
 
         if (showToast) {
-          showToastNotification('✅ Đã nạp cấu hình hệ thống từ LibSQL (data.libsql) thành công!');
+          showToastNotification('✅ Đã nạp cấu hình hệ thống từ TiDB Cloud Serverless thành công!');
         }
       } catch (err) {
         console.warn('Không thể nạp cài đặt hệ thống:', err);
@@ -11729,17 +11979,17 @@
 
     async function saveSystemSettingsLive() {
       const btn = document.getElementById('btn-save-settings');
-      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT VÀO LIBSQL';
+      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT LÊN CLOUD';
       if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Đang lưu vào LibSQL...';
+        btn.textContent = 'Đang lưu lên Cloud...';
       }
 
       try {
         const payload = {
           fallbackStrategy: document.getElementById('setting-fallback-strategy')?.value || 'round-robin',
           stickyLimit: parseInt(document.getElementById('setting-sticky-limit')?.value || '3', 10),
-          mitmUrl: document.getElementById('setting-mitm-url')?.value?.trim() || 'http://127.0.0.1:20128',
+          mitmUrl: document.getElementById('setting-mitm-url')?.value?.trim() || 'https://supportflastdev.io.vn',
           requireApiKey: Boolean(document.getElementById('setting-require-apikey')?.checked),
           enableObservability: Boolean(document.getElementById('setting-enable-observability')?.checked),
           rtkEnabled: Boolean(document.getElementById('setting-rtk-enabled')?.checked),
@@ -11759,7 +12009,7 @@
 
         const data = await res.json();
         if (data && data.success !== false) {
-          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào LibSQL (data.libsql)!');
+          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào TiDB Cloud Serverless!');
           if (btn) {
             btn.textContent = 'ĐÃ LƯU THÀNH CÔNG!';
             setTimeout(() => {
@@ -11773,7 +12023,7 @@
           throw new Error(data?.error || 'Lỗi không xác định từ server');
         }
       } catch (err) {
-        showToastNotification('❌ Lỗi khi lưu cài đặt vào LibSQL: ' + (err.message || err), true);
+        showToastNotification('❌ Lỗi khi lưu cài đặt lên Cloud: ' + (err.message || err), true);
         if (btn) {
           btn.disabled = false;
           btn.textContent = originalText;
@@ -11858,7 +12108,7 @@
             <td colspan="7" class="py-10 text-center text-slate-500">
               <div class="flex flex-col items-center justify-center gap-2">
                 <span class="text-2xl">🌐</span>
-                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa LibSQL.</span>
+                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa TiDB Cloud.</span>
                 <span class="text-xs text-slate-500 font-sans">Nhấn nút <strong>"+ Thêm Proxy Mới"</strong> phía trên để bổ sung proxy outbound.</span>
               </div>
             </td>
@@ -13815,7 +14065,7 @@
               }, false);
 
               if (typeof triggerSkillActiveState === 'function') {
-                triggerSkillActiveState('persistent-memory', 'Ghi nhận LibSQL & HUD');
+                triggerSkillActiveState('persistent-memory', 'Ghi nhận TiDB Cloud & HUD');
               }
               setTimeout(() => {
                 transitionToIdleTopology();
@@ -13879,7 +14129,7 @@
     }
 
     let isInitialStreamLogSyncDone = false;
-    // Poller thời gian thực đọc log trực tiếp từ LibSQL qua /api/realtime/stream-logs (Bảo đảm hoạt động 100% độc lập kể cả khi SSE bị ngắt)
+    // Poller thời gian thực đọc log trực tiếp từ Cloud DB qua /api/realtime/stream-logs (Bảo đảm hoạt động 100% độc lập kể cả khi SSE bị ngắt)
     async function pollRealtimeRequestDiff() {
       if (!isGatewayConnected) return;
       try {
@@ -13935,7 +14185,7 @@
       if (speedEl) speedEl.textContent = rps + ' req/s';
     }
 
-    // Tải toàn bộ danh mục Model và số lượt gọi thực tế từ Database LibSQL
+    // Tải toàn bộ danh mục Model và số lượt gọi thực tế từ Database TiDB Cloud
     async function loadRealtimeFullModelsLive() {
       try {
         const res = await apiRequest('/api/realtime/full-models');
@@ -14117,7 +14367,7 @@
       const quotas = [];
       let qMap = item.usageData && item.usageData.quotas ? item.usageData.quotas : null;
 
-      // Fallback kiểm tra trong item.data (LibSQL) nếu usageData chưa có
+      // Fallback kiểm tra trong item.data (Database) nếu usageData chưa có
       if (!qMap && item.data) {
         try {
           const parsed = typeof item.data === 'string' ? JSON.parse(item.data) : item.data;
@@ -14271,7 +14521,10 @@
     }
 
     // Tải toàn bộ danh sách kết nối và hạn mức thời gian thực từ Backend
+    let _isQuotaFetching = false;
     async function loadQuotaTrackerLive(force = false) {
+      if (_isQuotaFetching) return;
+      _isQuotaFetching = true;
       const spinEl = document.getElementById('quota-global-spin');
       if (spinEl) spinEl.classList.add('animate-spin');
 
@@ -14354,6 +14607,7 @@
       } catch (e) {
         console.warn("Lỗi tải Quota Tracker Live:", e);
       } finally {
+        _isQuotaFetching = false;
         if (spinEl) {
           setTimeout(() => spinEl.classList.remove('animate-spin'), 300);
         }
@@ -14442,31 +14696,32 @@
         pDataObj = pDataObj || {};
         const poolName = item.proxyPoolName || pDataObj.proxyPoolName || '';
         const poolId = item.proxyPoolId || item.providerSpecificData?.proxyPoolId || pDataObj.proxyPoolId || '';
-        const proxyAddress = (item.proxy || item.proxyUrl || item.connectionProxyUrl || item.providerSpecificData?.connectionProxyUrl || item.providerSpecificData?.proxy || pDataObj.proxy || pDataObj.proxyUrl || pDataObj.connectionProxyUrl || '').trim();
-        const hasProxyConfig = Boolean(proxyAddress || (poolId && poolId !== '__none__' && poolId !== '__direct__'));
+        let proxyAddress = (item.proxy || item.proxyUrl || item.connectionProxyUrl || item.providerSpecificData?.connectionProxyUrl || item.providerSpecificData?.proxy || pDataObj.proxy || pDataObj.proxyUrl || pDataObj.connectionProxyUrl || '').trim();
 
-        // Chuẩn hóa nhãn Proxy hiển thị sạch, tránh lộ thông tin xác thực nhạy cảm và không bị cắt cụt
+        // Chuẩn hóa nhãn Proxy hiển thị sạch sẽ, bỏ tiền tố Imported, bảo mật không lộ mật khẩu
         let proxyDisplayLabel = '';
         if (poolName) {
           proxyDisplayLabel = poolName;
         } else if (proxyAddress) {
+          proxyAddress = proxyAddress.replace(/^Imported\s+/i, '');
           try {
             const cleanUrl = proxyAddress.replace(/^(https?:\/\/|socks5:\/\/)/i, '');
             const atIdx = cleanUrl.indexOf('@');
             const hostPart = atIdx !== -1 ? cleanUrl.substring(atIdx + 1) : cleanUrl;
-            proxyDisplayLabel = hostPart.split('/')[0] || proxyAddress;
+            const hostPort = hostPart.split('/')[0] || proxyAddress;
+            proxyDisplayLabel = `Proxy: ${hostPort}`;
           } catch (_) {
-            proxyDisplayLabel = proxyAddress;
+            proxyDisplayLabel = `Proxy: ${proxyAddress}`;
           }
         } else if (poolId && poolId !== '__none__' && poolId !== '__direct__') {
           proxyDisplayLabel = `Pool #${poolId}`;
         }
 
         return `
-          <div class="glass-card rounded-xl p-2.5 sm:p-3 border ${isAllDepleted ? 'border-red-500/40 bg-red-950/10' : 'border-white/10 hover:border-cyan-500/30'} transition-all flex flex-col justify-between space-y-2 shadow-md shadow-black/20">
+          <div class="glass-card rounded-xl p-3 border ${isAllDepleted ? 'border-red-500/40 bg-red-950/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]' : 'border-white/10 hover:border-cyan-500/30'} bg-[#0B0F19]/95 backdrop-blur-xl transition-all flex flex-col justify-between space-y-2.5 shadow-md shadow-black/30">
             
             <!-- Card Header: Provider, Plan, Proxy, Email & Controls -->
-            <div class="flex items-center justify-between gap-1.5">
+            <div class="flex items-center justify-between gap-1.5 pb-1 border-b border-white/[0.04]">
               
               <!-- Bên trái: Icon, Provider, Plan, Proxy & Email -->
               <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -14480,14 +14735,16 @@
                   </svg>
                 </div>
                 <div class="min-w-0 flex-1">
+                  <!-- Dòng 1: Provider Name + Plan Badge + Proxy Tag -->
                   <div class="flex items-center gap-1.5 flex-wrap">
                     <h4 class="text-xs font-bold text-white tracking-wide truncate">${providerName}</h4>
                     ${planName ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-mono ${planName.toLowerCase().includes('free') ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'}">${planName}</span>` : ''}
-                    ${hasProxyConfig ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/40 truncate max-w-[130px] inline-flex items-center gap-1" title="Proxy: ${escapeHtml(proxyAddress || proxyDisplayLabel)}">🔒 ${escapeHtml(proxyDisplayLabel)}</span>` : ''}
+                    ${proxyDisplayLabel ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/40 truncate max-w-[170px] inline-flex items-center gap-1" title="Proxy: ${escapeHtml(proxyDisplayLabel)}">🔒 ${escapeHtml(proxyDisplayLabel)}</span>` : ''}
                     ${isAllDepleted ? `<span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-red-500/20 text-red-300 border border-red-500/40">HẾT HẠN MỨC</span>` : ''}
                   </div>
-                  <span class="text-[11px] text-slate-300 font-mono block truncate max-w-[180px] sm:max-w-[220px]" title="${emailDisplay}">
-                    ${emailDisplay}
+                  <!-- Dòng 2: Email người dùng (tách biệt hàng riêng, không tràn dính với proxy) -->
+                  <span class="text-[11px] text-slate-300 font-mono block truncate max-w-[240px]" title="${escapeHtml(emailDisplay)}">
+                    ${escapeHtml(emailDisplay)}
                   </span>
                 </div>
               </div>
@@ -14510,7 +14767,7 @@
 
             </div>
 
-            <!-- Danh sách từng Quota Row: Gọn nhẹ 1 dòng thanh thoát phẳng -->
+            <!-- Danh sách từng Quota Row: Gọn nhẹ 1 dòng thanh thoát phẳng, cân đối pixel-perfect -->
             <div class="space-y-1">
               ${visibleQuotas.map(q => {
                 const remPct = Math.min(100, Math.max(0, q.remainingPercentage));
@@ -14529,38 +14786,49 @@
                 }
 
                 const totalLimit = q.total || 1000;
+                // Chuẩn hóa toán học: remPct là % còn lại, usedCount là số đã dùng, remainingCount là số lượng còn lại
                 const usedCount = q.used != null ? Number(q.used) : Math.max(0, totalLimit - Math.round((totalLimit * remPct) / 100));
+                const remainingCount = Math.max(0, Math.min(totalLimit, Math.round((totalLimit * remPct) / 100)));
                 const countdownStr = formatResetCountdown(q.resetAt);
                 const shortCountdown = countdownStr ? countdownStr.replace(/^còn\s*/i, '') : '';
 
                 return `
-                  <div class="group py-0.5 space-y-0.5">
-                    <div class="flex items-center justify-between text-xs gap-1.5">
-                      
-                      <!-- Bên trái: Chấm + Tên mô hình (hiển thị đầy đủ, không bị cắt) -->
-                      <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span class="w-1.5 h-1.5 rounded-full ${dotColor} flex-shrink-0"></span>
-                        <span class="text-[11px] text-slate-200 font-medium truncate" title="${escapeHtml(q.displayName)}">${escapeHtml(q.displayName)}</span>
-                      </div>
-
-                      <!-- Bên phải: Số dùng/Tổng + Còn % + Reset + Nút Ẩn siêu gọn -->
-                      <div class="flex items-center gap-1.5 font-mono text-[10px] flex-shrink-0">
-                        <span class="text-slate-400" title="Đã dùng: ${usedCount.toLocaleString()} / ${totalLimit.toLocaleString()}">
-                          ${usedCount.toLocaleString()}<span class="text-slate-600 text-[9px]">/${totalLimit >= 1000 ? (totalLimit / 1000) + 'k' : totalLimit}</span>
-                        </span>
-                        <span class="${textColor} font-semibold" title="Hạn mức còn lại">Còn ${Math.round(remPct)}%</span>
-                        ${shortCountdown ? `<span class="text-slate-500 text-[9px] flex items-center gap-0.5" title="Reset sau ${escapeHtml(shortCountdown)}">⏰${escapeHtml(shortCountdown)}</span>` : ''}
-                        <button onclick="hideQuotaItem('${item.id}', '${q.key}')" class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-200 transition-opacity p-0.5 cursor-pointer" title="Ẩn hạn mức này">
-                          <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
-                        </button>
-                      </div>
-
+                  <div class="group flex items-center gap-2 py-0.5 text-xs">
+                    
+                    <!-- Cột 1: Chấm + Tên mô hình (Cố định 115px để thanh bar bắt đầu từ cùng một trục X) -->
+                    <div class="flex items-center gap-1.5 w-[115px] flex-shrink-0 min-w-0">
+                      <span class="w-1.5 h-1.5 rounded-full ${dotColor} flex-shrink-0"></span>
+                      <span class="text-[11px] text-slate-200 font-medium truncate" title="${escapeHtml(q.displayName)}">${escapeHtml(q.displayName)}</span>
                     </div>
 
-                    <!-- Thanh Progress Bar mảnh tinh tế -->
-                    <div class="w-full bg-zinc-900/90 rounded-full h-1 overflow-hidden">
-                      <div class="${barColor} h-1 rounded-full transition-all duration-500" style="width: ${remPct}%"></div>
+                    <!-- Cột 2: Thanh Progress Bar ở giữa co giãn tự nhiên -->
+                    <div class="flex-1 min-w-[45px] bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
+                      <div class="${barColor} h-1.5 rounded-full transition-all duration-500" style="width: ${remPct}%"></div>
                     </div>
+
+                    <!-- Cột 3: Cụm số liệu căn lề dạng bảng (font-mono tabular-nums) -->
+                    <div class="flex items-center gap-1.5 font-mono text-[10px] flex-shrink-0">
+                      <!-- Số Còn Lại / Tổng: Đồng bộ 100% với % Còn lại và thanh Bar -->
+                      <span class="w-[54px] text-right text-slate-300 tabular-nums font-semibold" title="Còn lại: ${remainingCount.toLocaleString()} / ${totalLimit.toLocaleString()} (Đã dùng: ${usedCount.toLocaleString()})">
+                        ${remainingCount.toLocaleString()}<span class="text-slate-500 text-[9px] font-normal">/${totalLimit >= 1000 ? (totalLimit / 1000) + 'k' : totalLimit}</span>
+                      </span>
+
+                      <!-- % Còn lại: Cố định 44px căn phải -->
+                      <span class="w-[44px] text-right ${textColor} font-semibold tabular-nums" title="Hạn mức còn lại">
+                        Còn ${Math.round(remPct)}%
+                      </span>
+
+                      <!-- Thời gian Reset: Cố định 50px căn phải -->
+                      <span class="w-[50px] text-right text-slate-400 text-[9px] tabular-nums" title="${shortCountdown ? 'Reset sau ' + escapeHtml(shortCountdown) : 'Không có hẹn giờ'}">
+                        ${shortCountdown ? `⏰${escapeHtml(shortCountdown)}` : '<span class="text-slate-700/60">--</span>'}
+                      </span>
+
+                      <!-- Nút Ẩn Quota: Cố định 14px -->
+                      <button onclick="hideQuotaItem('${item.id}', '${q.key}')" class="w-3.5 flex justify-center opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-200 transition-opacity p-0.5 cursor-pointer" title="Ẩn hạn mức này">
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                      </button>
+                    </div>
+
                   </div>
                 `;
               }).join('')}
@@ -14819,7 +15087,7 @@
         }
       }
 
-      // Nhận diện cấu hình proxy hiện tại của connection (kể cả trong it.data LibSQL)
+      // Nhận diện cấu hình proxy hiện tại của connection (kể cả trong it.data)
       let itData = it.data;
       if (typeof itData === 'string') {
         try { itData = JSON.parse(itData); } catch (_) { itData = {}; }
@@ -14995,19 +15263,21 @@
       }
     }
 
-    // Bắt đầu đếm ngược 5s tự động cập nhật liên tục toàn app
+    // Bắt đầu đếm ngược 30s tự động cập nhật hạn mức Quota
     function startQuotaCountdown() {
       stopQuotaCountdown();
       if (!_quotaAutoRefreshEnabled) return;
-      _quotaCountdownSeconds = 5;
+      _quotaCountdownSeconds = 30;
       _quotaCountdownTimer = setInterval(() => {
+        // Tiết kiệm CPU & Băng thông khi người dùng đang chuyển tab
+        if (document.hidden) return;
         _quotaCountdownSeconds--;
         const cdEl = document.getElementById('quota-refresh-countdown');
         if (cdEl) cdEl.textContent = _quotaCountdownSeconds + 's';
         if (_quotaCountdownSeconds <= 0) {
-          _quotaCountdownSeconds = 5;
+          _quotaCountdownSeconds = 30;
           loadQuotaTrackerLive(false);
-          // Đồng bộ làm mới toàn app liên tục mỗi 5s
+          // Đồng bộ làm mới toàn app liên tục
           if (typeof pollRealtimeRequestDiff === 'function') pollRealtimeRequestDiff();
           if (typeof checkGatewayHealthImmediate === 'function') checkGatewayHealthImmediate();
         }
@@ -15183,7 +15453,7 @@
           stats = await res.json();
         }
 
-        // 1. Tính toán số liệu thực tế 100% từ LibSQL Database (Tuân thủ Phần 9 - Không dùng số giả lập)
+        // 1. Tính toán số liệu thực tế 100% từ TiDB Cloud Database (Tuân thủ Phần 9 - Không dùng số giả lập)
         const totalRequests = Number(stats?.totalRequests || 0);
         const totalPrompt = Number(stats?.totalPromptTokens || 0);
         const totalCached = Number(stats?.totalCachedTokens || 0);

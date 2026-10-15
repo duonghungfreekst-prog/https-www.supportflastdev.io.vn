@@ -107,3 +107,53 @@ type UsageRecord struct {
 func NowISO() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
+
+// ClientConfigResponse gói dữ liệu cấu hình máy chủ MITM & DNS chi tiết trả về cho App & App CMD
+type ClientConfigResponse struct {
+	Success       bool                 `json:"success"`
+	Server        ServerInfoPayload    `json:"server"`
+	KeyInfo       KeyInfoPayload       `json:"key_info"`
+	Mitm          MitmConfigPayload    `json:"mitm"`
+	DNS           DNSConfigPayload     `json:"dns"`
+	CmdQuickstart CmdQuickstartPayload `json:"cmd_quickstart"`
+}
+
+type ServerInfoPayload struct {
+	Domain     string `json:"domain"`
+	BaseURL    string `json:"base_url"`
+	GatewayURL string `json:"gateway_url"`
+	SyncURL    string `json:"sync_url"`
+	Status     string `json:"status"`
+	Version    string `json:"version"`
+}
+
+type KeyInfoPayload struct {
+	Name     string `json:"name"`
+	Key      string `json:"key"`
+	IsActive bool   `json:"is_active"`
+}
+
+type MitmConfigPayload struct {
+	Enabled         bool                   `json:"enabled"`
+	Port            int                    `json:"port"`
+	ProxyHost       string                 `json:"proxy_host"`
+	UpstreamTarget  string                 `json:"upstream_target"`
+	CertDownloadURL string                 `json:"cert_download_url"`
+	ModelMappings   map[string]interface{} `json:"model_mappings"`
+	SupportedTools  []string               `json:"supported_tools"`
+}
+
+type DNSConfigPayload struct {
+	Enabled     bool     `json:"enabled"`
+	RedirectIP  string   `json:"redirect_ip"`
+	Domains     []string `json:"domains"`
+	HostsFormat string   `json:"hosts_format"`
+}
+
+type CmdQuickstartPayload struct {
+	WindowsCMD   string `json:"windows_cmd"`
+	PowerShell   string `json:"powershell"`
+	BashLinuxMac string `json:"bash_linux_mac"`
+	CurlTest     string `json:"curl_test"`
+}
+

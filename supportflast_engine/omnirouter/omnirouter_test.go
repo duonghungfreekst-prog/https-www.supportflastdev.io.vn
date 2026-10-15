@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -162,3 +163,126 @@ func TestEmbeddedDataSeed(t *testing.T) {
 		t.Fatalf("Kỳ vọng 19 providers sau khi seed, nhận được: %d", len(providers))
 	}
 }
+
+func TestClientConfigEndpoint(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Tạo API Key có chứa tên miền web
+	key, err := CreateNewClientKeyWithDomain(db, "CMD-Test-Device", "supportflastdev.io.vn")
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+	if !strings.Contains(key.Key, "supportflastdev.io.vn") {
+		t.Fatalf("API Key không chứa tên miền web: %s", key.Key)
+	}
+
+	mux := http.NewServeMux()
+	cfgHandler := HandleClientConfig(db)
+	mux.HandleFunc("/api/v1/client/config", cfgHandler)
+	mux.HandleFunc("/api/v1/client/setup.bat", cfgHandler)
+
+	// 2. Test lấy cấu hình JSON qua Header
+	req := httptest.NewRequest("GET", "/api/v1/client/config", nil)
+	req.Header.Set("Authorization", "Bearer "+key.Key)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Client Config trả về status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var cfgResp ClientConfigResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &cfgResp); err != nil {
+		t.Fatalf("Parse ClientConfigResponse thất bại: %v", err)
+	}
+	if !cfgResp.Success {
+		t.Fatalf("ClientConfigResponse success = false")
+	}
+	if cfgResp.Server.Domain != "supportflastdev.io.vn" {
+		t.Fatalf("Domain không khớp: %s", cfgResp.Server.Domain)
+	}
+	if !cfgResp.Mitm.Enabled || cfgResp.Mitm.Port != 443 {
+		t.Fatalf("Mitm config không đúng: %+v", cfgResp.Mitm)
+	}
+	if !cfgResp.DNS.Enabled || len(cfgResp.DNS.Domains) == 0 {
+		t.Fatalf("DNS config không đúng: %+v", cfgResp.DNS)
+	}
+
+	// 3. Test lấy file script .bat qua query param ?key=...
+	reqBat := httptest.NewRequest("GET", "/api/v1/client/setup.bat?key="+key.Key, nil)
+	recBat := httptest.NewRecorder()
+	mux.ServeHTTP(recBat, reqBat)
+
+	if recBat.Code != http.StatusOK {
+		t.Fatalf("Setup.bat trả về status %d: %s", recBat.Code, recBat.Body.String())
+	}
+	batContent := recBat.Body.String()
+	if !strings.Contains(batContent, "set OPENAI_BASE_URL=") || !strings.Contains(batContent, key.Key) {
+		t.Fatalf("Nội dung setup.bat thiếu OPENAI_BASE_URL hoặc key: %s", batContent)
+	}
+}
+
+func TestClientQuotaCLIEndpoint(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	_ = SeedEmbeddedDataToDB(db)
+
+	key, err := CreateNewClientKeyWithDomain(db, "Terminal-Ping-Key", "supportflastdev.io.vn")
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	quotaHandler := HandleClientQuotaCLI(db)
+	mux.HandleFunc("/api/v1/client/quota", quotaHandler)
+	mux.HandleFunc("/api/v1/client/quota.bat", quotaHandler)
+	mux.HandleFunc("/api/v1/client/ping", quotaHandler)
+
+	// 1. Test Text ASCII Console CLI Output
+	req := httptest.NewRequest("GET", "/api/v1/client/quota?key="+key.Key, nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Status %d: %s", rec.Code, rec.Body.String())
+	}
+	output := rec.Body.String()
+	if !strings.Contains(output, "SUPPORTFLAST GATEWAY") || !strings.Contains(output, "DNS Domain") {
+		t.Fatalf("Output không chứa tiêu đề CLI: %s", output)
+	}
+	if !strings.Contains(output, "GEMINI (5h)") {
+		t.Fatalf("Output thiếu cột GEMINI (5h): %s", output)
+	}
+
+	// 2. Test JSON format
+	reqJSON := httptest.NewRequest("GET", "/api/v1/client/quota?format=json&key="+key.Key, nil)
+	recJSON := httptest.NewRecorder()
+	mux.ServeHTTP(recJSON, reqJSON)
+
+	if recJSON.Code != http.StatusOK {
+		t.Fatalf("Status JSON %d: %s", recJSON.Code, recJSON.Body.String())
+	}
+	var jsonResp map[string]interface{}
+	if err := json.Unmarshal(recJSON.Body.Bytes(), &jsonResp); err != nil {
+		t.Fatalf("Unmarshal JSON thất bại: %v", err)
+	}
+	if jsonResp["status"] != "online" {
+		t.Fatalf("Kỳ vọng status online, nhận được: %v", jsonResp["status"])
+	}
+
+	// 3. Test script quota.bat
+	reqBat := httptest.NewRequest("GET", "/api/v1/client/quota.bat?key="+key.Key, nil)
+	recBat := httptest.NewRecorder()
+	mux.ServeHTTP(recBat, reqBat)
+
+	if recBat.Code != http.StatusOK {
+		t.Fatalf("Status quota.bat %d: %s", recBat.Code, recBat.Body.String())
+	}
+	batText := recBat.Body.String()
+	if !strings.Contains(batText, "ping -n 2") || !strings.Contains(batText, key.Key) {
+		t.Fatalf("Nội dung quota.bat không đúng: %s", batText)
+	}
+}
+

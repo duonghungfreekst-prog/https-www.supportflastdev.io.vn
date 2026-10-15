@@ -184,31 +184,64 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		}
 	}
 
-	// Tự động seed Master Key mặc định nếu bảng keys rỗng
-	var keyCount int
-	if err := db.QueryRow("SELECT COUNT(*) FROM omni_client_keys").Scan(&keyCount); err == nil && keyCount == 0 {
-		now := NowISO()
-		masterKey := "sk-9router-master-live"
-		keyHash := HashString(masterKey)
+	// Tự động seed Master Key mặc định có chứa tên miền web (supportflastdev.io.vn)
+	now := NowISO()
+	masterDomainKey := "sk-" + DefaultDomain + "-master-live"
+	masterDomainHash := HashString(masterDomainKey)
+
+	var masterDomainExists int
+	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys WHERE api_key = ?", masterDomainKey).Scan(&masterDomainExists)
+	if masterDomainExists == 0 {
 		_, _ = db.Exec(`
 			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
-			VALUES ('key_master_cloud', 'Master Cloud Production Key', ?, ?, 0, 0, 1, ?, ?)
-		`, masterKey, keyHash, now, now)
-		log.Println("[ENGINE] [OMNIROUTER] ✔ Đã khởi tạo Master API Key: sk-9router-master-live")
+			VALUES ('key_master_domain_cloud', 'Master Web Domain Key (`+DefaultDomain+`)', ?, ?, 0, 0, 1, ?, ?)
+		`, masterDomainKey, masterDomainHash, now, now)
+		log.Println("[ENGINE] [OMNIROUTER] ✔ Đã khởi tạo Master API Key chứa tên miền web:", masterDomainKey)
 	}
 
-	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ 9Router trong Database")
+	// Đảm bảo tương thích ngược với key cũ sk-9router-master-live
+	legacyKey := "sk-9router-master-live"
+	var legacyExists int
+	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys WHERE api_key = ?", legacyKey).Scan(&legacyExists)
+	if legacyExists == 0 {
+		legacyHash := HashString(legacyKey)
+		_, _ = db.Exec(`
+			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
+			VALUES ('key_master_legacy', 'Legacy Master Key', ?, ?, 0, 0, 1, ?, ?)
+		`, legacyKey, legacyHash, now, now)
+	}
+
+	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")
 	// Nạp sẵn cache
 	RefreshKeyCache(db)
 	RefreshProviderCache(db)
 	return nil
 }
 
-// GenerateAPIKey tạo chuỗi API Key duy nhất dạng sk-9router-xxxxxxxx
+// DefaultDomain là tên miền web chính thức của hệ thống
+const DefaultDomain = "supportflastdev.io.vn"
+
+// GenerateAPIKey tạo chuỗi API Key duy nhất có chứa tên miền web: sk-supportflastdev.io.vn-xxxxxxxx
 func GenerateAPIKey() string {
+	return GenerateAPIKeyWithDomain(DefaultDomain)
+}
+
+// GenerateAPIKeyWithDomain tạo chuỗi API Key duy nhất có chứa tên miền web chỉ định
+func GenerateAPIKeyWithDomain(domain string) string {
+	d := strings.TrimSpace(domain)
+	if d == "" {
+		d = DefaultDomain
+	}
+	d = strings.TrimPrefix(d, "https://")
+	d = strings.TrimPrefix(d, "http://")
+	d = strings.Split(d, "/")[0]
+	d = strings.Split(d, ":")[0]
+	if d == "" {
+		d = DefaultDomain
+	}
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
-	return "sk-9router-" + hex.EncodeToString(b)
+	return "sk-" + d + "-" + hex.EncodeToString(b)
 }
 
 // HashString băm chuỗi SHA-256
@@ -254,12 +287,17 @@ func ValidateClientKey(rawKey string) (*ClientKey, bool) {
 	return nil, false
 }
 
-// CreateNewClientKey sinh mã API Key mới và lưu xuống DB + RAM
+// CreateNewClientKey sinh mã API Key mới chứa tên miền web và lưu xuống DB + RAM
 func CreateNewClientKey(db *sql.DB, name string) (*ClientKey, error) {
+	return CreateNewClientKeyWithDomain(db, name, DefaultDomain)
+}
+
+// CreateNewClientKeyWithDomain sinh mã API Key mới chứa tên miền chỉ định và lưu xuống DB + RAM
+func CreateNewClientKeyWithDomain(db *sql.DB, name string, domain string) (*ClientKey, error) {
 	if strings.TrimSpace(name) == "" {
 		name = "Antigravity-Device"
 	}
-	keyStr := GenerateAPIKey()
+	keyStr := GenerateAPIKeyWithDomain(domain)
 	id := fmt.Sprintf("key_%d", time.Now().UnixNano())
 	now := NowISO()
 	keyHash := HashString(keyStr)
