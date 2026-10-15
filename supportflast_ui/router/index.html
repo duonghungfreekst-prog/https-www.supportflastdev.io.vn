@@ -1046,47 +1046,131 @@
             </div>
           </div>
 
-          <!-- 2. THẺ MÁY CHỦ MITM (KHỚP 100% ẢNH) -->
+          <!-- 2. THẺ MÁY CHỦ GATEWAY & MITM CLIENT (ĐỒNG BỘ WEB CLOUD & MÁY TÍNH) -->
           <div class="glass-card rounded-2xl p-5 border border-white/10 space-y-4">
             
             <!-- Hàng tiêu đề + Huy hiệu Cert / Trusted / Server -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
               <div class="flex items-center gap-2.5">
-                <div class="w-7 h-7 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center">
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 </div>
-                <h3 class="text-sm font-bold text-white font-sans">Máy chủ MITM</h3>
-                <span id="mitm-badge-running" class="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700">⚪ ĐÃ TẮT (ĐÃ DỪNG)</span>
+                <h3 class="text-sm font-bold text-white font-sans">Máy Chủ Web Gateway & MITM Client</h3>
+                <span id="mitm-badge-running" class="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]">🟢 CLOUD ONLINE 24/24 (Render + TiDB)</span>
               </div>
 
               <!-- 3 tích xanh: Cert, Trusted, Server -->
               <div class="flex items-center gap-3 text-xs font-mono">
-                <span id="mitm-tick-cert" class="flex items-center gap-1 text-emerald-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Cert</span>
-                <span id="mitm-tick-trusted" class="flex items-center gap-1 text-emerald-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Trusted</span>
-                <span id="mitm-tick-server" class="flex items-center gap-1 text-slate-500"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Server</span>
+                <span id="mitm-tick-cert" class="flex items-center gap-1 text-emerald-400 font-bold"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> SSL Cloud</span>
+                <span id="mitm-tick-trusted" class="flex items-center gap-1 text-emerald-400 font-bold"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> 19 AI Accounts</span>
+                <span id="mitm-tick-server" class="flex items-center gap-1 text-emerald-400 font-bold"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg> Gateway Live</span>
               </div>
             </div>
 
             <!-- Mục đích & Cách hoạt động -->
             <div class="text-xs space-y-1 text-slate-300">
-              <p><span class="font-bold text-white">Mục đích:</span> Sử dụng Antigravity IDE & GitHub Copilot — với BẤT KỲ nhà cung cấp/mô hình nào từ OmniRouter</p>
-              <p><span class="font-bold text-white">Cách hoạt động:</span> Yêu cầu Antigravity/Copilot IDE &rarr; Chuyển hướng DNS đến localhost:443 &rarr; MITM proxy chặn &rarr; OmniRouter &rarr; phản hồi đến Antigravity/Copilot</p>
+              <p><span class="font-bold text-white">Mục đích:</span> Cho phép Antigravity IDE, Cursor, Claude Code, Cline, Roo Code, Desktop App trên máy tính trỏ về Web Server để dùng chung kho 19 tài khoản AI.</p>
+              <p><span class="font-bold text-white">Cách hoạt động:</span> Máy tính gửi request kèm API Key &rarr; Web Server kiểm tra RAM Cache (0.001ms) &rarr; Tự động tráo Token thật sang Google/Anthropic/OpenAI từ TiDB &rarr; Trả kết quả streaming về máy tính.</p>
             </div>
 
-            <!-- OmniRouter Base URL -->
-            <div class="flex items-center gap-2 pt-1 font-mono text-xs">
-              <span class="text-white font-bold whitespace-nowrap">OmniRouter Base URL</span>
-              <span class="text-slate-400">&rarr;</span>
-              <input type="text" id="mitm-base-url-input" value="http://localhost:20128" class="flex-1 max-w-xs px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-xs text-slate-200 font-mono focus:outline-none focus:border-cyan-500/50">
+            <!-- OmniRouter Base URL + API Key -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 font-mono text-xs">
+              
+              <!-- Khối 1: Base URL -->
+              <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-white font-bold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <span>OmniRouter Base URL:</span>
+                  </span>
+                  <button onclick="copyMitmBaseUrl()" class="px-2.5 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.2)]">📋 Sao chép</button>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="text" id="mitm-base-url-input" readonly value="https://supportflastdev.io.vn/v1" class="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500/50 select-all">
+                </div>
+                <div class="text-[10px] text-slate-400 font-sans">Dán link này vào Base URL của Antigravity, Cursor, Claude Code, Cline, Roo Code...</div>
+              </div>
+
+              <!-- Khối 2: API Key -->
+              <div class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-white font-bold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>Client API Key (Khóa Máy Tính):</span>
+                  </span>
+                  <div class="flex items-center gap-1.5">
+                    <button onclick="copyMitmApiKey()" class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(16,185,129,0.2)]">📋 Sao chép</button>
+                    <button onclick="openModal('modal-create-key')" class="px-2.5 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-sans font-bold transition-all cursor-pointer shadow-[0_0_8px_rgba(245,158,11,0.2)]">➕ Tạo mới</button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="text" id="mitm-api-key-input" readonly value="sk-9router-loading..." class="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500/50 select-all">
+                </div>
+                <div class="text-[10px] text-slate-400 font-sans">Khóa bảo mật riêng lưu tại TiDB Cloud, dùng để định danh và phân quyền máy tính</div>
+              </div>
+
             </div>
 
-            <!-- Nút Bật/Tắt Server / Enable DNS info -->
-            <div class="flex flex-wrap items-center gap-3 pt-2">
-              <button onclick="toggleMitmServerAction()" id="btn-mitm-toggle" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-400 transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_16px_rgba(16,185,129,0.4)]">
-                <span class="w-2.5 h-2.5 rounded-full bg-slate-950"></span>
-                <span id="btn-mitm-toggle-text">⚡ BẬT MÁY CHỦ (START)</span>
-              </button>
-              <span class="text-xs text-slate-400 font-sans">Bấm nút trên để Bật/Tắt MITM trên cổng 443 và gạt switch từng công cụ bên dưới</span>
+            <!-- 2 LỰA CHỌN KẾT NỐI CHO MÁY TÍNH -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              
+              <!-- Lựa chọn 1: Cắm trực tiếp không cần MITM -->
+              <div class="p-4 rounded-xl bg-gradient-to-br from-cyan-950/40 via-black/50 to-black/70 border border-cyan-500/30 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-cyan-300 font-bold text-xs">
+                    <span class="w-5 h-5 rounded-md bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-xs text-cyan-300">1</span>
+                    <span>Cắm Trực Tiếp Vào IDE & Tool AI (Khuyên dùng)</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Siêu Mượt</span>
+                </div>
+                <p class="text-[11px] text-slate-300 leading-relaxed font-sans">
+                  Không cần cài thêm app nào trên máy tính, không cần sửa hosts hay cài CA cert. Chỉ cần cấu hình OpenAI-compatible trong IDE:
+                </p>
+                <div class="p-2.5 rounded-lg bg-black/70 border border-white/5 font-mono text-[11px] space-y-1 text-slate-300">
+                  <div><span class="text-slate-500">Base URL:</span> <span class="text-cyan-300 select-all" id="mitm-guide-base-url">https://supportflastdev.io.vn/v1</span></div>
+                  <div><span class="text-slate-500">API Key:</span> <span class="text-emerald-300 select-all" id="mitm-guide-api-key">sk-9router-xxxx</span></div>
+                  <div><span class="text-slate-500">Model:</span> <span class="text-amber-300">gemini-3.1-pro-high, claude-3-5-sonnet, gpt-4o</span></div>
+                </div>
+              </div>
+
+              <!-- Lựa chọn 2: Chạy Desktop Client qua MITM Cổng 443 -->
+              <div class="p-4 rounded-xl bg-gradient-to-br from-emerald-950/40 via-black/50 to-black/70 border border-emerald-500/30 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-emerald-300 font-bold text-xs">
+                    <span class="w-5 h-5 rounded-md bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xs text-emerald-300">2</span>
+                    <span>Dùng 9Router Desktop Client (Chặn Cổng 443)</span>
+                  </div>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">DNS Intercept</span>
+                </div>
+                <p class="text-[11px] text-slate-300 leading-relaxed font-sans">
+                  Dành cho trường hợp muốn chặn DNS hệ thống của Antigravity/Copilot qua cổng 443. Desktop Client tự động đồng bộ tài khoản từ Web Cloud về RAM máy tính:
+                </p>
+                <div class="flex flex-wrap items-center gap-2 pt-1 font-sans">
+                  <button onclick="downloadDesktopConfigFile()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>Tải file config.json</span>
+                  </button>
+                  <button onclick="copyDesktopConfigFile()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span>📋 Sao chép cấu hình JSON</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Thanh trạng thái và nút hành động -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+              <div class="flex items-center gap-2 text-xs text-slate-300 font-sans">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-bold text-emerald-400">Máy chủ Web Gateway hoạt động 24/24.</span>
+                <span class="text-slate-400">Kết nối từ máy tính qua Base URL & API Key ở trên để lấy toàn bộ dữ liệu.</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="refreshMitmWebData()" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  <span>🔄 LÀM MỚI KHO TOKEN & KEYS</span>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -5181,6 +5265,9 @@
             tbody.appendChild(tr);
           });
         }
+        if (typeof updateMitmClientInputs === 'function') {
+          updateMitmClientInputs();
+        }
       } catch (e) {
         console.warn("Chưa tải được keys từ backend:", e);
       }
@@ -7716,22 +7803,130 @@
       }, 3000);
     }
 
-    // Thiết lập toàn bộ UI MITM Proxy về trạng thái ĐÃ TẮT triệt để
+    // =========================================================================
+    // HELPER ĐỒNG BỘ WEB CLOUD & MÁY TÍNH (BASE URL & CLIENT API KEY)
+    // =========================================================================
+    function getOmniRouterBaseUrl() {
+      if (window.location && window.location.origin && window.location.origin.startsWith('http')) {
+        return window.location.origin + '/v1';
+      }
+      return 'https://supportflastdev.io.vn/v1';
+    }
+
+    function getOmniRouterActiveApiKey() {
+      if (Array.isArray(cachedApiKeys) && cachedApiKeys.length > 0) {
+        const activeKey = cachedApiKeys.find(k => k.isActive === 1 || k.is_active === 1 || k.status === 1 || k.isActive === true) || cachedApiKeys[0];
+        if (activeKey && (activeKey.key || activeKey.api_key)) {
+          return activeKey.key || activeKey.api_key;
+        }
+      }
+      return 'sk-9router-master-live';
+    }
+
+    async function updateMitmClientInputs() {
+      const baseUrl = getOmniRouterBaseUrl();
+      const baseInput = document.getElementById('mitm-base-url-input');
+      if (baseInput) baseInput.value = baseUrl;
+
+      const guideBaseUrl = document.getElementById('mitm-guide-base-url');
+      if (guideBaseUrl) guideBaseUrl.textContent = baseUrl;
+
+      if (!Array.isArray(cachedApiKeys) || cachedApiKeys.length === 0) {
+        try {
+          if (typeof loadApiKeysLive === 'function') await loadApiKeysLive();
+        } catch (_) {}
+      }
+
+      const apiKey = getOmniRouterActiveApiKey();
+      const keyInput = document.getElementById('mitm-api-key-input');
+      if (keyInput) keyInput.value = apiKey;
+
+      const guideApiKey = document.getElementById('mitm-guide-api-key');
+      if (guideApiKey) guideApiKey.textContent = apiKey;
+    }
+
+    function copyMitmBaseUrl() {
+      const url = getOmniRouterBaseUrl();
+      navigator.clipboard.writeText(url).then(() => {
+        showToastNotification('📋 Đã sao chép Base URL: ' + url);
+      }).catch(() => {
+        showToastNotification('Base URL: ' + url);
+      });
+    }
+
+    function copyMitmApiKey() {
+      const key = getOmniRouterActiveApiKey();
+      navigator.clipboard.writeText(key).then(() => {
+        showToastNotification('🔑 Đã sao chép Client API Key: ' + key);
+      }).catch(() => {
+        showToastNotification('Client API Key: ' + key);
+      });
+    }
+
+    function copyDesktopConfigFile() {
+      const origin = (window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'https://supportflastdev.io.vn';
+      const key = getOmniRouterActiveApiKey();
+      const cfg = {
+        render_url: origin,
+        master_api_key: key,
+        local_port: 20128
+      };
+      const jsonStr = JSON.stringify(cfg, null, 2);
+      navigator.clipboard.writeText(jsonStr).then(() => {
+        showToastNotification('📋 Đã sao chép cấu hình config.json cho Desktop Client!');
+      }).catch(() => {
+        showToastNotification('Đã sao chép cấu hình JSON');
+      });
+    }
+
+    function downloadDesktopConfigFile() {
+      const origin = (window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'https://supportflastdev.io.vn';
+      const key = getOmniRouterActiveApiKey();
+      const cfg = {
+        render_url: origin,
+        master_api_key: key,
+        local_port: 20128
+      };
+      const jsonStr = JSON.stringify(cfg, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'config.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToastNotification('📥 Đã tải xuống file config.json cho Desktop Client!');
+    }
+
+    async function refreshMitmWebData() {
+      showToastNotification('🔄 Đang làm mới kho Token và Keys từ Cloud TiDB...');
+      try {
+        if (typeof loadApiKeysLive === 'function') await loadApiKeysLive();
+        if (typeof loadProvidersLive === 'function') await loadProvidersLive();
+        updateMitmClientInputs();
+        showToastNotification('✔ Đã cập nhật đầy đủ dữ liệu 19 tài khoản và API Keys!');
+      } catch (e) {
+        showToastNotification('Lỗi cập nhật: ' + (e.message || e), true);
+      }
+    }
+
+    // Thiết lập toàn bộ UI MITM Proxy về trạng thái sẵn sàng
     function resetMitmUiToStopped(force = false) {
+      updateMitmClientInputs();
       // Nếu đang trong tiến trình bật hoặc tắt thì không tự ý đè về ĐÃ TẮT (trừ khi ép buộc do lỗi)
       if ((window._mitmIsStarting || window._mitmIsStopping) && !force) return;
 
-      // 1. Cập nhật Badge Trạng Thái Máy Chủ
+      // 1. Cập nhật Badge Trạng Thái Máy Chủ Web Gateway
       const badgeRunning = document.getElementById('mitm-badge-running');
       if (badgeRunning) {
-        badgeRunning.className = 'px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700';
-        badgeRunning.textContent = '⚪ ĐÃ TẮT (ĐÃ DỪNG)';
+        badgeRunning.className = 'px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)]';
+        badgeRunning.textContent = '🟢 CLOUD ONLINE 24/24 (Render + TiDB)';
       }
 
       // 2. Cập nhật tick server
       const tickServer = document.getElementById('mitm-tick-server');
       if (tickServer) {
-        tickServer.className = 'flex items-center gap-1 text-slate-500';
+        tickServer.className = 'flex items-center gap-1 text-emerald-400 font-bold';
       }
 
       // 3. Cập nhật nút bấm chuyển về START
@@ -7770,6 +7965,7 @@
 
     // Tải trạng thái Máy chủ MITM từ endpoint GET /api/cli-tools/antigravity-mitm
     async function loadMitmStatusLive() {
+      updateMitmClientInputs();
       // Khi đang trong tiến trình bật/tắt do người dùng bấm, không cho polling nền ghi đè
       if (window._mitmIsStarting || window._mitmIsStopping) return;
 
