@@ -286,3 +286,99 @@ func TestClientQuotaCLIEndpoint(t *testing.T) {
 	}
 }
 
+func TestProviderModelsEndpoint(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	mux := http.NewServeMux()
+	modelsHandler := HandleProviderModels(db)
+	mux.HandleFunc("/api/models/provider", modelsHandler)
+
+	// 1. Kiểm tra GET mặc định trả về 15 model của Antigravity
+	reqGet := httptest.NewRequest("GET", "/api/models/provider?id=antigravity", nil)
+	recGet := httptest.NewRecorder()
+	mux.ServeHTTP(recGet, reqGet)
+
+	if recGet.Code != http.StatusOK {
+		t.Fatalf("Kỳ vọng status 200, nhận được: %d: %s", recGet.Code, recGet.Body.String())
+	}
+
+	var resp struct {
+		Provider        string              `json:"provider"`
+		AvailableModels []ProviderModelItem `json:"availableModels"`
+		DisabledModels  []ProviderModelItem `json:"disabledModels"`
+		Total           int                 `json:"total"`
+	}
+	if err := json.Unmarshal(recGet.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Unmarshal JSON thất bại: %v", err)
+	}
+
+	if len(resp.AvailableModels) != 15 {
+		t.Fatalf("Kỳ vọng 15 available models, nhận được %d", len(resp.AvailableModels))
+	}
+	if len(resp.DisabledModels) != 0 {
+		t.Fatalf("Kỳ vọng 0 disabled models, nhận được %d", len(resp.DisabledModels))
+	}
+
+	// 2. Tắt 1 model (gemini-2.5-flash)
+	activeFalse := false
+	payloadDisable, _ := json.Marshal(map[string]interface{}{
+		"provider": "antigravity",
+		"modelId":  "gemini-2.5-flash",
+		"active":   &activeFalse,
+	})
+	reqPostDisable := httptest.NewRequest("POST", "/api/models/provider", bytes.NewReader(payloadDisable))
+	recPostDisable := httptest.NewRecorder()
+	mux.ServeHTTP(recPostDisable, reqPostDisable)
+
+	if recPostDisable.Code != http.StatusOK {
+		t.Fatalf("POST disable thất bại: %d: %s", recPostDisable.Code, recPostDisable.Body.String())
+	}
+
+	// 3. GET lại xác minh model đã chuyển sang disabledModels
+	recGet2 := httptest.NewRecorder()
+	mux.ServeHTTP(recGet2, reqGet)
+	_ = json.Unmarshal(recGet2.Body.Bytes(), &resp)
+
+	if len(resp.AvailableModels) != 14 || len(resp.DisabledModels) != 1 {
+		t.Fatalf("Kỳ vọng 14 available và 1 disabled, nhận được: %d / %d", len(resp.AvailableModels), len(resp.DisabledModels))
+	}
+	if resp.DisabledModels[0].ID != "gemini-2.5-flash" {
+		t.Fatalf("Disabled model ID không đúng: %s", resp.DisabledModels[0].ID)
+	}
+
+	// 4. Kích hoạt lại (active-all)
+	payloadActiveAll, _ := json.Marshal(map[string]interface{}{
+		"provider": "antigravity",
+		"action":   "active-all",
+	})
+	reqPostActiveAll := httptest.NewRequest("POST", "/api/models/provider", bytes.NewReader(payloadActiveAll))
+	recPostActiveAll := httptest.NewRecorder()
+	mux.ServeHTTP(recPostActiveAll, reqPostActiveAll)
+
+	recGet3 := httptest.NewRecorder()
+	mux.ServeHTTP(recGet3, reqGet)
+	_ = json.Unmarshal(recGet3.Body.Bytes(), &resp)
+
+	if len(resp.AvailableModels) != 15 || len(resp.DisabledModels) != 0 {
+		t.Fatalf("Sau active-all kỳ vọng 15 available và 0 disabled, nhận được: %d / %d", len(resp.AvailableModels), len(resp.DisabledModels))
+	}
+
+	// 5. Thêm custom model
+	payloadCustom, _ := json.Marshal(map[string]interface{}{
+		"provider":    "antigravity",
+		"customModel": "gemini-3.9-flash",
+	})
+	reqPostCustom := httptest.NewRequest("POST", "/api/models/provider", bytes.NewReader(payloadCustom))
+	recPostCustom := httptest.NewRecorder()
+	mux.ServeHTTP(recPostCustom, reqPostCustom)
+
+	recGet4 := httptest.NewRecorder()
+	mux.ServeHTTP(recGet4, reqGet)
+	_ = json.Unmarshal(recGet4.Body.Bytes(), &resp)
+
+	if len(resp.AvailableModels) != 16 {
+		t.Fatalf("Sau khi thêm custom model kỳ vọng 16 available models, nhận được: %d", len(resp.AvailableModels))
+	}
+}
+

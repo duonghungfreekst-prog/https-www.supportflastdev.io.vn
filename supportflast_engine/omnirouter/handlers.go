@@ -1024,3 +1024,262 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// ProviderModelCaps đặc tả năng lực hỗ trợ của model
+type ProviderModelCaps struct {
+	Thinking bool `json:"thinking,omitempty"`
+	Vision   bool `json:"vision,omitempty"`
+}
+
+// ProviderModelItem biểu diễn model trong Available Models modal
+type ProviderModelItem struct {
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	FullModel string             `json:"fullModel"`
+	Caps      *ProviderModelCaps `json:"caps,omitempty"`
+}
+
+// GetDefaultModelsForProvider trả về 15 model Antigravity hoặc model chuẩn theo provider
+func GetDefaultModelsForProvider(provider string) []ProviderModelItem {
+	p := strings.ToLower(strings.TrimSpace(provider))
+	switch p {
+	case "antigravity", "google", "antigravity-hub":
+		return []ProviderModelItem{
+			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High Thinking)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium Thinking)", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low Thinking)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High Thinking)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium Thinking)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low Thinking)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High Thinking)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro (High Thinking)", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium Thinking)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "gemini-3.1-flash-image", Name: "Gemini 3.1 Flash Image (Vision)", FullModel: "gemini-3.1-flash-image", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+		}
+	case "anthropic":
+		return []ProviderModelItem{
+			{ID: "claude-3-5-sonnet-20241022", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet-20241022", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "claude-3-5-haiku-20241022", Name: "Claude 3.5 Haiku", FullModel: "claude-3-5-haiku-20241022", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "claude-3-opus-20240229", Name: "Claude 3 Opus", FullModel: "claude-3-opus-20240229", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+		}
+	case "openai":
+		return []ProviderModelItem{
+			{ID: "gpt-4o", Name: "GPT-4o", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-4o-mini", Name: "GPT-4o Mini", FullModel: "gpt-4o-mini", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "o1-preview", Name: "o1 Preview", FullModel: "o1-preview", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "o1-mini", Name: "o1 Mini", FullModel: "o1-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+		}
+	default:
+		return []ProviderModelItem{
+			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High Thinking)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium Thinking)", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low Thinking)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High Thinking)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium Thinking)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low Thinking)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High Thinking)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro (High Thinking)", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium Thinking)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "gemini-3.1-flash-image", Name: "Gemini 3.1 Flash Image (Vision)", FullModel: "gemini-3.1-flash-image", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+		}
+	}
+}
+
+// HandleProviderModels phục vụ GET/POST cho endpoint /api/models/provider
+func HandleProviderModels(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		providerId := strings.TrimSpace(r.URL.Query().Get("id"))
+		if providerId == "" {
+			providerId = "antigravity"
+		}
+
+		if r.Method == http.MethodGet {
+			baseModels := GetDefaultModelsForProvider(providerId)
+
+			// Đọc custom models đã thêm
+			var customModels []string
+			if customData, err := GetOmniKV(db, "provider_custom_models", providerId); err == nil && customData != "" {
+				_ = json.Unmarshal([]byte(customData), &customModels)
+			}
+			for _, cm := range customModels {
+				cmTrim := strings.TrimSpace(cm)
+				if cmTrim == "" {
+					continue
+				}
+				exists := false
+				for _, bm := range baseModels {
+					if bm.ID == cmTrim {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					baseModels = append(baseModels, ProviderModelItem{
+						ID:        cmTrim,
+						Name:      cmTrim,
+						FullModel: cmTrim,
+						Caps:      &ProviderModelCaps{Thinking: false, Vision: false},
+					})
+				}
+			}
+
+			// Đọc disabled models
+			disabledMap := make(map[string]bool)
+			var disabledList []string
+			if disData, err := GetOmniKV(db, "provider_disabled_models", providerId); err == nil && disData != "" {
+				_ = json.Unmarshal([]byte(disData), &disabledList)
+				for _, d := range disabledList {
+					disabledMap[d] = true
+				}
+			}
+
+			var available []ProviderModelItem
+			var disabled []ProviderModelItem
+			for _, m := range baseModels {
+				if disabledMap[m.ID] {
+					disabled = append(disabled, m)
+				} else {
+					available = append(available, m)
+				}
+			}
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status":          "ok",
+				"provider":        providerId,
+				"availableModels": available,
+				"disabledModels":  disabled,
+				"total":           len(baseModels),
+			})
+			return
+		}
+
+		if r.Method == http.MethodPost {
+			var payload struct {
+				Provider    string `json:"provider"`
+				ModelID     string `json:"modelId"`
+				Active      *bool  `json:"active"`
+				Action      string `json:"action"`
+				CustomModel string `json:"customModel"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
+				return
+			}
+
+			targetProvider := strings.TrimSpace(payload.Provider)
+			if targetProvider == "" {
+				targetProvider = providerId
+			}
+
+			// Thêm model tùy biến
+			if payload.CustomModel != "" {
+				cleanModel := strings.TrimSpace(payload.CustomModel)
+				var existingCustom []string
+				if val, err := GetOmniKV(db, "provider_custom_models", targetProvider); err == nil && val != "" {
+					_ = json.Unmarshal([]byte(val), &existingCustom)
+				}
+				exists := false
+				for _, em := range existingCustom {
+					if em == cleanModel {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					existingCustom = append(existingCustom, cleanModel)
+					bytesData, _ := json.Marshal(existingCustom)
+					_ = SetOmniKV(db, "provider_custom_models", targetProvider, string(bytesData))
+				}
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": true,
+					"message": fmt.Sprintf("Đã thêm model tùy biến [%s] thành công", cleanModel),
+				})
+				return
+			}
+
+			// Bật tất cả
+			if payload.Action == "active-all" {
+				_ = SetOmniKV(db, "provider_disabled_models", targetProvider, "[]")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": true,
+					"message": "Đã kích hoạt toàn bộ models",
+				})
+				return
+			}
+
+			// Tắt tất cả
+			if payload.Action == "disable-all" {
+				base := GetDefaultModelsForProvider(targetProvider)
+				var allIds []string
+				for _, bm := range base {
+					allIds = append(allIds, bm.ID)
+				}
+				bytesData, _ := json.Marshal(allIds)
+				_ = SetOmniKV(db, "provider_disabled_models", targetProvider, string(bytesData))
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": true,
+					"message": "Đã vô hiệu hóa toàn bộ models",
+				})
+				return
+			}
+
+			// Bật/tắt 1 model đơn lẻ
+			if payload.ModelID != "" && payload.Active != nil {
+				targetModel := strings.TrimSpace(payload.ModelID)
+				var disList []string
+				if val, err := GetOmniKV(db, "provider_disabled_models", targetProvider); err == nil && val != "" {
+					_ = json.Unmarshal([]byte(val), &disList)
+				}
+
+				if *payload.Active {
+					// Kích hoạt: xóa khỏi disabled list
+					var nextList []string
+					for _, d := range disList {
+						if d != targetModel {
+							nextList = append(nextList, d)
+						}
+					}
+					bytesData, _ := json.Marshal(nextList)
+					_ = SetOmniKV(db, "provider_disabled_models", targetProvider, string(bytesData))
+				} else {
+					// Vô hiệu hóa: thêm vào disabled list nếu chưa có
+					found := false
+					for _, d := range disList {
+						if d == targetModel {
+							found = true
+							break
+						}
+					}
+					if !found {
+						disList = append(disList, targetModel)
+						bytesData, _ := json.Marshal(disList)
+						_ = SetOmniKV(db, "provider_disabled_models", targetProvider, string(bytesData))
+					}
+				}
+
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": true,
+					"message": fmt.Sprintf("Đã cập nhật trạng thái model [%s]", targetModel),
+				})
+				return
+			}
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"message": "Không có thay đổi nào",
+			})
+		}
+	}
+}
+

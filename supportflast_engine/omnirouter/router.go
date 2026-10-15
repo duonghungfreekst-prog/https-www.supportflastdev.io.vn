@@ -88,6 +88,13 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/router/providers/toggle", HandleToggleProvider(db))
 	mux.HandleFunc("/api/providers/toggle", HandleToggleProvider(db))
 
+	// 6.0 API Available Models của Provider (/api/models/provider)
+	providerModelsHandler := HandleProviderModels(db)
+	mux.HandleFunc("/api/models/provider", providerModelsHandler)
+	mux.HandleFunc("/api/models/provider/", providerModelsHandler)
+	mux.HandleFunc("/api/router/models/provider", providerModelsHandler)
+	mux.HandleFunc("/api/router/models/provider/", providerModelsHandler)
+
 	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
 	usageHandler := HandleAccountUsage(db)
 	usageStatsHandler := HandleUsageStats(db)

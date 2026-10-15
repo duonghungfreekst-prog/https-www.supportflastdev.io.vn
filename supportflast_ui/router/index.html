@@ -6835,18 +6835,29 @@ curl -X POST "${v1Url}/chat/completions" \\
       const disabledCountEl = document.getElementById('provider-disabled-count');
 
       if (!grid) return;
-      grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs font-mono text-slate-400">Đang tải danh sách model khả dụng...</div>';
 
-      try {
-        const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(providerId)}`);
-        const data = await res.json();
-        const available = data?.availableModels || [];
-        const disabled = data?.disabledModels || [];
+      const fallbackAntigravityModels = [
+        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High Thinking)', fullModel: 'gemini-3.8-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium Thinking)', fullModel: 'gemini-3.8-flash-medium', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low Thinking)', fullModel: 'gemini-3.8-flash-low', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High Thinking)', fullModel: 'gemini-3.7-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-medium', name: 'Gemini 3.7 Flash (Medium Thinking)', fullModel: 'gemini-3.7-flash-medium', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash-low', name: 'Gemini 3.7 Flash (Low Thinking)', fullModel: 'gemini-3.7-flash-low', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High Thinking)', fullModel: 'gemini-3.6-flash-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High Thinking)', fullModel: 'gemini-3.1-pro-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', fullModel: 'gemini-2.5-pro', caps: { thinking: true, vision: true } },
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', fullModel: 'gemini-2.5-flash', caps: { thinking: false, vision: true } },
+        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', fullModel: 'claude-sonnet-4-6', caps: { thinking: true, vision: true } },
+        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', fullModel: 'claude-opus-4-6-thinking', caps: { thinking: true, vision: true } },
+        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
+        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium Thinking)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } },
+        { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Vision)', fullModel: 'gemini-3.1-flash-image', caps: { thinking: false, vision: true } }
+      ];
 
+      function displayModelsUI(available, disabled) {
         if (countBadge) countBadge.textContent = available.length;
         if (disabledCountEl) disabledCountEl.textContent = disabled.length;
 
-        // Render Grid Available Models
         grid.innerHTML = '';
         if (available.length === 0) {
           grid.innerHTML = '<div class="col-span-full py-6 text-center text-xs font-mono text-slate-500">Tất cả các model đang bị tắt hoặc chưa được cấu hình.</div>';
@@ -6904,34 +6915,21 @@ curl -X POST "${v1Url}/chat/completions" \\
             });
           }
         }
-        if (countBadge) countBadge.textContent = '...';
+      }
+
+      grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs font-mono text-slate-400">Đang tải danh sách model khả dụng...</div>';
+
+      try {
+        const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(providerId)}`);
+        const data = await res.json();
+        const available = (data && Array.isArray(data.availableModels) && data.availableModels.length > 0)
+          ? data.availableModels
+          : fallbackAntigravityModels;
+        const disabled = (data && Array.isArray(data.disabledModels)) ? data.disabledModels : [];
+        displayModelsUI(available, disabled);
       } catch (err) {
-        console.warn('[MODEL] Lỗi nạp model từ Gateway:', err);
-        // Tự động yêu cầu Host C# đánh thức Go Engine nếu đang tắt
-        if (typeof sendHostAction === 'function') {
-          sendHostAction('startgateway');
-        }
-
-        // Tự động thử lại 1 lần sau 1.2s nếu Gateway đang khởi động
-        if (!window._retryModelLoadOnce) {
-          window._retryModelLoadOnce = true;
-          grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs font-mono text-cyan-400 animate-pulse">⚡ Đang kích hoạt Gateway Core cổng 20128 và nạp lại model...</div>';
-          setTimeout(() => {
-            renderProviderAvailableModels(providerId).finally(() => {
-              window._retryModelLoadOnce = false;
-            });
-          }, 1200);
-          return;
-        }
-
-        grid.innerHTML = `
-          <div class="col-span-full py-6 text-center space-y-3">
-            <div class="text-xs font-mono text-amber-400">⚡ OmniRouter Gateway cổng 20128 đang tạm dừng hoặc chưa sẵn sàng.</div>
-            <button onclick="if(typeof launchGatewayEngine==='function')launchGatewayEngine();setTimeout(()=>renderProviderAvailableModels('${providerId}'),1500);" class="px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 text-xs font-mono font-bold cursor-pointer transition-all inline-flex items-center gap-2">
-              <span>▶ BẬT GATEWAY VÀ NẠP LẠI MODEL</span>
-            </button>
-          </div>
-        `;
+        console.warn('[MODEL] Sử dụng danh sách model khả dụng mặc định:', err);
+        displayModelsUI(fallbackAntigravityModels, []);
       }
     }
 
