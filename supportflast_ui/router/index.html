@@ -487,48 +487,34 @@
           </div>
           <div class="flex items-center gap-1.5 mt-0.5">
             <span class="text-[11px] text-slate-400 font-mono font-medium">v2.8.5</span>
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981]"></span>
             <span class="text-[10px] text-emerald-400 font-medium">READY</span>
           </div>
         </div>
       </div>
 
       <!-- Navigation Menu -->
-      <nav class="flex-1 overflow-y-auto p-3 space-y-6">
+      <nav class="flex-1 overflow-y-auto p-3 space-y-4">
         
-        <!-- Nhóm: ROUTING & INFRASTRUCTURE -->
+        <!-- Nhóm 1: TRUNG TÂM ĐIỀU KHIỂN CỐT LÕI (7 Tab Luôn Hiện, Thao Tác Trực Tiếp Trên Web) -->
         <div class="space-y-1">
           <div class="px-3 pb-1 text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
-            Hạ Tầng & Định Tuyến
+            Điều Khiển Chính
           </div>
           <div class="space-y-1">
             
-            <!-- Mục 1: MITM Proxy & CLI -->
-            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <!-- Mục 1: Theo dõi hạn mức (TAB MẶC ĐỊNH) -->
+            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
               <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <svg class="w-4 h-4 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>MITM Proxy & CLI</span>
+                <span>Theo Dõi Hạn Mức</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
             </button>
 
-            <!-- Mục 2: Endpoint & Key -->
-            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-                <span>Endpoint & API Key</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-[10px] font-mono text-slate-400">3 Tunnels</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-              </div>
-            </button>
-
-            <!-- Mục 3: Nhà cung cấp -->
+            <!-- Mục 2: Nhà cung cấp -->
             <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -538,19 +524,36 @@
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">129 Hub</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
               </div>
             </button>
 
-            <!-- Mục 4: Combo & Vision Adapter -->
-            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <!-- Mục 3: Endpoint & Key -->
+            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
-                <span>Combo & Vision</span>
+                <span>Endpoint & API Key</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-mono text-slate-400">3 Tunnels</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+              </div>
+            </button>
+
+            <!-- Mục 4: Proxy Pools IP -->
+            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <span>Proxy Pools IP</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="proxy-pool-count-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">0 Active</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+              </div>
             </button>
 
             <!-- Mục 5: Thống kê lưu lượng & Live Topology -->
@@ -561,80 +564,10 @@
                 </svg>
                 <span>Live Topology & Thống Kê</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
             </button>
 
-            <!-- Mục 6: Theo dõi hạn mức (MÀN HÌNH CHÍNH MẶC ĐỊNH KHỚP ẢNH 2) -->
-            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-current" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Theo Dõi Hạn Mức</span>
-              </div>
-              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục 7: Token Optimizer (badge -38%) -->
-            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span>Token Optimizer</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span id="opt-sidebar-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-              </div>
-            </button>
-
-          </div>
-        </div>
-
-        <!-- Nhóm: INTERACTIVE & SYSTEM TOOLS -->
-        <div class="space-y-1">
-          <div class="px-3 pb-1 text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
-            Tương Tác & Hệ Thống
-          </div>
-          <div class="space-y-1">
-            <!-- Mục: Media Providers -->
-            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-                <span>Media & STT</span>
-              </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục: Proxy Pools IP -->
-            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-                <span>Proxy Pools IP</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span id="proxy-pool-count-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">0 Active</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-              </div>
-            </button>
-
-            <!-- Mục: AI Skills Hub -->
-            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
-                <span>AI Skills Hub</span>
-              </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục: Nhật ký Console (Stream logs) -->
+            <!-- Mục 6: Nhật ký Console (Stream logs) -->
             <button onclick="switchTab('console')" id="btn-tab-console" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,10 +575,10 @@
                 </svg>
                 <span>Nhật Ký Console</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
             </button>
 
-            <!-- Mục: Cài đặt hệ thống -->
+            <!-- Mục 7: Cài đặt hệ thống -->
             <button onclick="switchTab('settings')" id="btn-tab-settings" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,48 +587,123 @@
                 </svg>
                 <span>Cài Đặt Hệ Thống</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Nhóm 2: CÔNG CỤ KỸ THUẬT NÂNG CAO (GẬP LẠI MẶC ĐỊNH ĐỂ WEB TINH GỌN, DỄ NHÌN) -->
+        <div class="pt-2 border-t border-white/5 space-y-1">
+          <button id="btn-toggle-advanced-tabs" onclick="toggleAdvancedSidebarTabs()" class="w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer">
+            <div class="flex items-center gap-2">
+              <span class="text-xs">🛠️</span>
+              <span class="text-[11px] font-semibold text-slate-400 group-hover:text-slate-200">Công Cụ Nâng Cao (8)</span>
+            </div>
+            <svg id="icon-advanced-tabs-chevron" class="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <div id="adv-sidebar-tabs-container" class="hidden space-y-1 pl-1 pt-0.5 transition-all">
+            
+            <!-- Mục: MITM Proxy & CLI -->
+            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>MITM Proxy & CLI</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: Combo & Vision Adapter -->
+            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                </svg>
+                <span>Combo & Vision</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: Token Optimizer -->
+            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span>Token Optimizer</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="opt-sidebar-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+              </div>
+            </button>
+
+            <!-- Mục: Media Providers -->
+            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <span>Media & STT</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: AI Skills Hub -->
+            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <span>AI Skills Hub</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
             </button>
 
             <!-- Mục: CLI Tools & MCP -->
-            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <span>CLI Tools & MCP</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span id="cli-tools-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">3 Active</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
               </div>
             </button>
 
             <!-- Mục: Protocol Inspector -->
-            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
                 <span>Protocol Inspector</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-purple-300 bg-purple-950/60 border border-purple-800/40">7 Steps</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
               </div>
             </button>
 
             <!-- Mục: PxPipe Engine -->
-            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn w-full group flex items-center justify-between px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-2.5">
+                <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <span>PxPipe Engine</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">Active</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)] flex-shrink-0"></span>
               </div>
             </button>
 
@@ -798,8 +806,8 @@
             <span id="header-gateway-text" class="text-xs font-mono font-bold text-emerald-400">ONLINE 24/24</span>
           </div>
 
-          <!-- Nút Điều Chỉnh Hiệu Ứng Nền OmniRouter Core -->
-          <div class="relative">
+          <!-- Nút Điều Chỉnh Hiệu Ứng Nền (Ẩn khỏi thanh điều hướng để giao diện tinh gọn, thoáng đãng) -->
+          <div class="relative hidden">
             <button id="btn-toggle-bg-menu" onclick="toggleBgEffectMenu()" class="px-2.5 py-1.5 rounded-xl text-slate-300 hover:text-cyan-300 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 transition-all text-xs font-mono flex items-center gap-1.5 cursor-pointer shadow-sm" title="Tùy chỉnh Hiệu ứng Ảnh Nền OmniRouter">
               <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
               <span class="hidden md:inline text-[11px] font-semibold">Hiệu ứng nền</span>
@@ -862,170 +870,14 @@
         </div>
       </header>
 
-      <!-- ==================== HIỆU ỨNG ẢNH NỀN OMNIROUTER TOPOLOGY ARCHITECTURE ==================== -->
+      <!-- ==================== NỀN TỐI SANG TRỌNG & TỐI GIẢN (DARK MINIMALIST BACKGROUND) ==================== -->
       <div id="nexus-app-bg-layer" class="absolute inset-0 pointer-events-none z-0 overflow-hidden select-none">
-        <!-- 1. Ảnh Nền OmniRouter 3D Architecture Core (Trung tâm kết nối các AI Provider) -->
-        <div id="nexus-bg-image-core" 
-             class="absolute inset-0 bg-center bg-no-repeat bg-contain transition-all duration-700 pointer-events-none"
-             style="background-image: url('omnirouter-topology-dark.png'); opacity: 0.12;">
-        </div>
-
-        <!-- Lớp phủ màn đêm tương phản giúp nền chìm sâu, dịu mắt và tôn card nội dung -->
-        <div class="absolute inset-0 bg-gradient-to-b from-[#030712]/75 via-[#030712]/85 to-[#030712]/95 pointer-events-none"></div>
-
-        <!-- 2. LỚP HIỆU ỨNG ĐỘNG CHO ĐƯỜNG CHẠY VÀ CÁC MODEL (SVG CIRCUIT & MODEL NEON ENGINE) -->
-        <svg id="nexus-bg-fx-svg" viewBox="0 0 1376 768" preserveAspectRatio="xMidYMid meet" class="absolute inset-0 w-full h-full pointer-events-none" style="opacity: 0.45;">
-            <!-- Bộ lọc phát sáng Neon đa tầng tối ưu GPU -->
-            <filter id="bg-glow-neon" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
-              <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur2" />
-              <feMerge>
-                <feMergeNode in="blur2" />
-                <feMergeNode in="blur1" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <filter id="bg-chip-glow" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
-              <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur2" />
-              <feMerge>
-                <feMergeNode in="blur2" />
-                <feMergeNode in="blur1" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-            <!-- Radial Aura cho chip trung tâm -->
-            <radialGradient id="grad-chip-core" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#FF9900" stop-opacity="0.55" />
-              <stop offset="60%" stop-color="#FF5500" stop-opacity="0.25" />
-              <stop offset="100%" stop-color="#FF3300" stop-opacity="0" />
-            </radialGradient>
-          </defs>
-
-          <!-- A. HÀO QUANG VÀ KHỐI LỤC GIÁC TRUNG TÂM OMNIROUTER -->
-          <ellipse cx="679" cy="360" rx="140" ry="110" fill="url(#grad-chip-core)" class="fx-chip-hex" />
-          <polygon points="679,215 795,285 795,435 679,505 563,435 563,285" fill="none" stroke="#FFAE19" stroke-width="2.6" filter="url(#bg-chip-glow)" class="fx-chip-hex" />
-          <polygon points="679,228 782,292 782,428 679,492 576,428 576,292" fill="none" stroke="#FF7700" stroke-width="1.4" stroke-dasharray="6 8" class="fx-circuit-stream-orange" opacity="0.8" />
-
-          <!-- B. CÁC ĐƯỜNG MẠCH CHẠY NĂNG LƯỢNG (CIRCUIT TRACES) & HẠT PHOTON CHUYỂN ĐỘNG -->
-          <!-- 1. Đường nhánh sang trái: Mistral (Ngang hông chip) -->
-          <path d="M 563 370 L 420 370" stroke="#FF7700" stroke-width="2.8" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.95" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.3s" repeatCount="indefinite" path="M 563 370 L 420 370" />
-          </circle>
-
-          <!-- 2. Đường nhánh sang phải: Groq (Ngang hông chip) -->
-          <path d="M 795 370 L 938 370" stroke="#A855F7" stroke-width="2.8" fill="none" class="fx-circuit-stream-purple" filter="url(#bg-glow-neon)" opacity="0.95" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.3s" repeatCount="indefinite" path="M 795 370 L 938 370" />
-          </circle>
-
-          <!-- 3. Chùm đường mạch hướng lên trên: OpenAI, Claude, Gemini -->
-          <path d="M 679 215 L 679 140" stroke="#10B981" stroke-width="2.8" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.9" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.4s" repeatCount="indefinite" path="M 679 215 L 679 140" />
-          </circle>
-
-          <path d="M 590 240 C 560 200, 520 170, 490 145" stroke="#F59E0B" stroke-width="2.8" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.9" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.5s" repeatCount="indefinite" path="M 590 240 C 560 200, 520 170, 490 145" />
-          </circle>
-
-          <path d="M 768 240 C 798 200, 838 170, 867 145" stroke="#00F0FF" stroke-width="2.8" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.9" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.5s" repeatCount="indefinite" path="M 768 240 C 798 200, 838 170, 867 145" />
-          </circle>
-
-          <!-- 4. Đường nhánh xuống trái: DeepSeek -->
-          <path d="M 563 435 C 520 460, 475 485, 436 510" stroke="#00F0FF" stroke-width="2.8" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.95" />
-          <circle r="4" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.5s" repeatCount="indefinite" path="M 563 435 C 520 460, 475 485, 436 510" />
-          </circle>
-
-          <!-- 5. Đường nhánh xuống phải: Cloudflare -->
-          <path d="M 795 435 C 838 460, 883 485, 922 510" stroke="#F59E0B" stroke-width="2.5" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.9" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.5s" repeatCount="indefinite" path="M 795 435 C 838 460, 883 485, 922 510" />
-          </circle>
-
-          <!-- 6. Đường nhánh hướng Cursor & GitHub -->
-          <path d="M 563 300 C 525 270, 485 245, 451 222" stroke="#00F0FF" stroke-width="2.2" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.6s" repeatCount="indefinite" path="M 563 300 C 525 270, 485 245, 451 222" />
-          </circle>
-
-          <path d="M 795 300 C 833 270, 873 245, 907 222" stroke="#F59E0B" stroke-width="2.2" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.7s" repeatCount="indefinite" path="M 795 300 C 833 270, 873 245, 907 222" />
-          </circle>
-
-          <!-- 7. Đường nhánh đáy: Anthropic, MiniMax, Kimi -->
-          <path d="M 590 485 C 555 525, 520 565, 490 600" stroke="#F59E0B" stroke-width="2.2" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.8s" repeatCount="indefinite" path="M 590 485 C 555 525, 520 565, 490 600" />
-          </circle>
-
-          <path d="M 679 505 L 679 600" stroke="#10B981" stroke-width="2.4" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.6s" repeatCount="indefinite" path="M 679 505 L 679 600" />
-          </circle>
-
-          <path d="M 768 485 C 803 525, 838 565, 868 600" stroke="#A855F7" stroke-width="2.2" fill="none" class="fx-circuit-stream-purple" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.7s" repeatCount="indefinite" path="M 768 485 C 803 525, 838 565, 868 600" />
-          </circle>
-
-          <!-- 8. Luồng nối từ màn hình IDE bay sang Mistral -->
-          <path d="M 265 300 C 275 325, 285 350, 296 370" stroke="#FF7700" stroke-width="2.4" fill="none" class="fx-circuit-stream-orange" filter="url(#bg-glow-neon)" opacity="0.85" />
-          <circle r="3.5" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.4s" repeatCount="indefinite" path="M 265 300 C 275 325, 285 350, 296 370" />
-          </circle>
-
-          <!-- 9. Hai vòng cung nối giữa các Tier Tối Ưu bên phải -->
-          <path d="M 1214 200 C 1275 235, 1275 275, 1214 310" stroke="#00F0FF" stroke-width="2.2" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.8" />
-          <circle r="3" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.8s" repeatCount="indefinite" path="M 1214 200 C 1275 235, 1275 275, 1214 310" />
-          </circle>
-
-          <path d="M 1214 440 C 1275 465, 1275 495, 1214 520" stroke="#10B981" stroke-width="2.2" fill="none" class="fx-circuit-stream" filter="url(#bg-glow-neon)" opacity="0.8" />
-          <circle r="3" fill="#FFFFFF" filter="url(#bg-glow-neon)">
-            <animateMotion dur="1.8s" repeatCount="indefinite" path="M 1214 440 C 1275 465, 1275 495, 1214 520" />
-          </circle>
-
-          <!-- C. HIỆU ỨNG THỞ PHÁT QUANG NEON CHO CÁC MODEL CHÍNH (MODEL BREATHING GLOWS) - 100% PIXEL PERFECT -->
-          <!-- Top models: OpenAI, Claude, Gemini -->
-          <rect x="617" y="40" width="124" height="100" rx="18" fill="rgba(16,185,129,0.06)" stroke="#10B981" stroke-width="2" class="fx-model-green" filter="url(#bg-glow-neon)" />
-          <rect x="428" y="45" width="124" height="100" rx="18" fill="rgba(245,158,11,0.06)" stroke="#F59E0B" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-          <rect x="805" y="45" width="124" height="100" rx="18" fill="rgba(56,189,248,0.06)" stroke="#38BDF8" stroke-width="2" class="fx-model-cyan" filter="url(#bg-glow-neon)" />
-
-          <!-- Upper Mid models: Cursor & GitHub -->
-          <rect x="327" y="172" width="124" height="100" rx="18" fill="rgba(0,240,255,0.06)" stroke="#00F0FF" stroke-width="2" class="fx-model-cyan" filter="url(#bg-glow-neon)" />
-          <rect x="907" y="172" width="124" height="100" rx="18" fill="rgba(245,158,11,0.06)" stroke="#F59E0B" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-
-          <!-- Mid models: Mistral & Groq (Ngang hông chip) -->
-          <rect x="296" y="320" width="124" height="100" rx="18" fill="rgba(255,119,0,0.06)" stroke="#FF7700" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-          <rect x="938" y="320" width="124" height="100" rx="18" fill="rgba(236,72,153,0.06)" stroke="#EC4899" stroke-width="2" class="fx-model-purple" filter="url(#bg-glow-neon)" />
-
-          <!-- Lower Mid models: DeepSeek & Cloudflare -->
-          <rect x="312" y="460" width="124" height="100" rx="18" fill="rgba(0,240,255,0.06)" stroke="#00F0FF" stroke-width="2" class="fx-model-cyan" filter="url(#bg-glow-neon)" />
-          <rect x="922" y="460" width="124" height="100" rx="18" fill="rgba(249,115,22,0.06)" stroke="#F97316" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-
-          <!-- Bottom models: Anthropic, MiniMax, Kimi -->
-          <rect x="428" y="600" width="124" height="100" rx="18" fill="rgba(245,158,11,0.06)" stroke="#F59E0B" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-          <rect x="617" y="600" width="124" height="100" rx="18" fill="rgba(16,185,129,0.06)" stroke="#10B981" stroke-width="2" class="fx-model-green" filter="url(#bg-glow-neon)" />
-          <rect x="806" y="600" width="124" height="100" rx="18" fill="rgba(168,85,247,0.06)" stroke="#A855F7" stroke-width="2" class="fx-model-purple" filter="url(#bg-glow-neon)" />
-
-          <!-- IDE Floating Screen Glow (Màn hình code 3D bên trái) -->
-          <rect x="40" y="65" width="225" height="420" rx="20" fill="none" stroke="rgba(0,240,255,0.45)" stroke-width="2" class="fx-model-cyan" filter="url(#bg-glow-neon)" />
-
-          <!-- 3 Tiers Phía Bên Phải: Premium, Balanced, Free -->
-          <rect x="1145" y="95" width="135" height="105" rx="18" fill="rgba(245,158,11,0.06)" stroke="#F59E0B" stroke-width="2" class="fx-model-orange" filter="url(#bg-glow-neon)" />
-          <rect x="1145" y="310" width="135" height="130" rx="18" fill="rgba(0,240,255,0.06)" stroke="#00F0FF" stroke-width="2" class="fx-model-cyan" filter="url(#bg-glow-neon)" />
-          <rect x="1145" y="520" width="135" height="130" rx="18" fill="rgba(16,185,129,0.06)" stroke="#10B981" stroke-width="2" class="fx-model-green" filter="url(#bg-glow-neon)" />
-        </svg>
-
-        <!-- 3. Lớp viền mờ mềm mại quanh 4 cạnh để hòa tự nhiên vào nền Cyber #07090E -->
-        <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 95% 85% at 50% 50%, transparent 65%, #07090E 100%);"></div>
+        <!-- Nền phẳng đen than chì dịu mắt (#060913), tăng tối đa độ tương phản và loại bỏ hoàn toàn khối chói mắt -->
+        <div class="absolute inset-0 bg-[#060913]"></div>
+        
+        <!-- Quầng sáng ambient góc siêu mờ tinh tế (chuẩn Modern Dark UI SaaS) -->
+        <div class="absolute -top-40 -left-40 w-[500px] h-[500px] bg-cyan-500/[0.03] rounded-full blur-[140px] pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-purple-500/[0.03] rounded-full blur-[140px] pointer-events-none"></div>
       </div>
 
       <!-- Nội Dung Cuộn Của Các Tab -->
@@ -2436,7 +2288,7 @@
             <div class="space-y-1.5">
               <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
                 <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#06B6D4]"></span>
                   <span>cmd</span>
                 </span>
                 <div class="flex items-center gap-2">
@@ -2478,8 +2330,8 @@
 
           <!-- 1. Header Banner & Bộ Điều Khiển Chu Kỳ Đếm Toàn Diện -->
           <div class="glass-card cyber-card-glow rounded-2xl p-6 border border-emerald-500/40 space-y-6 relative overflow-hidden">
-            <!-- Dải sáng Cyber Beam quét ngang trên đỉnh card -->
-            <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse"></div>
+            <!-- Dải sáng viền trên của card -->
+            <div class="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
 
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div class="flex items-center gap-3.5">
@@ -4682,8 +4534,29 @@
       }
     }
 
+    // Toggle mở/gập nhóm Công Cụ Nâng Cao trong Sidebar
+    function toggleAdvancedSidebarTabs(forceOpen) {
+      const container = document.getElementById('adv-sidebar-tabs-container');
+      const chevron = document.getElementById('icon-advanced-tabs-chevron');
+      if (!container) return;
+      const isHidden = container.classList.contains('hidden');
+      const shouldOpen = (forceOpen !== undefined) ? forceOpen : isHidden;
+      if (shouldOpen) {
+        container.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      } else {
+        container.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+      }
+    }
+
     // Tab Router Switcher
     function switchTab(tabId) {
+      // Tự động mở nhóm công cụ nâng cao nếu tab được chọn nằm trong nhóm đó
+      const advancedTabs = ['mitm', 'combo', 'optimizer', 'media', 'skills', 'cli-tools', 'translator', 'pxpipe'];
+      if (advancedTabs.includes(tabId)) {
+        toggleAdvancedSidebarTabs(true);
+      }
       // Ẩn tất cả tab contents
       document.querySelectorAll('.tab-content').forEach(el => {
         el.classList.remove('active');
