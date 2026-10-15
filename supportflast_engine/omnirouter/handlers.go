@@ -1503,3 +1503,101 @@ func HandleProviderModels(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// HandleBillingSubscription trả về thông tin thuê bao và Quota chuẩn OpenAI cho Antigravity IDE / Extension
+func HandleBillingSubscription(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		apiKey := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.URL.Query().Get("key"))
+		}
+
+		keyItem, valid := ValidateClientKey(apiKey)
+		quotaLimit := int64(100000)
+		usedRequests := int64(0)
+		totalTokens := int64(0)
+		remaining := int64(100000)
+		expiresAt := ""
+		keyName := "Default Key"
+
+		if valid && keyItem != nil {
+			usedRequests = keyItem.UsedRequests
+			totalTokens = keyItem.TotalTokens
+			expiresAt = keyItem.ExpiresAt
+			keyName = keyItem.Name
+			if keyItem.QuotaLimit > 0 {
+				quotaLimit = keyItem.QuotaLimit
+				remaining = quotaLimit - usedRequests
+				if remaining < 0 {
+					remaining = 0
+				}
+			}
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object":             "billing_subscription",
+			"has_payment_method": true,
+			"canceled":           false,
+			"hard_limit_usd":     1000.0,
+			"soft_limit_usd":     800.0,
+			"system_hard_limit_usd": 1000.0,
+			"access_until":       time.Now().Add(30 * 24 * time.Hour).Unix(),
+			"plan": map[string]interface{}{
+				"title": "SupportFlast Antigravity Enterprise",
+				"id":    "antigravity-enterprise",
+			},
+			"account_name":       keyName,
+			"quota_limit":        quotaLimit,
+			"used_requests":      usedRequests,
+			"remaining_requests": remaining,
+			"total_tokens":       totalTokens,
+			"expires_at":         expiresAt,
+			"status":             "active",
+		})
+	}
+}
+
+// HandleBillingUsage trả về thống kê sử dụng quota chuẩn OpenAI cho Antigravity IDE
+func HandleBillingUsage(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		apiKey := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.URL.Query().Get("key"))
+		}
+
+		keyItem, _ := ValidateClientKey(apiKey)
+		usedRequests := int64(0)
+		totalTokens := int64(0)
+		quotaLimit := int64(100000)
+		remaining := int64(100000)
+
+		if keyItem != nil {
+			usedRequests = keyItem.UsedRequests
+			totalTokens = keyItem.TotalTokens
+			if keyItem.QuotaLimit > 0 {
+				quotaLimit = keyItem.QuotaLimit
+				remaining = quotaLimit - usedRequests
+				if remaining < 0 {
+					remaining = 0
+				}
+			}
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"object":             "list",
+			"daily_costs":        []interface{}{},
+			"total_usage":        usedRequests,
+			"total_tokens":       totalTokens,
+			"quota_limit":        quotaLimit,
+			"remaining_requests": remaining,
+		})
+	}
+}
+

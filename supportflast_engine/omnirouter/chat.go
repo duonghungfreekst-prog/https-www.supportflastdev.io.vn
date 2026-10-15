@@ -40,6 +40,38 @@ func generateUUID() string {
 	return hex.EncodeToString(b)
 }
 
+// attachRateLimitHeaders đính kèm các Header hạn mức Quota chuẩn OpenAI/Antigravity vào HTTP Response
+func attachRateLimitHeaders(w http.ResponseWriter, keyItem *ClientKey) {
+	if keyItem == nil {
+		return
+	}
+	limitReq := int64(100000)
+	remainingReq := int64(100000)
+	if keyItem.QuotaLimit > 0 {
+		limitReq = keyItem.QuotaLimit
+		remainingReq = limitReq - keyItem.UsedRequests - 1
+		if remainingReq < 0 {
+			remainingReq = 0
+		}
+	}
+	resetSec := int64(3600)
+	if keyItem.ExpiresAt != "" {
+		if t, err := time.Parse(time.RFC3339, keyItem.ExpiresAt); err == nil {
+			diff := int64(time.Until(t).Seconds())
+			if diff > 0 {
+				resetSec = diff
+			} else {
+				resetSec = 0
+			}
+		}
+	}
+	w.Header().Set("x-ratelimit-limit-requests", fmt.Sprintf("%d", limitReq))
+	w.Header().Set("x-ratelimit-remaining-requests", fmt.Sprintf("%d", remainingReq))
+	w.Header().Set("x-ratelimit-reset-requests", fmt.Sprintf("%ds", resetSec))
+	w.Header().Set("x-ratelimit-used-requests", fmt.Sprintf("%d", keyItem.UsedRequests+1))
+	w.Header().Set("x-ratelimit-total-tokens", fmt.Sprintf("%d", keyItem.TotalTokens))
+}
+
 // ConvertMessagesToGeminiContents chuyển đổi messages OpenAI sang contents của Gemini
 func ConvertMessagesToGeminiContents(messages []map[string]interface{}) []map[string]interface{} {
 	var contents []map[string]interface{}
@@ -347,6 +379,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 			w.Header().Set("Cache-Control", "no-cache")
 			w.Header().Set("Connection", "keep-alive")
+			attachRateLimitHeaders(w, clientKeyItem)
 			w.WriteHeader(http.StatusOK)
 
 			flusher, isFlusher := w.(http.Flusher)
@@ -454,6 +487,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			}
 
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			attachRateLimitHeaders(w, clientKeyItem)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"id":      chatCmplID,

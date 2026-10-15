@@ -344,7 +344,9 @@ func CreateNewClientKeyWithQuotaAndExpiry(db *sql.DB, name string, domain string
 		name = "Antigravity-Device"
 	}
 	keyStr := GenerateAPIKeyWithDomain(domain)
-	id := fmt.Sprintf("key_%d", time.Now().UnixNano())
+	rb := make([]byte, 4)
+	_, _ = rand.Read(rb)
+	id := fmt.Sprintf("key_%d_%s", time.Now().UnixNano(), hex.EncodeToString(rb))
 	nowTime := time.Now()
 	now := nowTime.Format(time.RFC3339)
 	keyHash := HashString(keyStr)

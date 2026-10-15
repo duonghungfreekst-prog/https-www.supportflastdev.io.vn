@@ -160,6 +160,16 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/v1/models", HandleModels)
 	mux.HandleFunc("/api/v1/models", HandleModels)
 
+	// 10.1 API Billing Subscription & Usage chuẩn OpenAI cho Antigravity IDE / Extension
+	billingSubHandler := HandleBillingSubscription(db)
+	billingUsageHandler := HandleBillingUsage(db)
+	mux.HandleFunc("/v1/dashboard/billing/subscription", billingSubHandler)
+	mux.HandleFunc("/api/v1/dashboard/billing/subscription", billingSubHandler)
+	mux.HandleFunc("/v1/dashboard/billing/usage", billingUsageHandler)
+	mux.HandleFunc("/api/v1/dashboard/billing/usage", billingUsageHandler)
+	mux.HandleFunc("/v1/user/keys", HandleManageKeys(db))
+	mux.HandleFunc("/v1/me", billingSubHandler)
+
 	sttHandler := HandleAudioTranscriptions(db)
 	mux.HandleFunc("/v1/audio/transcriptions", sttHandler)
 	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
