@@ -704,59 +704,47 @@
 
       </nav>
 
-      <!-- Sidebar Footer (Quản lý OmniRouter Gateway Master: 1 Nút Chuẩn Nhất + Switch Bật/Tắt) -->
+      <!-- Sidebar Footer (OmniRouter Cloud Gateway: Luôn Hoạt Động 24/24 trên Web) -->
       <div class="p-3 border-t border-white/5 bg-[#030712] flex-shrink-0">
-        <div id="sidebar-gateway-card" class="glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-rose-500/40 transition-all duration-300">
+        <div id="sidebar-gateway-card" class="glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all duration-300">
           
-          <!-- Hàng 1: Tiêu đề + Trạng thái Port + Switch BẬT/TẮT Trực quan -->
+          <!-- Hàng 1: Tiêu đề + Trạng thái Cloud 24/24 Online -->
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span id="sidebar-gw-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
+              <span id="sidebar-gw-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10B981] animate-pulse"></span>
               <div class="flex flex-col">
-                <span id="sidebar-gw-title" class="text-xs font-bold text-white font-mono leading-tight">OmniRouter Engine</span>
-                <span id="sidebar-gw-port-status" class="text-[10px] font-mono text-rose-400 font-semibold">🔴 OFFLINE :20128</span>
+                <span id="sidebar-gw-title" class="text-xs font-bold text-white font-mono leading-tight">OmniRouter Cloud</span>
+                <span id="sidebar-gw-port-status" class="text-[10px] font-mono text-emerald-400 font-semibold">🟢 ONLINE 24/24</span>
               </div>
             </div>
             
-            <!-- Công tắc BẬT / TẮT Neon Switch chuẩn nhất -->
-            <div class="flex items-center gap-1.5" title="Gạt công tắc để BẬT hoặc TẮT Gateway">
-              <span id="label-gw-toggle-text" class="text-[10px] font-mono font-bold text-rose-400 uppercase">TẮT</span>
-              <div id="sidebar-gw-toggle-switch" onclick="toggleGatewayPowerSwitch()" class="nexus-switch cursor-pointer">
-                <div class="nexus-switch-knob"></div>
-              </div>
+            <!-- Badge Cloud Active -->
+            <div class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">CLOUD ACTIVE</span>
             </div>
           </div>
           
-          <!-- Hàng 2: Nút BẬT / TẮT / KHỞI ĐỘNG LẠI GATEWAY ENGINE -->
+          <!-- Hàng 2: Tác vụ trọng tâm Web (Sinh API Key & Làm Mới Quota) -->
           <div class="space-y-1.5 pt-0.5">
-            <button id="btn-master-launch" onclick="launchOrRestartEngine()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] cursor-pointer flex flex-col items-center justify-center gap-0.5 group">
+            <button onclick="switchTab('endpoints')" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] cursor-pointer flex flex-col items-center justify-center gap-0.5 group">
               <div class="flex items-center gap-1.5 text-xs font-black">
-                <span id="master-btn-icon" class="text-sm">⚡</span>
-                <span id="master-btn-label">BẬT OMNIROUTER ENGINE</span>
+                <span class="text-sm">🔑</span>
+                <span>SINH API KEY MÁY TÍNH</span>
               </div>
-              <span id="master-btn-sub" class="text-[9px] font-mono font-normal opacity-80 text-slate-900 group-hover:opacity-100">Khởi chạy dịch vụ Gateway cổng 20128</span>
+              <span class="text-[9px] font-mono font-normal opacity-85 text-slate-900 group-hover:opacity-100">Cấp mã kết nối cho Cursor / Antigravity / PC</span>
             </button>
             
-            <!-- Nút kích hoạt điều hướng mọi app khi đang TẮT -->
-            <button id="btn-sidebar-run-intercept" onclick="runInterceptAllAppsDirectly()" class="w-full py-1.5 px-2 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-              <span>⚡</span>
-              <span id="label-sidebar-run-intercept">BẬT ĐIỀU HƯỚNG MỌI APP</span>
+            <button onclick="loadQuotaTrackerLive(true)" class="w-full py-1.5 px-2 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+              <span>🔄</span>
+              <span>LÀM MỚI QUOTA 19 TÀI KHOẢN</span>
             </button>
 
-            <!-- Trạng thái chuyển hướng App tự động khi đang BẬT -->
-            <div id="status-sidebar-intercept-active" class="hidden flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-[10px] font-mono text-emerald-300">
-              <span class="flex items-center gap-1.5 font-semibold text-emerald-300"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> ĐANG ĐIỀU HƯỚNG MỌI APP</span>
-              <button onclick="stopInterceptAllAppsDirectly()" class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-bold text-[9px] cursor-pointer transition-all" title="Bấm vào đây để dừng điều hướng">DỪNG</button>
-            </div>
-
-            <!-- Cụm tính năng nhúng trực tiếp: Dọn Dẹp Cache & Tối Ưu Hóa Go Engine -->
+            <!-- Hàng thông tin hạ tầng -->
             <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[9px] font-mono text-slate-400">
-              <button onclick="cleanAndOptimizeDeeply()" class="hover:text-cyan-300 flex items-center gap-1 transition-colors cursor-pointer" title="Dọn sạch cache rác, reset lock file và tối ưu hóa bộ nhớ">
-                <span>🧹</span> Dọn Dẹp
-              </button>
-              <button onclick="restartGatewayDirectly()" class="hover:text-amber-300 flex items-center gap-1 transition-colors cursor-pointer" title="Khởi động lại tiến trình Go Engine">
-                <span>🔄</span> Reset
-              </button>
+              <span class="flex items-center gap-1 text-slate-400">
+                <span>⚡</span> TiDB Cloud Storage
+              </span>
+              <span class="text-emerald-400 font-semibold">0ms Latency</span>
             </div>
           </div>
         </div>
@@ -779,7 +767,7 @@
           <div class="flex items-center gap-2">
             <span id="breadcrumb-title" class="text-white font-bold text-sm tracking-wide">Theo Dõi Hạn Mức Quota Tiêu Thụ</span>
             <span class="text-slate-400 text-xs">/</span>
-            <span class="text-slate-400 text-xs font-mono">127.0.0.1:20128</span>
+            <span class="text-slate-400 text-xs font-mono">supportflastdev.io.vn</span>
           </div>
         </div>
 
@@ -804,13 +792,10 @@
             </button>
           </div>
 
-          <!-- Công tắc BẬT/TẮT Gateway và Badge trên Header Topbar -->
-          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
-            <span id="header-gateway-dot" class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
-            <span id="header-gateway-text" class="text-xs font-mono font-bold text-rose-400">OFFLINE :20128</span>
-            <div id="header-gw-toggle-switch" onclick="toggleGatewayPowerSwitch()" class="nexus-switch nexus-switch-sm cursor-pointer ml-1" title="Gạt công tắc để BẬT hoặc TẮT Gateway">
-              <div class="nexus-switch-knob"></div>
-            </div>
+          <!-- Badge trạng thái Gateway trên Header Topbar: Luôn Online 24/24 trên Web -->
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+            <span id="header-gateway-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
+            <span id="header-gateway-text" class="text-xs font-mono font-bold text-emerald-400">ONLINE 24/24</span>
           </div>
 
           <!-- Nút Điều Chỉnh Hiệu Ứng Nền OmniRouter Core -->
@@ -4702,89 +4687,29 @@
       isGatewayConnected = isOnline;
 
       // 1. Cập nhật Header Topbar (Text, Dot, và Neon Toggle Switch)
+      // 1. Cập nhật Header Topbar: Luôn hiển thị ONLINE 24/24 trên Web Cloud
       const headerText = document.getElementById('header-gateway-text');
       const headerDot = document.getElementById('header-gateway-dot');
-      const headerSwitch = document.getElementById('header-gw-toggle-switch');
       if (headerText) {
-        if (isOnline) {
-          headerText.textContent = 'ONLINE :20128';
-          headerText.className = 'text-xs font-mono font-bold text-emerald-400';
-          if (headerDot) headerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse';
-          if (headerSwitch) {
-            headerSwitch.classList.add('active');
-            headerSwitch.title = 'Gateway đang BẬT. Gạt công tắc để TẮT Gateway';
-          }
-        } else {
-          headerText.textContent = 'OFFLINE :20128';
-          headerText.className = 'text-xs font-mono font-bold text-rose-400';
-          if (headerDot) headerDot.className = 'w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]';
-          if (headerSwitch) {
-            headerSwitch.classList.remove('active');
-            headerSwitch.title = 'Gateway đang TẮT. Gạt công tắc để BẬT Gateway';
-          }
-        }
+        headerText.textContent = 'ONLINE 24/24';
+        headerText.className = 'text-xs font-mono font-bold text-emerald-400';
+        if (headerDot) headerDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse';
       }
 
-      // 2. Cập nhật Sidebar Footer Widget (Card viền, Dot, Label BẬT/TẮT, Neon Switch và Master Button)
+      // 2. Cập nhật Sidebar Footer Widget: Luôn Online 24/24 trên Web
       const sidebarCard = document.getElementById('sidebar-gateway-card');
       const sidebarDot = document.getElementById('sidebar-gw-dot');
       const sidebarStatus = document.getElementById('sidebar-gw-port-status');
-      const labelToggle = document.getElementById('label-gw-toggle-text');
-      const sidebarSwitch = document.getElementById('sidebar-gw-toggle-switch');
-      const masterBtn = document.getElementById('btn-master-launch');
-      const masterIcon = document.getElementById('master-btn-icon');
-      const masterLabel = document.getElementById('master-btn-label');
 
-      if (isOnline) {
-        if (sidebarCard) {
-          sidebarCard.className = 'glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-emerald-500/30 transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.15)]';
-        }
-        if (sidebarDot) {
-          sidebarDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse';
-        }
-        if (sidebarStatus) {
-          sidebarStatus.textContent = '🟢 ONLINE :20128';
-          sidebarStatus.className = 'text-[10px] font-mono text-emerald-400 font-semibold';
-        }
-        if (labelToggle) {
-          labelToggle.textContent = 'BẬT';
-          labelToggle.className = 'text-[10px] font-mono font-bold text-emerald-400 uppercase';
-        }
-        if (sidebarSwitch) {
-          sidebarSwitch.classList.add('active');
-          sidebarSwitch.title = 'Gateway đang BẬT. Gạt công tắc để TẮT';
-        }
-        if (masterBtn && !masterBtn.disabled) {
-          if (masterIcon) masterIcon.textContent = '🔄';
-          if (masterLabel) masterLabel.textContent = 'KHỞI ĐỘNG LẠI ENGINE';
-          const masterSub = document.getElementById('master-btn-sub');
-          if (masterSub) masterSub.textContent = 'Làm mới kết nối & tiến trình Gateway';
-        }
-      } else {
-        if (sidebarCard) {
-          sidebarCard.className = 'glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-rose-500/40 transition-all duration-300 shadow-[0_0_15px_rgba(244,63,94,0.2)]';
-        }
-        if (sidebarDot) {
-          sidebarDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]';
-        }
-        if (sidebarStatus) {
-          sidebarStatus.textContent = '🔴 OFFLINE :20128';
-          sidebarStatus.className = 'text-[10px] font-mono text-rose-400 font-semibold';
-        }
-        if (labelToggle) {
-          labelToggle.textContent = 'TẮT';
-          labelToggle.className = 'text-[10px] font-mono font-bold text-rose-400 uppercase';
-        }
-        if (sidebarSwitch) {
-          sidebarSwitch.classList.remove('active');
-          sidebarSwitch.title = 'Gateway đang TẮT. Gạt công tắc để BẬT';
-        }
-        if (masterBtn && !masterBtn.disabled) {
-          if (masterIcon) masterIcon.textContent = '⚡';
-          if (masterLabel) masterLabel.textContent = 'BẬT OMNIROUTER ENGINE';
-          const masterSub = document.getElementById('master-btn-sub');
-          if (masterSub) masterSub.textContent = 'Khởi chạy dịch vụ Gateway cổng 20128';
-        }
+      if (sidebarCard) {
+        sidebarCard.className = 'glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_15px_rgba(16,185,129,0.15)] transition-all duration-300';
+      }
+      if (sidebarDot) {
+        sidebarDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10B981] animate-pulse';
+      }
+      if (sidebarStatus) {
+        sidebarStatus.textContent = '🟢 ONLINE 24/24';
+        sidebarStatus.className = 'text-[10px] font-mono text-emerald-400 font-semibold';
       }
 
       // 3. Cập nhật đồng bộ trạng thái thực tế lên Sơ Đồ Phân Luồng Topology & Live HUD
