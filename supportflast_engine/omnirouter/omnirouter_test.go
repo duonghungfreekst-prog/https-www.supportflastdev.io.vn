@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -379,6 +380,33 @@ func TestProviderModelsEndpoint(t *testing.T) {
 
 	if len(resp.AvailableModels) != 16 {
 		t.Fatalf("Sau khi thêm custom model kỳ vọng 16 available models, nhận được: %d", len(resp.AvailableModels))
+	}
+}
+
+func TestProviderLogoStaticRoute(t *testing.T) {
+	mux := http.NewServeMux()
+	uiDir := filepath.Join("..", "supportflast_ui")
+	db := setupTestDB(t)
+	defer db.Close()
+
+	RegisterOmniRouterRoutes(mux, db, false, uiDir)
+
+	// 1. Test GET /providers/antigravity.png
+	req := httptest.NewRequest("GET", "/providers/antigravity.png", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Phục vụ tĩnh /providers/antigravity.png thất bại: status=%d", rec.Code)
+	}
+
+	// 2. Test GET /router/providers/claude.png
+	req2 := httptest.NewRequest("GET", "/router/providers/claude.png", nil)
+	rec2 := httptest.NewRecorder()
+	mux.ServeHTTP(rec2, req2)
+
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("Phục vụ tĩnh /router/providers/claude.png thất bại: status=%d", rec2.Code)
 	}
 }
 

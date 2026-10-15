@@ -167,10 +167,32 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
 	mux.HandleFunc("/v1/models/stt", HandleSTTModels)
 
-	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp /providers/
-	providersDir := filepath.Join(uiDir, "providers")
-	if info, err := os.Stat(providersDir); err == nil && info.IsDir() {
-		mux.Handle("/providers/", http.StripPrefix("/providers/", http.FileServer(http.Dir(providersDir))))
+	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp (/providers/ và /router/providers/)
+	providersCandidates := []string{
+		filepath.Join(uiDir, "providers"),
+		filepath.Join(uiDir, "router", "providers"),
+		filepath.Join("..", uiDir, "providers"),
+		filepath.Join("..", uiDir, "router", "providers"),
+		filepath.Join("..", "..", "supportflast_ui", "providers"),
+		filepath.Join("..", "..", "supportflast_ui", "router", "providers"),
+		filepath.Join("..", "supportflast_ui", "providers"),
+		filepath.Join("..", "supportflast_ui", "router", "providers"),
+		filepath.Join("supportflast_ui", "providers"),
+		filepath.Join("supportflast_ui", "router", "providers"),
+		"providers",
+	}
+	var resolvedProvidersDir string
+	for _, cand := range providersCandidates {
+		if info, err := os.Stat(cand); err == nil && info.IsDir() {
+			resolvedProvidersDir = cand
+			break
+		}
+	}
+	if resolvedProvidersDir != "" {
+		fileServer := http.FileServer(http.Dir(resolvedProvidersDir))
+		mux.Handle("/providers/", http.StripPrefix("/providers/", fileServer))
+		mux.Handle("/router/providers/", http.StripPrefix("/router/providers/", fileServer))
+		log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã gắn cổng phục vụ tĩnh 160+ Logo nhà cung cấp từ: %s", resolvedProvidersDir)
 	}
 
 	// 12. Giao diện Web Dashboard Quản lý 9Router với Pre-compressed Gzip & ETag HTTP 304

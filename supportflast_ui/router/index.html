@@ -6403,9 +6403,9 @@ curl -X POST "${v1Url}/chat/completions" \\
     }
 
     // =========================================================================
-    // HỆ THỐNG LOGO / AVATAR NHÀ CUNG CẤP CHUẨN XÁC 100% 9ROUTER (156+ BRAND LOGOS)
+    // HỆ THỐNG LOGO / AVATAR NHÀ CUNG CẤP CHUẨN XÁC 100% 9ROUTER (160+ BRAND LOGOS)
     // =========================================================================
-    function getProviderIconPath(providerId) {
+    function getProviderIconId(providerId) {
       if (!providerId) return '';
       const pid = String(providerId).toLowerCase().trim();
       const aliasMap = {
@@ -6415,6 +6415,7 @@ curl -X POST "${v1Url}/chat/completions" \\
         'minimax-code': 'minimax',
         'minimax-code-global': 'minimax',
         'codebuddy': 'codebuddy-intl',
+        'codebuddy-cn': 'codebuddy-cn',
         'zai-glm': 'glm',
         'opencode-free': 'opencode',
         'opencode-zen': 'opencode',
@@ -6424,15 +6425,46 @@ curl -X POST "${v1Url}/chat/completions" \\
         'custom-openai': 'openai',
         'custom-anthropic': 'anthropic'
       };
-      const finalId = aliasMap[pid] || pid;
-      const ext = ['pi', 'smelt', 'codewhale'].includes(finalId) ? 'svg' : 'png';
+      return aliasMap[pid] || pid;
+    }
+
+    function getProviderIconExt(providerId) {
+      const finalId = getProviderIconId(providerId);
+      return ['pi', 'smelt', 'codewhale'].includes(finalId) ? 'svg' : 'png';
+    }
+
+    function getProviderIconPath(providerId) {
+      const finalId = getProviderIconId(providerId);
+      if (!finalId) return '';
+      const ext = getProviderIconExt(providerId);
       const prefix = (typeof window !== 'undefined' && window.location.protocol === 'file:') ? './providers/' : '/providers/';
       return `${prefix}${finalId}.${ext}`;
+    }
+
+    // Tự động thử luân phiên các đường dẫn /providers/ -> /router/providers/ -> ./providers/ trước khi fallback
+    function handleProviderLogoError(imgEl, finalId, ext) {
+      if (!imgEl) return;
+      const step = parseInt(imgEl.getAttribute('data-try-step') || '0', 10);
+      imgEl.setAttribute('data-try-step', String(step + 1));
+      if (step === 0) {
+        imgEl.src = `/router/providers/${finalId}.${ext}`;
+      } else if (step === 1) {
+        imgEl.src = `./providers/${finalId}.${ext}`;
+      } else if (step === 2) {
+        imgEl.src = `providers/${finalId}.${ext}`;
+      } else {
+        imgEl.style.display = 'none';
+        if (imgEl.nextElementSibling) {
+          imgEl.nextElementSibling.style.display = 'flex';
+        }
+      }
     }
 
     // Tạo HTML khối Logo Avatar sắc nét, hiển thị logo chính hãng của Provider
     function renderProviderLogoAvatarHtml(p, sizeClass = 'w-10 h-10', iconSizeClass = 'text-sm') {
       const pid = p.id || p.provider || '';
+      const finalId = getProviderIconId(pid);
+      const ext = getProviderIconExt(pid);
       const iconPath = getProviderIconPath(pid);
       const color = p.color || 'cyan';
       const fallbackChar = escapeHtml(p.icon || (p.name ? p.name.charAt(0) : 'AI'));
@@ -6444,7 +6476,7 @@ curl -X POST "${v1Url}/chat/completions" \\
                alt="${displayName}" 
                class="w-full h-full object-contain filter drop-shadow transition-transform" 
                loading="lazy"
-               onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+               onerror="handleProviderLogoError(this, '${finalId}', '${ext}')" />
           <div class="hidden absolute inset-0 rounded-xl bg-${color}-500/10 border border-${color}-500/30 items-center justify-center font-bold text-${color}-400 ${iconSizeClass} font-mono">
             ${fallbackChar}
           </div>
@@ -6604,12 +6636,14 @@ curl -X POST "${v1Url}/chat/completions" \\
       const modalBadge = document.getElementById('provider-detail-modal-badge');
       const accountsCountBadge = document.getElementById('provider-accounts-count-badge');
       if (modalIcon) {
+        const finalId = getProviderIconId(pConfig.id);
+        const ext = getProviderIconExt(pConfig.id);
         modalIcon.className = 'w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 p-1.5 shadow-sm';
         modalIcon.innerHTML = `
           <img src="${getProviderIconPath(pConfig.id)}" 
                alt="${escapeHtml(pConfig.name || pConfig.id)}" 
                class="w-full h-full object-contain filter drop-shadow" 
-               onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" />
+               onerror="handleProviderLogoError(this, '${finalId}', '${ext}')" />
           <div class="hidden w-full h-full rounded-lg bg-${pConfig.color || 'cyan'}-500/10 border border-${pConfig.color || 'cyan'}-500/30 items-center justify-center font-bold text-${pConfig.color || 'cyan'}-400 text-sm font-mono">
             ${escapeHtml(pConfig.icon || (pConfig.name ? pConfig.name.charAt(0) : 'AI'))}
           </div>
