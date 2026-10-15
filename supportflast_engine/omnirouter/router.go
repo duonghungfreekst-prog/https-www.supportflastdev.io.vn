@@ -38,13 +38,30 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/router/keys/", HandleManageKeys(db))
 	mux.HandleFunc("/api/router/keys/toggle", HandleToggleKey(db))
 
-	// 6. API Danh sách tài khoản AI & Tương tác
-	mux.HandleFunc("/api/router/providers", HandleListProviders(db))
+	// 6. API Danh sách tài khoản AI & Tương tác (Hỗ trợ cả dạng /api/providers và /api/router/providers)
+	providersHandler := HandleListProviders(db)
+	mux.HandleFunc("/api/providers", providersHandler)
+	mux.HandleFunc("/api/providers/", providersHandler)
+	mux.HandleFunc("/api/router/providers", providersHandler)
 	mux.HandleFunc("/api/router/providers/toggle", HandleToggleProvider(db))
+	mux.HandleFunc("/api/providers/toggle", HandleToggleProvider(db))
+
+	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id})
+	usageHandler := HandleAccountUsage(db)
+	mux.HandleFunc("/api/usage/", usageHandler)
+	mux.HandleFunc("/api/usage", usageHandler)
+
+	// 6.2 API Proxy Pools (/api/proxy-pools)
+	proxyPoolsHandler := HandleProxyPools(db)
+	mux.HandleFunc("/api/proxy-pools", proxyPoolsHandler)
+	mux.HandleFunc("/api/proxy-pools/", proxyPoolsHandler)
 	mux.HandleFunc("/api/router/proxy/switch", HandleSwitchProxy(db))
+	mux.HandleFunc("/api/proxy-pools/switch", HandleSwitchProxy(db))
 
 	// 7. API Live Telemetry Logs qua SSE
 	mux.HandleFunc("/api/router/logs/stream", HandleLogStream)
+	mux.HandleFunc("/api/realtime/stream-logs", HandleLogStream)
+	mux.HandleFunc("/api/translator/console-logs/stream", HandleLogStream)
 
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
 	mux.HandleFunc("/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
@@ -75,6 +92,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://challenges.cloudflare.com data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
 		if _, err := os.Stat(routerUIFile); err == nil {
 			http.ServeFile(w, r, routerUIFile)
 			return
