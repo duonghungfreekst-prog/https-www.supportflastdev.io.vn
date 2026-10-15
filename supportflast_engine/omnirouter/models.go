@@ -27,6 +27,9 @@ type ClientKey struct {
 	KeyHash       string `json:"keyHash,omitempty"`
 	UsedRequests  int64  `json:"usedRequests"`
 	TotalTokens   int64  `json:"totalTokens"`
+	QuotaLimit    int64  `json:"quotaLimit"`
+	ExpiresAt     string `json:"expiresAt"`
+	DurationHours int    `json:"durationHours"`
 	IsActive      int    `json:"isActive"`
 	CreatedAt     string `json:"createdAt"`
 	LastUsedAt    string `json:"lastUsedAt"`

@@ -164,12 +164,52 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		authHeader := r.Header.Get("Authorization")
 		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 		apiKey = strings.TrimSpace(apiKey)
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
 
 		var clientKeyItem *ClientKey
 		if apiKey != "" {
-			k, ok := ValidateClientKey(apiKey)
-			if ok {
-				clientKeyItem = k
+			item, status, errMsg := CheckClientKeyStatus(apiKey)
+			switch status {
+			case "EXPIRED":
+				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã hết hạn: %s", errMsg)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]string{
+						"message": errMsg,
+						"type":    "quota_error",
+						"code":    "key_expired",
+					},
+				})
+				return
+			case "QUOTA_EXCEEDED":
+				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã vượt quá hạn mức Quota: %s", errMsg)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]string{
+						"message": errMsg,
+						"type":    "quota_error",
+						"code":    "quota_exceeded",
+					},
+				})
+				return
+			case "INACTIVE":
+				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã bị vô hiệu hóa")
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]string{
+						"message": "API Key đã bị tạm khóa bởi quản trị viên",
+						"type":    "auth_error",
+						"code":    "key_inactive",
+					},
+				})
+				return
+			case "OK":
+				clientKeyItem = item
 			}
 		}
 

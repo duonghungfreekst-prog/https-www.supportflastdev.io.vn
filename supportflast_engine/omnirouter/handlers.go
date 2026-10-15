@@ -1,10 +1,10 @@
 package omnirouter
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -52,8 +52,12 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 
 		case http.MethodPost:
 			var body struct {
-				Name   string `json:"name"`
-				Domain string `json:"domain"`
+				Name          string      `json:"name"`
+				Domain        string      `json:"domain"`
+				QuotaLimit    interface{} `json:"quotaLimit"`
+				Quota         interface{} `json:"quota"`
+				DurationHours interface{} `json:"durationHours"`
+				Hours         interface{} `json:"hours"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 
@@ -76,19 +80,76 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 				domain = DefaultDomain
 			}
 
-			newKey, err := CreateNewClientKeyWithDomain(db, name, domain)
+			// Parse QuotaLimit (số lượng request tối đa)
+			parseNum := func(v interface{}) int64 {
+				if v == nil {
+					return 0
+				}
+				switch val := v.(type) {
+				case float64:
+					return int64(val)
+				case int:
+					return int64(val)
+				case int64:
+					return val
+				case string:
+					var p int64
+					_, _ = fmt.Sscanf(strings.TrimSpace(val), "%d", &p)
+					return p
+				default:
+					return 0
+				}
+			}
+
+			var quotaLimit int64
+			if body.QuotaLimit != nil {
+				quotaLimit = parseNum(body.QuotaLimit)
+			} else if body.Quota != nil {
+				quotaLimit = parseNum(body.Quota)
+			}
+			if qStr := r.URL.Query().Get("quota"); qStr != "" && quotaLimit == 0 {
+				quotaLimit = parseNum(qStr)
+			}
+			if qStr := r.URL.Query().Get("quotaLimit"); qStr != "" && quotaLimit == 0 {
+				quotaLimit = parseNum(qStr)
+			}
+			if quotaLimit < 0 {
+				quotaLimit = 0
+			}
+
+			// Parse DurationHours (số giờ hiệu lực)
+			var durationHours int
+			if body.DurationHours != nil {
+				durationHours = int(parseNum(body.DurationHours))
+			} else if body.Hours != nil {
+				durationHours = int(parseNum(body.Hours))
+			}
+			if hStr := r.URL.Query().Get("hours"); hStr != "" && durationHours == 0 {
+				durationHours = int(parseNum(hStr))
+			}
+			if hStr := r.URL.Query().Get("durationHours"); hStr != "" && durationHours == 0 {
+				durationHours = int(parseNum(hStr))
+			}
+			if durationHours < 0 {
+				durationHours = 0
+			}
+
+			newKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, name, domain, quotaLimit, durationHours)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
 				return
 			}
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": true,
-				"key":     newKey.Key,
-				"name":    newKey.Name,
-				"id":      newKey.ID,
-				"domain":  domain,
-				"data":    newKey,
-				"message": "Đã sinh API Key chứa tên miền web thành công",
+				"success":       true,
+				"key":           newKey.Key,
+				"name":          newKey.Name,
+				"id":            newKey.ID,
+				"domain":        domain,
+				"quotaLimit":    newKey.QuotaLimit,
+				"expiresAt":     newKey.ExpiresAt,
+				"durationHours": newKey.DurationHours,
+				"data":          newKey,
+				"message":       "Đã sinh API Key chứa tên miền web, hạn mức quota và thời hạn theo giờ thành công",
 			})
 
 		case http.MethodPut:
@@ -446,12 +507,25 @@ func formatK(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// HandleClientQuotaCLI trả về Ping DNS và bảng thống kê hạn mức Quota trực tiếp cho Terminal / CMD / cURL
+// maskAPIKey helper ẩn bớt ký tự API key an toàn
+func maskAPIKey(k string) string {
+	if len(k) <= 12 {
+		return "sk-***"
+	}
+	firstPart := k
+	if len(firstPart) > 16 {
+		firstPart = firstPart[:12]
+	}
+	lastPart := k[len(k)-4:]
+	return firstPart + "..." + lastPart
+}
+
+// HandleClientQuotaCLI trả về Ping DNS, hạn mức Quota đã dùng của API Key và danh sách các API Keys đã tạo cho Terminal / CMD / cURL
 func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// 1. Lấy API Key
+		// 1. Lấy API Key từ Header hoặc Query Param
 		clientKey := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 		if clientKey == "" {
 			clientKey = strings.TrimSpace(r.Header.Get("x-api-key"))
@@ -491,7 +565,7 @@ if %%errorlevel%% equ 0 (
 ) else (
     echo [DNS] Canh bao: Khong ping duoc %s (co the do firewall/ICMP bi chan).
 )
-echo [2/2] Dang tai danh sach han muc Quota cac tai khoan AI tu Gateway...
+echo [2/2] Dang tai thong tin Quota va API Keys tu Gateway...
 echo.
 curl -s "%s/api/v1/client/quota?key=%s"
 echo.
@@ -501,87 +575,91 @@ pause
 			return
 		}
 
-		// Truy vấn danh sách tài khoản
-		providers, err := GetAllProviders(db)
-		if err != nil || len(providers) == 0 {
-			providers = GetCachedActiveProviders()
+		// 2. Lấy danh sách API Keys đã tạo trên hệ thống (ẨN HOÀN TOÀN TÀI KHOẢN EMAIL BACKEND)
+		allKeys, err := ListAllClientKeys(db)
+		if err != nil {
+			allKeys = []ClientKey{}
 		}
 
-		activeCount := 0
-		type AccountSummary struct {
-			Index    int    `json:"index"`
-			Email    string `json:"email"`
-			Gemini5h string `json:"gemini_5h"`
-			Claude5h string `json:"claude_5h"`
-			Weekly   string `json:"weekly"`
-			Status   string `json:"status"`
-			Proxy    string `json:"proxy"`
+		type KeySummary struct {
+			Index        int    `json:"index"`
+			Name         string `json:"name"`
+			MaskedKey    string `json:"masked_key"`
+			UsedRequests int64  `json:"used_requests"`
+			QuotaLimit   int64  `json:"quota_limit"`
+			QuotaStr     string `json:"quota_str"`
+			TotalTokens  int64  `json:"total_tokens"`
+			ExpiresAt    string `json:"expires_at"`
+			ExpiryStr    string `json:"expiry_str"`
+			Status       string `json:"status"`
+			IsActive     int    `json:"is_active"`
 		}
-		var summaries []AccountSummary
 
-		for idx, p := range providers {
-			if p.IsActive == 1 {
-				activeCount++
+		var summaries []KeySummary
+		var currentKeySummary *KeySummary
+		now := time.Now()
+
+		for idx, k := range allKeys {
+			st := "HOẠT ĐỘNG"
+			if k.IsActive != 1 {
+				st = "TẠM KHÓA"
 			}
-			var dataMap map[string]interface{}
-			_ = json.Unmarshal(p.Data, &dataMap)
-			quotas, _ := dataMap["quotas"].(map[string]interface{})
 
-			g5h := "Còn 936/1k (94%)"
-			c5h := "Còn 1000/1k (100%)"
-			wk := "Còn 944/1k (94%)"
-
-			if quotas != nil {
-				if gSess, ok := quotas["gemini_session"].(map[string]interface{}); ok {
-					rem, _ := gSess["remainingPercentage"].(float64)
-					tot := 1000
-					if t, ok := gSess["total"].(float64); ok && t > 0 {
-						tot = int(t)
-					}
-					remCount := int(math.Round(float64(tot) * rem / 100.0))
-					g5h = fmt.Sprintf("Còn %d/%s (%d%%)", remCount, formatK(tot), int(math.Round(rem)))
-				}
-				if cSess, ok := quotas["claude_gpt_session"].(map[string]interface{}); ok {
-					rem, _ := cSess["remainingPercentage"].(float64)
-					tot := 1000
-					if t, ok := cSess["total"].(float64); ok && t > 0 {
-						tot = int(t)
-					}
-					remCount := int(math.Round(float64(tot) * rem / 100.0))
-					c5h = fmt.Sprintf("Còn %d/%s (%d%%)", remCount, formatK(tot), int(math.Round(rem)))
-				}
-				if gWk, ok := quotas["gemini_weekly"].(map[string]interface{}); ok {
-					rem, _ := gWk["remainingPercentage"].(float64)
-					tot := 1000
-					if t, ok := gWk["total"].(float64); ok && t > 0 {
-						tot = int(t)
-					}
-					remCount := int(math.Round(float64(tot) * rem / 100.0))
-					wk = fmt.Sprintf("Còn %d/%s (%d%%)", remCount, formatK(tot), int(math.Round(rem)))
+			// Tính chuỗi Quota
+			quotaStr := fmt.Sprintf("%d req (Vô hạn)", k.UsedRequests)
+			if k.QuotaLimit > 0 {
+				pct := float64(k.UsedRequests) * 100.0 / float64(k.QuotaLimit)
+				quotaStr = fmt.Sprintf("%d/%d req (%.1f%%)", k.UsedRequests, k.QuotaLimit, pct)
+				if k.UsedRequests >= k.QuotaLimit && st == "HOẠT ĐỘNG" {
+					st = "HẾT QUOTA"
 				}
 			}
 
-			st := "BẬT"
-			if p.IsActive != 1 {
-				st = "TẮT"
+			// Tính chuỗi Thời hạn
+			expiryStr := "Vĩnh viễn"
+			if k.ExpiresAt != "" {
+				if t, err := time.Parse(time.RFC3339, k.ExpiresAt); err == nil {
+					if now.After(t) {
+						expiryStr = fmt.Sprintf("Hết hạn (%s)", t.Format("02/01 15:04"))
+						if st == "HOẠT ĐỘNG" {
+							st = "HẾT HẠN"
+						}
+					} else {
+						remain := time.Until(t)
+						hours := int(remain.Hours())
+						mins := int(remain.Minutes()) % 60
+						if hours > 24 {
+							days := hours / 24
+							hRem := hours % 24
+							expiryStr = fmt.Sprintf("Còn %dd%dh (%s)", days, hRem, t.Format("02/01 15:04"))
+						} else if hours > 0 {
+							expiryStr = fmt.Sprintf("Còn %dh%dm (%s)", hours, mins, t.Format("15:04"))
+						} else {
+							expiryStr = fmt.Sprintf("Còn %dm (%s)", mins, t.Format("15:04"))
+						}
+					}
+				}
 			}
-			email := p.Email
-			if email == "" {
-				email = p.Name
+
+			item := KeySummary{
+				Index:        idx + 1,
+				Name:         k.Name,
+				MaskedKey:    maskAPIKey(k.Key),
+				UsedRequests: k.UsedRequests,
+				QuotaLimit:   k.QuotaLimit,
+				QuotaStr:     quotaStr,
+				TotalTokens:  k.TotalTokens,
+				ExpiresAt:    k.ExpiresAt,
+				ExpiryStr:    expiryStr,
+				Status:       st,
+				IsActive:     k.IsActive,
 			}
-			proxyStr, _ := dataMap["proxyUrl"].(string)
-			if proxyStr == "" {
-				proxyStr, _ = dataMap["proxy"].(string)
+			summaries = append(summaries, item)
+
+			// Kiểm tra nếu đây là key mà client đang gọi đến
+			if clientKey != "" && (k.Key == clientKey || subtle.ConstantTimeCompare([]byte(k.Key), []byte(clientKey)) == 1) {
+				currentKeySummary = &item
 			}
-			summaries = append(summaries, AccountSummary{
-				Index:    idx + 1,
-				Email:    email,
-				Gemini5h: g5h,
-				Claude5h: c5h,
-				Weekly:   wk,
-				Status:   st,
-				Proxy:    proxyStr,
-			})
 		}
 
 		elapsed := time.Since(start).Milliseconds()
@@ -595,35 +673,58 @@ pause
 				"domain":          effectiveDomain,
 				"gateway_url":     gatewayURL,
 				"ping_latency_ms": elapsed,
-				"total_accounts":  len(providers),
-				"active_accounts": activeCount,
-				"accounts":        summaries,
+				"current_key":     currentKeySummary,
+				"created_keys":    summaries,
+				"total_keys":      len(summaries),
 			})
 			return
 		}
 
-		// Trả về bảng Text ASCII Console cho Terminal / CMD / cURL
+		// Trả về bảng Text ASCII Console cho Terminal / CMD / cURL (TUYỆT ĐỐI ẨN TÀI KHOẢN EMAIL)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		var sb strings.Builder
-		sb.WriteString("========================================================================================\n")
-		sb.WriteString(fmt.Sprintf("   SUPPORTFLAST GATEWAY • PING & QUOTA CLI (%s)\n", effectiveDomain))
-		sb.WriteString("========================================================================================\n")
+		sb.WriteString("========================================================================================================\n")
+		sb.WriteString(fmt.Sprintf("   SUPPORTFLAST GATEWAY • PING & API KEY QUOTA CLI (%s)\n", effectiveDomain))
+		sb.WriteString("========================================================================================================\n")
 		sb.WriteString(fmt.Sprintf("[DNS Domain]  : %s -> ONLINE (HTTPS / Port 443)\n", effectiveDomain))
 		sb.WriteString(fmt.Sprintf("[Ping Latency]: %dms (Phan hoi may chu Gateway)\n", elapsed))
-		sb.WriteString(fmt.Sprintf("[Ha Tang]     : %d/%d Tai Khoan Dang Hoat Dong • TiDB Cloud Storage\n", activeCount, len(providers)))
-		sb.WriteString("----------------------------------------------------------------------------------------\n")
-		sb.WriteString(fmt.Sprintf("%-3s  %-30s  %-18s  %-18s  %-8s\n", "#", "TAI KHOAN (EMAIL)", "GEMINI (5h)", "CLAUDE (5h)", "TRANG THAI"))
-		sb.WriteString("----------------------------------------------------------------------------------------\n")
-		for _, acc := range summaries {
-			mail := acc.Email
-			if len(mail) > 30 {
-				mail = mail[:27] + "..."
-			}
-			sb.WriteString(fmt.Sprintf("%02d.  %-30s  %-18s  %-18s  %-8s\n", acc.Index, mail, acc.Gemini5h, acc.Claude5h, acc.Status))
+		sb.WriteString(fmt.Sprintf("[TiDB Cloud]  : Dong bo phan tan • Quan ly %d API Keys da tao\n", len(summaries)))
+
+		// Khối thông tin API Key hiện tại
+		if currentKeySummary != nil {
+			sb.WriteString("--------------------------------------------------------------------------------------------------------\n")
+			sb.WriteString(fmt.Sprintf("[Key Dang Dung]: %s (%s)\n", currentKeySummary.MaskedKey, currentKeySummary.Name))
+			sb.WriteString(fmt.Sprintf("[Quota Da Dung]: %s\n", currentKeySummary.QuotaStr))
+			sb.WriteString(fmt.Sprintf("[Tong Tokens]  : %d tokens\n", currentKeySummary.TotalTokens))
+			sb.WriteString(fmt.Sprintf("[Thoi Han]     : %s\n", currentKeySummary.ExpiryStr))
+			sb.WriteString(fmt.Sprintf("[Trang Thai]   : %s\n", currentKeySummary.Status))
+		} else if clientKey != "" {
+			sb.WriteString("--------------------------------------------------------------------------------------------------------\n")
+			sb.WriteString(fmt.Sprintf("[Key Dang Dung]: %s -> (Khong tim thay trong CSDL hoac da bi xoa)\n", maskAPIKey(clientKey)))
 		}
-		sb.WriteString("========================================================================================\n")
-		sb.WriteString(fmt.Sprintf("Meo: Dung Base URL: %s/v1 | API Key: %s\n", gatewayURL, clientKey))
-		sb.WriteString("========================================================================================\n")
+
+		// Bảng danh sách các API Keys đã tạo ra
+		sb.WriteString("--------------------------------------------------------------------------------------------------------\n")
+		sb.WriteString("DANH SACH API KEYS DA TAO TREN HE THONG:\n")
+		sb.WriteString("--------------------------------------------------------------------------------------------------------\n")
+		sb.WriteString(fmt.Sprintf("%-3s  %-24s  %-20s  %-20s  %-22s  %-10s\n", "#", "TEN API KEY", "MA KEY (MASKED)", "QUOTA DA DUNG", "THOI HAN / HET HAN", "TRANG THAI"))
+		sb.WriteString("--------------------------------------------------------------------------------------------------------\n")
+
+		if len(summaries) == 0 {
+			sb.WriteString("Chua co API Key nao duoc tao. Hay vao Web de tao API Key moi!\n")
+		} else {
+			for _, k := range summaries {
+				name := k.Name
+				if len(name) > 24 {
+					name = name[:21] + "..."
+				}
+				sb.WriteString(fmt.Sprintf("%02d.  %-24s  %-20s  %-20s  %-22s  %-10s\n", k.Index, name, k.MaskedKey, k.QuotaStr, k.ExpiryStr, k.Status))
+			}
+		}
+
+		sb.WriteString("========================================================================================================\n")
+		sb.WriteString(fmt.Sprintf("Meo: Base URL: %s/v1 | Header: Authorization: Bearer <API_KEY>\n", gatewayURL))
+		sb.WriteString("========================================================================================================\n")
 
 		_, _ = w.Write([]byte(sb.String()))
 	}

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -253,8 +254,11 @@ func TestClientQuotaCLIEndpoint(t *testing.T) {
 	if !strings.Contains(output, "SUPPORTFLAST GATEWAY") || !strings.Contains(output, "DNS Domain") {
 		t.Fatalf("Output không chứa tiêu đề CLI: %s", output)
 	}
-	if !strings.Contains(output, "GEMINI (5h)") {
-		t.Fatalf("Output thiếu cột GEMINI (5h): %s", output)
+	if !strings.Contains(output, "DANH SACH API KEYS DA TAO") || !strings.Contains(output, "QUOTA DA DUNG") {
+		t.Fatalf("Output thiếu bảng API Keys và Quota đã dùng: %s", output)
+	}
+	if !strings.Contains(output, "Key Dang Dung") {
+		t.Fatalf("Output thiếu khối thông tin Key Dang Dung: %s", output)
 	}
 
 	// 2. Test JSON format
@@ -408,6 +412,77 @@ func TestProviderLogoStaticRoute(t *testing.T) {
 
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("Phục vụ tĩnh /router/providers/claude.png thất bại: status=%d", rec2.Code)
+	}
+}
+
+func TestClientKeyHourlyAndQuotaLimit(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Tạo Key có hạn mức Quota = 2 và thời hạn 1 giờ
+	key, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Quota-Key", "supportflastdev.io.vn", 2, 1)
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+	if key.QuotaLimit != 2 || key.DurationHours != 1 || key.ExpiresAt == "" {
+		t.Fatalf("Key khởi tạo không đúng tham số: %+v", key)
+	}
+
+	// Lần đầu kiểm tra: hợp lệ
+	_, valid := ValidateClientKey(key.Key)
+	if !valid {
+		t.Fatalf("Kỳ vọng key mới tạo hợp lệ")
+	}
+
+	// Giả lập dùng 2 requests -> chạm hạn mức
+	RecordKeyUsageAsync(db, key.Key, 2, 100)
+	time.Sleep(50 * time.Millisecond) // chờ async ghi nhận
+
+	// Kiểm tra lại: phải bị từ chối do chạm quota
+	_, status, errMsg := CheckClientKeyStatus(key.Key)
+	if status != "QUOTA_EXCEEDED" {
+		t.Fatalf("Kỳ vọng QUOTA_EXCEEDED, nhận được: %s (%s)", status, errMsg)
+	}
+	_, validAfterQuota := ValidateClientKey(key.Key)
+	if validAfterQuota {
+		t.Fatalf("Kỳ vọng ValidateClientKey trả về false khi đã vượt quota")
+	}
+
+	// 2. Tạo Key hết hạn thời gian
+	pastTime := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
+	expiredKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Expired-Key", "supportflastdev.io.vn", 0, 0)
+	if err != nil {
+		t.Fatalf("Tạo expired key thất bại: %v", err)
+	}
+	_, _ = db.Exec("UPDATE omni_client_keys SET expires_at = ? WHERE id = ?", pastTime, expiredKey.ID)
+	RefreshKeyCache(db)
+
+	_, expStatus, expErrMsg := CheckClientKeyStatus(expiredKey.Key)
+	if expStatus != "EXPIRED" {
+		t.Fatalf("Kỳ vọng EXPIRED, nhận được: %s (%s)", expStatus, expErrMsg)
+	}
+	_, expValid := ValidateClientKey(expiredKey.Key)
+	if expValid {
+		t.Fatalf("Kỳ vọng ValidateClientKey trả về false khi key đã hết hạn theo giờ")
+	}
+
+	// 3. Test HTTP POST /api/router/keys tạo key theo giờ và quota
+	handler := HandleManageKeys(db)
+	postBody := `{"name":"Device-Hourly","quotaLimit":100,"durationHours":48}`
+	req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(postBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /api/router/keys thất bại: %d - %s", rec.Code, rec.Body.String())
+	}
+	var res map[string]interface{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("Unmarshal response thất bại: %v", err)
+	}
+	if res["quotaLimit"] != float64(100) || res["durationHours"] != float64(48) {
+		t.Fatalf("Response không chứa đúng quotaLimit hoặc durationHours: %+v", res)
 	}
 }
 

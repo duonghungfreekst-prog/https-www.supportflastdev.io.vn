@@ -1484,8 +1484,8 @@
                   <tr class="border-b border-white/10 text-slate-400 font-mono">
                     <th class="py-3 px-3">TÊN KHÓA / NHÃN</th>
                     <th class="py-3 px-3">MÃ KHÓA (KEY HASH)</th>
-                    <th class="py-3 px-3">HẠN MỨC QUOTA</th>
-                    <th class="py-3 px-3">NGÀY TẠO</th>
+                    <th class="py-3 px-3">QUOTA (ĐÃ DÙNG / GIỚI HẠN)</th>
+                    <th class="py-3 px-3">THỜI HẠN HIỆU LỰC</th>
                     <th class="py-3 px-3">TRẠNG THÁI</th>
                     <th class="py-3 px-3 text-right">THAO TÁC</th>
                   </tr>
@@ -3832,7 +3832,7 @@
     </div>
   </div>
 
-  <!-- 2. MODAL TẠO API KEY MỚI -->
+  <!-- 2. MODAL TẠO API KEY MỚI (HỖ TRỢ THEO GIỜ & THEO LƯỢNG QUOTA) -->
   <div id="modal-create-key" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
     <div class="glass-card rounded-2xl border border-cyan-500/40 p-6 max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.3)] space-y-4">
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
@@ -3852,15 +3852,55 @@
           <input type="text" id="new-key-domain" value="supportflastdev.io.vn" class="w-full px-3 py-2 rounded-xl bg-black/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-400">
           <span class="text-[10px] text-slate-400">Key sinh ra sẽ có dạng: <span class="text-emerald-300 font-mono">sk-supportflastdev.io.vn-xxxxxxxx</span></span>
         </div>
+
+        <!-- 1. Cấu hình thời hạn hiệu lực theo GIỜ -->
         <div class="space-y-1">
-          <label class="text-xs font-mono text-slate-400">Hạn Mức Chi Tiêu (USD/Tháng):</label>
-          <input type="number" id="new-key-quota" value="50" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500/50">
+          <label class="text-xs font-mono text-amber-300 font-bold flex items-center gap-1.5">
+            <span>⏳ Thời Hạn Hiệu Lực (Theo Giờ):</span>
+          </label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <select id="new-key-hours-preset" onchange="onHoursPresetChange(this.value)" class="col-span-2 px-2.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-amber-400 font-sans cursor-pointer">
+              <option value="0">Vĩnh viễn (Không giới hạn)</option>
+              <option value="1">1 Giờ (Thử nghiệm)</option>
+              <option value="3">3 Giờ</option>
+              <option value="6">6 Giờ</option>
+              <option value="12">12 Giờ (Nửa ngày)</option>
+              <option value="24" selected>24 Giờ (1 Ngày)</option>
+              <option value="72">72 Giờ (3 Ngày)</option>
+              <option value="168">168 Giờ (7 Ngày)</option>
+              <option value="720">720 Giờ (30 Ngày)</option>
+              <option value="custom">Tùy chỉnh số giờ...</option>
+            </select>
+            <input type="number" id="new-key-hours" value="24" min="0" placeholder="Số giờ" class="col-span-1 px-2.5 py-2 rounded-xl bg-black/60 border border-amber-500/40 text-xs text-amber-300 font-mono text-center focus:outline-none focus:border-amber-400">
+          </div>
+          <span class="text-[10px] text-slate-400">Tự động hết hạn và từ chối xác thực sau số giờ đã chọn (0 = Vĩnh viễn).</span>
+        </div>
+
+        <!-- 2. Cấu hình hạn mức theo LƯỢNG QUOTA REQUEST -->
+        <div class="space-y-1">
+          <label class="text-xs font-mono text-cyan-300 font-bold flex items-center gap-1.5">
+            <span>📊 Lượng Quota Tối Đa (Số Lượt Requests):</span>
+          </label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <select id="new-key-quota-preset" onchange="onQuotaPresetChange(this.value)" class="col-span-2 px-2.5 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-400 font-sans cursor-pointer">
+              <option value="0">Không giới hạn Quota</option>
+              <option value="50">50 Requests</option>
+              <option value="100">100 Requests</option>
+              <option value="500" selected>500 Requests</option>
+              <option value="1000">1,000 Requests</option>
+              <option value="5000">5,000 Requests</option>
+              <option value="10000">10,000 Requests</option>
+              <option value="custom">Tùy chỉnh số lượt...</option>
+            </select>
+            <input type="number" id="new-key-quota" value="500" min="0" placeholder="Số req" class="col-span-1 px-2.5 py-2 rounded-xl bg-black/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono text-center focus:outline-none focus:border-cyan-400">
+          </div>
+          <span class="text-[10px] text-slate-400">Khóa hoặc báo hết hạn khi chạm ngưỡng số requests (0 = Vô hạn).</span>
         </div>
       </div>
 
       <div class="flex justify-end gap-2 pt-2">
         <button onclick="closeModal('modal-create-key')" class="px-4 py-2 rounded-xl bg-white/5 text-slate-300 text-xs hover:bg-white/10">Hủy</button>
-        <button onclick="generateNewApiKey()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.4)]">Tạo Khóa Chứa Domain</button>
+        <button onclick="generateNewApiKey()" class="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(6,182,212,0.4)]">Tạo Khóa API Mới</button>
       </div>
     </div>
   </div>
@@ -5219,6 +5259,26 @@
     let cachedApiKeys = [];
     const CACHE_KEYS_STORAGE = 'nexus_omni_cached_keys_v1';
 
+    function onHoursPresetChange(val) {
+      const input = document.getElementById('new-key-hours');
+      if (!input) return;
+      if (val !== 'custom') {
+        input.value = val;
+      } else {
+        input.focus();
+      }
+    }
+
+    function onQuotaPresetChange(val) {
+      const input = document.getElementById('new-key-quota');
+      if (!input) return;
+      if (val !== 'custom') {
+        input.value = val;
+      } else {
+        input.focus();
+      }
+    }
+
     function renderApiKeysTable(userKeys) {
       const tbody = document.getElementById('api-keys-tbody');
       if (!tbody) return;
@@ -5246,20 +5306,83 @@
         tr.className = 'hover:bg-white/5 transition-colors border-b border-white/5';
         const rawKey = k.key || k.api_key || '';
         const shortKey = rawKey ? (rawKey.substring(0, 12) + '...' + rawKey.substring(rawKey.length - 4)) : 'sk-9r-***';
-        const created = (k.createdAt || k.created_at) ? new Date(k.createdAt || k.created_at).toLocaleDateString('vi-VN') : 'Mới tạo';
         const isAct = k.isActive !== false && k.isActive !== 0 && k.is_active !== 0;
+
+        // 1. Quota
+        const usedReq = k.usedRequests || k.used_requests || 0;
+        const quotaLim = k.quotaLimit || k.quota_limit || 0;
+        let quotaDisplay = '';
+        let isQuotaExceeded = false;
+        if (quotaLim > 0) {
+          const pct = Math.min(100, Math.round((usedReq / quotaLim) * 100));
+          if (usedReq >= quotaLim) isQuotaExceeded = true;
+          quotaDisplay = `
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-mono font-bold ${isQuotaExceeded ? 'text-red-400' : 'text-cyan-300'}">${usedReq.toLocaleString()} / ${quotaLim.toLocaleString()} req</span>
+              <div class="w-28 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div class="h-full rounded-full ${isQuotaExceeded ? 'bg-red-500' : 'bg-cyan-400'}" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        } else {
+          quotaDisplay = `<span class="text-slate-300 font-mono text-xs">${usedReq.toLocaleString()} req <span class="text-[10px] text-slate-500">(Vô hạn)</span></span>`;
+        }
+
+        // 2. Thời hạn hiệu lực theo Giờ
+        const expStr = k.expiresAt || k.expires_at || '';
+        let expiryDisplay = '<span class="text-slate-400 font-mono text-xs">Vĩnh viễn</span>';
+        let isExpired = false;
+        if (expStr) {
+          const expDate = new Date(expStr);
+          const now = new Date();
+          if (now > expDate) {
+            isExpired = true;
+            expiryDisplay = `<span class="text-amber-400 font-mono text-xs font-bold" title="${expDate.toLocaleString('vi-VN')}">Đã hết hạn (${expDate.toLocaleDateString('vi-VN')})</span>`;
+          } else {
+            const diffMs = expDate - now;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            let remainStr = diffHours > 24 ? `${Math.floor(diffHours/24)}d ${diffHours%24}h` : `${diffHours}h ${diffMins}m`;
+            expiryDisplay = `
+              <div class="flex flex-col">
+                <span class="text-amber-300 font-mono text-xs font-bold">Còn ${remainStr}</span>
+                <span class="text-[10px] text-slate-500 font-mono">${expDate.toLocaleDateString('vi-VN')} ${expDate.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}</span>
+              </div>
+            `;
+          }
+        }
+
+        // 3. Huy hiệu trạng thái
+        let badgeClass = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        let badgeText = 'HOẠT ĐỘNG';
+        if (!isAct) {
+          badgeClass = 'bg-red-500/20 text-red-300 border border-red-500/40';
+          badgeText = 'TẠM KHÓA';
+        } else if (isExpired) {
+          badgeClass = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          badgeText = 'HẾT GIỜ';
+        } else if (isQuotaExceeded) {
+          badgeClass = 'bg-purple-500/20 text-purple-300 border border-purple-500/40';
+          badgeText = 'HẾT QUOTA';
+        }
+
         tr.innerHTML = `
-          <td class="py-3.5 px-3 font-sans font-semibold text-white">${k.name || 'API Key'}</td>
+          <td class="py-3.5 px-3 font-sans font-semibold text-white">
+            <div class="flex flex-col">
+              <span>${k.name || 'API Key'}</span>
+              <span class="text-[10px] text-slate-500 font-mono">${(k.totalTokens || k.total_tokens || 0).toLocaleString()} tokens</span>
+            </div>
+          </td>
           <td class="py-3.5 px-3 text-cyan-400 font-mono font-bold">${shortKey}</td>
-          <td class="py-3.5 px-3 text-slate-300 font-mono">Không giới hạn</td>
-          <td class="py-3.5 px-3 text-slate-400 font-mono">${created}</td>
+          <td class="py-3.5 px-3 font-mono">${quotaDisplay}</td>
+          <td class="py-3.5 px-3 font-mono">${expiryDisplay}</td>
           <td class="py-3.5 px-3">
             <div class="flex items-center gap-2">
               <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="nexus-switch nexus-switch-sm ${isAct ? 'active' : ''} cursor-pointer" title="${isAct ? 'Đang hoạt động (Nhấn để tạm khóa)' : 'Đang tạm khóa (Nhấn để kích hoạt)'}">
                 <div class="nexus-switch-knob"></div>
               </button>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isAct ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'}">
-                ${isAct ? 'HOẠT ĐỘNG' : 'TẠM KHÓA'}
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono ${badgeClass}">
+                ${badgeText}
               </span>
             </div>
           </td>
@@ -5319,13 +5442,20 @@
       const inputEl = document.getElementById('new-key-label');
       const domainEl = document.getElementById('new-key-domain');
       const quotaEl = document.getElementById('new-key-quota');
+      const hoursEl = document.getElementById('new-key-hours');
       const label = inputEl ? inputEl.value.trim() : '';
       const domain = domainEl ? domainEl.value.trim() : 'supportflastdev.io.vn';
-      const quota = quotaEl ? parseFloat(quotaEl.value) || 50 : 50;
+      const quotaLimit = quotaEl ? parseInt(quotaEl.value, 10) || 0 : 0;
+      const durationHours = hoursEl ? parseInt(hoursEl.value, 10) || 0 : 0;
       const finalName = label || ('Key ' + new Date().toLocaleTimeString('vi-VN'));
       closeModal('modal-create-key');
       try {
-        const payload = { name: finalName, domain: domain, quota: quota };
+        const payload = { 
+          name: finalName, 
+          domain: domain, 
+          quotaLimit: quotaLimit,
+          durationHours: durationHours 
+        };
         const res = await apiRequest('/api/router/keys', {
           method: 'POST',
           body: JSON.stringify(payload)
