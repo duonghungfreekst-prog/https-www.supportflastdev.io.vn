@@ -1,13 +1,50 @@
 package omnirouter
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 )
+
+var (
+	routerGzipOnce  sync.Once
+	routerRawBytes  []byte
+	routerGzipBytes []byte
+	routerETag      string
+)
+
+// initRouterCache nén sẵn file router HTML vào RAM để phục vụ 0ms
+func initRouterCache(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return
+	}
+	routerRawBytes = data
+
+	// Băm ETag SHA-256
+	h := sha256.Sum256(data)
+	routerETag = fmt.Sprintf(`"%s"`, hex.EncodeToString(h[:16]))
+
+	// Nén Gzip Level 9
+	var buf bytes.Buffer
+	gz, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err == nil {
+		_, _ = gz.Write(data)
+		_ = gz.Close()
+		routerGzipBytes = buf.Bytes()
+		log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã nén sẵn router/index.html lên RAM: %d KB -> %d KB (ETag: %s)", len(routerRawBytes)/1024, len(routerGzipBytes)/1024, routerETag)
+	}
+}
 
 // RegisterOmniRouterRoutes đăng ký toàn bộ routes của 9Router vào ServeMux của hệ thống
 func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir string) {
@@ -33,21 +70,29 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 4. API Ping siêu nhẹ (0 RU TiDB, 0.1ms, giữ Render thức 24/24)
 	mux.HandleFunc("/ping", HandlePing)
 
-	// 5. API Quản lý API Key cho Web UI
-	mux.HandleFunc("/api/router/keys", HandleManageKeys(db))
-	mux.HandleFunc("/api/router/keys/", HandleManageKeys(db))
+	// 5. API Quản lý API Key cho Web UI & CLI Tools (Hỗ trợ cả /api/router/keys và /api/keys)
+	keysHandler := HandleManageKeys(db)
+	mux.HandleFunc("/api/router/keys", keysHandler)
+	mux.HandleFunc("/api/router/keys/", keysHandler)
 	mux.HandleFunc("/api/router/keys/toggle", HandleToggleKey(db))
+	mux.HandleFunc("/api/keys", keysHandler)
+	mux.HandleFunc("/api/keys/", keysHandler)
+	mux.HandleFunc("/api/keys/toggle", HandleToggleKey(db))
 
 	// 6. API Danh sách tài khoản AI & Tương tác (Hỗ trợ cả dạng /api/providers và /api/router/providers)
 	providersHandler := HandleListProviders(db)
 	mux.HandleFunc("/api/providers", providersHandler)
 	mux.HandleFunc("/api/providers/", providersHandler)
 	mux.HandleFunc("/api/router/providers", providersHandler)
+	mux.HandleFunc("/api/router/providers/", providersHandler)
 	mux.HandleFunc("/api/router/providers/toggle", HandleToggleProvider(db))
 	mux.HandleFunc("/api/providers/toggle", HandleToggleProvider(db))
 
-	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id})
+	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
 	usageHandler := HandleAccountUsage(db)
+	usageStatsHandler := HandleUsageStats(db)
+	mux.HandleFunc("/api/usage/stats", usageStatsHandler)
+	mux.HandleFunc("/api/usage-stats", usageStatsHandler)
 	mux.HandleFunc("/api/usage/", usageHandler)
 	mux.HandleFunc("/api/usage", usageHandler)
 
@@ -58,9 +103,24 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/router/proxy/switch", HandleSwitchProxy(db))
 	mux.HandleFunc("/api/proxy-pools/switch", HandleSwitchProxy(db))
 
-	// 7. API Live Telemetry Logs qua SSE
+	// 6.3 API CLI Tools & Model Aliases (/api/cli-tools/antigravity-mitm/alias...)
+	mitmAliasesHandler := HandleMitmAliases(db)
+	mitmStatusHandler := HandleMitmStatus(db)
+	mux.HandleFunc("/api/cli-tools/antigravity-mitm/alias", mitmAliasesHandler)
+	mux.HandleFunc("/api/cli-tools/antigravity-mitm", mitmStatusHandler)
+	mux.HandleFunc("/api/cli-tools/all-statuses", mitmStatusHandler)
+
+	// 7. API Live Telemetry Logs qua SSE & JSON fallback
+	unifiedLogHandler := func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+			HandleLogStream(w, r)
+		} else {
+			HandleRealtimeLogsJSON(w, r)
+		}
+	}
 	mux.HandleFunc("/api/router/logs/stream", HandleLogStream)
-	mux.HandleFunc("/api/realtime/stream-logs", HandleLogStream)
+	mux.HandleFunc("/api/realtime/stream-logs", unifiedLogHandler)
+	mux.HandleFunc("/api/logs", unifiedLogHandler)
 	mux.HandleFunc("/api/translator/console-logs/stream", HandleLogStream)
 
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
@@ -72,7 +132,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/sync", HandleClientSync(db))
 	mux.HandleFunc("/api/v1/report", HandleClientReport(db))
 
-	// 9. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
+	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)
 	mux.HandleFunc("/v1/chat/completions", chatHandler)
 	mux.HandleFunc("/api/v1/chat/completions", chatHandler)
@@ -85,18 +145,54 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
 	mux.HandleFunc("/v1/models/stt", HandleSTTModels)
 
-	// 10. Giao diện Web Dashboard Quản lý 9Router (/router, /router/, /router/index.html)
+	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp /providers/
+	providersDir := filepath.Join(uiDir, "providers")
+	if info, err := os.Stat(providersDir); err == nil && info.IsDir() {
+		mux.Handle("/providers/", http.StripPrefix("/providers/", http.FileServer(http.Dir(providersDir))))
+	}
+
+	// 12. Giao diện Web Dashboard Quản lý 9Router với Pre-compressed Gzip & ETag HTTP 304
 	routerUIFile := filepath.Join(uiDir, "router", "index.html")
 	routerHandler := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
+		// Nạp cache nén sẵn một lần duy nhất
+		routerGzipOnce.Do(func() {
+			initRouterCache(routerUIFile)
+		})
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Vary", "Accept-Encoding")
 		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://challenges.cloudflare.com data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
+
+		// Kiểm tra ETag HTTP 304 Not Modified
+		if routerETag != "" {
+			w.Header().Set("ETag", routerETag)
+			if r.Header.Get("If-None-Match") == routerETag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+
+		// Phục vụ Gzip nén sẵn trực tiếp từ RAM nếu client hỗ trợ
+		if len(routerGzipBytes) > 0 && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(routerGzipBytes)
+			return
+		}
+
+		if len(routerRawBytes) > 0 {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(routerRawBytes)
+			return
+		}
+
 		if _, err := os.Stat(routerUIFile); err == nil {
 			http.ServeFile(w, r, routerUIFile)
 			return
 		}
+
 		// Fallback nếu chưa copy file UI
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`<!DOCTYPE html>
@@ -113,5 +209,5 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/router/", routerHandler)
 	mux.HandleFunc("/router/index.html", routerHandler)
 
-	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 10 cổng định tuyến 9Router Master Gateway")
+	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 15 cổng định tuyến 9Router Master Gateway")
 }

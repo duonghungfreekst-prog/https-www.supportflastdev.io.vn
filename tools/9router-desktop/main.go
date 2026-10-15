@@ -51,8 +51,8 @@ func (c *DesktopClient) loadConfig(path string) {
 	if err != nil {
 		c.config = Config{
 			RenderURL:    "https://supportflastdev.io.vn",
-			MasterAPIKey: "sk-9router-xxxxxxxxxxxxxxxx",
-			LocalPort:    8080,
+			MasterAPIKey: "sk-9router-master-live",
+			LocalPort:    20128,
 		}
 		data, _ := json.MarshalIndent(c.config, "", "  ")
 		_ = os.WriteFile(path, data, 0644)
@@ -62,7 +62,7 @@ func (c *DesktopClient) loadConfig(path string) {
 	_ = json.NewDecoder(f).Decode(&c.config)
 
 	if c.config.LocalPort <= 0 {
-		c.config.LocalPort = 8080
+		c.config.LocalPort = 20128
 	}
 }
 

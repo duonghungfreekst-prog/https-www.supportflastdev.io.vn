@@ -184,6 +184,19 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		}
 	}
 
+	// Tự động seed Master Key mặc định nếu bảng keys rỗng
+	var keyCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM omni_client_keys").Scan(&keyCount); err == nil && keyCount == 0 {
+		now := NowISO()
+		masterKey := "sk-9router-master-live"
+		keyHash := HashString(masterKey)
+		_, _ = db.Exec(`
+			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
+			VALUES ('key_master_cloud', 'Master Cloud Production Key', ?, ?, 0, 0, 1, ?, ?)
+		`, masterKey, keyHash, now, now)
+		log.Println("[ENGINE] [OMNIROUTER] ✔ Đã khởi tạo Master API Key: sk-9router-master-live")
+	}
+
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ 9Router trong Database")
 	// Nạp sẵn cache
 	RefreshKeyCache(db)
@@ -381,3 +394,60 @@ func UpdateProviderData(db *sql.DB, id string, dataMap map[string]interface{}) e
 	}
 	return err
 }
+
+// GetAllProviders truy vấn toàn bộ danh sách tài khoản AI (kể cả active lẫn inactive) phục vụ Web Dashboard
+func GetAllProviders(db *sql.DB) ([]ProviderConnection, error) {
+	rows, err := db.Query("SELECT id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at FROM omni_providers ORDER BY priority ASC, name ASC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []ProviderConnection
+	for rows.Next() {
+		var p ProviderConnection
+		var dataRaw string
+		if err := rows.Scan(&p.ID, &p.Provider, &p.AuthType, &p.Name, &p.Email, &p.Priority, &p.IsActive, &dataRaw, &p.CreatedAt, &p.UpdatedAt); err == nil {
+			p.Data = json.RawMessage(dataRaw)
+			list = append(list, p)
+		}
+	}
+	return list, nil
+}
+
+// UpdateProviderStatus cập nhật trạng thái hoạt động (bật/tắt) và độ ưu tiên của Provider
+func UpdateProviderStatus(db *sql.DB, id string, isActive int, priority int) error {
+	now := NowISO()
+	_, err := db.Exec("UPDATE omni_providers SET is_active = ?, priority = ?, updated_at = ? WHERE id = ?", isActive, priority, now, id)
+	if err == nil {
+		RefreshProviderCache(db)
+	}
+	return err
+}
+
+// DeleteProvider xóa một Provider khỏi hệ thống
+func DeleteProvider(db *sql.DB, id string) error {
+	_, err := db.Exec("DELETE FROM omni_providers WHERE id = ?", id)
+	if err == nil {
+		RefreshProviderCache(db)
+	}
+	return err
+}
+
+// GetOmniKV đọc giá trị cấu hình theo scope và key_name từ bảng omni_kv
+func GetOmniKV(db *sql.DB, scope, keyName string) (string, error) {
+	var val string
+	err := db.QueryRow("SELECT val_data FROM omni_kv WHERE scope = ? AND key_name = ?", scope, keyName).Scan(&val)
+	if err != nil {
+		return "", err
+	}
+	return val, nil
+}
+
+// SetOmniKV lưu giá trị cấu hình vào bảng omni_kv (UPSERT)
+func SetOmniKV(db *sql.DB, scope, keyName, valData string) error {
+	// Dùng REPLACE INTO tương thích cả MySQL/TiDB và SQLite
+	_, err := db.Exec("REPLACE INTO omni_kv (scope, key_name, val_data) VALUES (?, ?, ?)", scope, keyName, valData)
+	return err
+}
+

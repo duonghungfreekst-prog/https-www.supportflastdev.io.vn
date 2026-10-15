@@ -54,8 +54,18 @@ func TestClientKeyLifecycle(t *testing.T) {
 
 	// 4. Liệt kê danh sách
 	list, err := ListAllClientKeys(db)
-	if err != nil || len(list) != 1 {
+	if err != nil || len(list) < 1 {
 		t.Fatalf("ListAllClientKeys thất bại: %v, count=%d", err, len(list))
+	}
+	found := false
+	for _, item := range list {
+		if item.ID == key.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("Không tìm thấy key vừa tạo trong danh sách!")
 	}
 }
 

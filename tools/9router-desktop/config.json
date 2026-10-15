@@ -1,5 +1,5 @@
 {
   "render_url": "https://supportflastdev.io.vn",
-  "master_api_key": "sk-9router-xxxxxxxxxxxxxxxx",
-  "local_port": 8080
+  "master_api_key": "sk-9router-master-live",
+  "local_port": 20128
 }
