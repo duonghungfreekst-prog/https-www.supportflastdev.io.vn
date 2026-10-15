@@ -3985,8 +3985,8 @@
                 <option value="off">Off</option>
               </select>
             </div>
-          </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="provider-models-search-input" oninput="onProviderModelsSearchInput(this.value)" placeholder="🔍 Tìm model (flash, claude, r1...)" class="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-200 font-mono placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 w-48">
             <button onclick="toggleAllProviderModelsAction(true)" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 font-mono text-xs border border-emerald-500/30 cursor-pointer flex items-center gap-1.5 transition-all">
               <span>🔄 Active All</span>
             </button>
@@ -3996,8 +3996,8 @@
           </div>
         </div>
 
-        <!-- Grid Available Models (Cards chuẩn 9Router gốc) -->
-        <div id="provider-models-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Grid Available Models (Cards rộng rãi, hiển thị đầy đủ tên model) -->
+        <div id="provider-models-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <!-- Được render bằng renderProviderAvailableModels() -->
         </div>
 
@@ -6925,28 +6925,68 @@ curl -X POST "${v1Url}/chat/completions" \\
         ];
       }
 
-      // Mặc định: 15 model Antigravity & Google Gemini
+      // Mặc định: Danh mục đầy đủ Antigravity & Google Gemini
       return [
+        // Thế hệ Gemini 3.x cao cấp (Thinking & Pro)
+        { id: 'gemini-3.8-pro', name: 'Gemini 3.8 Pro (Next-Gen Flagship)', fullModel: 'gemini-3.8-pro', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-pro-high', name: 'Gemini 3.8 Pro (High Thinking 32k)', fullModel: 'gemini-3.8-pro-high', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Ultra Fast)', fullModel: 'gemini-3.8-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-3.8-flash-thinking', name: 'Gemini 3.8 Flash (Thinking Adaptive)', fullModel: 'gemini-3.8-flash-thinking', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High Thinking)', fullModel: 'gemini-3.8-flash-high', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium Thinking)', fullModel: 'gemini-3.8-flash-medium', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low Thinking)', fullModel: 'gemini-3.8-flash-low', caps: { thinking: true, vision: true } },
+        { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash (Hybrid Speed)', fullModel: 'gemini-3.7-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-3.7-flash-thinking', name: 'Gemini 3.7 Flash Thinking', fullModel: 'gemini-3.7-flash-thinking', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash (High Thinking)', fullModel: 'gemini-3.7-flash-high', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.7-flash-medium', name: 'Gemini 3.7 Flash (Medium Thinking)', fullModel: 'gemini-3.7-flash-medium', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.7-flash-low', name: 'Gemini 3.7 Flash (Low Thinking)', fullModel: 'gemini-3.7-flash-low', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.6-flash-high', name: 'Gemini 3.6 Flash (High Thinking)', fullModel: 'gemini-3.6-flash-high', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High Thinking)', fullModel: 'gemini-3.1-pro-high', caps: { thinking: true, vision: true } },
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', fullModel: 'gemini-2.5-pro', caps: { thinking: true, vision: true } },
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', fullModel: 'gemini-2.5-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Vision Specialist)', fullModel: 'gemini-3.1-flash-image', caps: { thinking: false, vision: true } },
+
+        // Thế hệ Gemini 2.x & 1.5 chuẩn Google AI Studio
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (State-of-the-Art Coding)', fullModel: 'gemini-2.5-pro', caps: { thinking: true, vision: true } },
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Adaptive Reasoning)', fullModel: 'gemini-2.5-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Next-Gen Multimodal)', fullModel: 'gemini-2.0-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite (Cost-Efficient)', fullModel: 'gemini-2.0-flash-lite', caps: { thinking: false, vision: true } },
+        { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Flash Thinking Exp', fullModel: 'gemini-2.0-flash-thinking-exp-01-21', caps: { thinking: true, vision: true } },
+        { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Experimental', fullModel: 'gemini-2.0-pro-exp-02-05', caps: { thinking: true, vision: true } },
+        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (2M Context Window)', fullModel: 'gemini-1.5-pro', caps: { thinking: false, vision: true } },
+        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (1M Fast)', fullModel: 'gemini-1.5-flash', caps: { thinking: false, vision: true } },
+        { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B (Sub-second)', fullModel: 'gemini-1.5-flash-8b', caps: { thinking: false, vision: true } },
+
+        // Các mô hình hàng đầu tích hợp Antigravity Router Bridge
+        { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Thinking)', fullModel: 'claude-3-7-sonnet', caps: { thinking: true, vision: true } },
+        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
+        { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku Fast', fullModel: 'claude-3-5-haiku', caps: { thinking: false, vision: true } },
         { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', fullModel: 'claude-sonnet-4-6', caps: { thinking: true, vision: true } },
         { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', fullModel: 'claude-opus-4-6-thinking', caps: { thinking: true, vision: true } },
-        { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
-        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium Thinking)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } },
-        { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Vision)', fullModel: 'gemini-3.1-flash-image', caps: { thinking: false, vision: true } }
+        { id: 'gpt-4o', name: 'GPT-4o Omnimodal', fullModel: 'gpt-4o', caps: { thinking: false, vision: true } },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini Fast', fullModel: 'gpt-4o-mini', caps: { thinking: false, vision: true } },
+        { id: 'o3-mini', name: 'OpenAI o3-mini (High Coding Intelligence)', fullModel: 'o3-mini', caps: { thinking: true, vision: false } },
+        { id: 'o1', name: 'OpenAI o1 Reasoning', fullModel: 'o1', caps: { thinking: true, vision: true } },
+        { id: 'deepseek-r1', name: 'DeepSeek R1 (Full Reasoning)', fullModel: 'deepseek-r1', caps: { thinking: true, vision: false } },
+        { id: 'deepseek-v3', name: 'DeepSeek V3 MoE 671B', fullModel: 'deepseek-v3', caps: { thinking: false, vision: false } },
+        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium Thinking)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } }
       ];
     }
 
-    // Tải và render toàn bộ Available Models chuẩn cho tất cả các nhà cung cấp
-    async function renderProviderAvailableModels(providerId) {
+    // Biến trạng thái lưu trữ danh sách models hiện tại của Provider
+    window._providerModelsCache = {
+      providerId: '',
+      available: [],
+      disabled: [],
+      searchTerm: ''
+    };
+
+    // Tìm kiếm realtime trong Available Models
+    function onProviderModelsSearchInput(term) {
+      window._providerModelsCache.searchTerm = (term || '').trim().toLowerCase();
+      renderProviderModelsGridUI();
+    }
+
+    // Vẽ lại danh sách Cards từ bộ nhớ cache
+    function renderProviderModelsGridUI() {
       const grid = document.getElementById('provider-models-grid');
       const disabledChips = document.getElementById('provider-disabled-models-chips');
       const countBadge = document.getElementById('provider-models-count-badge');
@@ -6954,87 +6994,130 @@ curl -X POST "${v1Url}/chat/completions" \\
 
       if (!grid) return;
 
-      const defaultModels = getFallbackModelsByProvider(providerId);
+      const cache = window._providerModelsCache;
+      const term = cache.searchTerm;
+      const pid = cache.providerId || 'antigravity';
 
-      function displayModelsUI(available, disabled) {
-        if (countBadge) countBadge.textContent = available.length;
-        if (disabledCountEl) disabledCountEl.textContent = disabled.length;
-
-        grid.innerHTML = '';
-        if (available.length === 0) {
-          grid.innerHTML = '<div class="col-span-full py-6 text-center text-xs font-mono text-slate-500">Tất cả các model đang bị tắt hoặc chưa được cấu hình.</div>';
-        } else {
-          available.forEach(m => {
-            const card = document.createElement('div');
-            card.className = 'p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:border-cyan-500/50 flex items-center justify-between transition-all group shadow-sm';
-            card.innerHTML = `
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-xs flex-shrink-0">
-                  🤖
-                </div>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5 truncate">
-                    <span class="text-xs font-mono font-bold text-white truncate" title="${m.fullModel || m.id}">${m.fullModel || m.id}</span>
-                    <button onclick="copyModelIdToClipboard('${m.fullModel || m.id}')" class="text-slate-400 hover:text-cyan-300 text-xs cursor-pointer p-0.5" title="Sao chép mã model">📋</button>
-                  </div>
-                  <div class="text-[10px] text-slate-400 italic truncate mt-0.5 flex items-center gap-1">
-                    <span class="truncate">${m.name || m.id}</span>
-                    ${m.caps?.thinking ? '<span class="px-1 py-0.2 rounded text-[8px] font-sans not-italic bg-purple-500/20 text-purple-300 border border-purple-500/30 flex-shrink-0">Thinking</span>' : ''}
-                    ${m.caps?.vision ? '<span class="px-1 py-0.2 rounded text-[8px] font-sans not-italic bg-sky-500/20 text-sky-300 border border-sky-500/30 flex-shrink-0">Vision</span>' : ''}
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                <button onclick="toggleSingleProviderModel('${m.id}', false)" class="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer" title="Nhấp để tắt model này">
-                  🟢 BẬT
-                </button>
-              </div>
-            `;
-            grid.appendChild(card);
-          });
-        }
-
-        // Thêm nút nét đứt "+ Add Model"
-        const addCard = document.createElement('div');
-        addCard.className = 'p-3 rounded-xl border border-dashed border-cyan-500/40 bg-black/30 hover:bg-cyan-500/10 hover:border-cyan-400 flex items-center justify-center gap-2 text-cyan-400 hover:text-cyan-300 cursor-pointer transition-all text-xs font-mono font-bold';
-        addCard.onclick = () => promptAddCustomModel(providerId);
-        addCard.innerHTML = '<span>+ Add Model</span>';
-        grid.appendChild(addCard);
-
-        // Render Disabled Models Chips
-        if (disabledChips) {
-          disabledChips.innerHTML = '';
-          if (disabled.length === 0) {
-            disabledChips.innerHTML = '<span class="text-[11px] text-slate-500 italic">Không có model nào bị tắt.</span>';
-          } else {
-            disabled.forEach(m => {
-              const chip = document.createElement('button');
-              chip.className = 'px-2.5 py-1 rounded-lg border border-dashed border-slate-700 bg-black/50 hover:border-emerald-500 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-300 text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all';
-              chip.title = 'Nhấp để kích hoạt lại model này';
-              chip.onclick = () => toggleSingleProviderModel(m.id, true);
-              chip.innerHTML = `<span>+ ${m.id}</span>`;
-              disabledChips.appendChild(chip);
-            });
-          }
-        }
+      // Lọc theo từ khóa tìm kiếm nếu có
+      let filteredAvailable = cache.available;
+      if (term) {
+        filteredAvailable = cache.available.filter(m => {
+          const id = (m.id || '').toLowerCase();
+          const name = (m.name || '').toLowerCase();
+          const full = (m.fullModel || '').toLowerCase();
+          return id.includes(term) || name.includes(term) || full.includes(term);
+        });
       }
 
+      if (countBadge) countBadge.textContent = cache.available.length;
+      if (disabledCountEl) disabledCountEl.textContent = cache.disabled.length;
+
+      grid.innerHTML = '';
+      if (filteredAvailable.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-8 text-center text-xs font-mono text-slate-400">
+          ${term ? `Không tìm thấy model nào khớp với từ khóa "<strong>${escapeHtml(term)}</strong>"` : 'Tất cả các model đang bị tắt hoặc chưa được cấu hình.'}
+        </div>`;
+      } else {
+        filteredAvailable.forEach(m => {
+          const card = document.createElement('div');
+          card.className = 'p-3.5 rounded-xl bg-slate-900/95 border border-slate-700/80 hover:border-cyan-500/60 flex items-center justify-between transition-all group shadow-sm hover:shadow-[0_0_15px_rgba(6,182,212,0.15)]';
+          
+          const modelId = m.fullModel || m.id;
+          const isThinking = m.caps?.thinking || modelId.includes('thinking') || modelId.includes('r1') || modelId.includes('o1') || modelId.includes('o3') || modelId.includes('high') || modelId.includes('medium');
+          const isVision = m.caps?.vision || modelId.includes('vision') || modelId.includes('flash') || modelId.includes('image') || modelId.includes('4o');
+          const isHigh = modelId.includes('high') || modelId.includes('pro');
+
+          card.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0 flex-1 pr-2">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold text-sm flex-shrink-0 shadow-inner">
+                ⚡
+              </div>
+              <div class="min-w-0 flex-1">
+                <!-- Dòng 1: Mã Model ID đầy đủ sắc nét không bị cắt chữ -->
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs font-mono font-bold text-white tracking-tight break-all select-all hover:text-cyan-300 transition-colors" title="${escapeHtml(modelId)}">${escapeHtml(modelId)}</span>
+                  <button onclick="copyModelIdToClipboard('${escapeHtml(modelId)}')" class="text-slate-400 hover:text-cyan-300 text-xs cursor-pointer p-0.5 transition-colors" title="Sao chép mã model">📋</button>
+                </div>
+                <!-- Dòng 2: Tên mô tả và các Badges thông minh -->
+                <div class="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
+                  <span class="text-slate-300 font-sans font-medium">${escapeHtml(m.name || m.id)}</span>
+                  ${isThinking ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold ${isHigh ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}">Thinking</span>` : ''}
+                  ${isVision ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">Vision</span>' : ''}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button onclick="toggleSingleProviderModel('${escapeHtml(m.id)}', false)" class="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400 cursor-pointer transition-all shadow-sm flex items-center gap-1" title="Nhấp để tắt model này">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>BẬT</span>
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      // Thêm nút nét đứt "+ Add Model"
+      const addCard = document.createElement('div');
+      addCard.className = 'p-3.5 rounded-xl border border-dashed border-cyan-500/40 bg-black/40 hover:bg-cyan-500/10 hover:border-cyan-400 flex items-center justify-center gap-2 text-cyan-400 hover:text-cyan-300 cursor-pointer transition-all text-xs font-mono font-bold shadow-sm';
+      addCard.onclick = () => promptAddCustomModel(pid);
+      addCard.innerHTML = '<span class="text-base">+</span><span>Add Custom Model</span>';
+      grid.appendChild(addCard);
+
+      // Render Disabled Models Chips
+      if (disabledChips) {
+        disabledChips.innerHTML = '';
+        if (cache.disabled.length === 0) {
+          disabledChips.innerHTML = '<span class="text-[11px] text-slate-500 italic">Không có model nào bị tắt.</span>';
+        } else {
+          cache.disabled.forEach(m => {
+            const chip = document.createElement('button');
+            chip.className = 'px-3 py-1 rounded-lg border border-dashed border-slate-700 bg-slate-900/60 hover:border-emerald-500 hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-300 text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-all';
+            chip.title = 'Nhấp để kích hoạt lại model này';
+            chip.onclick = () => toggleSingleProviderModel(m.id, true);
+            chip.innerHTML = `<span>+ ${escapeHtml(m.id)}</span>`;
+            disabledChips.appendChild(chip);
+          });
+        }
+      }
+    }
+
+    // Tải và render toàn bộ Available Models chuẩn cho tất cả các nhà cung cấp
+    async function renderProviderAvailableModels(providerId) {
+      const pid = providerId || 'antigravity';
+      const defaultModels = getFallbackModelsByProvider(pid);
+
+      // Cập nhật bộ nhớ cache ban đầu
+      window._providerModelsCache = {
+        providerId: pid,
+        available: defaultModels,
+        disabled: [],
+        searchTerm: ''
+      };
+
+      // Xóa từ khóa tìm kiếm cũ nếu có ô search
+      const searchInput = document.getElementById('provider-models-search-input');
+      if (searchInput) searchInput.value = '';
+
       // 1. Hiển thị ngay lập tức 0ms danh sách model chuẩn tương ứng với từng provider
-      displayModelsUI(defaultModels, []);
+      renderProviderModelsGridUI();
 
       // 2. Fetch đồng bộ các tùy chỉnh (custom models, disabled models) từ backend TiDB Cloud
       try {
-        const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(providerId)}`);
+        const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(pid)}`);
         if (res && res.ok) {
           const data = await res.json();
           const available = (data && Array.isArray(data.availableModels) && data.availableModels.length > 0)
             ? data.availableModels
             : defaultModels;
           const disabled = (data && Array.isArray(data.disabledModels)) ? data.disabledModels : [];
-          displayModelsUI(available, disabled);
+          
+          window._providerModelsCache.available = available;
+          window._providerModelsCache.disabled = disabled;
+          renderProviderModelsGridUI();
         }
       } catch (err) {
-        console.warn(`[MODEL] Sử dụng danh sách model khả dụng mặc định cho [${providerId}]:`, err);
+        console.warn(`[MODEL] Sử dụng danh sách model khả dụng mặc định cho [${pid}]:`, err);
       }
     }
 

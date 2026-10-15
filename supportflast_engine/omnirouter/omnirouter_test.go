@@ -314,8 +314,9 @@ func TestProviderModelsEndpoint(t *testing.T) {
 		t.Fatalf("Unmarshal JSON thất bại: %v", err)
 	}
 
-	if len(resp.AvailableModels) != 15 {
-		t.Fatalf("Kỳ vọng 15 available models, nhận được %d", len(resp.AvailableModels))
+	expectedTotal := len(GetDefaultModelsForProvider("antigravity"))
+	if len(resp.AvailableModels) != expectedTotal {
+		t.Fatalf("Kỳ vọng %d available models, nhận được %d", expectedTotal, len(resp.AvailableModels))
 	}
 	if len(resp.DisabledModels) != 0 {
 		t.Fatalf("Kỳ vọng 0 disabled models, nhận được %d", len(resp.DisabledModels))
@@ -341,8 +342,8 @@ func TestProviderModelsEndpoint(t *testing.T) {
 	mux.ServeHTTP(recGet2, reqGet)
 	_ = json.Unmarshal(recGet2.Body.Bytes(), &resp)
 
-	if len(resp.AvailableModels) != 14 || len(resp.DisabledModels) != 1 {
-		t.Fatalf("Kỳ vọng 14 available và 1 disabled, nhận được: %d / %d", len(resp.AvailableModels), len(resp.DisabledModels))
+	if len(resp.AvailableModels) != expectedTotal-1 || len(resp.DisabledModels) != 1 {
+		t.Fatalf("Kỳ vọng %d available và 1 disabled, nhận được: %d / %d", expectedTotal-1, len(resp.AvailableModels), len(resp.DisabledModels))
 	}
 	if resp.DisabledModels[0].ID != "gemini-2.5-flash" {
 		t.Fatalf("Disabled model ID không đúng: %s", resp.DisabledModels[0].ID)
@@ -361,8 +362,8 @@ func TestProviderModelsEndpoint(t *testing.T) {
 	mux.ServeHTTP(recGet3, reqGet)
 	_ = json.Unmarshal(recGet3.Body.Bytes(), &resp)
 
-	if len(resp.AvailableModels) != 15 || len(resp.DisabledModels) != 0 {
-		t.Fatalf("Sau active-all kỳ vọng 15 available và 0 disabled, nhận được: %d / %d", len(resp.AvailableModels), len(resp.DisabledModels))
+	if len(resp.AvailableModels) != expectedTotal || len(resp.DisabledModels) != 0 {
+		t.Fatalf("Sau active-all kỳ vọng %d available và 0 disabled, nhận được: %d / %d", expectedTotal, len(resp.AvailableModels), len(resp.DisabledModels))
 	}
 
 	// 5. Thêm custom model
@@ -378,8 +379,8 @@ func TestProviderModelsEndpoint(t *testing.T) {
 	mux.ServeHTTP(recGet4, reqGet)
 	_ = json.Unmarshal(recGet4.Body.Bytes(), &resp)
 
-	if len(resp.AvailableModels) != 16 {
-		t.Fatalf("Sau khi thêm custom model kỳ vọng 16 available models, nhận được: %d", len(resp.AvailableModels))
+	if len(resp.AvailableModels) != expectedTotal+1 {
+		t.Fatalf("Sau khi thêm custom model kỳ vọng %d available models, nhận được: %d", expectedTotal+1, len(resp.AvailableModels))
 	}
 }
 
