@@ -148,6 +148,8 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	clientQuotaHandler := HandleClientQuotaCLI(db)
 	mux.HandleFunc("/api/v1/client/quota", clientQuotaHandler)
 	mux.HandleFunc("/api/v1/client/quota.bat", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/client/link.bat", clientQuotaHandler)
+	mux.HandleFunc("/api/v1/client/link", clientQuotaHandler)
 	mux.HandleFunc("/api/v1/client/ping", clientQuotaHandler)
 	mux.HandleFunc("/api/v1/quota", clientQuotaHandler)
 	mux.HandleFunc("/api/v1/ping", clientQuotaHandler)

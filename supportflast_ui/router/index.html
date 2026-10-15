@@ -1053,6 +1053,32 @@
             <!-- Body Accordion: Cấu Hình Hosts & Danh Sách Setup Model Mapping -->
             <div id="acc-antigravity" class="p-5 pt-0 space-y-4 border-t border-white/5">
               
+              <!-- Hộp Tự Động Trỏ Antigravity Bằng CMD (Run Loco Style) -->
+              <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 font-mono text-xs text-slate-300 space-y-2.5">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <div class="text-xs font-bold text-cyan-300 flex items-center gap-1.5 font-sans">
+                    <span>⚡ Tự Động Định Tuyến Antigravity Qua CMD (Run Loco Style)</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button onclick="copyAntigravityWebCmd()" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                      <span>📋 COPY LỆNH TRỎ WEB</span>
+                    </button>
+                    <button onclick="copyAntigravityLocalCmd()" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                      <span>🔄 RUN LOCO (CỔNG 20128)</span>
+                    </button>
+                    <button onclick="copyAntigravityStatusCmd()" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+                      <span>🔍 XEM TRẠNG THÁI</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="text-[11px] text-slate-400 font-sans">
+                  Chỉ cần dán vào CMD và nhấn Enter: Antigravity IDE sẽ tự động cập nhật endpoint và kết nối trực tiếp, không cần phải vào menu Settings chỉnh tay!
+                </div>
+                <div class="p-2 rounded-lg bg-black/60 border border-cyan-500/20 text-cyan-300 text-[11px] select-all break-all" id="antigravity-cmd-preview">
+                  f:\supportflast.dev\link_antigravity.bat
+                </div>
+              </div>
+
               <!-- Hộp Hướng Dẫn Edit Hosts File -->
               <div class="p-3.5 rounded-xl bg-black/60 border border-white/5 font-mono text-xs text-slate-300 space-y-2">
                 <div class="flex items-center justify-between flex-wrap gap-2">
@@ -3959,6 +3985,9 @@
           <span>📁 Tải Tệp Cấu Hình Trực Tiếp Cho App / CMD:</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <button onclick="downloadClientLinkBatScript()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+            <span>⚡ Tải link_antigravity.bat (Trỏ IDE 1-Click)</span>
+          </button>
           <button onclick="downloadClientQuotaBatScript()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
             <span>📊 Tải quota.bat (Ping DNS & Quota CLI)</span>
           </button>
@@ -5504,25 +5533,31 @@
       const v1Url = `${baseUrl}/v1`;
 
       return {
-        win: `:: [Windows Command Prompt (CMD)]
-:: 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
+        win: `:: [Windows Command Prompt (CMD) - Antigravity & Gateway Quickstart]
+:: 1. TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY ĐẾN GATEWAY (Chuẩn Run Loco - 1 Lệnh CMD Tự Động):
+curl -sL "${baseUrl}/api/v1/client/link.bat?key=${activeKey}" -o link_antigravity.bat && link_antigravity.bat
+
+:: 2. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
 curl -sL "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
-:: 2. Hoặc tải file script tự động ping và xem quota:
+:: 3. Hoặc tải file script tự động ping và xem quota:
 curl -sL "${baseUrl}/api/v1/client/quota.bat?key=${activeKey}" -o quota.bat && quota.bat
 
-:: 3. Thiết lập biến môi trường trỏ trực tiếp vào SupportFlast Gateway:
+:: 4. Thiết lập biến môi trường trỏ trực tiếp vào SupportFlast Gateway:
 set OPENAI_BASE_URL=${v1Url}
 set OPENAI_API_KEY=${activeKey}`,
 
-        ps: `# [Windows PowerShell]
-# 1. Ping DNS & Lấy ngay bảng Quota 19 tài khoản (Không cần vào Web):
+        ps: `# [Windows PowerShell - Antigravity & Gateway Quickstart]
+# 1. TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY ĐẾN GATEWAY (Chuẩn Run Loco - 1 Lệnh PowerShell):
+irm "${baseUrl}/api/v1/client/link.bat?key=${activeKey}" -OutFile "link_antigravity.bat"; .\link_antigravity.bat
+
+# 2. Ping DNS & Lấy ngay bảng Quota 19 tài khoản (Không cần vào Web):
 irm "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
-# 2. Kiểm tra Ping độ trễ kết nối DNS:
+# 3. Kiểm tra Ping độ trễ kết nối DNS:
 Test-NetConnection -ComputerName "${domain}" -Port 443
 
-# 3. Thiết lập biến môi trường trỏ trực tiếp:
+# 4. Thiết lập biến môi trường trỏ trực tiếp:
 $env:OPENAI_BASE_URL = "${v1Url}"
 $env:OPENAI_API_KEY = "${activeKey}"`,
 
@@ -5638,6 +5673,70 @@ curl -X POST "${v1Url}/chat/completions" \\
       const url = `${protocol}://${domain}/api/v1/client/quota.bat?key=${encodeURIComponent(currentCmdModalKey)}`;
       window.open(url, '_blank');
       showToastNotification('📊 Đang tải xuống quota.bat (Ping DNS & Kiểm tra Quota CLI)...');
+    }
+
+    function downloadClientLinkBatScript() {
+      const key = currentCmdModalKey || (typeof getOmniRouterActiveApiKey === 'function' ? getOmniRouterActiveApiKey() : '') || 'sk-supportflastdev.io.vn-master-live';
+      const domain = extractDomainFromApiKey(key);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/link.bat?key=${encodeURIComponent(key)}`;
+      window.open(url, '_blank');
+      showToastNotification('⚡ Đang tải xuống link_antigravity.bat...');
+    }
+
+    function copyAntigravityWebCmd() {
+      const activeKey = currentCmdModalKey || (typeof getOmniRouterActiveApiKey === 'function' ? getOmniRouterActiveApiKey() : '') || 'sk-supportflastdev.io.vn-master-live';
+      const domain = extractDomainFromApiKey(activeKey);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const baseUrl = `${protocol}://${domain}`;
+      const cmd = `curl -sL "${baseUrl}/api/v1/client/link.bat?key=${activeKey}" -o link_antigravity.bat && link_antigravity.bat`;
+      
+      const previewEl = document.getElementById('antigravity-cmd-preview');
+      if (previewEl) previewEl.textContent = cmd;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cmd).then(() => {
+          showToastNotification('✔ Đã sao chép lệnh CMD tự động trỏ Antigravity đến Web Gateway!');
+        }).catch(() => {
+          showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+        });
+      } else {
+        showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+      }
+    }
+
+    function copyAntigravityLocalCmd() {
+      const cmd = 'link_antigravity.bat local';
+      const previewEl = document.getElementById('antigravity-cmd-preview');
+      if (previewEl) previewEl.textContent = cmd;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cmd).then(() => {
+          showToastNotification('✔ Đã sao chép lệnh CMD trỏ Antigravity về Local 20128 (Run Loco)!');
+        }).catch(() => {
+          showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+        });
+      } else {
+        showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+      }
+    }
+
+    function copyAntigravityStatusCmd() {
+      const cmd = 'link_antigravity.bat status';
+      const previewEl = document.getElementById('antigravity-cmd-preview');
+      if (previewEl) previewEl.textContent = cmd;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cmd).then(() => {
+          showToastNotification('✔ Đã sao chép lệnh CMD kiểm tra trạng thái Antigravity!');
+        }).catch(() => {
+          showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+        });
+      } else {
+        showToastNotification('✔ Đã chuẩn bị lệnh: ' + cmd);
+      }
     }
 
     async function revokeKeyLive(id) {

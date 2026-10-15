@@ -552,9 +552,41 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 		}
 		gatewayURL := fmt.Sprintf("%s://%s", scheme, effectiveDomain)
 
-		// Phục vụ script quota.bat cho Windows CMD
+		// Phục vụ script link.bat (Tự động trỏ Antigravity IDE) hoặc quota.bat
 		if strings.HasSuffix(r.URL.Path, ".bat") {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			if strings.Contains(r.URL.Path, "link") {
+				w.Header().Set("Content-Disposition", `attachment; filename="link.bat"`)
+				activeKey := clientKey
+				if activeKey == "" {
+					activeKey = "sk-supportflastdev.io.vn-master-live"
+				}
+				batCode := fmt.Sprintf(`@echo off
+title SupportFlast - Tu Dong Tro Antigravity Ve Web Gateway
+echo ==============================================================================
+echo       SUPPORTFLAST.DEV - TU DONG TRO ANTIGRAVITY VE WEB GATEWAY
+echo ==============================================================================
+echo   [*] May chu Gateway:  %s/v1
+echo   [*] Khoa API Key:     %s
+echo ==============================================================================
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.apiEndpoint = '%s/v1'; $c.apiKey = '%s'; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config.json thanh cong.' -ForegroundColor Green; exit 0 } else { Write-Host '  [ERROR] Khong tim thay config.json Antigravity.' -ForegroundColor Red; exit 1 }"
+if errorlevel 1 (
+    echo.
+    echo   [LOI] Co loi xay ra khi cap nhat cau hinh.
+    echo.
+) else (
+    echo.
+    echo   [OK] THANH CONG: Google Antigravity da tu dong tro den Web Gateway.
+    echo   [OK] Moi request tu Antigravity se duoc tinh Quota truc tiep tren Web.
+    echo   [OK] Khong can phai cau hinh bang tay tren giao dien Antigravity IDE.
+    echo.
+)
+`, gatewayURL, activeKey, gatewayURL, activeKey)
+				_, _ = w.Write([]byte(batCode))
+				return
+			}
+
 			w.Header().Set("Content-Disposition", `attachment; filename="quota.bat"`)
 			batCode := fmt.Sprintf(`@echo off
 chcp 65001 >nul
