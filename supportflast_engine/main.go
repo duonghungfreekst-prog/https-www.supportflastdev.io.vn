@@ -23,9 +23,10 @@ import (
 	cloudpoolVFS "supportflast_engine/cloudpool/vfs"
 	"supportflast_engine/config"
 	"supportflast_engine/database"
-	"supportflast_engine/internal/router"
-	"supportflast_engine/registry"
 	"supportflast_engine/internal/middleware"
+	"supportflast_engine/internal/router"
+	"supportflast_engine/omnirouter"
+	"supportflast_engine/registry"
 	"supportflast_engine/security"
 	"sync"
 	"syscall"
@@ -924,6 +925,9 @@ func main() {
 	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
+
+	// 4.4. Kích hoạt OmniRouter / 9Router Master Gateway & Đồng bộ TiDB Cloud
+	omnirouter.RegisterOmniRouterRoutes(mux, database.GetDB(), database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql", uiDir)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path

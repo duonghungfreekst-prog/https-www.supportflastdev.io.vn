@@ -56,7 +56,6 @@ storage/packages/*
 !storage/packages/APP-0909_*
 !storage/packages/*ThongBaoSoDu*
 !storage/packages/*AIEqualizer*
-!storage/packages/*DongHoBaoThuc*
 !storage/packages/*Mau09*
 storage/uploads/*
 !storage/uploads/.gitkeep
@@ -72,11 +71,9 @@ storage/temp/*
 *.out
 *.test
 *.zip
-!storage/packages/*.zip
 *.tar.gz
 *.7z
 *.apk
-!storage/packages/*.apk
 *.msi
 *.iso
 supportflast
@@ -88,6 +85,8 @@ supportflast_engine.exe
 phone_server/cloudflared*
 tools/cloudflared*
 tools/dist/
+tools/9router-client/9router-client*
+tools/9router-desktop/9router-desktop*
 supportflast_core/target/
 
 # 3.1 .NET / C# WPF Build Artifacts

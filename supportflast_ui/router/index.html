@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>9Router Master Gateway — SupportFlast Control Plane</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+      min-height: 100vh;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card-glow {
+      box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.15);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.4);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="text-slate-100 p-4 md:p-8">
+
+  <!-- Header -->
+  <header class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
+            9Router Master Gateway
+          </h1>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 24/24 Online
+          </span>
+        </div>
+        <p class="text-sm text-slate-400 mt-0.5">Control Plane điều phối tài khoản AI & sinh API Key phân phối cho máy tính / Termux</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 flex-wrap">
+      <button onclick="syncFromLibSQL()" id="btnSyncLibSQL" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white border border-slate-700 text-sm font-medium transition flex items-center gap-2">
+        <i class="fa-solid fa-rotate"></i> Đồng bộ từ LibSQL
+      </button>
+      <a href="/" class="px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-sm font-medium transition flex items-center gap-2">
+        <i class="fa-solid fa-house"></i> Trang chủ
+      </a>
+    </div>
+  </header>
+
+  <!-- Metric Badges -->
+  <main class="max-w-6xl mx-auto space-y-8">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Kho Tài Khoản AI</span>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span id="statProviders" class="text-3xl font-bold text-emerald-400">--</span>
+          <span class="text-xs text-slate-400">accounts</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Antigravity OAuth & Gemini Pool</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">API Keys Khởi Tạo</span>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span id="statKeys" class="text-3xl font-bold text-indigo-400">--</span>
+          <span class="text-xs text-slate-400">thiết bị</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Khóa hoạt động trong hệ thống</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Lượt Gọi Yêu Cầu</span>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span id="statRequests" class="text-3xl font-bold text-amber-400">--</span>
+          <span class="text-xs text-slate-400">reqs</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Đã xử lý qua các Client</div>
+      </div>
+
+      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Cơ Sở Dữ Liệu</span>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span class="text-lg font-bold text-sky-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-database text-sm"></i> TiDB / LibSQL
+          </span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Single Source of Truth</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Sinh API Key mới -->
+    <div class="glass-card glass-card-glow rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-key text-indigo-400"></i> Sinh API Key Mới Cho Thiết Bị
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Cấp khóa định danh riêng dạng <code class="text-indigo-300">sk-9router-...</code> cho máy tính (Antigravity, Cursor, Claude Code) hoặc điện thoại (Termux)</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+          <i class="fa-solid fa-laptop absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input id="keyNameInput" type="text" placeholder="Tên gợi nhớ (VD: Antigravity-PC, Cursor-Lap, Termux-Phone)..." 
+                 class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm transition">
+        </div>
+        <button onclick="createNewKey()" id="btnCreateKey" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 shrink-0">
+          <i class="fa-solid fa-plus"></i> Sinh API Key
+        </button>
+      </div>
+
+      <!-- Banner thông báo khi vừa tạo key -->
+      <div id="newKeyBanner" class="hidden mt-4 p-4 rounded-xl bg-indigo-950/60 border border-indigo-500/30">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i> API Key đã sẵn sàng sử dụng:
+          </span>
+          <span class="text-xs text-slate-400" id="newKeyNameBadge"></span>
+        </div>
+        <div class="flex items-center gap-2 bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+          <input id="newKeyValue" readonly class="bg-transparent flex-1 font-mono text-sm text-emerald-300 focus:outline-none select-all" />
+          <button onclick="copyToClipboard('newKeyValue')" class="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-copy"></i> Sao chép
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Danh sách API Keys -->
+    <div class="glass-card rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-emerald-400"></i> Danh Sách API Keys Đang Hoạt Động
+        </h2>
+        <button onclick="loadKeys()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+          <i class="fa-solid fa-arrows-rotate"></i> Làm mới
+        </button>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+              <th class="py-3 px-4 font-semibold">Tên Thiết Bị</th>
+              <th class="py-3 px-4 font-semibold">API Key</th>
+              <th class="py-3 px-4 font-semibold text-center">Đã Gọi</th>
+              <th class="py-3 px-4 font-semibold">Ngày Tạo</th>
+              <th class="py-3 px-4 font-semibold text-center">Trạng Thái</th>
+              <th class="py-3 px-4 font-semibold text-right">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="keysTableBody" class="divide-y divide-slate-800/60">
+            <tr>
+              <td colspan="6" class="text-center py-8 text-slate-500">Đang tải danh sách API Keys...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Section 3: Kho Tài Khoản AI Đang Quản Lý -->
+    <div class="glass-card rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-users-gear text-sky-400"></i> Kho Tài Khoản AI Đã Nạp (Single Source of Truth)
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Toàn bộ 19 tài khoản được bảo vệ trên TiDB Cloud và tự động làm mới (Auto-Refresh) OAuth Token ngầm</p>
+        </div>
+        <button onclick="loadProviders()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+          <i class="fa-solid fa-arrows-rotate"></i> Nạp lại
+        </button>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar max-h-96">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="sticky top-0 bg-slate-900/90 backdrop-blur z-10">
+            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+              <th class="py-3 px-4 font-semibold">#</th>
+              <th class="py-3 px-4 font-semibold">Tên / Email</th>
+              <th class="py-3 px-4 font-semibold">Provider</th>
+              <th class="py-3 px-4 font-semibold">Cơ Chế</th>
+              <th class="py-3 px-4 font-semibold text-center">Ưu Tiên</th>
+              <th class="py-3 px-4 font-semibold text-center">Trạng Thái</th>
+            </tr>
+          </thead>
+          <tbody id="providersTableBody" class="divide-y divide-slate-800/60">
+            <tr>
+              <td colspan="6" class="text-center py-8 text-slate-500">Đang tải danh sách tài khoản...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Section 4: Hướng Dẫn Cấu Hình Kết Nối (Tabs) -->
+    <div class="glass-card rounded-2xl p-6">
+      <h2 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-circle-nodes text-purple-400"></i> Hướng Dẫn Kết Nối Sử Dụng Cho Máy Tính & Termux
+      </h2>
+
+      <!-- Tab Buttons -->
+      <div class="flex border-b border-slate-800 gap-2 mb-6">
+        <button onclick="switchTab('tab-cloud')" id="btn-tab-cloud" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400">
+          Cách A: Cắm Trực Tiếp Vào Tool AI (Không Cần Cài App)
+        </button>
+        <button onclick="switchTab('tab-local')" id="btn-tab-local" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+          Cách B: Chạy App Go Siêu Nhẹ (0ms Latency, Resident IP)
+        </button>
+        <button onclick="switchTab('tab-termux')" id="btn-tab-termux" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+          Cách C: Dùng Trong Termux Android / CLI
+        </button>
+      </div>
+
+      <!-- Tab Content A -->
+      <div id="tab-cloud" class="tab-pane space-y-4">
+        <p class="text-sm text-slate-300">Áp dụng cho mọi công cụ lập trình AI trên máy tính như <strong>Antigravity, Cursor, Claude Code, Cline, Continue.dev, OpenClaw</strong>:</p>
+        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-3 font-mono text-sm">
+          <div>
+            <span class="text-xs uppercase text-slate-500 block">Base URL / Endpoint:</span>
+            <span class="text-emerald-300" id="hostBaseUrl">https://supportflastdev.io.vn/v1</span>
+          </div>
+          <div>
+            <span class="text-xs uppercase text-slate-500 block">API Key:</span>
+            <span class="text-indigo-300">sk-9router-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+            <span class="text-xs text-slate-500 block mt-0.5">(Lấy mã API Key bạn vừa sinh ở bảng phía trên)</span>
+          </div>
+          <div>
+            <span class="text-xs uppercase text-slate-500 block">Mô hình hỗ trợ:</span>
+            <span class="text-amber-300">gemini-3.1-pro-high, claude-3-5-sonnet, claude-3-opus, gemini-2.5-pro</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content B -->
+      <div id="tab-local" class="tab-pane hidden space-y-4">
+        <p class="text-sm text-slate-300">Chạy cục Go siêu nhẹ (Pure Go, 0 libSQL, ~8MB, chỉ ngốn ~12MB RAM) ngay trên máy tính của bạn:</p>
+        <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
+          <li>Mở thư mục <code class="text-indigo-300">tools/9router-client/</code> và điền API Key vào tệp <code class="text-indigo-300">config.json</code>:</li>
+        </ol>
+        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 font-mono text-xs text-slate-300">
+<pre>{
+  "web_server_url": "https://supportflastdev.io.vn",
+  "api_key": "sk-9router-xxxxxxxxxxxxxxxxxxxxxxxx",
+  "local_port": 8080
+}</pre>
+        </div>
+        <p class="text-sm text-slate-300">2. Chạy tệp thực thi <code class="text-emerald-400">9router-client.exe</code>. Trạm Go sẽ tự động nạp Token từ Cloud về RAM và mở cổng <code class="text-emerald-400">http://127.0.0.1:8080/v1</code>.</p>
+        <p class="text-sm text-slate-300">3. Đổi Base URL trong Antigravity/Cursor về <code class="text-emerald-400">http://127.0.0.1:8080/v1</code>.</p>
+      </div>
+
+      <!-- Tab Content C -->
+      <div id="tab-termux" class="tab-pane hidden space-y-4">
+        <p class="text-sm text-slate-300">Trong môi trường Linux / Android Termux, bạn chỉ cần xuất các biến môi trường sau:</p>
+        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 font-mono text-xs text-emerald-300">
+<pre>export OPENAI_BASE_URL="https://supportflastdev.io.vn/v1"
+export OPENAI_API_KEY="sk-9router-xxxxxxxxxxxxxxxx"
+export ANTHROPIC_BASE_URL="https://supportflastdev.io.vn"
+export ANTHROPIC_API_KEY="sk-9router-xxxxxxxxxxxxxxxx"</pre>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white shadow-2xl flex items-center gap-2 transform translate-y-24 opacity-0 transition-all duration-300 z-50">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toastMsg">Thành công</span>
+  </div>
+
+  <script>
+    // Tự động gán Host hiện tại vào URL hướng dẫn
+    document.getElementById('hostBaseUrl').innerText = window.location.origin + '/v1';
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const msgEl = document.getElementById('toastMsg');
+      const icon = document.getElementById('toastIcon');
+      msgEl.innerText = msg;
+      if (isError) {
+        icon.className = 'fa-solid fa-circle-exclamation text-rose-400';
+      } else {
+        icon.className = 'fa-solid fa-circle-check text-emerald-400';
+      }
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3500);
+    }
+
+    function copyToClipboard(id) {
+      const el = document.getElementById(id);
+      el.select();
+      navigator.clipboard.writeText(el.value);
+      showToast('Đã sao chép vào bộ nhớ tạm!');
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-indigo-500', 'text-indigo-400');
+        btn.classList.add('border-transparent', 'text-slate-400');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+      activeBtn.classList.remove('border-transparent', 'text-slate-400');
+    }
+
+    async function loadKeys() {
+      try {
+        const res = await fetch('/api/router/keys');
+        const json = await res.json();
+        const keys = json.data || [];
+        document.getElementById('statKeys').innerText = keys.length;
+
+        let totalReqs = 0;
+        keys.forEach(k => totalReqs += (k.usedRequests || 0));
+        document.getElementById('statRequests').innerText = totalReqs;
+
+        const tbody = document.getElementById('keysTableBody');
+        if (keys.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Chưa có API Key nào được tạo. Nhập tên ở trên để sinh khóa mới.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = keys.map(k => {
+          const masked = k.key.substring(0, 14) + '...' + k.key.substring(k.key.length - 6);
+          const activeBadge = k.isActive 
+            ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Hoạt động</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Đã khóa</span>';
+
+          const createdDate = k.createdAt ? new Date(k.createdAt).toLocaleString('vi-VN') : '—';
+
+          return `
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-semibold text-white">${k.name}</td>
+              <td class="py-3 px-4 font-mono text-xs text-indigo-300">
+                <span title="${k.key}">${masked}</span>
+                <button onclick="navigator.clipboard.writeText('${k.key}'); showToast('Đã chép API Key!')" class="ml-2 text-slate-400 hover:text-white transition" title="Sao chép">
+                  <i class="fa-solid fa-copy text-xs"></i>
+                </button>
+              </td>
+              <td class="py-3 px-4 text-center font-mono font-medium text-amber-300">${k.usedRequests || 0}</td>
+              <td class="py-3 px-4 text-xs text-slate-400">${createdDate}</td>
+              <td class="py-3 px-4 text-center">${activeBadge}</td>
+              <td class="py-3 px-4 text-right">
+                <button onclick="deleteKey('${k.id}')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-400 border border-slate-700/80 text-xs transition" title="Xóa API Key">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function createNewKey() {
+      const input = document.getElementById('keyNameInput');
+      const name = input.value.trim() || 'My-Device';
+      const btn = document.getElementById('btnCreateKey');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Đang tạo...';
+
+      try {
+        const res = await fetch('/api/router/keys', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (data.success && data.key) {
+          input.value = '';
+          document.getElementById('newKeyBanner').classList.remove('hidden');
+          document.getElementById('newKeyValue').value = data.key.key;
+          document.getElementById('newKeyNameBadge').innerText = data.key.name;
+          showToast('Đã sinh API Key mới thành công!');
+          loadKeys();
+        } else {
+          showToast(data.error || 'Lỗi khi tạo key', true);
+        }
+      } catch (err) {
+        showToast('Không thể kết nối máy chủ', true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Sinh API Key';
+      }
+    }
+
+    async function deleteKey(id) {
+      if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn API Key này?')) return;
+      try {
+        const res = await fetch('/api/router/keys?id=' + encodeURIComponent(id), { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Đã xóa API Key thành công!');
+          loadKeys();
+        } else {
+          showToast(data.error || 'Không thể xóa', true);
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối', true);
+      }
+    }
+
+    async function loadProviders() {
+      try {
+        const res = await fetch('/api/router/providers');
+        const json = await res.json();
+        const providers = json.data || [];
+        document.getElementById('statProviders').innerText = providers.length;
+
+        const tbody = document.getElementById('providersTableBody');
+        if (providers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Chưa có tài khoản nào. Hãy nhấn "Đồng bộ từ LibSQL" phía trên.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = providers.map((p, idx) => {
+          return `
+            <tr class="hover:bg-slate-800/40 transition">
+              <td class="py-3 px-4 font-mono text-xs text-slate-500">${idx + 1}</td>
+              <td class="py-3 px-4 font-semibold text-white">
+                <div>${p.name || p.email}</div>
+                <div class="text-[11px] text-slate-400 font-mono">${p.email || '—'}</div>
+              </td>
+              <td class="py-3 px-4 text-xs">
+                <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 font-medium">${p.provider}</span>
+              </td>
+              <td class="py-3 px-4 text-xs text-slate-400 uppercase font-mono">${p.authType}</td>
+              <td class="py-3 px-4 text-center font-mono text-indigo-300 font-medium">${p.priority}</td>
+              <td class="py-3 px-4 text-center">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function syncFromLibSQL() {
+      const btn = document.getElementById('btnSyncLibSQL');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Đang đồng bộ...';
+
+      try {
+        const res = await fetch('/api/router/sync-libsql', { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast(json.message);
+          loadKeys();
+          loadProviders();
+        } else {
+          showToast(json.error || 'Lỗi khi đồng bộ', true);
+        }
+      } catch (err) {
+        showToast('Lỗi kết nối khi đồng bộ', true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Đồng bộ từ LibSQL';
+      }
+    }
+
+    // Tự động tải dữ liệu ban đầu
+    loadKeys();
+    loadProviders();
+  </script>
+</body>
+</html>

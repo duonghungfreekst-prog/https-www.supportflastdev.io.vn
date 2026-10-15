@@ -136,6 +136,7 @@
                     <a href="javascript:void(0)" id="nav-faq" onclick="switchMainView('faq', this)">Đánh giá</a>
                     <a href="javascript:void(0)" id="nav-changelog" onclick="switchMainView('changelog', this)">Cập nhật</a>
                     <a href="/storage/" target="_blank" id="nav-storage" class="admin-only" style="color: #00e5ff; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>📁</span> Kho Lưu Trữ</a>
+                    <a href="/router/" target="_blank" id="nav-router" class="admin-only" style="color: #c084fc; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>⚡</span> 9Router Gateway</a>
                 </div>
 
                 <!-- CỤM TÁC VỤ GÓC PHẢI (NAV RIGHT) -->
@@ -175,6 +176,10 @@
                             <div class="user-dropdown-item" onclick="window.open('/storage/', '_blank'); closeUserDropdown();">
                                 <span>📁</span>
                                 <span>Kho Lưu Trữ Multi-Drive</span>
+                            </div>
+                            <div class="user-dropdown-item" style="color: #c084fc; font-weight: 600;" onclick="window.open('/router/', '_blank'); closeUserDropdown();">
+                                <span>⚡</span>
+                                <span>9Router Gateway &amp; API Keys</span>
                             </div>
                             <div class="user-dropdown-item" onclick="switchMainView('changelog'); closeUserDropdown();">
                                 <span>⚡</span>
@@ -283,6 +288,13 @@
                         <span style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 1.1rem; line-height: 1;">➕</span>
                             <span>Thêm Ứng Dụng Mới &rarr;</span>
+                        </span>
+                    </button>
+                    <!-- Nút 4: 9Router Master Gateway dành riêng cho Quản Trị Viên (Admin Only) -->
+                    <button class="btn-hero-ghost admin-only" id="btn-hero-router-admin" onclick="window.open('/router/', '_blank');" title="Mở 9Router Master Gateway & Quản Lý API Keys (Chỉ dành cho Admin)" style="border-color: rgba(168, 85, 247, 0.4); color: #c084fc; display: none;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem; line-height: 1;">⚡</span>
+                            <span>9Router Gateway &rarr;</span>
                         </span>
                     </button>
                 </div>

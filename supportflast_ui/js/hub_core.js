@@ -1133,10 +1133,12 @@
             }
 
             const navStorage = document.getElementById('nav-storage');
+            const navRouter = document.getElementById('nav-router');
             const userProfile = document.getElementById('nav-user-profile');
             const loginBtn = document.getElementById('btn-admin-login-trigger');
             const registerBtn = document.getElementById('btn-admin-register-trigger');
             const btnHeroApi = document.getElementById('btn-hero-api-admin');
+            const btnHeroRouter = document.getElementById('btn-hero-router-admin');
             const btnNavUpload = document.getElementById('btn-nav-upload');
             const btnDownloadUpload = document.getElementById('btn-download-upload-app');
             const btnBentoUpload = document.getElementById('btn-bento-upload-app');
@@ -1144,10 +1146,12 @@
             if (hasAdminRole) {
                 // CHỈ HIỆN VỚI TÀI KHOẢN ADMIN:
                 if (navStorage) navStorage.style.display = 'inline-flex';
+                if (navRouter) navRouter.style.display = 'inline-flex';
                 if (userProfile) userProfile.style.setProperty('display', 'flex', 'important');
                 if (loginBtn) loginBtn.style.setProperty('display', 'none', 'important');
                 if (registerBtn) registerBtn.style.setProperty('display', 'none', 'important');
                 if (btnHeroApi) btnHeroApi.style.display = 'inline-flex';
+                if (btnHeroRouter) btnHeroRouter.style.display = 'inline-flex';
 
                 // Hiện nút Đăng Tải App cho Admin
                 if (btnNavUpload) btnNavUpload.style.setProperty('display', 'inline-flex', 'important');
@@ -1174,12 +1178,14 @@
                 if (fullnameEl) fullnameEl.textContent = name;
                 if (emailEl) emailEl.textContent = (user && user.email) || 'admin@supportflastdev.io.vn';
             } else {
-                // KHÁCH & TÀI KHOẢN THƯỜNG: ẨN TUYỆT ĐỐI KHO LƯU TRỮ, HIỆN CỤM NÚT ĐĂNG KÝ VÀ ĐĂNG NHẬP
+                // KHÁCH & TÀI KHOẢN THƯỜNG: ẨN TUYỆT ĐỐI KHO LƯU TRỮ & ROUTER GATEWAY, HIỆN CỤM NÚT ĐĂNG KÝ VÀ ĐĂNG NHẬP
                 if (navStorage) navStorage.style.display = 'none';
+                if (navRouter) navRouter.style.display = 'none';
                 if (userProfile) userProfile.style.setProperty('display', 'none', 'important');
                 if (loginBtn) loginBtn.style.setProperty('display', 'inline-flex', 'important');
                 if (registerBtn) registerBtn.style.setProperty('display', 'inline-flex', 'important');
                 if (btnHeroApi) btnHeroApi.style.display = 'none';
+                if (btnHeroRouter) btnHeroRouter.style.display = 'none';
 
                 // Ẩn nút Đăng Tải App với khách
                 if (btnNavUpload) btnNavUpload.style.setProperty('display', 'none', 'important');
