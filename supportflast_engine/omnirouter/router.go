@@ -125,6 +125,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/router/logs/stream", HandleLogStream)
 	mux.HandleFunc("/api/realtime/stream-logs", unifiedLogHandler)
 	mux.HandleFunc("/api/logs", unifiedLogHandler)
+	mux.HandleFunc("/api/translator/console-logs", unifiedLogHandler)
 	mux.HandleFunc("/api/translator/console-logs/stream", HandleLogStream)
 
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)

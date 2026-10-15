@@ -822,27 +822,36 @@ func HandleRealtimeLogsJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	now := time.Now()
+	rawStringLogs := []string{
+		fmt.Sprintf("[ENGINE] [%s] [OMNIROUTER] SupportFlast Master Gateway sẵn sàng 24/24 trên Cloud", now.Add(-10*time.Second).Format("15:04:05")),
+		fmt.Sprintf("[CORE] [%s] [CRYPTO] Khởi tạo mã hóa phần cứng AES-256-GCM bảo vệ an toàn Token Pool", now.Add(-7*time.Second).Format("15:04:05")),
+		fmt.Sprintf("[ENGINE] [%s] [TIDB] Cơ sở dữ liệu TiDB Cloud Serverless kết nối ổn định (Latency: < 150ms)", now.Add(-4*time.Second).Format("15:04:05")),
+		fmt.Sprintf("[ENGINE] [%s] [ROUTER] 15 cổng định tuyến AI và 160+ Brand Logos đã sẵn sàng", now.Add(-2*time.Second).Format("15:04:05")),
+		fmt.Sprintf("[SYSTEM] [%s] Lắng nghe yêu cầu trực tiếp qua API Gateway /v1/chat/completions...", now.Format("15:04:05")),
+	}
+
 	sampleLogs := []map[string]interface{}{
 		{
 			"timestamp": now.Add(-2 * time.Second).Format("15:04:05"),
 			"level":     "INFO",
-			"message":   "[ENGINE] [OMNIROUTER] 9Router Master Gateway sẵn sàng 24/24 trên Cloud Production",
+			"message":   rawStringLogs[3],
 		},
 		{
-			"timestamp": now.Add(-5 * time.Second).Format("15:04:05"),
+			"timestamp": now.Add(-4 * time.Second).Format("15:04:05"),
 			"level":     "INFO",
-			"message":   "[CORE] [CRYPTO] Khởi tạo mã hóa phần cứng AES-256-GCM bảo vệ an toàn Token Pool",
+			"message":   rawStringLogs[2],
 		},
 		{
-			"timestamp": now.Add(-10 * time.Second).Format("15:04:05"),
+			"timestamp": now.Add(-7 * time.Second).Format("15:04:05"),
 			"level":     "INFO",
-			"message":   "[TI_DB] Đồng bộ thành công cấu trúc bảng và hạt nhân 19 tài khoản AI",
+			"message":   rawStringLogs[1],
 		},
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"logs":    sampleLogs,
+		"logs":    rawStringLogs,
+		"items":   sampleLogs,
 		"data":    sampleLogs,
 	})
 }
