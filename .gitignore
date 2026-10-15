@@ -32,6 +32,8 @@ tools/cloudflare_token.txt
 *.sqlite
 *.sqlite3
 *.sqlite*
+*.libsql
+data/*.libsql
 *.mdf
 *.ldf
 cloudpool.db

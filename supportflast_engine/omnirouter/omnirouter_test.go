@@ -136,3 +136,19 @@ func TestClientSyncAndReportEndpoints(t *testing.T) {
 		t.Fatalf("Client Report trả về status %d: %s", recRep.Code, recRep.Body.String())
 	}
 }
+
+func TestEmbeddedDataSeed(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// Kiểm tra nhúng hạt nhân 19 tài khoản cố định
+	err := SeedEmbeddedDataToDB(db)
+	if err != nil {
+		t.Fatalf("SeedEmbeddedDataToDB thất bại: %v", err)
+	}
+
+	providers := GetCachedActiveProviders()
+	if len(providers) != 19 {
+		t.Fatalf("Kỳ vọng 19 providers sau khi seed, nhận được: %d", len(providers))
+	}
+}

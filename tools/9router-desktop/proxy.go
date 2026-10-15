@@ -151,9 +151,16 @@ func (c *DesktopClient) handleProxy(w http.ResponseWriter, r *http.Request) {
 	c.mu.RLock()
 	tokens := make([]TokenItem, len(c.tokens))
 	copy(tokens, c.tokens)
+	renderURL := strings.TrimRight(c.config.RenderURL, "/")
+	masterKey := c.config.MasterAPIKey
 	c.mu.RUnlock()
 
 	if len(tokens) == 0 {
+		// Thử forward trực tiếp lên Render Gateway nếu cấu hình MasterAPIKey hợp lệ
+		if renderURL != "" && masterKey != "" && masterKey != "sk-9router-xxxxxxxxxxxxxxxx" {
+			c.forwardToRender(w, r, bodyBytes, isStream)
+			return
+		}
 		http.Error(w, `{"error": "Chưa có tài khoản nào được nạp trong RAM Desktop. Hãy mở Bảng Điều Khiển để kiểm tra kết nối với Render Cloud."}`, http.StatusServiceUnavailable)
 		return
 	}
@@ -237,6 +244,11 @@ func (c *DesktopClient) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp == nil {
+		if renderURL != "" && masterKey != "" && masterKey != "sk-9router-xxxxxxxxxxxxxxxx" {
+			log.Printf("[LOCAL PROXY] [FALLBACK] Tài khoản nội bộ lỗi (%v), chuyển tiếp lên Render Gateway: %s", lastErr, renderURL)
+			c.forwardToRender(w, r, bodyBytes, isStream)
+			return
+		}
 		http.Error(w, fmt.Sprintf(`{"error":"Tất cả tài khoản AI đều gặp lỗi: %v"}`, lastErr), http.StatusBadGateway)
 		return
 	}
@@ -351,4 +363,59 @@ func (c *DesktopClient) handleProxy(w http.ResponseWriter, r *http.Request) {
 	if usedToken != nil {
 		log.Printf("[LOCAL PROXY] ✔ Phản hồi 0ms thành công qua tài khoản: %s (%s)", usedToken.Name, model)
 	}
+}
+
+// forwardToRender chuyển tiếp trực tiếp request lên Render Gateway khi không có token trong RAM hoặc gặp lỗi
+func (c *DesktopClient) forwardToRender(w http.ResponseWriter, r *http.Request, reqBodyBytes []byte, isStream bool) {
+	c.mu.RLock()
+	renderURL := strings.TrimRight(c.config.RenderURL, "/")
+	masterKey := c.config.MasterAPIKey
+	c.mu.RUnlock()
+
+	targetURL := renderURL + "/v1/chat/completions"
+	req, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(reqBodyBytes))
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Không thể khởi tạo request chuyển tiếp: %v"}`, err), http.StatusInternalServerError)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+masterKey)
+	req.Header.Set("User-Agent", "9Router-Desktop-Client/2.8.5")
+
+	resp, err := proxyHTTPClient.Do(req)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"Lỗi kết nối tới Render Gateway (%s): %v"}`, renderURL, err), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	atomic.AddUint64(&c.totalReqs, 1)
+
+	for k, vv := range resp.Header {
+		for _, v := range vv {
+			w.Header().Add(k, v)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+
+	if isStream {
+		flusher, isFlusher := w.(http.Flusher)
+		buf := make([]byte, 4096)
+		for {
+			n, rErr := resp.Body.Read(buf)
+			if n > 0 {
+				_, _ = w.Write(buf[:n])
+				if isFlusher {
+					flusher.Flush()
+				}
+			}
+			if rErr != nil {
+				break
+			}
+		}
+	} else {
+		_, _ = io.Copy(w, resp.Body)
+	}
+	log.Printf("[LOCAL PROXY] [FORWARD] ✔ Đã chuyển tiếp request thành công lên Render Gateway: %s", renderURL)
 }

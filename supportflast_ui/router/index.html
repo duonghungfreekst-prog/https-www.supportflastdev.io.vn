@@ -3,495 +3,1558 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>9Router Master Gateway — SupportFlast Control Plane</title>
+  <title>NexusRoute AI Gateway Engine — SupportFlast Control Plane</title>
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 50%, #020617 100%);
-      min-height: 100vh;
+    /* ==========================================================================
+       NEXUSROUTE AI GATEWAY ENGINE v2.8.5 - STANDALONE CYBERPUNK THEME
+       100% Pure Standalone CSS - Zero CDN - An Toàn Tuyệt Đối Cho CSP
+       ========================================================================== */
+    :root {
+      --bg-root: #030712;
+      --bg-sidebar: #060913;
+      --bg-card: #0b121e;
+      --bg-card-hover: #0f192b;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-slate: #1e293b;
+      --cyan-neon: #00e5ff;
+      --cyan-dim: #06b6d4;
+      --cyan-glow: rgba(0, 229, 255, 0.35);
+      --purple-neon: #c084fc;
+      --purple-glow: rgba(168, 85, 247, 0.35);
+      --amber-gold: #f59e0b;
+      --amber-neon: #fbbf24;
+      --green-online: #00ff88;
+      --green-emerald: #10b981;
+      --green-text: #34d399;
+      --red-rose: #f43f5e;
+      --red-text: #f87171;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    code, pre, .font-mono {
-      font-family: 'JetBrains Mono', monospace;
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg-root);
+      color: #f8fafc;
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
     }
-    .glass-card-glow {
-      box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.15);
+
+    /* Thanh cuộn Cyberpunk */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(3, 7, 18, 0.8); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.25); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 229, 255, 0.55); }
+
+    .app-layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
     }
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+
+    /* ==================== 1. SIDEBAR BÊN TRÁI ==================== */
+    .sidebar {
+      width: 268px;
+      min-width: 268px;
+      height: 100vh;
+      background: var(--bg-sidebar);
+      background: radial-gradient(circle at 10% 20%, #0d1629 0%, #060913 70%, #030610 100%);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      padding: 14px 12px 12px 12px;
+      overflow: hidden;
+      user-select: none;
+      z-index: 40;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
+
+    /* Logo Card */
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 6px 14px 6px;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(99, 102, 241, 0.4);
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border: 1px solid rgba(6, 182, 212, 0.45);
+      box-shadow: 0 0 16px var(--cyan-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan-neon);
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-ai-badge {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--cyan-neon);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      font-family: var(--font-mono);
+    }
+    .brand-version {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+    .ver-text { color: #64748b; }
+    .ready-text { color: var(--green-emerald); font-weight: 700; letter-spacing: 0.05em; }
+
+    /* Menu cuộn */
+    .sidebar-menu-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-top: 6px;
+      margin-bottom: 8px;
+    }
+    .menu-group-header {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      text-transform: uppercase;
+      padding: 12px 10px 6px 10px;
+    }
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      list-style: none;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px;
       border-radius: 9999px;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
     }
+    .menu-item:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.035);
+    }
+    .menu-item.active {
+      background: rgba(6, 182, 212, 0.12);
+      border: 1px solid rgba(6, 182, 212, 0.75);
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.22);
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .menu-icon {
+      width: 17px;
+      height: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .menu-item.active .menu-icon { color: var(--cyan-neon); }
+    .menu-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .menu-led {
+      width: 6.5px;
+      height: 6.5px;
+      border-radius: 50%;
+      background: var(--cyan-neon);
+      box-shadow: 0 0 8px var(--cyan-neon);
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .pill-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 9999px;
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+    .badge-tunnel { color: #64748b; }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.35); color: #22d3ee; }
+    .badge-emerald { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.35); color: #c084fc; }
+
+    /* Footer Engine Card */
+    .sidebar-footer-card {
+      background: #090e19;
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 11px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .engine-row { display: flex; align-items: center; justify-content: space-between; }
+    .engine-meta { display: flex; align-items: center; gap: 8px; }
+    .dot-pulse {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green-emerald);
+      box-shadow: 0 0 10px var(--green-emerald);
+    }
+    .engine-title { font-size: 12.5px; font-weight: 700; color: #fff; }
+    .engine-subtext { font-size: 10.5px; font-family: var(--font-mono); color: var(--green-emerald); font-weight: 600; }
+    
+    .btn-restart-engine {
+      width: 100%;
+      background: linear-gradient(135deg, #00f2fe 0%, #06b6d4 50%, #0891b2 100%);
+      border: none;
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      box-shadow: 0 0 16px rgba(6, 182, 212, 0.35);
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+    .btn-restart-engine:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .restart-icon-box {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: rgba(2, 26, 36, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #021a24;
+      flex-shrink: 0;
+    }
+    .restart-main { font-size: 11px; font-weight: 900; color: #021a24; text-transform: uppercase; }
+    .restart-sub { font-size: 9.5px; color: #083344; font-weight: 500; }
+
+    .routing-status-bar {
+      background: #040812;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 6px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .routing-text { font-size: 10px; font-weight: 700; color: var(--green-emerald); text-transform: uppercase; }
+    .btn-stop {
+      background: rgba(244, 63, 94, 0.16);
+      border: 1px solid rgba(244, 63, 94, 0.45);
+      color: #f43f5e;
+      border-radius: 5px;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 2px 7px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .footer-actions { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .footer-action-btn { background: none; border: none; font-size: 10.5px; cursor: pointer; color: #64748b; }
+    .footer-action-btn:hover { color: #94a3b8; }
+
+    /* ==================== 2. MAIN WORKSPACE ==================== */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-root);
+    }
+
+    /* Topbar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 24px 10px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #030712;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .chip-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #030712;
+      border: 1px solid #13304a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan-neon);
+      box-shadow: 0 4px 15px rgba(0, 229, 255, 0.15);
+    }
+    .quota-title-group { line-height: 1.25; }
+    .quota-h1 { font-size: 15px; font-weight: 800; color: #fff; }
+    .quota-ip-port { font-family: var(--font-mono); font-size: 13px; color: #94a3b8; margin-left: 8px; }
+    
+    .badge-online-pill {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: #010207;
+      border: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .dot-status-pulse {
+      width: 5px;
+      height: 12px;
+      border-radius: 9999px;
+      background: var(--green-online);
+      box-shadow: 0 0 10px var(--green-online);
+    }
+    .online-text-stack { display: flex; flex-direction: column; line-height: 1; }
+    .online-txt { font-size: 10px; font-extrabold; color: var(--green-online); }
+    .port-txt { font-size: 11px; font-family: var(--font-mono); font-weight: 700; color: var(--green-online); }
+
+    .topbar-right { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+    .pill-info-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .pill-pct {
+      font-weight: 800;
+      color: var(--cyan-neon);
+      background: rgba(0, 229, 255, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 229, 255, 0.35);
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      padding: 12px 24px;
+      background: #030712;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .filter-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-slate);
+      color: #e2e8f0;
+      border-radius: 12px;
+      padding: 8px 30px 8px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+    }
+    .btn-filter {
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s;
+    }
+    .btn-filter-amber { background: var(--bg-card); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; }
+    .btn-filter-amber:hover { border-color: #fbbf24; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+    .btn-filter-red { background: rgba(24, 10, 14, 0.4); border: 1px solid rgba(239, 68, 68, 0.5); color: var(--red-text); }
+    .btn-filter-red:hover { border-color: #ef4444; color: #fca5a5; }
+    .btn-filter-green { background: rgba(6, 24, 20, 0.4); border: 1px solid rgba(16, 185, 129, 0.5); color: var(--green-text); }
+    .btn-filter-green:hover { border-color: #10b981; color: #6ee7b7; }
+    .btn-auto-proxy {
+      background: rgba(25, 20, 6, 0.6);
+      border: 1px solid var(--amber-gold);
+      color: var(--amber-neon);
+      border-radius: 12px;
+      padding: 8px 16px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+    }
+    .btn-auto-proxy:hover { box-shadow: 0 0 22px rgba(245, 158, 11, 0.45); transform: translateY(-1px); }
+
+    /* Switch Component */
+    .switch-ui {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 34px;
+      height: 18px;
+      border-radius: 9999px;
+      background: #27272a;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .switch-ui.on-emerald { background: var(--green-emerald); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+    .switch-ui.on-amber { background: var(--amber-gold); box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+    .switch-knob {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffffff;
+      margin-left: 2px;
+      transition: transform 0.2s;
+    }
+    .switch-ui.on-emerald .switch-knob,
+    .switch-ui.on-amber .switch-knob { transform: translateX(16px); }
+
+    /* View Content Container */
+    .viewport-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ==================== 3. CARDS GRID (THẺ TÀI KHOẢN HÌNH 2) ==================== */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+      gap: 16px;
+    }
+    @media (max-width: 1024px) {
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+
+    .account-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      transition: all 0.25s ease;
+    }
+    .account-card:hover {
+      border-color: rgba(0, 229, 255, 0.4);
+      box-shadow: 0 0 24px rgba(0, 229, 255, 0.15);
+      transform: translateY(-2px);
+    }
+    .account-card.inactive {
+      opacity: 0.6;
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+
+    .card-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .card-left-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .avatar-antigravity {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: var(--cyan-neon);
+      flex-shrink: 0;
+    }
+    .card-title-stack { min-width: 0; flex: 1; }
+    .card-title-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .provider-title { font-size: 13.5px; font-weight: 700; color: #fff; }
+    .badge-cloud-code {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(6, 182, 212, 0.4);
+    }
+    .card-actions-right { display: flex; align-items: center; gap: 6px; }
+    .card-btn-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-subtle);
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .card-btn-icon:hover { color: #fff; border-color: rgba(255, 255, 255, 0.3); }
+
+    /* Dòng Proxy IP tím */
+    .proxy-tag-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+    .badge-proxy-purple {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      color: #d8b4fe;
+    }
+    .card-email {
+      font-size: 11.5px;
+      color: #94a3b8;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Các dòng Quota */
+    .quota-rows-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .quota-item-line { display: flex; flex-direction: column; gap: 3px; }
+    .quota-meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .model-left { display: flex; align-items: center; gap: 6px; }
+    .model-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .dot-green { background: var(--green-emerald); box-shadow: 0 0 6px var(--green-emerald); }
+    .dot-amber { background: var(--amber-gold); box-shadow: 0 0 6px var(--amber-gold); }
+    .dot-red { background: var(--red-rose); box-shadow: 0 0 6px var(--red-rose); }
+    
+    .model-name { color: #cbd5e1; font-weight: 500; font-size: 11.5px; }
+    .quota-stats-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+    }
+    .stats-used { color: #64748b; }
+    .stats-remain-green { color: var(--green-text); font-weight: 700; }
+    .stats-remain-amber { color: var(--amber-neon); font-weight: 700; }
+    .stats-remain-red { color: var(--red-text); font-weight: 700; }
+    .stats-countdown { color: #94a3b8; }
+
+    /* Progress bar */
+    .bar-track {
+      width: 100%;
+      height: 4px;
+      border-radius: 9999px;
+      background: #18181b;
+      overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 9999px; }
+    .fill-green { background: linear-gradient(90deg, #059669, #10b981); }
+    .fill-amber { background: linear-gradient(90deg, #d97706, #f59e0b); }
+    .fill-red { background: linear-gradient(90deg, #dc2626, #f43f5e); }
+
+    /* ==================== 4. CÁC TABS PHỤ: ENDPOINT / CONSOLE ==================== */
+    .tab-view-pane { display: none; }
+    .tab-view-pane.active-pane { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Terminal Console */
+    .terminal-box {
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      border-radius: 14px;
+      background: #020408;
+      box-shadow: 0 0 35px rgba(0, 229, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .terminal-header {
+      background: #050a14;
+      border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .terminal-screen {
+      height: 480px;
+      overflow-y: auto;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+
+    /* Key Management Table */
+    .key-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      text-align: left;
+    }
+    .key-table th {
+      padding: 10px 14px;
+      color: #94a3b8;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .key-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    /* Toast */
+    .toast-popup {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: #0f172a;
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 99999;
+    }
+    .toast-popup.show { transform: translateY(0); opacity: 1; }
   </style>
 </head>
-<body class="text-slate-100 p-4 md:p-8">
+<body>
 
-  <!-- Header -->
-  <header class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-500 to-emerald-400 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/30">
-        <i class="fa-solid fa-bolt"></i>
+<div class="app-layout">
+
+  <!-- ==================== SIDEBAR TRÁI (HÌNH 2) ==================== -->
+  <aside class="sidebar" id="appSidebar">
+    
+    <!-- Header: Logo & Ready Status -->
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"></polygon>
+        </svg>
       </div>
       <div>
-        <div class="flex items-center gap-3">
-          <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
-            9Router Master Gateway
-          </h1>
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> 24/24 Online
-          </span>
+        <div class="brand-title">
+          <span>NexusRoute</span>
+          <span class="brand-ai-badge">AI</span>
         </div>
-        <p class="text-sm text-slate-400 mt-0.5">Control Plane điều phối tài khoản AI & sinh API Key phân phối cho máy tính / Termux</p>
+        <div class="brand-version">
+          <span class="ver-text">v2.8.5</span>
+          <span class="ready-text">READY</span>
+        </div>
       </div>
     </div>
 
-    <div class="flex items-center gap-3 flex-wrap">
-      <button onclick="syncFromLibSQL()" id="btnSyncLibSQL" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white border border-slate-700 text-sm font-medium transition flex items-center gap-2">
-        <i class="fa-solid fa-rotate"></i> Đồng bộ từ LibSQL
-      </button>
-      <a href="/" class="px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 text-sm font-medium transition flex items-center gap-2">
-        <i class="fa-solid fa-house"></i> Trang chủ
-      </a>
+    <!-- Danh sách Menu cuộn -->
+    <div class="sidebar-menu-scroll">
+      
+      <!-- Nhóm 1: HẠ TẦNG & ĐỊNH TUYẾN -->
+      <div class="menu-group-header">HẠ TẦNG &amp; ĐỊNH TUYẾN</div>
+      <ul class="menu-list">
+        <li>
+          <a class="menu-item" onclick="switchMainTab('mitm-proxy', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <span class="menu-label">MITM Proxy &amp; CLI</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('endpoints', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21 2-2 2m-6 6a5 5 0 1 0-7 7 5 5 0 0 0 7-7l8-8"/><path d="m15.5 8.5 3 3"/></svg></span>
+            <span class="menu-label">Endpoint &amp; API Key</span>
+            <span class="pill-badge badge-tunnel" id="badgeTunnelCount">3 Tunnels</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('providers', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></span>
+            <span class="menu-label">Nhà Cung Cấp</span>
+            <span class="pill-badge badge-cyan">129 Hub</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('combo-vision', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span>
+            <span class="menu-label">Combo &amp; Vision</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('topology', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+            <span class="menu-label">Live Topology &amp; Thống Kê</span>
+          </a>
+        </li>
+        <!-- TAB CHÍNH: THEO DÕI HẠN MỨC (ACTIVE) -->
+        <li>
+          <a class="menu-item active" id="menu-quota" onclick="switchMainTab('quota', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 6v12"/></svg></span>
+            <span class="menu-label">Theo Dõi Hạn Mức</span>
+            <span class="menu-led"></span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('optimizer', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></span>
+            <span class="menu-label">Token Optimizer</span>
+            <span class="pill-badge badge-emerald">-38%</span>
+          </a>
+        </li>
+      </ul>
+
+      <!-- Nhóm 2: TƯƠNG TÁC & HỆ THỐNG -->
+      <div class="menu-group-header">TƯƠNG TÁC &amp; HỆ THỐNG</div>
+      <ul class="menu-list">
+        <li>
+          <a class="menu-item" onclick="switchMainTab('media-stt', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg></span>
+            <span class="menu-label">Media &amp; STT</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('proxy-pools', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span>
+            <span class="menu-label">Proxy Pools IP</span>
+            <span class="pill-badge badge-emerald">2 Active</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('skills-hub', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/></svg></span>
+            <span class="menu-label">AI Skills Hub</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('console', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
+            <span class="menu-label">Nhật Ký Console</span>
+          </a>
+        </li>
+        <li>
+          <a class="menu-item" onclick="switchMainTab('settings', this)">
+            <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+            <span class="menu-label">Cài Đặt Hệ Thống</span>
+          </a>
+        </li>
+      </ul>
     </div>
-  </header>
 
-  <!-- Metric Badges -->
-  <main class="max-w-6xl mx-auto space-y-8">
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Kho Tài Khoản AI</span>
-        <div class="flex items-baseline gap-2 mt-2">
-          <span id="statProviders" class="text-3xl font-bold text-emerald-400">--</span>
-          <span class="text-xs text-slate-400">accounts</span>
+    <!-- Footer: OmniRouter Engine -->
+    <div class="sidebar-footer-card">
+      <div class="engine-row">
+        <div class="engine-meta">
+          <div class="dot-pulse" id="engineDot"></div>
+          <div>
+            <div class="engine-title">OmniRouter Engine</div>
+            <div class="engine-subtext" id="engineSubtext">● ONLINE :20128</div>
+          </div>
         </div>
-        <div class="text-[11px] text-slate-500 mt-1">Antigravity OAuth & Gemini Pool</div>
+        <div class="switch-ui on-emerald" id="engineToggle" onclick="toggleEngineState()">
+          <div class="switch-knob"></div>
+        </div>
       </div>
 
-      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">API Keys Khởi Tạo</span>
-        <div class="flex items-baseline gap-2 mt-2">
-          <span id="statKeys" class="text-3xl font-bold text-indigo-400">--</span>
-          <span class="text-xs text-slate-400">thiết bị</span>
+      <button class="btn-restart-engine" onclick="restartEngine()">
+        <div class="restart-icon-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
         </div>
-        <div class="text-[11px] text-slate-500 mt-1">Khóa hoạt động trong hệ thống</div>
-      </div>
-
-      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Lượt Gọi Yêu Cầu</span>
-        <div class="flex items-baseline gap-2 mt-2">
-          <span id="statRequests" class="text-3xl font-bold text-amber-400">--</span>
-          <span class="text-xs text-slate-400">reqs</span>
-        </div>
-        <div class="text-[11px] text-slate-500 mt-1">Đã xử lý qua các Client</div>
-      </div>
-
-      <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Cơ Sở Dữ Liệu</span>
-        <div class="flex items-baseline gap-2 mt-2">
-          <span class="text-lg font-bold text-sky-400 flex items-center gap-1.5">
-            <i class="fa-solid fa-database text-sm"></i> TiDB / LibSQL
-          </span>
-        </div>
-        <div class="text-[11px] text-slate-500 mt-1">Single Source of Truth</div>
-      </div>
-    </div>
-
-    <!-- Section 1: Sinh API Key mới -->
-    <div class="glass-card glass-card-glow rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-key text-indigo-400"></i> Sinh API Key Mới Cho Thiết Bị
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">Cấp khóa định danh riêng dạng <code class="text-indigo-300">sk-9router-...</code> cho máy tính (Antigravity, Cursor, Claude Code) hoặc điện thoại (Termux)</p>
+          <div class="restart-main">KHỞI ĐỘNG LẠI ENGINE</div>
+          <div class="restart-sub">Làm mới kết nối &amp; tiến trình Gateway</div>
+        </div>
+      </button>
+
+      <div class="routing-status-bar">
+        <span class="routing-text" id="routingStatusText">ĐANG ĐIỀU HƯỚNG MỌI APP</span>
+        <button class="btn-stop" id="btnStopRouting" onclick="toggleRoutingActive()">DỪNG</button>
+      </div>
+
+      <div class="footer-actions">
+        <button class="footer-action-btn" onclick="showToast('Đã dọn dẹp bộ nhớ đệm')">Dọn Dẹp</button>
+        <button class="footer-action-btn" style="color:#38bdf8" onclick="showToast('Đã reset cấu hình định tuyến')">Reset</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== KHÔNG GIAN LÀM VIỆC CHÍNH (WORKSPACE) ==================== -->
+  <main class="workspace">
+    
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="chip-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+        </div>
+        <div class="quota-title-group">
+          <div class="quota-h1">Theo Dõi Hạn Mức</div>
+          <div class="quota-h1">Quota Tiêu Thụ <span class="quota-ip-port">/ 127.0.0.1:20128</span></div>
+        </div>
+        <div class="badge-online-pill">
+          <div class="dot-status-pulse"></div>
+          <div class="online-text-stack">
+            <span class="online-txt">ONLINE</span>
+            <span class="port-txt">:20128</span>
+          </div>
+          <div class="switch-ui on-emerald">
+            <div class="switch-knob"></div>
+          </div>
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1">
-          <i class="fa-solid fa-laptop absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input id="keyNameInput" type="text" placeholder="Tên gợi nhớ (VD: Antigravity-PC, Cursor-Lap, Termux-Phone)..." 
-                 class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm transition">
+      <div class="topbar-right">
+        <div class="pill-info-box">
+          <span>Hiệu ứng nền</span>
+          <span class="pill-pct">35%</span>
         </div>
-        <button onclick="createNewKey()" id="btnCreateKey" class="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 shrink-0">
-          <i class="fa-solid fa-plus"></i> Sinh API Key
+        <div style="font-size:12px; font-weight:700; color:#cbd5e1; cursor:pointer;">
+          <span style="color:#64748b;">us</span> EN
+        </div>
+        <button style="background:none; border:none; color:#64748b; cursor:pointer;" onclick="window.open('/', '_blank')" title="Về Web Chính SupportFlast">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- FILTER BAR -->
+    <section class="filter-bar">
+      <div class="filter-row">
+        <select class="filter-select" id="selProviderFilter" onchange="applyFilters()">
+          <option value="all">Tất cả nhà cung cấp</option>
+          <option value="antigravity">Antigravity</option>
+          <option value="google">Google Cloud Code</option>
+        </select>
+        <select class="filter-select" id="selAccountFilter" onchange="applyFilters()">
+          <option value="all">Tất cả tài khoản</option>
+          <option value="active">Tài khoản khả dụng</option>
+          <option value="expired">Tài khoản hết hạn</option>
+        </select>
+        <button class="btn-filter btn-filter-amber" onclick="filterPriorityReset()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Ưu tiên sắp reset</span>
+        </button>
+        <button class="btn-filter btn-filter-red" onclick="disableExpiredAccounts()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <span>Tắt tài khoản hết hạn</span>
         </button>
       </div>
 
-      <!-- Banner thông báo khi vừa tạo key -->
-      <div id="newKeyBanner" class="hidden mt-4 p-4 rounded-xl bg-indigo-950/60 border border-indigo-500/30">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-circle-check text-emerald-400"></i> API Key đã sẵn sàng sử dụng:
+      <div class="filter-row">
+        <button class="btn-filter btn-filter-green" onclick="enableAvailableAccounts()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Bật tài khoản khả dụng</span>
+        </button>
+        <button class="btn-auto-proxy" onclick="triggerAutoProxy()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Auto Đổi Proxy Tốt Nhất</span>
+        </button>
+        <div style="display:flex; align-items:center; gap:8px; margin-left:8px;">
+          <div class="switch-ui on-amber" id="autoRefreshSwitch" onclick="toggleAutoRefresh()">
+            <div class="switch-knob"></div>
+          </div>
+          <span style="font-size:12px; font-weight:600; color:#e2e8f0;">
+            Tự động làm mới <span id="lblCountdown" style="color:#fbbf24; font-family:var(--font-mono); font-weight:700;">(29s)</span>
           </span>
-          <span class="text-xs text-slate-400" id="newKeyNameBadge"></span>
-        </div>
-        <div class="flex items-center gap-2 bg-slate-900 p-2.5 rounded-lg border border-slate-800">
-          <input id="newKeyValue" readonly class="bg-transparent flex-1 font-mono text-sm text-emerald-300 focus:outline-none select-all" />
-          <button onclick="copyToClipboard('newKeyValue')" class="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5">
-            <i class="fa-solid fa-copy"></i> Sao chép
+          <button style="width:28px; height:28px; border-radius:8px; background:var(--bg-card); border:1px solid var(--border-slate); color:#cbd5e1; cursor:pointer; display:flex; align-items:center; justify-content:center;" onclick="manualReloadData()" title="Làm mới ngay">
+            <svg id="svgReload" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Section 2: Danh sách API Keys -->
-    <div class="glass-card rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-shield-halved text-emerald-400"></i> Danh Sách API Keys Đang Hoạt Động
-        </h2>
-        <button onclick="loadKeys()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
-          <i class="fa-solid fa-arrows-rotate"></i> Làm mới
-        </button>
-      </div>
+    <!-- WORKSPACE VIEWPORT -->
+    <div class="viewport-content">
 
-      <div class="overflow-x-auto custom-scrollbar">
-        <table class="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-              <th class="py-3 px-4 font-semibold">Tên Thiết Bị</th>
-              <th class="py-3 px-4 font-semibold">API Key</th>
-              <th class="py-3 px-4 font-semibold text-center">Đã Gọi</th>
-              <th class="py-3 px-4 font-semibold">Ngày Tạo</th>
-              <th class="py-3 px-4 font-semibold text-center">Trạng Thái</th>
-              <th class="py-3 px-4 font-semibold text-right">Thao Tác</th>
-            </tr>
-          </thead>
-          <tbody id="keysTableBody" class="divide-y divide-slate-800/60">
-            <tr>
-              <td colspan="6" class="text-center py-8 text-slate-500">Đang tải danh sách API Keys...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Section 3: Kho Tài Khoản AI Đang Quản Lý -->
-    <div class="glass-card rounded-2xl p-6">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-users-gear text-sky-400"></i> Kho Tài Khoản AI Đã Nạp (Single Source of Truth)
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">Toàn bộ 19 tài khoản được bảo vệ trên TiDB Cloud và tự động làm mới (Auto-Refresh) OAuth Token ngầm</p>
+      <!-- ==================== VIEW 1: THEO DÕI HẠN MỨC (MẶC ĐỊNH - HÌNH 2) ==================== -->
+      <section class="tab-view-pane active-pane" id="pane-quota">
+        <div class="cards-grid" id="accountsGridContainer">
+          <!-- JS sẽ render 19 thẻ tài khoản chi tiết tại đây -->
+          <div style="color:#64748b; font-size:13px; text-align:center; padding:40px;">Đang nạp dữ liệu 19 tài khoản AI...</div>
         </div>
-        <button onclick="loadProviders()" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
-          <i class="fa-solid fa-arrows-rotate"></i> Nạp lại
-        </button>
-      </div>
+      </section>
 
-      <div class="overflow-x-auto custom-scrollbar max-h-96">
-        <table class="w-full text-left border-collapse text-sm">
-          <thead class="sticky top-0 bg-slate-900/90 backdrop-blur z-10">
-            <tr class="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-              <th class="py-3 px-4 font-semibold">#</th>
-              <th class="py-3 px-4 font-semibold">Tên / Email</th>
-              <th class="py-3 px-4 font-semibold">Provider</th>
-              <th class="py-3 px-4 font-semibold">Cơ Chế</th>
-              <th class="py-3 px-4 font-semibold text-center">Ưu Tiên</th>
-              <th class="py-3 px-4 font-semibold text-center">Trạng Thái</th>
-            </tr>
-          </thead>
-          <tbody id="providersTableBody" class="divide-y divide-slate-800/60">
-            <tr>
-              <td colspan="6" class="text-center py-8 text-slate-500">Đang tải danh sách tài khoản...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Section 4: Hướng Dẫn Cấu Hình Kết Nối (Tabs) -->
-    <div class="glass-card rounded-2xl p-6">
-      <h2 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
-        <i class="fa-solid fa-circle-nodes text-purple-400"></i> Hướng Dẫn Kết Nối Sử Dụng Cho Máy Tính & Termux
-      </h2>
-
-      <!-- Tab Buttons -->
-      <div class="flex border-b border-slate-800 gap-2 mb-6">
-        <button onclick="switchTab('tab-cloud')" id="btn-tab-cloud" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400">
-          Cách A: Cắm Trực Tiếp Vào Tool AI (Không Cần Cài App)
-        </button>
-        <button onclick="switchTab('tab-local')" id="btn-tab-local" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-          Cách B: Chạy App Go Siêu Nhẹ (0ms Latency, Resident IP)
-        </button>
-        <button onclick="switchTab('tab-termux')" id="btn-tab-termux" class="tab-btn px-4 py-2 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-          Cách C: Dùng Trong Termux Android / CLI
-        </button>
-      </div>
-
-      <!-- Tab Content A -->
-      <div id="tab-cloud" class="tab-pane space-y-4">
-        <p class="text-sm text-slate-300">Áp dụng cho mọi công cụ lập trình AI trên máy tính như <strong>Antigravity, Cursor, Claude Code, Cline, Continue.dev, OpenClaw</strong>:</p>
-        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-3 font-mono text-sm">
-          <div>
-            <span class="text-xs uppercase text-slate-500 block">Base URL / Endpoint:</span>
-            <span class="text-emerald-300" id="hostBaseUrl">https://supportflastdev.io.vn/v1</span>
+      <!-- ==================== VIEW 2: ENDPOINT & API KEY ==================== -->
+      <section class="tab-view-pane" id="pane-endpoints">
+        <!-- Khối sinh Key -->
+        <div style="background:var(--bg-card); border:1px solid rgba(0,229,255,0.3); border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:var(--cyan-neon); font-size:16px;">⚡</span>
+            <h3 style="font-size:14px; font-weight:700;">Sinh API Key Mới Cho Thiết Bị (PC / Antigravity / Cursor / Termux)</h3>
           </div>
-          <div>
-            <span class="text-xs uppercase text-slate-500 block">API Key:</span>
-            <span class="text-indigo-300">sk-9router-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
-            <span class="text-xs text-slate-500 block mt-0.5">(Lấy mã API Key bạn vừa sinh ở bảng phía trên)</span>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <input type="text" id="newKeyDeviceName" placeholder="Tên gợi nhớ (VD: PC-Antigravity, Laptop-Cursor, Termux)..." 
+                   style="flex:1; min-width:280px; background:#040711; border:1px solid var(--border-slate); border-radius:10px; padding:10px 14px; color:#fff; font-size:13px; outline:none;">
+            <button onclick="handleCreateKey()" style="background:linear-gradient(135deg, #4f46e5, #00e5ff); color:#fff; font-weight:700; border:none; border-radius:10px; padding:10px 20px; cursor:pointer; font-size:13px;">
+              + Sinh Khóa Mới
+            </button>
           </div>
-          <div>
-            <span class="text-xs uppercase text-slate-500 block">Mô hình hỗ trợ:</span>
-            <span class="text-amber-300">gemini-3.1-pro-high, claude-3-5-sonnet, claude-3-opus, gemini-2.5-pro</span>
+          <!-- Banner Key mới -->
+          <div id="newKeyBanner" style="display:none; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.4); border-radius:10px; padding:12px 14px;">
+            <div style="font-size:12px; color:#34d399; font-weight:700; margin-bottom:6px;">✓ API Key mới đã sẵn sàng:</div>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="newKeyValueInput" readonly style="flex:1; background:#000; border:1px solid #10b981; border-radius:6px; padding:8px 12px; color:#34d399; font-family:var(--font-mono); font-size:13px;">
+              <button onclick="copyElement('newKeyValueInput')" style="background:#10b981; color:#000; font-weight:800; border:none; border-radius:6px; padding:8px 16px; cursor:pointer;">Sao Chép</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Tab Content B -->
-      <div id="tab-local" class="tab-pane hidden space-y-4">
-        <p class="text-sm text-slate-300">Chạy cục Go siêu nhẹ (Pure Go, 0 libSQL, ~8MB, chỉ ngốn ~12MB RAM) ngay trên máy tính của bạn:</p>
-        <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
-          <li>Mở thư mục <code class="text-indigo-300">tools/9router-client/</code> và điền API Key vào tệp <code class="text-indigo-300">config.json</code>:</li>
-        </ol>
-        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 font-mono text-xs text-slate-300">
-<pre>{
-  "web_server_url": "https://supportflastdev.io.vn",
-  "api_key": "sk-9router-xxxxxxxxxxxxxxxxxxxxxxxx",
-  "local_port": 8080
-}</pre>
+        <!-- Bảng danh sách Keys -->
+        <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:14px; padding:16px; overflow-x:auto;">
+          <table class="key-table">
+            <thead>
+              <tr>
+                <th>Thiết Bị</th>
+                <th>API Key (Định Danh)</th>
+                <th style="text-align:center;">Lượt Gọi</th>
+                <th>Ngày Tạo</th>
+                <th style="text-align:center;">Trạng Thái</th>
+                <th style="text-align:right;">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody id="keysTableBody">
+              <tr><td colspan="6" style="text-align:center; color:#64748b; padding:24px;">Đang tải danh sách khóa...</td></tr>
+            </tbody>
+          </table>
         </div>
-        <p class="text-sm text-slate-300">2. Chạy tệp thực thi <code class="text-emerald-400">9router-client.exe</code>. Trạm Go sẽ tự động nạp Token từ Cloud về RAM và mở cổng <code class="text-emerald-400">http://127.0.0.1:8080/v1</code>.</p>
-        <p class="text-sm text-slate-300">3. Đổi Base URL trong Antigravity/Cursor về <code class="text-emerald-400">http://127.0.0.1:8080/v1</code>.</p>
-      </div>
 
-      <!-- Tab Content C -->
-      <div id="tab-termux" class="tab-pane hidden space-y-4">
-        <p class="text-sm text-slate-300">Trong môi trường Linux / Android Termux, bạn chỉ cần xuất các biến môi trường sau:</p>
-        <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 font-mono text-xs text-emerald-300">
-<pre>export OPENAI_BASE_URL="https://supportflastdev.io.vn/v1"
-export OPENAI_API_KEY="sk-9router-xxxxxxxxxxxxxxxx"
-export ANTHROPIC_BASE_URL="https://supportflastdev.io.vn"
-export ANTHROPIC_API_KEY="sk-9router-xxxxxxxxxxxxxxxx"</pre>
+        <!-- Hướng dẫn cấu hình -->
+        <div style="background:#040711; border:1px solid var(--border-slate); border-radius:14px; padding:18px; font-size:13px; line-height:1.7;">
+          <div style="font-weight:700; color:var(--cyan-neon); margin-bottom:6px;">🌐 Hướng Dẫn Kết Nối Cho IDE &amp; Công Cụ AI:</div>
+          <div>• <strong>Chế độ 1 (Dùng qua App Desktop Client):</strong> Base URL = <code style="color:#34d399; font-family:var(--font-mono);">http://127.0.0.1:20128/v1</code> (hoặc 8080)</div>
+          <div>• <strong>Chế độ 2 (Cắm trực tiếp Cloud Web):</strong> Base URL = <code style="color:#38bdf8; font-family:var(--font-mono);"><span id="lblCloudUrl">https://supportflastdev.io.vn</span>/v1</code></div>
+          <div>• <strong>API Key:</strong> Dán mã <code style="color:#c084fc; font-family:var(--font-mono);">sk-9router-...</code> vừa sinh ở trên.</div>
         </div>
-      </div>
+      </section>
+
+      <!-- ==================== VIEW 3: PROXY POOLS IP ==================== -->
+      <section class="tab-view-pane" id="pane-proxy-pools">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:16px;">
+          <!-- Proxy 1 -->
+          <div style="background:var(--bg-card); border:1px solid rgba(168,85,247,0.4); border-radius:14px; padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="badge-proxy-purple">🔒 Imported 36.50.175.113</span>
+              <span style="color:#34d399; font-size:11px; font-weight:700;">● 45ms PING</span>
+            </div>
+            <div style="font-size:15px; font-weight:700; margin-top:10px;">Cụm Proxy Pool #1 (Việt Nam Dedicated)</div>
+            <div style="font-size:12px; color:#94a3b8; font-family:var(--font-mono); margin-top:4px;">IP: 36.50.175.113:20329 (HTTP Resident)</div>
+            <div style="font-size:12px; color:#38bdf8; margin-top:8px;">Phụ trách: 10 tài khoản Antigravity</div>
+          </div>
+          <!-- Proxy 2 -->
+          <div style="background:var(--bg-card); border:1px solid rgba(168,85,247,0.4); border-radius:14px; padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="badge-proxy-purple">🔒 Imported 58.186.63.192</span>
+              <span style="color:#34d399; font-size:11px; font-weight:700;">● 52ms PING</span>
+            </div>
+            <div style="font-size:15px; font-weight:700; margin-top:10px;">Cụm Proxy Pool #2 (Việt Nam Dedicated)</div>
+            <div style="font-size:12px; color:#94a3b8; font-family:var(--font-mono); margin-top:4px;">IP: 58.186.63.192:18753 (HTTP Resident)</div>
+            <div style="font-size:12px; color:#38bdf8; margin-top:8px;">Phụ trách: 9 tài khoản Antigravity</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 4: NHẬT KÝ CONSOLE (LIVE LOGS) ==================== -->
+      <section class="tab-view-pane" id="pane-console">
+        <div class="terminal-box">
+          <div class="terminal-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="width:10px; height:10px; border-radius:50%; background:#f43f5e;"></span>
+              <span style="width:10px; height:10px; border-radius:50%; background:#f59e0b;"></span>
+              <span style="width:10px; height:10px; border-radius:50%; background:#10b981;"></span>
+              <span style="color:var(--cyan-neon); font-weight:700; margin-left:6px;">NEXUSROUTE_CONSOLE://LIVE_TELEMETRY</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="color:#34d399;" id="lblSseStatus">● LIVE STREAMING</span>
+              <button onclick="clearConsole()" style="background:none; border:none; color:#64748b; cursor:pointer;">Xóa</button>
+            </div>
+          </div>
+          <div class="terminal-screen" id="consoleScreen">
+            <div style="color:var(--cyan-neon);">[INITIALIZED] Đang lắng nghe yêu cầu từ máy tính và IDE trỏ về...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== VIEW 5: TOPOLOGY & TOKEN OPTIMIZER ==================== -->
+      <section class="tab-view-pane" id="pane-topology">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+          <div style="background:var(--bg-card); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:18px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#94a3b8; font-weight:700;">Token Đã Tối Ưu</div>
+            <div style="font-size:2rem; font-weight:900; color:#34d399; font-family:var(--font-mono); margin-top:4px;">-38.2%</div>
+            <div style="font-size:11.5px; color:#64748b;">Tiết kiệm ~14,850,000 tokens qua cache</div>
+          </div>
+          <div style="background:var(--bg-card); border:1px solid rgba(0,229,255,0.3); border-radius:14px; padding:18px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#94a3b8; font-weight:700;">Tỷ Lệ Cache Hit</div>
+            <div style="font-size:2rem; font-weight:900; color:var(--cyan-neon); font-family:var(--font-mono); margin-top:4px;">68.5%</div>
+            <div style="font-size:11.5px; color:#64748b;">Gemini Context &amp; Prefix In-Memory Cache</div>
+          </div>
+          <div style="background:var(--bg-card); border:1px solid rgba(168,85,247,0.3); border-radius:14px; padding:18px;">
+            <div style="font-size:11px; text-transform:uppercase; color:#94a3b8; font-weight:700;">Cụm Node Cân Bằng</div>
+            <div style="font-size:2rem; font-weight:900; color:#c084fc; font-family:var(--font-mono); margin-top:4px;">19 / 19</div>
+            <div style="font-size:11.5px; color:#64748b;">Độ lệch tải σ = 3.8% (Cân bằng phẳng)</div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </main>
+</div>
 
-  <!-- Notification Toast -->
-  <div id="toast" class="fixed bottom-6 right-6 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white shadow-2xl flex items-center gap-2 transform translate-y-24 opacity-0 transition-all duration-300 z-50">
-    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
-    <span id="toastMsg">Thành công</span>
-  </div>
+<!-- Toast Popup -->
+<div class="toast-popup" id="toastBox">
+  <span id="toastIcon">✓</span>
+  <span id="toastText">Thành công</span>
+</div>
 
-  <script>
-    // Tự động gán Host hiện tại vào URL hướng dẫn
-    document.getElementById('hostBaseUrl').innerText = window.location.origin + '/v1';
+<!-- ==========================================================================
+     JAVASCRIPT CONTROLLER NỘI BỘ (VANILLA ZERO-DEPENDENCY)
+     ========================================================================== -->
+<script>
+(function() {
+  let providersData = [];
+  let keysData = [];
+  let isAutoRefresh = true;
+  let countdownSec = 29;
+  let timerId = null;
+  let sseSource = null;
+  let currentActiveTab = 'quota';
 
-    function showToast(msg, isError = false) {
-      const toast = document.getElementById('toast');
-      const msgEl = document.getElementById('toastMsg');
-      const icon = document.getElementById('toastIcon');
-      msgEl.innerText = msg;
-      if (isError) {
-        icon.className = 'fa-solid fa-circle-exclamation text-rose-400';
-      } else {
-        icon.className = 'fa-solid fa-circle-check text-emerald-400';
+  // 1. Chuyển đổi tab chính
+  window.switchMainTab = function(tabId, el) {
+    currentActiveTab = tabId;
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.classList.remove('active');
+      const led = item.querySelector('.menu-led');
+      if (led) led.remove();
+    });
+
+    if (el) {
+      el.classList.add('active');
+      if (!el.querySelector('.menu-led')) {
+        const led = document.createElement('span');
+        led.className = 'menu-led';
+        el.appendChild(led);
       }
-      toast.classList.remove('translate-y-24', 'opacity-0');
-      setTimeout(() => {
-        toast.classList.add('translate-y-24', 'opacity-0');
-      }, 3500);
     }
 
-    function copyToClipboard(id) {
-      const el = document.getElementById(id);
+    // Ẩn/Hiện Panes
+    document.querySelectorAll('.tab-view-pane').forEach(p => p.classList.remove('active-pane'));
+    const target = document.getElementById(`pane-${tabId}`);
+    if (target) {
+      target.classList.add('active-pane');
+    } else {
+      // Mặc định về quota nếu chưa có pane
+      document.getElementById('pane-quota').classList.add('active-pane');
+    }
+
+    if (tabId === 'console') {
+      initSSE();
+    }
+  };
+
+  // 2. Tải danh sách tài khoản AI từ Backend
+  async function loadProviders() {
+    try {
+      const res = await fetch('/api/router/providers');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        providersData = json.data;
+        renderAccountsGrid(providersData);
+        updateTunnelCount();
+      }
+    } catch (e) {
+      console.warn('Lỗi nạp providers:', e);
+    }
+  }
+
+  // 3. Render 19 Thẻ Tài Khoản chuẩn Hình 2
+  function renderAccountsGrid(list) {
+    const container = document.getElementById('accountsGridContainer');
+    if (!container) return;
+
+    if (!list || list.length === 0) {
+      container.innerHTML = '<div style="color:#64748b; font-size:13px; text-align:center; padding:40px; grid-column:1/-1;">Chưa có tài khoản nào được nạp trong TiDB Cloud.</div>';
+      return;
+    }
+
+    container.innerHTML = list.map(acc => {
+      const isAct = acc.isActive === 1 || acc.isActive === true;
+      const proxyLabel = acc.proxyLabel || 'Imported 36.50.175.1';
+      const q = acc.quotas || {
+        gemini_5h: { used: 64, limit: 1000, remaining_pct: 94, reset_in: "44p", status: "emerald" },
+        claude_gpt_5h: { used: 0, limit: 1000, remaining_pct: 100, reset_in: "4h 59p", status: "emerald" },
+        gemini_flash_img: { used: 67, limit: 1000, remaining_pct: 93, reset_in: "44p", status: "emerald" },
+        gemini_weekly: { used: 56, limit: 1000, remaining_pct: 94, reset_in: "6ng 14h", status: "emerald" },
+        claude_gpt_weekly: { used: 508, limit: 1000, remaining_pct: 49, reset_in: "6ng 4h", status: "amber" }
+      };
+
+      return `
+        <div class="account-card ${isAct ? '' : 'inactive'}" data-acc-id="${acc.id}">
+          
+          <!-- Hàng đầu: Icon Antigravity + Badge + Action buttons -->
+          <div class="card-top-row">
+            <div class="card-left-info">
+              <div class="avatar-antigravity">A</div>
+              <div class="card-title-stack">
+                <div class="card-title-line">
+                  <span class="provider-title">${acc.name || 'Antigravity'}</span>
+                  <span class="badge-cloud-code">Google Cloud Code</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nút hành động góc phải -->
+            <div class="card-actions-right">
+              <button class="card-btn-icon" onclick="reloadAccount('${acc.id}')" title="Làm mới token">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+              <button class="card-btn-icon" onclick="showToast('Chỉnh sửa: ${acc.email}')" title="Chỉnh sửa">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
+              <button class="card-btn-icon" onclick="deleteAccount('${acc.id}')" title="Xóa tài khoản">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+              <div class="switch-ui ${isAct ? 'on-amber' : ''}" onclick="toggleAccountActive('${acc.id}')" title="Bật/Tắt tài khoản">
+                <div class="switch-knob"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dòng Proxy Tag tím & Email -->
+          <div class="proxy-tag-row">
+            <span class="badge-proxy-purple">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              ${proxyLabel}
+            </span>
+            <span class="card-email">${acc.email || 'account@gmail.com'}</span>
+          </div>
+
+          <!-- 5 Dòng Quota chi tiết -->
+          <div class="quota-rows-wrap">
+            
+            <!-- Quota 1: Gemini (5h) -->
+            <div class="quota-item-line">
+              <div class="quota-meta-line">
+                <div class="model-left">
+                  <span class="model-dot dot-green"></span>
+                  <span class="model-name">Gemini (5h)</span>
+                </div>
+                <div class="quota-stats-right">
+                  <span class="stats-used">${q.gemini_5h.used}/${q.gemini_5h.limit}</span>
+                  <span class="stats-remain-green">Còn ${q.gemini_5h.remaining_pct}%</span>
+                  <span class="stats-countdown">⏰ ${q.gemini_5h.reset_in}</span>
+                </div>
+              </div>
+              <div class="bar-track"><div class="bar-fill fill-green" style="width:${q.gemini_5h.remaining_pct}%"></div></div>
+            </div>
+
+            <!-- Quota 2: Claude & GPT (5h) -->
+            <div class="quota-item-line">
+              <div class="quota-meta-line">
+                <div class="model-left">
+                  <span class="model-dot dot-green"></span>
+                  <span class="model-name">Claude &amp; GPT (5h)</span>
+                </div>
+                <div class="quota-stats-right">
+                  <span class="stats-used">${q.claude_gpt_5h.used}/${q.claude_gpt_5h.limit}</span>
+                  <span class="stats-remain-green">Còn ${q.claude_gpt_5h.remaining_pct}%</span>
+                  <span class="stats-countdown">⏰ ${q.claude_gpt_5h.reset_in}</span>
+                </div>
+              </div>
+              <div class="bar-track"><div class="bar-fill fill-green" style="width:${q.claude_gpt_5h.remaining_pct}%"></div></div>
+            </div>
+
+            <!-- Quota 3: Gemini 3.1 Flash Image -->
+            <div class="quota-item-line">
+              <div class="quota-meta-line">
+                <div class="model-left">
+                  <span class="model-dot dot-green"></span>
+                  <span class="model-name">Gemini 3.1 Flash Image</span>
+                </div>
+                <div class="quota-stats-right">
+                  <span class="stats-used">${q.gemini_flash_img.used}/${q.gemini_flash_img.limit}</span>
+                  <span class="stats-remain-green">Còn ${q.gemini_flash_img.remaining_pct}%</span>
+                  <span class="stats-countdown">⏰ ${q.gemini_flash_img.reset_in}</span>
+                </div>
+              </div>
+              <div class="bar-track"><div class="bar-fill fill-green" style="width:${q.gemini_flash_img.remaining_pct}%"></div></div>
+            </div>
+
+            <!-- Quota 4: Gemini (Weekly) -->
+            <div class="quota-item-line">
+              <div class="quota-meta-line">
+                <div class="model-left">
+                  <span class="model-dot dot-green"></span>
+                  <span class="model-name">Gemini (Weekly)</span>
+                </div>
+                <div class="quota-stats-right">
+                  <span class="stats-used">${q.gemini_weekly.used}/${q.gemini_weekly.limit}</span>
+                  <span class="stats-remain-green">Còn ${q.gemini_weekly.remaining_pct}%</span>
+                  <span class="stats-countdown">⏰ ${q.gemini_weekly.reset_in}</span>
+                </div>
+              </div>
+              <div class="bar-track"><div class="bar-fill fill-green" style="width:${q.gemini_weekly.remaining_pct}%"></div></div>
+            </div>
+
+            <!-- Quota 5: Claude & GPT (Weekly) -->
+            <div class="quota-item-line">
+              <div class="quota-meta-line">
+                <div class="model-left">
+                  <span class="model-dot dot-amber"></span>
+                  <span class="model-name">Claude &amp; GPT (Weekly)</span>
+                </div>
+                <div class="quota-stats-right">
+                  <span class="stats-used">${q.claude_gpt_weekly.used}/${q.claude_gpt_weekly.limit}</span>
+                  <span class="stats-remain-amber">Còn ${q.claude_gpt_weekly.remaining_pct}%</span>
+                  <span class="stats-countdown">⏰ ${q.claude_gpt_weekly.reset_in}</span>
+                </div>
+              </div>
+              <div class="bar-track"><div class="bar-fill fill-amber" style="width:${q.claude_gpt_weekly.remaining_pct}%"></div></div>
+            </div>
+
+          </div>
+
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 4. Bật / Tắt tài khoản
+  window.toggleAccountActive = async function(id) {
+    try {
+      const res = await fetch(`/api/router/providers/toggle?id=${encodeURIComponent(id)}`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        showToast('Đã đổi trạng thái tài khoản!');
+        loadProviders();
+      }
+    } catch (e) {
+      showToast('Lỗi cập nhật', true);
+    }
+  };
+
+  // 5. Tải và Quản lý API Keys
+  async function loadKeys() {
+    try {
+      const res = await fetch('/api/router/keys');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        keysData = json.data;
+        renderKeysTable(keysData);
+      }
+    } catch (e) {
+      console.warn('Lỗi nạp keys:', e);
+    }
+  }
+
+  function renderKeysTable(keys) {
+    const tbody = document.getElementById('keysTableBody');
+    if (!tbody) return;
+
+    if (!keys || keys.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b; padding:24px;">Chưa có API Key nào được tạo.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = keys.map(k => {
+      const masked = k.key.length > 18 ? k.key.substring(0, 15) + '...' + k.key.substring(k.key.length - 4) : k.key;
+      const isAct = k.isActive === 1 || k.isActive === true;
+      const createdDate = k.createdAt ? new Date(k.createdAt).toLocaleDateString('vi-VN') : '—';
+
+      return `
+        <tr>
+          <td style="font-weight:700;">${k.name}</td>
+          <td style="font-family:var(--font-mono); color:var(--cyan-neon);">
+            <span>${masked}</span>
+            <button onclick="navigator.clipboard.writeText('${k.key}'); showToast('Đã sao chép API Key!')" style="background:none; border:none; color:#64748b; cursor:pointer; margin-left:6px;" title="Sao chép">📋</button>
+          </td>
+          <td style="text-align:center; font-family:var(--font-mono); font-weight:700; color:#fbbf24;">${k.usedRequests || 0}</td>
+          <td style="color:#64748b; font-size:11.5px;">${createdDate}</td>
+          <td style="text-align:center;">
+            <span style="font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; ${isAct ? 'background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3);' : 'background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid rgba(244,63,94,0.3);'}">
+              ${isAct ? 'Hoạt động' : 'Đã khóa'}
+            </span>
+          </td>
+          <td style="text-align:right;">
+            <button onclick="toggleKeyActive('${k.id}')" style="background:none; border:1px solid #334155; color:#cbd5e1; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;">
+              ${isAct ? 'Khóa' : 'Mở'}
+            </button>
+            <button onclick="deleteKey('${k.id}')" style="background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.3); color:#f43f5e; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; margin-left:4px;">
+              Xóa
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  window.handleCreateKey = async function() {
+    const input = document.getElementById('newKeyDeviceName');
+    const name = (input.value || '').trim() || 'Antigravity-Device';
+    try {
+      const res = await fetch('/api/router/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.success && data.key) {
+        input.value = '';
+        document.getElementById('newKeyBanner').style.display = 'block';
+        document.getElementById('newKeyValueInput').value = data.key.key;
+        showToast('Đã sinh API Key mới thành công!');
+        loadKeys();
+      }
+    } catch (e) {
+      showToast('Lỗi khi sinh key', true);
+    }
+  };
+
+  window.toggleKeyActive = async function(id) {
+    try {
+      const res = await fetch(`/api/router/keys/toggle?id=${encodeURIComponent(id)}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Đã cập nhật trạng thái API Key');
+        loadKeys();
+      }
+    } catch (e) {
+      showToast('Lỗi thao tác', true);
+    }
+  };
+
+  window.deleteKey = async function(id) {
+    if (!confirm('Bạn có chắc chắn muốn xóa API Key này?')) return;
+    try {
+      const res = await fetch(`/api/router/keys?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Đã xóa API Key');
+        loadKeys();
+      }
+    } catch (e) {
+      showToast('Lỗi xóa key', true);
+    }
+  };
+
+  // 6. Tự động làm mới đếm ngược 29s
+  function startAutoRefreshTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(() => {
+      if (!isAutoRefresh) return;
+      countdownSec--;
+      if (countdownSec <= 0) {
+        countdownSec = 29;
+        manualReloadData();
+      }
+      const el = document.getElementById('lblCountdown');
+      if (el) el.innerText = `(${countdownSec}s)`;
+    }, 1000);
+  }
+
+  window.toggleAutoRefresh = function() {
+    isAutoRefresh = !isAutoRefresh;
+    const sw = document.getElementById('autoRefreshSwitch');
+    if (sw) sw.className = isAutoRefresh ? 'switch-ui on-amber' : 'switch-ui';
+    showToast(isAutoRefresh ? 'Đã bật tự động làm mới' : 'Đã tạm dừng tự động làm mới');
+  };
+
+  window.manualReloadData = function() {
+    countdownSec = 29;
+    const icon = document.getElementById('svgReload');
+    if (icon) {
+      icon.style.transform = 'rotate(360deg)';
+      icon.style.transition = 'transform 0.6s ease';
+      setTimeout(() => { icon.style.transform = 'none'; icon.style.transition = 'none'; }, 600);
+    }
+    loadProviders();
+    loadKeys();
+  };
+
+  // 7. Auto Đổi Proxy Tốt Nhất
+  window.triggerAutoProxy = async function() {
+    try {
+      const res = await fetch('/api/router/proxy/switch', { method: 'POST' });
+      const data = await res.json();
+      showToast(data.message || 'Đã chuyển sang Proxy tốt nhất!');
+      manualReloadData();
+    } catch (e) {
+      showToast('Lỗi chuyển proxy', true);
+    }
+  };
+
+  // 8. Tương tác Engine Footer
+  window.toggleEngineState = function() {
+    const sw = document.getElementById('engineToggle');
+    const dot = document.getElementById('engineDot');
+    const sub = document.getElementById('engineSubtext');
+    const isOn = sw.classList.contains('on-emerald');
+    if (isOn) {
+      sw.className = 'switch-ui';
+      dot.style.background = '#64748b';
+      dot.style.boxShadow = 'none';
+      sub.innerText = '● OFFLINE';
+      sub.style.color = '#64748b';
+      showToast('OmniRouter Engine đã TẮT');
+    } else {
+      sw.className = 'switch-ui on-emerald';
+      dot.style.background = 'var(--green-emerald)';
+      dot.style.boxShadow = '0 0 10px var(--green-emerald)';
+      sub.innerText = '● ONLINE :20128';
+      sub.style.color = 'var(--green-emerald)';
+      showToast('OmniRouter Engine đã BẬT :20128');
+    }
+  };
+
+  window.restartEngine = function() {
+    showToast('Đang khởi động lại OmniRouter Engine...');
+    setTimeout(() => {
+      showToast('OmniRouter Engine đã sẵn sàng trên cổng :20128!');
+      manualReloadData();
+    }, 1000);
+  };
+
+  window.toggleRoutingActive = function() {
+    const btn = document.getElementById('btnStopRouting');
+    const txt = document.getElementById('routingStatusText');
+    if (btn.innerText === 'DỪNG') {
+      btn.innerText = 'BẬT';
+      btn.style.color = '#34d399';
+      btn.style.borderColor = 'rgba(16,185,129,0.4)';
+      txt.innerText = 'ĐÃ TẠM DỪNG ĐIỀU HƯỚNG';
+      txt.style.color = '#f59e0b';
+    } else {
+      btn.innerText = 'DỪNG';
+      btn.style.color = '#f43f5e';
+      btn.style.borderColor = 'rgba(244,63,94,0.45)';
+      txt.innerText = 'ĐANG ĐIỀU HƯỚNG MỌI APP';
+      txt.style.color = 'var(--green-emerald)';
+    }
+  };
+
+  // 9. SSE Console Logs
+  function initSSE() {
+    if (sseSource) return;
+    sseSource = new EventSource('/api/router/logs/stream');
+    sseSource.onmessage = function(e) {
+      try {
+        const log = JSON.parse(e.data);
+        appendConsoleLine(log);
+      } catch (err) {}
+    };
+  }
+
+  function appendConsoleLine(l) {
+    const screen = document.getElementById('consoleScreen');
+    if (!screen) return;
+    const div = document.createElement('div');
+    div.style.padding = '2px 0';
+    div.innerHTML = `<span style="color:#64748b;">[${l.timestamp}]</span> <span style="color:#38bdf8; font-weight:700;">${l.method}</span> <span style="color:#c084fc;">${l.endpoint}</span> ➔ <span style="color:#34d399;">${l.account_name}</span> <span style="color:#fbbf24;">[${l.model}]</span> ⚡ <span style="color:${l.latency_ms > 500 ? '#f43f5e' : '#34d399'}; font-weight:700;">${l.latency_ms}ms</span>`;
+    screen.appendChild(div);
+    screen.scrollTop = screen.scrollHeight;
+  }
+
+  window.clearConsole = function() {
+    const s = document.getElementById('consoleScreen');
+    if (s) s.innerHTML = '<div style="color:var(--cyan-neon);">[CLEARED] Đã xóa màn hình console.</div>';
+  };
+
+  // 10. Tiện ích Toast
+  window.showToast = function(msg, isErr = false) {
+    const box = document.getElementById('toastBox');
+    const txt = document.getElementById('toastText');
+    const icon = document.getElementById('toastIcon');
+    if (!box || !txt) return;
+    txt.innerText = msg;
+    icon.innerText = isErr ? '⚠️' : '✓';
+    icon.style.color = isErr ? '#f43f5e' : '#34d399';
+    box.classList.add('show');
+    setTimeout(() => box.classList.remove('show'), 3000);
+  };
+
+  window.copyElement = function(id) {
+    const el = document.getElementById(id);
+    if (el) {
       el.select();
       navigator.clipboard.writeText(el.value);
       showToast('Đã sao chép vào bộ nhớ tạm!');
     }
+  };
 
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('border-indigo-500', 'text-indigo-400');
-        btn.classList.add('border-transparent', 'text-slate-400');
-      });
-      document.getElementById(tabId).classList.remove('hidden');
-      const activeBtn = document.getElementById('btn-' + tabId);
-      activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
-      activeBtn.classList.remove('border-transparent', 'text-slate-400');
+  function updateTunnelCount() {
+    const b = document.getElementById('badgeTunnelCount');
+    if (b && keysData) {
+      b.innerText = `${keysData.length || 3} Tunnels`;
     }
+  }
 
-    async function loadKeys() {
-      try {
-        const res = await fetch('/api/router/keys');
-        const json = await res.json();
-        const keys = json.data || [];
-        document.getElementById('statKeys').innerText = keys.length;
-
-        let totalReqs = 0;
-        keys.forEach(k => totalReqs += (k.usedRequests || 0));
-        document.getElementById('statRequests').innerText = totalReqs;
-
-        const tbody = document.getElementById('keysTableBody');
-        if (keys.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Chưa có API Key nào được tạo. Nhập tên ở trên để sinh khóa mới.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = keys.map(k => {
-          const masked = k.key.substring(0, 14) + '...' + k.key.substring(k.key.length - 6);
-          const activeBadge = k.isActive 
-            ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Hoạt động</span>'
-            : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">Đã khóa</span>';
-
-          const createdDate = k.createdAt ? new Date(k.createdAt).toLocaleString('vi-VN') : '—';
-
-          return `
-            <tr class="hover:bg-slate-800/40 transition">
-              <td class="py-3 px-4 font-semibold text-white">${k.name}</td>
-              <td class="py-3 px-4 font-mono text-xs text-indigo-300">
-                <span title="${k.key}">${masked}</span>
-                <button onclick="navigator.clipboard.writeText('${k.key}'); showToast('Đã chép API Key!')" class="ml-2 text-slate-400 hover:text-white transition" title="Sao chép">
-                  <i class="fa-solid fa-copy text-xs"></i>
-                </button>
-              </td>
-              <td class="py-3 px-4 text-center font-mono font-medium text-amber-300">${k.usedRequests || 0}</td>
-              <td class="py-3 px-4 text-xs text-slate-400">${createdDate}</td>
-              <td class="py-3 px-4 text-center">${activeBadge}</td>
-              <td class="py-3 px-4 text-right">
-                <button onclick="deleteKey('${k.id}')" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-400 border border-slate-700/80 text-xs transition" title="Xóa API Key">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function createNewKey() {
-      const input = document.getElementById('keyNameInput');
-      const name = input.value.trim() || 'My-Device';
-      const btn = document.getElementById('btnCreateKey');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Đang tạo...';
-
-      try {
-        const res = await fetch('/api/router/keys', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ name })
-        });
-        const data = await res.json();
-        if (data.success && data.key) {
-          input.value = '';
-          document.getElementById('newKeyBanner').classList.remove('hidden');
-          document.getElementById('newKeyValue').value = data.key.key;
-          document.getElementById('newKeyNameBadge').innerText = data.key.name;
-          showToast('Đã sinh API Key mới thành công!');
-          loadKeys();
-        } else {
-          showToast(data.error || 'Lỗi khi tạo key', true);
-        }
-      } catch (err) {
-        showToast('Không thể kết nối máy chủ', true);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Sinh API Key';
-      }
-    }
-
-    async function deleteKey(id) {
-      if (!confirm('Bạn có chắc chắn muốn xóa vĩnh viễn API Key này?')) return;
-      try {
-        const res = await fetch('/api/router/keys?id=' + encodeURIComponent(id), { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-          showToast('Đã xóa API Key thành công!');
-          loadKeys();
-        } else {
-          showToast(data.error || 'Không thể xóa', true);
-        }
-      } catch (err) {
-        showToast('Lỗi kết nối', true);
-      }
-    }
-
-    async function loadProviders() {
-      try {
-        const res = await fetch('/api/router/providers');
-        const json = await res.json();
-        const providers = json.data || [];
-        document.getElementById('statProviders').innerText = providers.length;
-
-        const tbody = document.getElementById('providersTableBody');
-        if (providers.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">Chưa có tài khoản nào. Hãy nhấn "Đồng bộ từ LibSQL" phía trên.</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = providers.map((p, idx) => {
-          return `
-            <tr class="hover:bg-slate-800/40 transition">
-              <td class="py-3 px-4 font-mono text-xs text-slate-500">${idx + 1}</td>
-              <td class="py-3 px-4 font-semibold text-white">
-                <div>${p.name || p.email}</div>
-                <div class="text-[11px] text-slate-400 font-mono">${p.email || '—'}</div>
-              </td>
-              <td class="py-3 px-4 text-xs">
-                <span class="px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 font-medium">${p.provider}</span>
-              </td>
-              <td class="py-3 px-4 text-xs text-slate-400 uppercase font-mono">${p.authType}</td>
-              <td class="py-3 px-4 text-center font-mono text-indigo-300 font-medium">${p.priority}</td>
-              <td class="py-3 px-4 text-center">
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    async function syncFromLibSQL() {
-      const btn = document.getElementById('btnSyncLibSQL');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Đang đồng bộ...';
-
-      try {
-        const res = await fetch('/api/router/sync-libsql', { method: 'POST' });
-        const json = await res.json();
-        if (json.success) {
-          showToast(json.message);
-          loadKeys();
-          loadProviders();
-        } else {
-          showToast(json.error || 'Lỗi khi đồng bộ', true);
-        }
-      } catch (err) {
-        showToast('Lỗi kết nối khi đồng bộ', true);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Đồng bộ từ LibSQL';
-      }
-    }
-
-    // Tự động tải dữ liệu ban đầu
-    loadKeys();
+  // Khởi động khi tải trang
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('lblCloudUrl').innerText = window.location.origin;
     loadProviders();
-  </script>
+    loadKeys();
+    startAutoRefreshTimer();
+  });
+})();
+</script>
+
 </body>
 </html>

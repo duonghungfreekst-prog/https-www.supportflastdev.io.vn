@@ -158,6 +158,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 			return
 		}
+		startTime := time.Now()
 
 		// 1. Kiểm tra xác thực API Key
 		authHeader := r.Header.Get("Authorization")
@@ -299,6 +300,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 
 		chatCmplID := "chatcmpl-" + generateUUID()
 		createdTimestamp := time.Now().Unix()
+		var promptTokens, completionTokens int64
 
 		// 4. Xử lý Stream SSE
 		if isStream {
@@ -309,7 +311,6 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 
 			flusher, isFlusher := w.(http.Flusher)
 			reader := bufio.NewReader(resp.Body)
-			var promptTokens, completionTokens int64
 
 			for {
 				line, readErr := reader.ReadBytes('\n')
@@ -388,7 +389,6 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			// Non-streaming: Gom toàn bộ phản hồi trả về JSON chuẩn OpenAI
 			reader := bufio.NewReader(resp.Body)
 			var fullContent strings.Builder
-			var promptTokens, completionTokens int64
 
 			for {
 				line, readErr := reader.ReadBytes('\n')
@@ -444,6 +444,25 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 
 		if usedAccount != nil {
 			log.Printf("[ENGINE] [OMNIROUTER] ✔ Chat hoàn thành qua %s (%s)", usedAccount.Name, model)
+			keyName := "Direct API"
+			if clientKeyItem != nil {
+				keyName = clientKeyItem.Name
+			}
+			GlobalLogHub.RecordLog(RouterLogEntry{
+				ClientDevice:     r.RemoteAddr,
+				APIKeyName:       keyName,
+				Endpoint:         "/v1/chat/completions",
+				Method:           "POST",
+				Provider:         usedAccount.Provider,
+				AccountID:        usedAccount.ID,
+				AccountName:      usedAccount.Email,
+				Model:            model,
+				LatencyMs:        time.Since(startTime).Milliseconds(),
+				StatusCode:       http.StatusOK,
+				PromptTokens:     promptTokens,
+				CompletionTokens: completionTokens,
+				IsStream:         isStream,
+			})
 		}
 	}
 }

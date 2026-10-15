@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -36,7 +37,7 @@ func (c *DesktopClient) handleStatusAPI(w http.ResponseWriter, r *http.Request) 
 		"total_requests":  atomic.LoadUint64(&c.totalReqs),
 		"total_tokens":    atomic.LoadUint64(&c.totalTokens),
 		"last_sync":       lastSyncStr,
-		"base_url":        "http://127.0.0.1:" + string(rune(port)),
+		"base_url":        fmt.Sprintf("http://127.0.0.1:%d/v1", port),
 	})
 }
 

@@ -16,13 +16,13 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khởi tạo bảng OmniRouter: %v", err)
 	}
 
-	// 2. Tự động đồng bộ từ LibSQL nếu bảng providers đang trống
+	// 2. Tự động nạp hạt nhân 19 tài khoản AI vào TiDB Cloud/SQLite nếu bảng providers đang trống
 	go func() {
 		providers := GetCachedActiveProviders()
 		if len(providers) == 0 {
-			log.Println("[ENGINE] [OMNIROUTER] Kho tài khoản rỗng, đang tự động nạp đồng bộ từ data.libsql...")
-			if _, err := SyncFromLibSQL(db, ""); err != nil {
-				log.Printf("[ENGINE] [OMNIROUTER] [INFO] Chưa tìm thấy data.libsql cục bộ: %v", err)
+			log.Println("[ENGINE] [OMNIROUTER] Kho tài khoản rỗng, đang tự động nạp cố định 19 tài khoản AI vào TiDB/SQLite...")
+			if err := SeedEmbeddedDataToDB(db); err != nil {
+				log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed hạt nhân thất bại: %v", err)
 			}
 		}
 	}()
@@ -36,14 +36,20 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 5. API Quản lý API Key cho Web UI
 	mux.HandleFunc("/api/router/keys", HandleManageKeys(db))
 	mux.HandleFunc("/api/router/keys/", HandleManageKeys(db))
+	mux.HandleFunc("/api/router/keys/toggle", HandleToggleKey(db))
 
-	// 6. API Danh sách tài khoản AI
+	// 6. API Danh sách tài khoản AI & Tương tác
 	mux.HandleFunc("/api/router/providers", HandleListProviders(db))
+	mux.HandleFunc("/api/router/providers/toggle", HandleToggleProvider(db))
+	mux.HandleFunc("/api/router/proxy/switch", HandleSwitchProxy(db))
 
-	// 7. API Kích hoạt đồng bộ thủ công từ data.libsql
+	// 7. API Live Telemetry Logs qua SSE
+	mux.HandleFunc("/api/router/logs/stream", HandleLogStream)
+
+	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
 	mux.HandleFunc("/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
-	// 8. API Đồng bộ và Báo cáo dành riêng cho App Go PC / Termux
+	// 9. API Đồng bộ và Báo cáo dành riêng cho App Go PC / Termux
 	mux.HandleFunc("/api/v1/client/sync", HandleClientSync(db))
 	mux.HandleFunc("/api/v1/client/report", HandleClientReport(db))
 	mux.HandleFunc("/api/v1/sync", HandleClientSync(db))
