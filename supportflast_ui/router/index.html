@@ -5038,10 +5038,10 @@
     }
 
     let _frontendHealthFailures = 0;
-    // Heartbeat kiểm tra sức khỏe Gateway trực tiếp (Timeout an toàn 800ms, debounce chống chớp tắt)
+    // Heartbeat kiểm tra sức khỏe Gateway trực tiếp (Timeout an toàn 4000ms, debounce chống chớp tắt)
     async function checkGatewayHealthImmediate() {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 800);
+      const timer = setTimeout(() => controller.abort(), 4000);
       try {
         const res = await fetch('/api/health', {
           cache: 'no-store',
@@ -5055,7 +5055,7 @@
           return true;
         } else {
           _frontendHealthFailures++;
-          if (_frontendHealthFailures >= 3) {
+          if (_frontendHealthFailures >= 5) {
             updateGatewayLiveStatus(false);
             return false;
           }
@@ -5064,7 +5064,7 @@
       } catch (_) {
         clearTimeout(timer);
         _frontendHealthFailures++;
-        if (_frontendHealthFailures >= 3) {
+        if (_frontendHealthFailures >= 5) {
           updateGatewayLiveStatus(false);
           return false;
         }
@@ -5289,12 +5289,7 @@
 
       // 2. Fetch dữ liệu thực từ Backend Go qua TiDB Cloud
       try {
-        let res;
-        try {
-          res = await apiRequest('/api/router/keys');
-        } catch (_) {
-          res = await apiRequest('/api/keys');
-        }
+        res = await apiRequest('/api/router/keys');
         const data = await res.json();
         const rawList = data.data || data.keys || [];
 
@@ -5330,19 +5325,11 @@
       const finalName = label || ('Key ' + new Date().toLocaleTimeString('vi-VN'));
       closeModal('modal-create-key');
       try {
-        let res;
         const payload = { name: finalName, domain: domain, quota: quota };
-        try {
-          res = await apiRequest('/api/router/keys', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-          });
-        } catch (_) {
-          res = await apiRequest('/api/keys', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-          });
-        }
+        const res = await apiRequest('/api/router/keys', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
         const data = await res.json();
         const rawKey = data.key || (data.data && data.data.api_key) || '';
         if (rawKey) {

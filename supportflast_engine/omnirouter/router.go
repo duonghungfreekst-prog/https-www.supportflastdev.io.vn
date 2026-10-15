@@ -70,14 +70,11 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 4. API Ping siêu nhẹ (0 RU TiDB, 0.1ms, giữ Render thức 24/24)
 	mux.HandleFunc("/ping", HandlePing)
 
-	// 5. API Quản lý API Key cho Web UI & CLI Tools (Hỗ trợ cả /api/router/keys và /api/keys)
+	// 5. API Quản lý API Key cho Web UI & CLI Tools (Dùng /api/router/keys)
 	keysHandler := HandleManageKeys(db)
 	mux.HandleFunc("/api/router/keys", keysHandler)
 	mux.HandleFunc("/api/router/keys/", keysHandler)
 	mux.HandleFunc("/api/router/keys/toggle", HandleToggleKey(db))
-	mux.HandleFunc("/api/keys", keysHandler)
-	mux.HandleFunc("/api/keys/", keysHandler)
-	mux.HandleFunc("/api/keys/toggle", HandleToggleKey(db))
 
 	// 6. API Danh sách tài khoản AI & Tương tác (Hỗ trợ cả dạng /api/providers và /api/router/providers)
 	providersHandler := HandleListProviders(db)
