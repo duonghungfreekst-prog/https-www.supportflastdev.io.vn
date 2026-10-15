@@ -110,6 +110,15 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// Trích model từ request body (nếu có)
 		model := extractModelFromBody(bodyBytes)
 
+		// Chuẩn hóa model nếu IDE gửi model đã ngừng hoạt động (404 trên Google Cloud Code PA)
+		if model == "gemini-pro-agent" || model == "gemini-3.1-pro-high" || model == "gemini-3.1-pro" || model == "gemini-3.1-pro-low" {
+			bodyBytes = bytes.Replace(bodyBytes, []byte(`"`+model+`"`), []byte(`"claude-opus-4-6-thinking"`), 1)
+			model = "claude-opus-4-6-thinking"
+		} else if strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6") {
+			bodyBytes = bytes.Replace(bodyBytes, []byte(`"`+model+`"`), []byte(`"gemini-3.8-flash-high"`), 1)
+			model = "gemini-3.8-flash-high"
+		}
+
 		// Lấy danh sách tài khoản AI khả dụng
 		accounts := GetCachedActiveProviders()
 		if len(accounts) == 0 {

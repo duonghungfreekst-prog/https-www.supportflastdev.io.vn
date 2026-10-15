@@ -257,8 +257,8 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		_ = json.Unmarshal(bodyBytes, &req)
 
 		model := req.Model
-		if model == "" {
-			model = "gemini-3.1-pro-high"
+		if model == "" || model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" {
+			model = "gemini-3.8-flash-high"
 		}
 
 		isStream := true
