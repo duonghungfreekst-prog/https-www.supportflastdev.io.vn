@@ -3442,7 +3442,7 @@
                   </div>
                   <div class="space-y-1.5">
                     <label class="text-xs font-mono text-slate-300">Base URL MITM Router:</label>
-                    <input type="text" id="setting-mitm-url" value="http://localhost:20128" class="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono text-cyan-300 focus:border-cyan-500/50 focus:outline-none">
+                    <input type="text" id="setting-mitm-url" value="https://supportflastdev.io.vn" class="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono text-cyan-300 focus:border-cyan-500/50 focus:outline-none">
                   </div>
                 </div>
               </div>
@@ -3582,8 +3582,8 @@
               
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="space-y-1.5">
-                  <label class="text-xs font-mono text-slate-400">Cổng Dịch Vụ Gateway (HTTP):</label>
-                  <input type="text" value="20128" readonly class="w-full px-3 py-2 rounded-xl bg-black/40 border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold">
+                  <label class="text-xs font-mono text-slate-400">Cổng Dịch Vụ Gateway (HTTP/HTTPS):</label>
+                  <input type="text" value="8080 / 443" readonly class="w-full px-3 py-2 rounded-xl bg-black/40 border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold">
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-xs font-mono text-slate-400">Cổng Intercept MITM (HTTPS):</label>
@@ -3624,7 +3624,7 @@
                 <div>
                   <h3 class="text-base font-bold text-white flex items-center gap-2">
                     Công Cụ Lập Trình CLI & Tích Hợp MCP Server
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Port 20128 Bridge</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">SupportFlast Cloud Bridge</span>
                   </h3>
                   <p class="text-xs text-slate-400 mt-0.5">Giám sát và tự động cấu hình proxy cho tất cả CLI lập trình phổ biến trỏ về 9Router</p>
                 </div>
@@ -3710,7 +3710,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <h4 id="translator-step-title" class="text-sm font-bold text-white font-mono">Bước 1: Client Request (1_req_client.json)</h4>
-                <p id="translator-step-desc" class="text-xs text-slate-400 mt-0.5">Yêu cầu thô ban đầu gửi từ IDE hoặc extension tới cổng 20128</p>
+                <p id="translator-step-desc" class="text-xs text-slate-400 mt-0.5">Yêu cầu thô ban đầu gửi từ IDE hoặc extension tới Gateway</p>
               </div>
               <button onclick="copyTranslatorContent()" class="text-xs font-mono text-cyan-400 hover:underline">Sao chép JSON</button>
             </div>
@@ -4119,7 +4119,7 @@
           <p class="text-[11px] text-slate-400 font-sans">
             After authorization, copy the full URL from your browser.
           </p>
-          <input type="text" id="oauth-callback-url-input" oninput="onOAuthCallbackInputChanged()" placeholder="http://localhost:20128/callback?code=..." class="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-500/60">
+          <input type="text" id="oauth-callback-url-input" oninput="onOAuthCallbackInputChanged()" placeholder="https://supportflastdev.io.vn/callback?code=..." class="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-500/60">
         </div>
 
         <!-- FOOTER NÚT BẤM CHO CHẾ ĐỘ OAUTH -->
@@ -5090,7 +5090,7 @@
       }
     }
 
-    // Khởi chạy 9Router Engine (Chỉ chạy máy chủ cục bộ cổng 20128, KHÔNG tự ý update, KHÔNG tự ý điều hướng)
+    // Khởi chạy Gateway Engine
     async function launchGatewayEngine() {
       const masterBtn = document.getElementById('btn-master-launch');
       const masterIcon = document.getElementById('master-btn-icon');
@@ -5604,7 +5604,7 @@ curl -X POST "${v1Url}/chat/completions" \\
       { id: 'cursor-hub', name: 'Cursor AI Hook', icon: 'CR', color: 'blue', cat: 'coding', ping: '20ms', models: ['cursor-fast', 'claude-3-5-sonnet'], desc: 'Cursor Editor Background Proxy Bridge' },
       { id: 'claude-code', name: 'Claude Code CLI', icon: 'CC', color: 'amber', cat: 'coding', ping: '25ms', models: ['claude-3-7-sonnet', 'claude-3-5-sonnet'], desc: 'Anthropic Official Agent Terminal CLI' },
       { id: 'cline-hub', name: 'Cline AI Extension', icon: 'CN', color: 'purple', cat: 'coding', ping: '20ms', models: ['deepseek-chat', 'claude-3-5-sonnet'], desc: 'VS Code Autonomous Software Engineer' },
-      { id: 'opencode-hub', name: 'OpenCode CLI', icon: 'OC', color: 'rose', cat: 'coding', ping: '30ms', models: ['port:20128-stream', 'qwen-coder'], desc: 'Terminal Code Generation Assistant' },
+      { id: 'opencode-hub', name: 'OpenCode CLI', icon: 'OC', color: 'rose', cat: 'coding', ping: '30ms', models: ['cloud-stream', 'qwen-coder'], desc: 'Terminal Code Generation Assistant' },
       { id: 'droid-hub', name: 'Factory Droid CLI', icon: 'DR', color: 'cyan', cat: 'coding', ping: '35ms', models: ['factory-agent', 'gpt-4o'], desc: 'Autonomous Refactoring Software Droid' },
       { id: 'openclaw-hub', name: 'OpenClaw Agent', icon: 'OW', color: 'orange', cat: 'coding', ping: '40ms', models: ['nexus-route-bridge', 'claude'], desc: 'Repository Deep Crawler & Reviewer' },
       { id: 'hermes-hub', name: 'Hermes Terminal Agent', icon: 'HM', color: 'indigo', cat: 'coding', ping: '30ms', models: ['hermes-function-caller'], desc: 'Multi-turn CLI SysAdmin & Dev Assistant' },
@@ -6024,14 +6024,15 @@ curl -X POST "${v1Url}/chat/completions" \\
       }
 
       try {
-        const appPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '20128');
         let redirectUri;
         if (providerId === 'codex') {
           redirectUri = 'http://localhost:1455/auth/callback';
         } else if (providerId === 'xai') {
           redirectUri = 'http://127.0.0.1:56121/callback';
         } else {
-          redirectUri = `http://localhost:${appPort}/callback`;
+          redirectUri = (window.location && window.location.origin && window.location.origin.startsWith('http')) 
+            ? `${window.location.origin}/callback` 
+            : 'https://supportflastdev.io.vn/callback';
         }
 
         if (callbackInput) {
@@ -6168,9 +6169,12 @@ curl -X POST "${v1Url}/chat/completions" \\
       showToastNotification(`Đang xác thực và lưu kết nối OAuth [${provider.toUpperCase()}]...`);
 
       const session = window._currentOAuthSession || {};
+      const defaultRedirect = (window.location && window.location.origin && window.location.origin.startsWith('http')) 
+        ? `${window.location.origin}/callback` 
+        : 'https://supportflastdev.io.vn/callback';
       const payload = {
         code: code,
-        redirectUri: session.redirectUri || `http://localhost:${window.location.port || '20128'}/callback`,
+        redirectUri: session.redirectUri || defaultRedirect,
         codeVerifier: session.codeVerifier || null,
         state: state || session.state || null
       };
@@ -6788,16 +6792,141 @@ curl -X POST "${v1Url}/chat/completions" \\
       }
     }
 
-    // Tải và render toàn bộ Available Models chuẩn như giao diện Web gốc 9Router
-    async function renderProviderAvailableModels(providerId) {
-      const grid = document.getElementById('provider-models-grid');
-      const disabledChips = document.getElementById('provider-disabled-models-chips');
-      const countBadge = document.getElementById('provider-models-count-badge');
-      const disabledCountEl = document.getElementById('provider-disabled-count');
+    // Danh mục Model khả dụng chuẩn cho tất cả các nhà cung cấp (All Providers Model Catalog)
+    function getFallbackModelsByProvider(providerId) {
+      const pid = (providerId || 'antigravity').toLowerCase().trim();
+      if (pid === 'claude' || pid === 'anthropic') {
+        return [
+          { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet (Hybrid Thinking)', fullModel: 'claude-3-7-sonnet', caps: { thinking: true, vision: true } },
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet (v2)', fullModel: 'claude-3-5-sonnet-20241022', caps: { thinking: false, vision: true } },
+          { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
+          { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', fullModel: 'claude-3-5-haiku-20241022', caps: { thinking: false, vision: true } },
+          { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', fullModel: 'claude-3-opus-20240229', caps: { thinking: false, vision: true } },
+          { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', fullModel: 'claude-3-haiku-20240307', caps: { thinking: false, vision: false } },
+          { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', fullModel: 'claude-sonnet-4-6', caps: { thinking: true, vision: true } },
+          { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', fullModel: 'claude-opus-4-6-thinking', caps: { thinking: true, vision: true } }
+        ];
+      }
+      if (pid === 'openai' || pid === 'codex' || pid === 'azure') {
+        return [
+          { id: 'gpt-4o', name: 'GPT-4o Omnimodal', fullModel: 'gpt-4o', caps: { thinking: false, vision: true } },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini Fast', fullModel: 'gpt-4o-mini', caps: { thinking: false, vision: true } },
+          { id: 'o1', name: 'OpenAI o1 Reasoning', fullModel: 'o1', caps: { thinking: true, vision: true } },
+          { id: 'o1-mini', name: 'o1 Mini High Speed', fullModel: 'o1-mini', caps: { thinking: true, vision: false } },
+          { id: 'o1-preview', name: 'o1 Preview Deep Reasoning', fullModel: 'o1-preview', caps: { thinking: true, vision: true } },
+          { id: 'o3-mini', name: 'o3 Mini Coding Intelligence', fullModel: 'o3-mini', caps: { thinking: true, vision: false } },
+          { id: 'gpt-4-turbo', name: 'GPT-4 Turbo Vision', fullModel: 'gpt-4-turbo', caps: { thinking: false, vision: true } },
+          { id: 'gpt-4', name: 'GPT-4 Standard', fullModel: 'gpt-4', caps: { thinking: false, vision: false } },
+          { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', fullModel: 'gpt-3.5-turbo', caps: { thinking: false, vision: false } },
+          { id: 'chatgpt-4o-latest', name: 'ChatGPT 4o Dynamic', fullModel: 'chatgpt-4o-latest', caps: { thinking: false, vision: true } }
+        ];
+      }
+      if (pid === 'deepseek') {
+        return [
+          { id: 'deepseek-reasoner', name: 'DeepSeek R1 (Full Reasoning)', fullModel: 'deepseek-reasoner', caps: { thinking: true, vision: false } },
+          { id: 'deepseek-chat', name: 'DeepSeek V3 (671B Chat)', fullModel: 'deepseek-chat', caps: { thinking: false, vision: false } },
+          { id: 'deepseek-r1', name: 'DeepSeek R1 Thinking', fullModel: 'deepseek-r1', caps: { thinking: true, vision: false } },
+          { id: 'deepseek-v3', name: 'DeepSeek V3 MoE', fullModel: 'deepseek-v3', caps: { thinking: false, vision: false } },
+          { id: 'deepseek-coder', name: 'DeepSeek Coder V2', fullModel: 'deepseek-coder', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'groq') {
+        return [
+          { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (500 t/s)', fullModel: 'llama-3.3-70b-versatile', caps: { thinking: false, vision: false } },
+          { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B LPU', fullModel: 'deepseek-r1-distill-llama-70b', caps: { thinking: true, vision: false } },
+          { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', fullModel: 'llama-3.1-8b-instant', caps: { thinking: false, vision: false } },
+          { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B MoE', fullModel: 'mixtral-8x7b-32768', caps: { thinking: false, vision: false } },
+          { id: 'gemma2-9b-it', name: 'Gemma 2 9B Instruct', fullModel: 'gemma2-9b-it', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'mistral') {
+        return [
+          { id: 'mistral-large-latest', name: 'Mistral Large 2 (128K)', fullModel: 'mistral-large-latest', caps: { thinking: false, vision: false } },
+          { id: 'codestral-latest', name: 'Codestral 22B Code Specialist', fullModel: 'codestral-latest', caps: { thinking: false, vision: false } },
+          { id: 'pixtral-12b-2409', name: 'Pixtral 12B Multimodal', fullModel: 'pixtral-12b-2409', caps: { thinking: false, vision: true } },
+          { id: 'mistral-small-latest', name: 'Mistral Small 3', fullModel: 'mistral-small-latest', caps: { thinking: false, vision: false } },
+          { id: 'ministral-8b-latest', name: 'Ministral 8B Edge', fullModel: 'ministral-8b-latest', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'copilot' || pid === 'copilot-hub') {
+        return [
+          { id: 'copilot-chat', name: 'GitHub Copilot Chat', fullModel: 'copilot-chat', caps: { thinking: false, vision: false } },
+          { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet (Copilot)', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
+          { id: 'gpt-4o', name: 'GPT-4o (Copilot)', fullModel: 'gpt-4o', caps: { thinking: false, vision: true } },
+          { id: 'o1-preview', name: 'o1 Preview (Copilot Reasoning)', fullModel: 'o1-preview', caps: { thinking: true, vision: true } },
+          { id: 'o1-mini', name: 'o1 Mini (Copilot Speed)', fullModel: 'o1-mini', caps: { thinking: true, vision: false } }
+        ];
+      }
+      if (pid === 'cursor') {
+        return [
+          { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet (Cursor)', fullModel: 'claude-3-5-sonnet', caps: { thinking: false, vision: true } },
+          { id: 'gpt-4o', name: 'GPT-4o (Cursor)', fullModel: 'gpt-4o', caps: { thinking: false, vision: true } },
+          { id: 'cursor-small', name: 'Cursor Small Instant', fullModel: 'cursor-small', caps: { thinking: false, vision: false } },
+          { id: 'cursor-fast', name: 'Cursor Fast Completion', fullModel: 'cursor-fast', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid.includes('minimax')) {
+        return [
+          { id: 'MiniMax-Text-01', name: 'MiniMax Text-01 (4M Context)', fullModel: 'MiniMax-Text-01', caps: { thinking: false, vision: false } },
+          { id: 'abab6.5s-chat', name: 'ABAB 6.5s Chat', fullModel: 'abab6.5s-chat', caps: { thinking: false, vision: false } },
+          { id: 'abab6.5g-chat', name: 'ABAB 6.5g Chat', fullModel: 'abab6.5g-chat', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'kimi') {
+        return [
+          { id: 'moonshot-v1-128k', name: 'Moonshot Kimi 128K', fullModel: 'moonshot-v1-128k', caps: { thinking: false, vision: false } },
+          { id: 'moonshot-v1-32k', name: 'Moonshot Kimi 32K', fullModel: 'moonshot-v1-32k', caps: { thinking: false, vision: false } },
+          { id: 'moonshot-v1-8k', name: 'Moonshot Kimi 8K', fullModel: 'moonshot-v1-8k', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'xai' || pid === 'grok-cli' || pid === 'bedrock-xai') {
+        return [
+          { id: 'grok-2-latest', name: 'Grok 2 Latest', fullModel: 'grok-2-latest', caps: { thinking: false, vision: true } },
+          { id: 'grok-2-vision-1212', name: 'Grok 2 Vision', fullModel: 'grok-2-vision-1212', caps: { thinking: false, vision: true } },
+          { id: 'grok-beta', name: 'Grok Beta Fast', fullModel: 'grok-beta', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid.includes('perplexity')) {
+        return [
+          { id: 'sonar-pro', name: 'Sonar Pro Live Web (200K)', fullModel: 'sonar-pro', caps: { thinking: false, vision: false } },
+          { id: 'sonar-reasoning', name: 'Sonar Reasoning R1 Web', fullModel: 'sonar-reasoning', caps: { thinking: true, vision: false } },
+          { id: 'sonar', name: 'Sonar 128K Web Search', fullModel: 'sonar', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid.includes('qwen') || pid.includes('alicode') || pid.includes('qoder')) {
+        return [
+          { id: 'qwen-max', name: 'Qwen 2.5 Max (Alibaba)', fullModel: 'qwen-max', caps: { thinking: false, vision: true } },
+          { id: 'qwen-plus', name: 'Qwen 2.5 Plus', fullModel: 'qwen-plus', caps: { thinking: false, vision: true } },
+          { id: 'qwen2.5-coder-32b-instruct', name: 'Qwen 2.5 Coder 32B Instruct', fullModel: 'qwen2.5-coder-32b-instruct', caps: { thinking: false, vision: false } },
+          { id: 'qwen-turbo', name: 'Qwen 2.5 Turbo Fast', fullModel: 'qwen-turbo', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid.includes('ollama') || pid === 'local-device') {
+        return [
+          { id: 'llama3.3:latest', name: 'Ollama Llama 3.3 70B', fullModel: 'llama3.3:latest', caps: { thinking: false, vision: false } },
+          { id: 'deepseek-r1:latest', name: 'Ollama DeepSeek R1', fullModel: 'deepseek-r1:latest', caps: { thinking: true, vision: false } },
+          { id: 'qwen2.5-coder:latest', name: 'Ollama Qwen 2.5 Coder', fullModel: 'qwen2.5-coder:latest', caps: { thinking: false, vision: false } },
+          { id: 'mistral:latest', name: 'Ollama Mistral 7B', fullModel: 'mistral:latest', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid.includes('openrouter') || pid.includes('opencode')) {
+        return [
+          { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct (Free)', fullModel: 'meta-llama/llama-3.3-70b-instruct:free', caps: { thinking: false, vision: false } },
+          { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 Reasoning (Free)', fullModel: 'deepseek/deepseek-r1:free', caps: { thinking: true, vision: false } },
+          { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp (Free)', fullModel: 'google/gemini-2.0-flash-exp:free', caps: { thinking: false, vision: true } },
+          { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B (Free)', fullModel: 'qwen/qwen-2.5-coder-32b-instruct:free', caps: { thinking: false, vision: false } }
+        ];
+      }
+      if (pid === 'cohere') {
+        return [
+          { id: 'command-r-plus', name: 'Cohere Command R+', fullModel: 'command-r-plus', caps: { thinking: false, vision: false } },
+          { id: 'command-r', name: 'Cohere Command R', fullModel: 'command-r', caps: { thinking: false, vision: false } },
+          { id: 'command-light', name: 'Cohere Command Light', fullModel: 'command-light', caps: { thinking: false, vision: false } }
+        ];
+      }
 
-      if (!grid) return;
-
-      const fallbackAntigravityModels = [
+      // Mặc định: 15 model Antigravity & Google Gemini
+      return [
         { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High Thinking)', fullModel: 'gemini-3.8-flash-high', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Medium Thinking)', fullModel: 'gemini-3.8-flash-medium', caps: { thinking: true, vision: true } },
         { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low Thinking)', fullModel: 'gemini-3.8-flash-low', caps: { thinking: true, vision: true } },
@@ -6814,6 +6943,18 @@ curl -X POST "${v1Url}/chat/completions" \\
         { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium Thinking)', fullModel: 'gpt-oss-120b-medium', caps: { thinking: true, vision: false } },
         { id: 'gemini-3.1-flash-image', name: 'Gemini 3.1 Flash Image (Vision)', fullModel: 'gemini-3.1-flash-image', caps: { thinking: false, vision: true } }
       ];
+    }
+
+    // Tải và render toàn bộ Available Models chuẩn cho tất cả các nhà cung cấp
+    async function renderProviderAvailableModels(providerId) {
+      const grid = document.getElementById('provider-models-grid');
+      const disabledChips = document.getElementById('provider-disabled-models-chips');
+      const countBadge = document.getElementById('provider-models-count-badge');
+      const disabledCountEl = document.getElementById('provider-disabled-count');
+
+      if (!grid) return;
+
+      const defaultModels = getFallbackModelsByProvider(providerId);
 
       function displayModelsUI(available, disabled) {
         if (countBadge) countBadge.textContent = available.length;
@@ -6878,19 +7019,22 @@ curl -X POST "${v1Url}/chat/completions" \\
         }
       }
 
-      grid.innerHTML = '<div class="col-span-full py-8 text-center text-xs font-mono text-slate-400">Đang tải danh sách model khả dụng...</div>';
+      // 1. Hiển thị ngay lập tức 0ms danh sách model chuẩn tương ứng với từng provider
+      displayModelsUI(defaultModels, []);
 
+      // 2. Fetch đồng bộ các tùy chỉnh (custom models, disabled models) từ backend TiDB Cloud
       try {
         const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(providerId)}`);
-        const data = await res.json();
-        const available = (data && Array.isArray(data.availableModels) && data.availableModels.length > 0)
-          ? data.availableModels
-          : fallbackAntigravityModels;
-        const disabled = (data && Array.isArray(data.disabledModels)) ? data.disabledModels : [];
-        displayModelsUI(available, disabled);
+        if (res && res.ok) {
+          const data = await res.json();
+          const available = (data && Array.isArray(data.availableModels) && data.availableModels.length > 0)
+            ? data.availableModels
+            : defaultModels;
+          const disabled = (data && Array.isArray(data.disabledModels)) ? data.disabledModels : [];
+          displayModelsUI(available, disabled);
+        }
       } catch (err) {
-        console.warn('[MODEL] Sử dụng danh sách model khả dụng mặc định:', err);
-        displayModelsUI(fallbackAntigravityModels, []);
+        console.warn(`[MODEL] Sử dụng danh sách model khả dụng mặc định cho [${providerId}]:`, err);
       }
     }
 
@@ -8128,10 +8272,11 @@ curl -X POST "${v1Url}/chat/completions" \\
     function copyDesktopConfigFile() {
       const origin = (window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'https://supportflastdev.io.vn';
       const key = getOmniRouterActiveApiKey();
+      const defaultPort = window.location.port ? parseInt(window.location.port) : (window.location.protocol === 'https:' ? 443 : 8080);
       const cfg = {
         render_url: origin,
         master_api_key: key,
-        local_port: 20128
+        local_port: defaultPort
       };
       const jsonStr = JSON.stringify(cfg, null, 2);
       navigator.clipboard.writeText(jsonStr).then(() => {
@@ -8144,10 +8289,11 @@ curl -X POST "${v1Url}/chat/completions" \\
     function downloadDesktopConfigFile() {
       const origin = (window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'https://supportflastdev.io.vn';
       const key = getOmniRouterActiveApiKey();
+      const defaultPort = window.location.port ? parseInt(window.location.port) : (window.location.protocol === 'https:' ? 443 : 8080);
       const cfg = {
         render_url: origin,
         master_api_key: key,
-        local_port: 20128
+        local_port: defaultPort
       };
       const jsonStr = JSON.stringify(cfg, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -8336,7 +8482,7 @@ curl -X POST "${v1Url}/chat/completions" \\
       if (label) label.innerText = 'Đang kích hoạt...';
 
       try {
-        // 1. Nếu Gateway lõi chưa online, gửi tín hiệu bật Gateway và đợi cổng 20128 sẵn sàng
+        // 1. Nếu Gateway lõi chưa online, gửi tín hiệu bật Gateway và đợi dịch vụ sẵn sàng
         if (!isGatewayConnected) {
           sendHostAction('startGateway');
           let waited = 0;
@@ -8352,7 +8498,7 @@ curl -X POST "${v1Url}/chat/completions" \\
             waited++;
           }
           if (!isGatewayConnected) {
-            throw new Error('OmniRouter Engine (cổng 20128) đang khởi động. Vui lòng bấm lại sau 3 giây!');
+            throw new Error('SupportFlast Gateway đang khởi động. Vui lòng bấm thử lại sau giây lát!');
           }
         }
 
@@ -8591,7 +8737,7 @@ curl -X POST "${v1Url}/chat/completions" \\
           }
 
           // Gửi lệnh bật server với apiKey thật
-          const baseUrl = document.getElementById('mitm-base-url-input')?.value.trim() || 'http://localhost:20128';
+          const baseUrl = document.getElementById('mitm-base-url-input')?.value.trim() || ((window.location && window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'https://supportflastdev.io.vn');
           const authKey = cachedApiKeys.length > 0 ? cachedApiKeys[0].key : 'sk_9router';
 
           const startRes = await apiRequest('/api/cli-tools/antigravity-mitm', {
@@ -12436,7 +12582,7 @@ curl -X POST "${v1Url}/chat/completions" \\
     // 10. PROTOCOL TRANSLATOR PIPELINE 7 BƯỚC (/api/translator)
     // =========================================================================
     const translatorStepsData = [
-      { id: 1, file: '1_req_client.json', title: 'Bước 1: Client Request (1_req_client.json)', desc: 'Yêu cầu JSON thô ban đầu gửi từ IDE hoặc Claude Code tới 9Router cổng 20128' },
+      { id: 1, file: '1_req_client.json', title: 'Bước 1: Client Request (1_req_client.json)', desc: 'Yêu cầu JSON thô ban đầu gửi từ IDE hoặc Claude Code tới SupportFlast Gateway' },
       { id: 2, file: '2_req_source.json', title: 'Bước 2: Source Body (2_req_source.json)', desc: 'Nội dung sau khi trích xuất body và lọc headers an toàn' },
       { id: 3, file: '3_req_openai.json', title: 'Bước 3: OpenAI Intermediate (3_req_openai.json)', desc: 'Chuẩn hóa định dạng request sang OpenAI Chat Completions Schema tiêu chuẩn' },
       { id: 4, file: '4_req_target.json', title: 'Bước 4: Target Request (4_req_target.json)', desc: 'Chuyển đổi OpenAI Schema sang định dạng riêng của nhà cung cấp đích (Anthropic Messages API / Google Gemini generateContent)' },

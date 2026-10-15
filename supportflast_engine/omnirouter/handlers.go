@@ -1047,42 +1047,126 @@ type ProviderModelItem struct {
 	Caps      *ProviderModelCaps `json:"caps,omitempty"`
 }
 
-// GetDefaultModelsForProvider trả về 15 model Antigravity hoặc model chuẩn theo provider
+// GetDefaultModelsForProvider trả về danh mục model chuẩn theo từng nhà cung cấp (hỗ trợ tất cả providers)
 func GetDefaultModelsForProvider(provider string) []ProviderModelItem {
 	p := strings.ToLower(strings.TrimSpace(provider))
-	switch p {
-	case "antigravity", "google", "antigravity-hub":
+	switch {
+	case p == "claude" || p == "anthropic":
 		return []ProviderModelItem{
-			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High Thinking)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium Thinking)", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low Thinking)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High Thinking)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium Thinking)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low Thinking)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High Thinking)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro (High Thinking)", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-3-7-sonnet", Name: "Claude 3.7 Sonnet (Hybrid Thinking)", FullModel: "claude-3-7-sonnet", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-3-5-sonnet-20241022", Name: "Claude 3.5 Sonnet (v2)", FullModel: "claude-3-5-sonnet-20241022", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
 			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium Thinking)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
-			{ID: "gemini-3.1-flash-image", Name: "Gemini 3.1 Flash Image (Vision)", FullModel: "gemini-3.1-flash-image", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-		}
-	case "anthropic":
-		return []ProviderModelItem{
-			{ID: "claude-3-5-sonnet-20241022", Name: "Claude 3.5 Sonnet", FullModel: "claude-3-5-sonnet-20241022", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
 			{ID: "claude-3-5-haiku-20241022", Name: "Claude 3.5 Haiku", FullModel: "claude-3-5-haiku-20241022", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
 			{ID: "claude-3-opus-20240229", Name: "Claude 3 Opus", FullModel: "claude-3-opus-20240229", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "claude-3-haiku-20240307", Name: "Claude 3 Haiku", FullModel: "claude-3-haiku-20240307", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 		}
-	case "openai":
+	case p == "openai" || p == "codex" || p == "azure":
 		return []ProviderModelItem{
-			{ID: "gpt-4o", Name: "GPT-4o", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gpt-4o-mini", Name: "GPT-4o Mini", FullModel: "gpt-4o-mini", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "o1-preview", Name: "o1 Preview", FullModel: "o1-preview", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "o1-mini", Name: "o1 Mini", FullModel: "o1-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "gpt-4o", Name: "GPT-4o Omnimodal", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-4o-mini", Name: "GPT-4o Mini Fast", FullModel: "gpt-4o-mini", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "o1", Name: "OpenAI o1 Reasoning", FullModel: "o1", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "o1-mini", Name: "o1 Mini High Speed", FullModel: "o1-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "o1-preview", Name: "o1 Preview Deep Reasoning", FullModel: "o1-preview", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "o3-mini", Name: "o3 Mini Coding Intelligence", FullModel: "o3-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "gpt-4-turbo", Name: "GPT-4 Turbo Vision", FullModel: "gpt-4-turbo", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-4", Name: "GPT-4 Standard", FullModel: "gpt-4", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "gpt-3.5-turbo", Name: "GPT-3.5 Turbo", FullModel: "gpt-3.5-turbo", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "chatgpt-4o-latest", Name: "ChatGPT 4o Dynamic", FullModel: "chatgpt-4o-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+		}
+	case p == "deepseek":
+		return []ProviderModelItem{
+			{ID: "deepseek-reasoner", Name: "DeepSeek R1 (Full Reasoning)", FullModel: "deepseek-reasoner", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "deepseek-chat", Name: "DeepSeek V3 (671B Chat)", FullModel: "deepseek-chat", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "deepseek-r1", Name: "DeepSeek R1 Thinking", FullModel: "deepseek-r1", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "deepseek-v3", Name: "DeepSeek V3 MoE", FullModel: "deepseek-v3", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "deepseek-coder", Name: "DeepSeek Coder V2", FullModel: "deepseek-coder", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "groq":
+		return []ProviderModelItem{
+			{ID: "llama-3.3-70b-versatile", Name: "Llama 3.3 70B (500 t/s)", FullModel: "llama-3.3-70b-versatile", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "deepseek-r1-distill-llama-70b", Name: "DeepSeek R1 Distill 70B LPU", FullModel: "deepseek-r1-distill-llama-70b", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "llama-3.1-8b-instant", Name: "Llama 3.1 8B Instant", FullModel: "llama-3.1-8b-instant", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "mixtral-8x7b-32768", Name: "Mixtral 8x7B MoE", FullModel: "mixtral-8x7b-32768", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "gemma2-9b-it", Name: "Gemma 2 9B Instruct", FullModel: "gemma2-9b-it", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "mistral":
+		return []ProviderModelItem{
+			{ID: "mistral-large-latest", Name: "Mistral Large 2 (128K)", FullModel: "mistral-large-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "codestral-latest", Name: "Codestral 22B Code Specialist", FullModel: "codestral-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "pixtral-12b-2409", Name: "Pixtral 12B Multimodal", FullModel: "pixtral-12b-2409", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "mistral-small-latest", Name: "Mistral Small 3", FullModel: "mistral-small-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "ministral-8b-latest", Name: "Ministral 8B Edge", FullModel: "ministral-8b-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "copilot" || p == "copilot-hub":
+		return []ProviderModelItem{
+			{ID: "copilot-chat", Name: "GitHub Copilot Chat", FullModel: "copilot-chat", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet (Copilot)", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-4o", Name: "GPT-4o (Copilot)", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "o1-preview", Name: "o1 Preview (Copilot Reasoning)", FullModel: "o1-preview", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "o1-mini", Name: "o1 Mini (Copilot Speed)", FullModel: "o1-mini", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+		}
+	case p == "cursor":
+		return []ProviderModelItem{
+			{ID: "claude-3-5-sonnet", Name: "Claude 3.5 Sonnet (Cursor)", FullModel: "claude-3-5-sonnet", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gpt-4o", Name: "GPT-4o (Cursor)", FullModel: "gpt-4o", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "cursor-small", Name: "Cursor Small Instant", FullModel: "cursor-small", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "cursor-fast", Name: "Cursor Fast Completion", FullModel: "cursor-fast", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case strings.Contains(p, "minimax"):
+		return []ProviderModelItem{
+			{ID: "MiniMax-Text-01", Name: "MiniMax Text-01 (4M Context)", FullModel: "MiniMax-Text-01", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "abab6.5s-chat", Name: "ABAB 6.5s Chat", FullModel: "abab6.5s-chat", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "abab6.5g-chat", Name: "ABAB 6.5g Chat", FullModel: "abab6.5g-chat", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "kimi":
+		return []ProviderModelItem{
+			{ID: "moonshot-v1-128k", Name: "Moonshot Kimi 128K", FullModel: "moonshot-v1-128k", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "moonshot-v1-32k", Name: "Moonshot Kimi 32K", FullModel: "moonshot-v1-32k", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "moonshot-v1-8k", Name: "Moonshot Kimi 8K", FullModel: "moonshot-v1-8k", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "xai" || p == "grok-cli" || p == "bedrock-xai":
+		return []ProviderModelItem{
+			{ID: "grok-2-latest", Name: "Grok 2 Latest", FullModel: "grok-2-latest", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "grok-2-vision-1212", Name: "Grok 2 Vision", FullModel: "grok-2-vision-1212", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "grok-beta", Name: "Grok Beta Fast", FullModel: "grok-beta", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case strings.Contains(p, "perplexity"):
+		return []ProviderModelItem{
+			{ID: "sonar-pro", Name: "Sonar Pro Live Web (200K)", FullModel: "sonar-pro", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "sonar-reasoning", Name: "Sonar Reasoning R1 Web", FullModel: "sonar-reasoning", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "sonar", Name: "Sonar 128K Web Search", FullModel: "sonar", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case strings.Contains(p, "qwen") || strings.Contains(p, "alicode") || strings.Contains(p, "qoder"):
+		return []ProviderModelItem{
+			{ID: "qwen-max", Name: "Qwen 2.5 Max (Alibaba)", FullModel: "qwen-max", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "qwen-plus", Name: "Qwen 2.5 Plus", FullModel: "qwen-plus", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "qwen2.5-coder-32b-instruct", Name: "Qwen 2.5 Coder 32B Instruct", FullModel: "qwen2.5-coder-32b-instruct", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "qwen-turbo", Name: "Qwen 2.5 Turbo Fast", FullModel: "qwen-turbo", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case strings.Contains(p, "ollama") || p == "local-device":
+		return []ProviderModelItem{
+			{ID: "llama3.3:latest", Name: "Ollama Llama 3.3 70B", FullModel: "llama3.3:latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "deepseek-r1:latest", Name: "Ollama DeepSeek R1", FullModel: "deepseek-r1:latest", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "qwen2.5-coder:latest", Name: "Ollama Qwen 2.5 Coder", FullModel: "qwen2.5-coder:latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "mistral:latest", Name: "Ollama Mistral 7B", FullModel: "mistral:latest", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case strings.Contains(p, "openrouter") || strings.Contains(p, "opencode"):
+		return []ProviderModelItem{
+			{ID: "meta-llama/llama-3.3-70b-instruct:free", Name: "Llama 3.3 70B Instruct (Free)", FullModel: "meta-llama/llama-3.3-70b-instruct:free", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "deepseek/deepseek-r1:free", Name: "DeepSeek R1 Reasoning (Free)", FullModel: "deepseek/deepseek-r1:free", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "google/gemini-2.0-flash-exp:free", Name: "Gemini 2.0 Flash Exp (Free)", FullModel: "google/gemini-2.0-flash-exp:free", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "qwen/qwen-2.5-coder-32b-instruct:free", Name: "Qwen 2.5 Coder 32B (Free)", FullModel: "qwen/qwen-2.5-coder-32b-instruct:free", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "cohere":
+		return []ProviderModelItem{
+			{ID: "command-r-plus", Name: "Cohere Command R+", FullModel: "command-r-plus", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "command-r", Name: "Cohere Command R", FullModel: "command-r", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+			{ID: "command-light", Name: "Cohere Command Light", FullModel: "command-light", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
 		}
 	default:
+		// Bộ 15 model Antigravity & Google Gemini chuẩn
 		return []ProviderModelItem{
 			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High Thinking)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium Thinking)", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
