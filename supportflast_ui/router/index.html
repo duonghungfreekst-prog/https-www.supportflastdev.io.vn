@@ -2377,6 +2377,11 @@
                 <span>⚡ Auto Đổi Proxy Tốt Nhất</span>
               </button>
 
+              <!-- Nút cuộn nhanh tới khối Lệnh CMD Quota -->
+              <button onclick="scrollToCmdQuotaSection()" class="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)] flex-shrink-0" title="Xem lệnh cURL chạy trực tiếp trên Windows Command Prompt (CMD)">
+                <span>&gt;_ Lệnh CMD Quota</span>
+              </button>
+
             </div>
 
             <!-- Nhóm bên phải: Auto-refresh toggle & nút Refresh -->
@@ -2401,6 +2406,68 @@
 
           <!-- 2. LƯỚI THẺ ACCOUNT QUOTA CARDS (TỰ ĐỘNG CHIA CỘT THÔNG MINH THEO KHÔNG GIAN THỰC TẾ) -->
           <div id="quota-cards-grid" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3.5 items-start min-h-[160px]"></div>
+
+          <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (WINDOWS COMMAND PROMPT) CHUẨN XÁC THEO YÊU CẦU -->
+          <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono text-base font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] flex-shrink-0">
+                  &gt;_
+                </div>
+                <div>
+                  <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-wider font-mono flex flex-wrap items-center gap-2">
+                    <span>CÁCH 1: LỆNH 1 DÒNG TRÊN CMD (WINDOWS COMMAND PROMPT)</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">CLI Live</span>
+                  </h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Bạn mở Command Prompt (CMD) và dán lệnh cURL:</p>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
+                <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]">
+                  <span>▶ Chạy Thử Ngay</span>
+                </button>
+                <button onclick="downloadClientQuotaBatScript()" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+                  <span>📊 Tải quota.bat</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Khung mã lệnh cmd (khớp 100% hình ảnh yêu cầu) -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <span>cmd</span>
+                </span>
+                <div class="flex items-center gap-2">
+                  <button onclick="copyToClipboard(document.getElementById('web-cli-curl-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh cURL vào Clipboard!');" class="text-cyan-400 hover:text-cyan-300 text-xs font-mono flex items-center gap-1 cursor-pointer">
+                    <span>📋 Sao chép</span>
+                  </button>
+                </div>
+              </div>
+              <div class="p-3.5 rounded-xl bg-black/90 border border-white/10 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group">
+                <code id="web-cli-curl-command" class="flex-1 font-mono">curl -s "https://supportflastdev.io.vn/api/v1/client/quota?key=sk-supportflastdev.io.vn-master-live"</code>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-curl-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh cURL!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Khung kết quả hiển thị trên màn hình đen của CMD (khớp 100% hình ảnh yêu cầu) -->
+            <div class="space-y-1.5 pt-1">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <span>🖥 Kết quả hiển thị ngay trên màn hình đen của CMD:</span>
+                </span>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-cmd-preview-output').textContent.trim()); showToastNotification('📋 Đã sao chép toàn bộ kết quả terminal!');" class="text-slate-400 hover:text-white text-xs font-mono flex items-center gap-1 cursor-pointer">
+                  <span>📋 Sao chép text</span>
+                </button>
+              </div>
+              <div class="relative">
+                <pre id="web-cli-cmd-preview-output" class="p-4 rounded-xl bg-black border border-white/15 text-[11px] md:text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed select-all max-h-72 shadow-inner">Đang nạp kết quả Quota & DNS trực tiếp từ Gateway...</pre>
+              </div>
+            </div>
+          </div>
 
         </div>
 
@@ -14636,12 +14703,64 @@ curl -X POST "${v1Url}/chat/completions" \\
 
         // CHỈ RENDER 1 LẦN DUY NHẤT SAU KHI TOÀN BỘ PHẢN HỒI HOÀN TẤT
         renderQuotaCards();
+        loadWebCliQuotaOutput();
       } catch (e) {
         console.warn("Lỗi tải Quota Tracker Live:", e);
       } finally {
         _isQuotaFetching = false;
         if (spinEl) {
           setTimeout(() => spinEl.classList.remove('animate-spin'), 300);
+        }
+      }
+    }
+
+    // Cuộn mượt mà xuống khối Lệnh CMD Quota trên trang web
+    function scrollToCmdQuotaSection() {
+      const el = document.getElementById('section-cmd-quota-quickview');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-cyan-400');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-cyan-400'), 1500);
+      }
+    }
+
+    // Tự động tải và hiển thị kết quả cURL Quota trên Terminal Box của Web
+    async function loadWebCliQuotaOutput(forceToast = false) {
+      const outputEl = document.getElementById('web-cli-cmd-preview-output');
+      const btnRun = document.getElementById('btn-run-live-quota-curl');
+      const cmdCodeEl = document.getElementById('web-cli-curl-command');
+      if (!outputEl) return;
+
+      const domain = (window.location.host && !window.location.host.startsWith('localhost') && !window.location.host.startsWith('127.0.0.1'))
+        ? window.location.host
+        : 'supportflastdev.io.vn';
+      const scheme = window.location.protocol === 'http:' ? 'http:' : 'https:';
+      const keyText = (document.getElementById('cmd-active-key-text')?.textContent || '').trim() || 'sk-supportflastdev.io.vn-master-live';
+
+      if (cmdCodeEl) {
+        cmdCodeEl.textContent = `curl -s "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
+      }
+
+      if (btnRun) {
+        btnRun.innerHTML = '<span>⏳ Đang tải...</span>';
+      }
+
+      try {
+        const res = await fetch(`/api/v1/client/quota?key=${encodeURIComponent(keyText)}`);
+        if (res.ok) {
+          const text = await res.text();
+          outputEl.textContent = text;
+          if (forceToast) {
+            showToastNotification('✔ Đã chạy lệnh cURL & cập nhật Terminal Quota thành công!');
+          }
+        } else {
+          outputEl.textContent = `[LỖI] Máy chủ phản hồi mã ${res.status}. Vui lòng thử lại.`;
+        }
+      } catch (err) {
+        outputEl.textContent = `[LỖI KẾT NỐI] ${err.message}\nBạn có thể chạy trực tiếp trên CMD:\ncurl -s "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
+      } finally {
+        if (btnRun) {
+          btnRun.innerHTML = '<span>▶ Chạy Thử Ngay</span>';
         }
       }
     }
