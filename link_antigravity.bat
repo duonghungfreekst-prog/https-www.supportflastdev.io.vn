@@ -66,19 +66,31 @@ echo.
 :do_check_router
 REM Kiem tra OmniRouter co dang chay khong
 echo   [*] Kiem tra OmniRouter...
+set "ROUTER_RUNNING=0"
+netstat -anp tcp 2>nul | findstr "0.0.0.0:443.*LISTENING" >nul 2>&1
+if %errorlevel%==0 set "ROUTER_RUNNING=1"
+
+if "%ROUTER_RUNNING%"=="0" (
+    echo   [*] OmniRouter chua chay. Dang tu dong khoi dong Engine tren cong 443 va 20128...
+    if exist "F:\9router-stt-upgraded\dist\OmniRouter\omnirouter_engine.exe" (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine = 'F:\9router-stt-upgraded\dist\OmniRouter\omnirouter_engine.exe --port 20128 --dir F:\9router-stt-upgraded'}; Start-Sleep -Seconds 2" >nul 2>&1
+    ) else (
+        echo   [!] Khong tim thay binary omnirouter_engine.exe
+    )
+)
+
 netstat -anp tcp 2>nul | findstr "0.0.0.0:443.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    echo   [OK] OmniRouter dang lang nghe tren port 443 - HOAN HAO!
+    echo   [OK] OmniRouter MITM dang lang nghe tren port 443 - HOAN HAO!
 ) else (
-    echo   [!] CANH BAO: OmniRouter CHUA CHAY tren port 443
-    echo   [!] Hay khoi dong OmniRouter truoc: RUN_FULL_SYSTEM.bat
+    echo   [!] CANH BAO: Port 443 chua san sang. Hay click phai link_antigravity.bat chon Run as Administrator!
 )
 
 netstat -anp tcp 2>nul | findstr "0.0.0.0:20128.*LISTENING" >nul 2>&1
 if %errorlevel%==0 (
-    echo   [OK] OmniRouter dang lang nghe tren port 20128 - HOAN HAO!
+    echo   [OK] OmniRouter Core dang lang nghe tren port 20128 - HOAN HAO!
 ) else (
-    echo   [!] CANH BAO: OmniRouter CHUA CHAY tren port 20128
+    echo   [!] CANH BAO: Port 20128 chua san sang.
 )
 
 echo.
