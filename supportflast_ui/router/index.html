@@ -2298,7 +2298,7 @@
                 </div>
               </div>
               <div class="p-3.5 rounded-xl bg-black/90 border border-white/10 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group">
-                <code id="web-cli-curl-command" class="flex-1 font-mono">curl -s "https://supportflastdev.io.vn/api/v1/client/quota?key=sk-supportflastdev.io.vn-master-live"</code>
+                <code id="web-cli-curl-command" class="flex-1 font-mono">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/quota?key=sk-supportflastdev.io.vn-master-live"</code>
                 <button onclick="copyToClipboard(document.getElementById('web-cli-curl-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh cURL!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                 </button>
@@ -5389,7 +5389,7 @@
       return {
         win: `:: [Windows Command Prompt (CMD)]
 :: 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
-curl -s "${baseUrl}/api/v1/client/quota?key=${activeKey}"
+curl -sL "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
 :: 2. Hoặc tải file script tự động ping và xem quota:
 curl -sL "${baseUrl}/api/v1/client/quota.bat?key=${activeKey}" -o quota.bat && quota.bat
@@ -5411,7 +5411,7 @@ $env:OPENAI_API_KEY = "${activeKey}"`,
 
         bash: `# [Linux / macOS / WSL / Termux]
 # 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
-curl -s "${baseUrl}/api/v1/client/quota?key=${activeKey}"
+curl -sL "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
 # 2. Thiết lập biến môi trường trỏ trực tiếp:
 export OPENAI_BASE_URL="${v1Url}"
@@ -14606,12 +14606,12 @@ curl -X POST "${v1Url}/chat/completions" \\
 
       const domain = (window.location.host && !window.location.host.startsWith('localhost') && !window.location.host.startsWith('127.0.0.1'))
         ? window.location.host
-        : 'supportflastdev.io.vn';
+        : 'www.supportflastdev.io.vn';
       const scheme = window.location.protocol === 'http:' ? 'http:' : 'https:';
       const keyText = (document.getElementById('cmd-active-key-text')?.textContent || '').trim() || 'sk-supportflastdev.io.vn-master-live';
 
       if (cmdCodeEl) {
-        cmdCodeEl.textContent = `curl -s "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
+        cmdCodeEl.textContent = `curl -sL "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
       }
 
       if (btnRun) {
@@ -14630,7 +14630,7 @@ curl -X POST "${v1Url}/chat/completions" \\
           outputEl.textContent = `[LỖI] Máy chủ phản hồi mã ${res.status}. Vui lòng thử lại.`;
         }
       } catch (err) {
-        outputEl.textContent = `[LỖI KẾT NỐI] ${err.message}\nBạn có thể chạy trực tiếp trên CMD:\ncurl -s "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
+        outputEl.textContent = `[LỖI KẾT NỐI] ${err.message}\nBạn có thể chạy trực tiếp trên CMD:\ncurl -sL "${scheme}//${domain}/api/v1/client/quota?key=${keyText}"`;
       } finally {
         if (btnRun) {
           btnRun.innerHTML = '<span>▶ Chạy Thử Ngay</span>';
