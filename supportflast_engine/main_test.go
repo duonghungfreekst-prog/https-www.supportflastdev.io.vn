@@ -13,6 +13,8 @@ import (
 	cloudpoolStorage "supportflast_engine/cloudpool/storage"
 	cloudpoolVFS "supportflast_engine/cloudpool/vfs"
 	"supportflast_engine/database"
+	"supportflast_engine/internal/router"
+	"supportflast_engine/omnirouter"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
 	"testing"
@@ -529,4 +531,149 @@ func TestHandleHealthCheck(t *testing.T) {
 			t.Errorf("Kỳ vọng database.status khi DB disconnected là 'disconnected', nhận: %v", dbDiscInfo["status"])
 		}
 	}
+}
+
+func TestAllRoutesRegistrationNoPanic(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "all_routes_test.db")
+	db, err := database.InitSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("Init test DB: %v", err)
+	}
+	defer db.Close()
+
+	// Khởi tạo storageDB
+	sdbPath := filepath.Join(tempDir, "cloudpool_meta.db")
+	storageDB, err := cloudpoolStorage.NewDB(sdbPath)
+	if err != nil {
+		t.Fatalf("Init storage DB: %v", err)
+	}
+	defer storageDB.Close()
+
+	gdManager := cloudpoolGDrive.NewManager(storageDB)
+	vfsEngine := cloudpoolVFS.NewVFS(storageDB, gdManager)
+	cloudpoolApi.InitHandlers(storageDB, gdManager, vfsEngine, tempDir, tempDir)
+
+	mux := http.NewServeMux()
+
+	// Đảm bảo không bị panic khi đăng ký toàn bộ route
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("PANIC phát hiện khi đăng ký route trên ServeMux: %v", r)
+		}
+	}()
+
+	// 1. Health check & System
+	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/api/security/cloudflare-status", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/api/security/ssl-status", func(w http.ResponseWriter, r *http.Request) {})
+
+	// 2. Apps & Registry
+	mux.HandleFunc("/api/apps/publish", registry.PublishHandler)
+	mux.HandleFunc("/api/apps/update", registry.AppUpdateHandler)
+	mux.HandleFunc("/api/apps/delete", registry.AppDeleteHandler)
+	mux.HandleFunc("/api/apps/audit", registry.AppAuditHandler)
+	mux.HandleFunc("/api/apps", registry.ListHandler)
+	mux.HandleFunc("/api/apps/download/", registry.DownloadHandler)
+
+	// 2.3 Auth & Users
+	mux.HandleFunc("/api/auth/register", registry.RegisterHandler)
+	mux.Handle("/api/auth/login", security.LoginRateLimitMiddleware(http.HandlerFunc(registry.LoginHandler)))
+	mux.HandleFunc("/api/auth/turnstile-config", registry.TurnstileConfigHandler)
+	mux.HandleFunc("/api/auth/me", registry.MeHandler)
+	mux.HandleFunc("/api/auth/logout", registry.LogoutHandler)
+	mux.HandleFunc("/api/auth/change-password", registry.ChangePasswordHandler)
+	mux.HandleFunc("/api/auth/security-pin", registry.SecurityPINHandler)
+	mux.HandleFunc("/api/auth/verify-pin", registry.VerifyPINHandler)
+	mux.HandleFunc("/api/auth/public-key", registry.PublicKeyHandler)
+	mux.HandleFunc("/api/admin/users", registry.AdminUsersListHandler)
+	mux.HandleFunc("/api/admin/users/reset-password", registry.AdminResetPasswordHandler)
+	mux.HandleFunc("/api/admin/logs", registry.AdminLogsHandler)
+	mux.HandleFunc("/api/admin/sessions", registry.AdminSessionsHandler)
+
+	// 2.4 Reviews
+	mux.HandleFunc("/api/reviews", registry.ReviewsHandler)
+	mux.HandleFunc("/api/reviews/", registry.ReviewDetailHandler)
+
+	// 2.5 Keys
+	mux.HandleFunc("/api/keys/generate", registry.KeyGenerateHandler)
+	mux.HandleFunc("/api/keys/revoke", registry.KeyRevokeHandler)
+	mux.HandleFunc("/api/keys", registry.KeyListHandler)
+
+	// 2.6 System
+	mux.HandleFunc("/api/system/status", registry.SystemStatusHandler)
+	mux.HandleFunc("/api/system/updates", registry.SystemUpdatesHandler)
+	mux.HandleFunc("/api/system/diagnostics", registry.SystemDiagnosticsHandler)
+	mux.HandleFunc("/api/admin/system/update", registry.AdminPublishUpdateHandler)
+	mux.HandleFunc("/api/admin/system/deploy-ui", registry.AdminDeployUIHandler)
+	mux.HandleFunc("/api/admin/system/broadcast", registry.AdminBroadcastHandler)
+	mux.HandleFunc("/api/admin/system/maintenance", registry.AdminMaintenanceHandler)
+	mux.HandleFunc("/api/admin/system/hot-reload", registry.AdminHotReloadHandler)
+	mux.HandleFunc("/api/admin/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/admin/git/status", registry.GitStatusHandler)
+	mux.HandleFunc("/api/device/sync", registry.DeviceSyncHandler)
+
+	// Honeypot & SIEM
+	security.RegisterHoneypotRoutes(mux)
+	mux.HandleFunc("/api/security/honeypot-status", security.HoneypotStatusHandler)
+	mux.HandleFunc("/api/admin/siem/alerts", security.SIEMAlertsHandler)
+	mux.HandleFunc("/api/admin/siem/stats", security.SIEMStatsHandler)
+
+	// Agents
+	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/api/agents/chat", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/api/request", func(w http.ResponseWriter, r *http.Request) {})
+
+	// Tools & Storage static
+	mux.HandleFunc("/tools", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/tools/", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/share", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/share/", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/share.html", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/storage/share", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/storage/share/", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/storage/share.html", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/storage", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("/storage/", func(w http.ResponseWriter, r *http.Request) {})
+
+	// CloudPool API
+	mux.HandleFunc("/api/files", cloudpoolApi.FilesHandler)
+	mux.HandleFunc("/api/files/", cloudpoolApi.FilesHandler)
+	mux.HandleFunc("/api/accounts", cloudpoolApi.AccountsHandler)
+	mux.HandleFunc("/api/accounts/", cloudpoolApi.AccountsHandler)
+	mux.HandleFunc("/api/stats", cloudpoolApi.StatsHandler)
+	mux.HandleFunc("/api/stats/", cloudpoolApi.StatsHandler)
+	mux.HandleFunc("/api/shares", cloudpoolApi.SharesHandler)
+	mux.HandleFunc("/api/shares/", cloudpoolApi.SharesHandler)
+	mux.HandleFunc("/api/settings", cloudpoolApi.SettingsHandler)
+	mux.HandleFunc("/api/settings/", cloudpoolApi.SettingsHandler)
+	mux.HandleFunc("/api/remote", cloudpoolApi.RemoteHandler)
+	mux.HandleFunc("/api/remote/", cloudpoolApi.RemoteHandler)
+	mux.HandleFunc("/api/tunnel", cloudpoolApi.TunnelHandler)
+	mux.HandleFunc("/api/tunnel/", cloudpoolApi.TunnelHandler)
+	mux.HandleFunc("/api/admin/drive", cloudpoolApi.AdminDriveHandler)
+	mux.HandleFunc("/api/admin/drive/", cloudpoolApi.AdminDriveHandler)
+	mux.HandleFunc("/api/admin/otp", cloudpoolApi.AdminOTPHandler)
+	mux.HandleFunc("/api/admin/otp/", cloudpoolApi.AdminOTPHandler)
+	mux.HandleFunc("/api/admin/update", cloudpoolApi.UpdateHandler)
+	mux.HandleFunc("/api/admin/update/", cloudpoolApi.UpdateHandler)
+	mux.HandleFunc("/api/admin/storage", cloudpoolApi.AdminStorageHandler)
+	mux.HandleFunc("/api/admin/storage/", cloudpoolApi.AdminStorageHandler)
+	mux.HandleFunc("/api/public/share/", cloudpoolApi.PublicShareHandler)
+	mux.HandleFunc("/api/auth/verify-admin-pass", cloudpoolApi.VerifyAdminPassHandler)
+	mux.HandleFunc("/api/admin/users/quota", cloudpoolApi.UpdateUserQuotaHandler)
+	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
+	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
+	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
+
+	// OmniRouter
+	omnirouter.RegisterOmniRouterRoutes(mux, db, false, tempDir)
+
+	// Root static
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
+
+	// API v1
+	router.RegisterAPIv1Routes(mux)
 }
