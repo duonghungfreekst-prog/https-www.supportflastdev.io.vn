@@ -260,13 +260,21 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		switch {
 		case model == "" || model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" || strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6"):
 			model = "gemini-3.8-flash-high"
-		case model == "claude-3-5-sonnet" || model == "claude-3-sonnet" || model == "claude-3.5-sonnet" || model == "claude-sonnet":
+		case model == "claude-3-5-sonnet" || model == "claude-3-sonnet" || model == "claude-3.5-sonnet" || model == "claude-sonnet" || strings.HasPrefix(model, "claude-sonnet"):
 			model = "claude-sonnet-4-6"
-		case model == "claude-3-opus" || model == "claude-opus" || model == "claude-3-5-opus":
+		case model == "claude-3-opus" || model == "claude-opus" || model == "claude-3-5-opus" || strings.HasPrefix(model, "claude-opus"):
 			model = "claude-opus-4-6-thinking"
-		case model == "gpt-4o" || model == "gpt-4" || model == "gpt-4-turbo" || model == "gpt-3.5-turbo":
+		case model == "gpt-4o" || model == "gpt-4" || model == "gpt-4-turbo" || model == "gpt-3.5-turbo" || strings.HasPrefix(model, "gpt"):
 			model = "gpt-oss-120b-medium"
-		case model == "gemini-pro" || model == "gemini-1.5-pro" || model == "gemini-2.0-flash" || model == "gemini-2.5-pro":
+		case strings.Contains(model, "flash-high") || model == "gemini-3.8-flash-high":
+			model = "gemini-3.8-flash-high"
+		case strings.Contains(model, "flash-medium"):
+			model = "gemini-3.8-flash-medium"
+		case strings.Contains(model, "flash-low"):
+			model = "gemini-3.8-flash-low"
+		case strings.Contains(model, "flash") || strings.Contains(model, "pro") || model == "gemini-1.5-flash" || model == "gemini-1.5-pro":
+			model = "gemini-2.5-flash"
+		default:
 			model = "gemini-2.5-flash"
 		}
 
@@ -336,11 +344,9 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				},
 			}
 
-			proj := creds.ProjectId
-			if proj == "" {
-				proj = "aicode-consumers"
+			if creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
+				geminiReq["project"] = creds.ProjectId
 			}
-			geminiReq["project"] = proj
 
 			if len(contents) == 0 && req.Request != nil {
 				geminiReq["request"] = req.Request
