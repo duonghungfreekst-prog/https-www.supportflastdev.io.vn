@@ -335,8 +335,15 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 					"contents": contents,
 				},
 			}
-			if creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
-				geminiReq["project"] = creds.ProjectId
+
+			proj := creds.ProjectId
+			if proj == "" {
+				proj = "aicode-consumers"
+			}
+			geminiReq["project"] = proj
+
+			if len(contents) == 0 && req.Request != nil {
+				geminiReq["request"] = req.Request
 			}
 
 			outboundBody, _ := json.Marshal(geminiReq)
@@ -364,8 +371,9 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			}
 
 			if rResp.StatusCode != http.StatusOK {
+				errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
 				rResp.Body.Close()
-				lastErr = fmt.Errorf("upstream error %d on %s", rResp.StatusCode, acc.Name)
+				lastErr = fmt.Errorf("upstream error %d on %s: %s", rResp.StatusCode, acc.Name, strings.TrimSpace(string(errBody)))
 				continue
 			}
 
