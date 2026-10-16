@@ -562,6 +562,7 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 					activeKey = "sk-supportflastdev.io.vn-master-live"
 				}
 				batCode := fmt.Sprintf(`@echo off
+chcp 65001 >nul
 title SupportFlast - Tu Dong Tro Antigravity Ve Web Gateway
 echo ==============================================================================
 echo       SUPPORTFLAST.DEV - TU DONG TRO ANTIGRAVITY VE WEB GATEWAY
@@ -570,19 +571,15 @@ echo   [*] May chu Gateway:  %s/v1
 echo   [*] Khoa API Key:     %s
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.apiEndpoint = '%s/v1'; $c.apiKey = '%s'; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config.json thanh cong.' -ForegroundColor Green; exit 0 } else { Write-Host '  [ERROR] Khong tim thay config.json Antigravity.' -ForegroundColor Red; exit 1 }"
-if errorlevel 1 (
-    echo.
-    echo   [LOI] Co loi xay ra khi cap nhat cau hinh.
-    echo.
-) else (
-    echo.
-    echo   [OK] THANH CONG: Google Antigravity da tu dong tro den Web Gateway.
-    echo   [OK] Moi request tu Antigravity se duoc tinh Quota truc tiep tren Web.
-    echo   [OK] Khong can phai cau hinh bang tay tren giao dien Antigravity IDE.
-    echo.
-)
-`, gatewayURL, activeKey, gatewayURL, activeKey)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; $dir = Split-Path $p; if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; $c = if (Test-Path $p) { Get-Content $p -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value '%s/v1' -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value '%s' -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config.json thanh cong.' -ForegroundColor Green; Write-Host '  [*] Dang kiem tra ket noi den Web Gateway...' -ForegroundColor Cyan; try { $res = Invoke-RestMethod -Uri '%s/v1/models' -Headers @{ 'Authorization' = 'Bearer %s' } -TimeoutSec 10; Write-Host ('  [OK] Ket noi thanh cong! So models kha dung: ' + $res.data.Count) -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+echo.
+echo ==============================================================================
+echo   THANH CONG! Antigravity IDE da tu dong tro ve Web Gateway.
+echo   Moi request tu IDE se duoc tu dong tru Quota tren web supportflastdev.io.vn.
+echo ==============================================================================
+echo.
+pause
+`, gatewayURL, activeKey, gatewayURL, activeKey, gatewayURL, activeKey)
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
@@ -1004,17 +1001,16 @@ func HandleSyncLibSQLEndpoint(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// HandleModels trả về danh mục mô hình chuẩn OpenAI
+// HandleModels trả về danh mục mô hình chuẩn OpenAI (chỉ giữ các model chính hoạt động 200 OK)
 func HandleModels(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	models := []map[string]interface{}{
-		{"id": "gemini-3.1-pro-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-2.5-pro", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-3.8-flash-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "claude-sonnet-4-6", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
+		{"id": "claude-opus-4-6-thinking", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
+		{"id": "gpt-oss-120b-medium", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
 		{"id": "gemini-2.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
 		{"id": "claude-3-5-sonnet", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
-		{"id": "claude-3-opus", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
-		{"id": "gpt-4o", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
-		{"id": "antigravity-unified", "object": "model", "owned_by": "antigravity", "permission": []interface{}{}},
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"object": "list",

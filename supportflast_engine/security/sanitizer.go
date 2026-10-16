@@ -613,8 +613,14 @@ func CSRFMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Bỏ qua cho /api/ endpoints — đã có JWT authentication bảo vệ
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		// Bỏ qua cho /api/, /v1/, /v1internal:, /v1beta/ endpoints và client dùng API Key/Bearer Token
+		if strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/v1/") ||
+			strings.HasPrefix(r.URL.Path, "/v1internal:") ||
+			strings.HasPrefix(r.URL.Path, "/v1internal/") ||
+			strings.HasPrefix(r.URL.Path, "/v1beta/") ||
+			r.Header.Get("Authorization") != "" ||
+			r.Header.Get("x-api-key") != "" {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -256,9 +256,18 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		var req ChatCompletionRequest
 		_ = json.Unmarshal(bodyBytes, &req)
 
-		model := req.Model
-		if model == "" || model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" {
+		model := strings.ToLower(strings.TrimSpace(req.Model))
+		switch {
+		case model == "" || model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" || strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6"):
 			model = "gemini-3.8-flash-high"
+		case model == "claude-3-5-sonnet" || model == "claude-3-sonnet" || model == "claude-3.5-sonnet" || model == "claude-sonnet":
+			model = "claude-sonnet-4-6"
+		case model == "claude-3-opus" || model == "claude-opus" || model == "claude-3-5-opus":
+			model = "claude-opus-4-6-thinking"
+		case model == "gpt-4o" || model == "gpt-4" || model == "gpt-4-turbo" || model == "gpt-3.5-turbo":
+			model = "gpt-oss-120b-medium"
+		case model == "gemini-pro" || model == "gemini-1.5-pro" || model == "gemini-2.0-flash" || model == "gemini-2.5-pro":
+			model = "gemini-2.5-flash"
 		}
 
 		isStream := true
