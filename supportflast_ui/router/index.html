@@ -1536,6 +1536,77 @@
             </div>
           </div>
 
+        
+
+          <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (BẬT LÀ DÙNG - TẮT CMD LÀ XONG) -->
+          <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono text-base font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] flex-shrink-0">
+                  &gt;_
+                </div>
+                <div>
+                  <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-wider font-mono flex flex-wrap items-center gap-2">
+                    <span>LỆNH 1 DÒNG TRÊN CMD: TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY IDE VỀ WEB GATEWAY</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">Tự Động Trừ Quota</span>
+                  </h3>
+                  <p class="text-xs text-slate-300 mt-0.5">Mở Windows Command Prompt (CMD), dán lệnh dưới đây và nhấn Enter để Antigravity tự động trỏ đến Web Gateway:</p>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
+                <button onclick="downloadClientRunBatScript()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  <span>⚡ Tải run.bat (1-Click)</span>
+                </button>
+                <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer" title="Khôi phục mặc định nếu lỡ tắt bằng nút X">
+                  <span>↩ Về Mặc Định</span>
+                </button>
+                <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer">
+                  <span>📊 Tra Cứu Quota</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Khung mã lệnh cmd ĐƠN GIẢN DUY NHẤT: BẬT LÀ DÙNG - TẮT CMD LÀ XONG -->
+            <div class="space-y-1.5 p-3.5 rounded-2xl bg-gradient-to-br from-black/95 to-slate-950 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span class="text-xs font-bold text-emerald-300 flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
+                  <span>LỆNH 1 DÒNG DUY NHẤT (Bật là Dùng — Tắt CMD là Xong):</span>
+                </span>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="text-emerald-400 hover:text-emerald-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all">
+                  <span>📋 Sao chép Lệnh</span>
+                </button>
+              </div>
+              <div class="p-3 rounded-xl bg-black/90 border border-emerald-500/40 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group shadow-inner">
+                <code id="web-cli-run-command" class="flex-1 font-mono font-bold">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/run.bat?key=sk-supportflastdev.io.vn-master-live" -o run.bat && run.bat</code>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-sans pt-1">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-emerald-400 font-bold">💡 Cách hoạt động siêu gọn:</span>
+                  <span>Mở CMD chạy lệnh &rarr; Antigravity dùng Quota Web. Khi không dùng nữa &rarr; <b>Nhấn phím bất kỳ hoặc tắt CMD</b> là Antigravity tự động trở về bình thường!</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Khung kết quả hiển thị trên màn hình đen của CMD -->
+            <div class="space-y-1.5 pt-2">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <span>🖥 Màn hình phản hồi trực tiếp từ Web Gateway:</span>
+                </span>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-cmd-preview-output').textContent.trim()); showToastNotification('📋 Đã sao chép toàn bộ kết quả terminal!');" class="text-slate-400 hover:text-white text-xs font-mono flex items-center gap-1 cursor-pointer">
+                  <span>📋 Sao chép text</span>
+                </button>
+              </div>
+              <div class="relative">
+                <pre id="web-cli-cmd-preview-output" class="p-4 rounded-xl bg-black border border-white/15 text-[11px] md:text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed select-all max-h-72 shadow-inner">Đang nạp kết quả Quota & DNS trực tiếp từ Gateway...</pre>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ========================================================================= -->
@@ -2259,7 +2330,7 @@
               </button>
 
               <!-- Nút cuộn nhanh tới khối Lệnh CMD Quota -->
-              <button onclick="scrollToCmdQuotaSection()" class="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)] flex-shrink-0" title="Xem lệnh cURL chạy trực tiếp trên Windows Command Prompt (CMD)">
+              <button onclick="switchTab('endpoints')" class="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-500/40 text-xs text-cyan-300 font-mono font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)] flex-shrink-0" title="Xem lệnh cURL chạy trực tiếp trên Windows Command Prompt (CMD)">
                 <span>&gt;_ Lệnh CMD Quota</span>
               </button>
 
@@ -2287,77 +2358,6 @@
 
           <!-- 2. LƯỚI THẺ ACCOUNT QUOTA CARDS (TỰ ĐỘNG CHIA CỘT THÔNG MINH THEO KHÔNG GIAN THỰC TẾ) -->
           <div id="quota-cards-grid" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-3.5 items-start min-h-[160px]"></div>
-
-          
-          <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (BẬT LÀ DÙNG - TẮT CMD LÀ XONG) -->
-          <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono text-base font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] flex-shrink-0">
-                  &gt;_
-                </div>
-                <div>
-                  <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-wider font-mono flex flex-wrap items-center gap-2">
-                    <span>LỆNH 1 DÒNG TRÊN CMD: TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY IDE VỀ WEB GATEWAY</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">Tự Động Trừ Quota</span>
-                  </h3>
-                  <p class="text-xs text-slate-300 mt-0.5">Mở Windows Command Prompt (CMD), dán lệnh dưới đây và nhấn Enter để Antigravity tự động trỏ đến Web Gateway:</p>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
-                <button onclick="downloadClientRunBatScript()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  <span>⚡ Tải run.bat (1-Click)</span>
-                </button>
-                <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer" title="Khôi phục mặc định nếu lỡ tắt bằng nút X">
-                  <span>↩ Về Mặc Định</span>
-                </button>
-                <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer">
-                  <span>📊 Tra Cứu Quota</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Khung mã lệnh cmd ĐƠN GIẢN DUY NHẤT: BẬT LÀ DÙNG - TẮT CMD LÀ XONG -->
-            <div class="space-y-1.5 p-3.5 rounded-2xl bg-gradient-to-br from-black/95 to-slate-950 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                <span class="text-xs font-bold text-emerald-300 flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
-                  <span>LỆNH 1 DÒNG DUY NHẤT (Bật là Dùng — Tắt CMD là Xong):</span>
-                </span>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="text-emerald-400 hover:text-emerald-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all">
-                  <span>📋 Sao chép Lệnh</span>
-                </button>
-              </div>
-              <div class="p-3 rounded-xl bg-black/90 border border-emerald-500/40 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group shadow-inner">
-                <code id="web-cli-run-command" class="flex-1 font-mono font-bold">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/run.bat?key=sk-supportflastdev.io.vn-master-live" -o run.bat && run.bat</code>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                </button>
-              </div>
-              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-sans pt-1">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-emerald-400 font-bold">💡 Cách hoạt động siêu gọn:</span>
-                  <span>Mở CMD chạy lệnh &rarr; Antigravity dùng Quota Web. Khi không dùng nữa &rarr; <b>Nhấn phím bất kỳ hoặc tắt CMD</b> là Antigravity tự động trở về bình thường!</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Khung kết quả hiển thị trên màn hình đen của CMD -->
-            <div class="space-y-1.5 pt-2">
-              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <span>🖥 Màn hình phản hồi trực tiếp từ Web Gateway:</span>
-                </span>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-cmd-preview-output').textContent.trim()); showToastNotification('📋 Đã sao chép toàn bộ kết quả terminal!');" class="text-slate-400 hover:text-white text-xs font-mono flex items-center gap-1 cursor-pointer">
-                  <span>📋 Sao chép text</span>
-                </button>
-              </div>
-              <div class="relative">
-                <pre id="web-cli-cmd-preview-output" class="p-4 rounded-xl bg-black border border-white/15 text-[11px] md:text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed select-all max-h-72 shadow-inner">Đang nạp kết quả Quota & DNS trực tiếp từ Gateway...</pre>
-              </div>
-            </div>
-          </div>
-
 
         </div>
 
