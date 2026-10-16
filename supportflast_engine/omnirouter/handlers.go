@@ -552,9 +552,33 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 		}
 		gatewayURL := fmt.Sprintf("%s://%s", scheme, effectiveDomain)
 
-		// Phục vụ script link.bat (Tự động trỏ Antigravity IDE) hoặc quota.bat
+		// Phục vụ script link.bat (Tự động trỏ Antigravity IDE) hoặc unlink.bat (Quay về mặc định) hoặc quota.bat
 		if strings.HasSuffix(r.URL.Path, ".bat") {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			if strings.Contains(r.URL.Path, "unlink") {
+				w.Header().Set("Content-Disposition", `attachment; filename="unlink.bat"`)
+				batCode := `@echo off
+chcp 65001 >nul
+title SupportFlast - Tra Antigravity Ve Che Do Mac Dinh
+echo ==============================================================================
+echo       SUPPORTFLAST.DEV - TRA ANTIGRAVITY VE CHE DO MAC DINH
+echo ==============================================================================
+echo   [*] Dang xoa cau hinh tro Web Gateway khoi Antigravity config...
+echo ==============================================================================
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da xoa apiEndpoint va apiKey khoi config.json.' -ForegroundColor Green; Write-Host '  [OK] Antigravity IDE da quay ve che do mac dinh ban dau!' -ForegroundColor Cyan } else { Write-Host '  [!] Khong tim thay file config.json.' -ForegroundColor Yellow }"
+echo.
+echo ==============================================================================
+echo   HOAN TAT! Antigravity gio day hoat dong binh thuong nhu mac dinh.
+echo   Khi nao can dung Quota Web Cloud, chi can chay lai file link.bat!
+echo ==============================================================================
+echo.
+pause
+`
+				_, _ = w.Write([]byte(batCode))
+				return
+			}
+
 			if strings.Contains(r.URL.Path, "link") {
 				w.Header().Set("Content-Disposition", `attachment; filename="link.bat"`)
 				activeKey := clientKey
