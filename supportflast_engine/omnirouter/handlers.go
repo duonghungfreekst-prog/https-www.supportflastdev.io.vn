@@ -552,9 +552,54 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 		}
 		gatewayURL := fmt.Sprintf("%s://%s", scheme, effectiveDomain)
 
-		// Phục vụ script link.bat (Tự động trỏ Antigravity IDE) hoặc unlink.bat (Quay về mặc định) hoặc quota.bat
+		// Phục vụ script run.bat (Live Session 1-Click), link.bat, unlink.bat hoặc quota.bat
 		if strings.HasSuffix(r.URL.Path, ".bat") {
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			if strings.Contains(r.URL.Path, "run") {
+				w.Header().Set("Content-Disposition", `attachment; filename="run.bat"`)
+				activeKey := clientKey
+				if activeKey == "" {
+					activeKey = "sk-supportflastdev.io.vn-master-live"
+				}
+				batCode := fmt.Sprintf(`@echo off
+chcp 65001 >nul
+title SupportFlast - Antigravity Live Session
+
+set "ACTIVE_KEY=%%~1"
+if "%%ACTIVE_KEY%%"=="" set "ACTIVE_KEY=%s"
+
+cls
+echo ==============================================================================
+echo       SUPPORTFLAST.DEV - PHIEN KET NOI ANTIGRAVITY QUA WEB GATEWAY
+echo ==============================================================================
+echo   [*] May chu Gateway:  %s/v1
+echo   [*] Khoa API Key:     %%ACTIVE_KEY%%
+echo ==============================================================================
+echo.
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $p = Join-Path $HOME '.gemini\config\config.json'; $dir = Split-Path $p; if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; $c = if (Test-Path $p) { Get-Content $p -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value '%s/v1' -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ket noi Antigravity vao Web Gateway thanh cong!' -ForegroundColor Green; Write-Host '  [*] Dang kiem tra ket noi den Web Cloud...' -ForegroundColor Cyan; try { $res = Invoke-RestMethod -Uri '%s/v1/models' -Headers @{ 'Authorization' = ('Bearer ' + $key) } -TimeoutSec 10; Write-Host ('  [OK] San sang su dung! So models hoat dong: ' + $res.data.Count) -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+
+echo.
+echo ==============================================================================
+echo   [DANG HOAT DONG] Antigravity dang su dung Quota va 19 tai khoan tu Web Cloud.
+echo.
+echo   >>> KHI KHONG DUNG NUA: CHI CAN NHAN PHIM BAT KY DE DUNG VA VE MAC DINH <<<
+echo ==============================================================================
+echo.
+pause
+
+echo.
+echo [*] Dang ngat ket noi va dua Antigravity ve che do mac dinh...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da khoi phuc Antigravity ve che do mac dinh ban dau!' -ForegroundColor Cyan } else { Write-Host '  [!] Khong tim thay file config.json.' -ForegroundColor Yellow }"
+echo.
+echo ==============================================================================
+echo   DA KET THUC PHIEN! Antigravity da tro ve binh thuong.
+echo ==============================================================================
+timeout /t 2 >nul
+`, activeKey, gatewayURL, activeKey, gatewayURL, gatewayURL)
+				_, _ = w.Write([]byte(batCode))
+				return
+			}
+
 			if strings.Contains(r.URL.Path, "unlink") {
 				w.Header().Set("Content-Disposition", `attachment; filename="unlink.bat"`)
 				batCode := `@echo off

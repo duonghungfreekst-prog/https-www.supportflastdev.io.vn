@@ -2299,11 +2299,11 @@
                 </div>
               </div>
               <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
-                <button onclick="downloadClientLinkBatScript()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 hover:from-cyan-500/30 hover:to-emerald-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]">
-                  <span>⚡ Tải link_antigravity.bat</span>
+                <button onclick="downloadClientRunBatScript()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  <span>⚡ Tải run.bat (1-Click)</span>
                 </button>
-                <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-rose-300 border border-rose-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
-                  <span>↩ Về Mặc Định (unlink.bat)</span>
+                <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer" title="Khôi phục mặc định nếu lỡ tắt bằng nút X">
+                  <span>↩ Về Mặc Định</span>
                 </button>
                 <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer">
                   <span>📊 Tra Cứu Quota</span>
@@ -2311,40 +2311,28 @@
               </div>
             </div>
 
-            <!-- Khung mã lệnh cmd (Tự động định tuyến Antigravity IDE) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <!-- Lệnh 1: Bật Trỏ Web Gateway -->
-              <div class="space-y-1.5 p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/30">
-                <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                  <span class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#06B6D4]"></span>
-                    <span>1. LỆNH BẬT: Trỏ Sang Web Gateway</span>
-                  </span>
-                  <button onclick="copyToClipboard(document.getElementById('web-cli-link-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh BẬT trỏ Web Gateway!');" class="text-cyan-400 hover:text-cyan-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold">
-                    <span>📋 Copy</span>
-                  </button>
-                </div>
-                <div class="p-2.5 rounded-lg bg-black/90 border border-cyan-500/30 text-[11px] font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-2 shadow-inner">
-                  <code id="web-cli-link-command" class="flex-1 font-mono">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/link.bat?key=sk-supportflastdev.io.vn-master-live" -o link_antigravity.bat && link_antigravity.bat</code>
-                </div>
-                <p class="text-[10px] text-slate-400">Dán vào CMD khi cần lấy Quota và 19 tài khoản từ Web Cloud.</p>
+            <!-- Khung mã lệnh cmd ĐƠN GIẢN DUY NHẤT: BẬT LÀ DÙNG - TẮT CMD LÀ XONG -->
+            <div class="space-y-1.5 p-3.5 rounded-2xl bg-gradient-to-br from-black/95 to-slate-950 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
+                <span class="text-xs font-bold text-emerald-300 flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
+                  <span>LỆNH 1 DÒNG DUY NHẤT (Bật là Dùng — Tắt CMD là Xong):</span>
+                </span>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="text-emerald-400 hover:text-emerald-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all">
+                  <span>📋 Sao chép Lệnh</span>
+                </button>
               </div>
-
-              <!-- Lệnh 2: Tắt Về Mặc Định -->
-              <div class="space-y-1.5 p-3 rounded-xl bg-rose-950/20 border border-rose-500/30">
-                <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                  <span class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#F43F5E]"></span>
-                    <span>2. LỆNH TẮT: Trả Về Mặc Định</span>
-                  </span>
-                  <button onclick="copyToClipboard(document.getElementById('web-cli-unlink-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh TẮT quay về mặc định!');" class="text-rose-400 hover:text-rose-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold">
-                    <span>📋 Copy</span>
-                  </button>
+              <div class="p-3 rounded-xl bg-black/90 border border-emerald-500/40 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group shadow-inner">
+                <code id="web-cli-run-command" class="flex-1 font-mono font-bold">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/run.bat?key=sk-supportflastdev.io.vn-master-live" -o run.bat && run.bat</code>
+                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-sans pt-1">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-emerald-400 font-bold">💡 Cách hoạt động siêu gọn:</span>
+                  <span>Mở CMD chạy lệnh &rarr; Antigravity dùng Quota Web. Khi không dùng nữa &rarr; <b>Nhấn phím bất kỳ hoặc tắt CMD</b> là Antigravity tự động trở về bình thường!</span>
                 </div>
-                <div class="p-2.5 rounded-lg bg-black/90 border border-rose-500/30 text-[11px] font-mono text-amber-300 break-all select-all flex items-center justify-between gap-2 shadow-inner">
-                  <code id="web-cli-unlink-command" class="flex-1 font-mono">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/unlink.bat" -o unlink_antigravity.bat && unlink_antigravity.bat</code>
-                </div>
-                <p class="text-[10px] text-slate-400">Dán vào CMD khi muốn dùng app bình thường, không trỏ qua web.</p>
               </div>
             </div>
 
@@ -4002,8 +3990,8 @@
           <span>📁 Tải Tệp Cấu Hình Trực Tiếp Cho App / CMD:</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button onclick="downloadClientLinkBatScript()" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-            <span>⚡ Tải link_antigravity.bat (Trỏ IDE 1-Click)</span>
+          <button onclick="downloadClientRunBatScript()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+            <span>⚡ Tải run.bat (Bật Là Dùng — Tắt Là Xong)</span>
           </button>
           <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.3)]">
             <span>↩ Tải unlink_antigravity.bat (Về Mặc Định)</span>
@@ -5721,6 +5709,16 @@ curl -X POST "${v1Url}/chat/completions" \\
       const url = `${protocol}://${domain}/api/v1/client/unlink.bat`;
       window.open(url, '_blank');
       showToastNotification('↩ Đang tải xuống unlink_antigravity.bat (Trả về mặc định)...');
+    }
+
+    function downloadClientRunBatScript() {
+      const key = currentCmdModalKey || (typeof getOmniRouterActiveApiKey === 'function' ? getOmniRouterActiveApiKey() : '') || 'sk-supportflastdev.io.vn-master-live';
+      const domain = extractDomainFromApiKey(key);
+      const isLocal = domain.includes('localhost') || domain.includes('127.0.0.1');
+      const protocol = isLocal ? 'http' : 'https';
+      const url = `${protocol}://${domain}/api/v1/client/run.bat?key=${encodeURIComponent(key)}`;
+      window.open(url, '_blank');
+      showToastNotification('⚡ Đang tải xuống run.bat (Bật là dùng, Tắt CMD là xong)...');
     }
 
     function copyAntigravityWebCmd() {
