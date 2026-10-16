@@ -129,7 +129,10 @@ func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "data: %s\n\n", string(b))
 	} else {
 		for _, entry := range recent {
-			lineMsg := fmt.Sprintf("[%s] [%s] %s %s (%d) - Model: %s - Latency: %dms", entry.Timestamp, entry.Provider, entry.Method, entry.Endpoint, entry.StatusCode, entry.Model, entry.LatencyMs)
+			lineMsg := entry.ErrorMessage
+			if lineMsg == "" {
+				lineMsg = fmt.Sprintf("[%s] [%s] %s %s (%d) - Model: %s - Latency: %dms", entry.Timestamp, entry.Provider, entry.Method, entry.Endpoint, entry.StatusCode, entry.Model, entry.LatencyMs)
+			}
 			payload := map[string]interface{}{
 				"type": "line",
 				"line": lineMsg,
@@ -150,7 +153,10 @@ func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			lineMsg := fmt.Sprintf("[%s] [%s] %s %s (%d) - Model: %s - Latency: %dms", entry.Timestamp, entry.Provider, entry.Method, entry.Endpoint, entry.StatusCode, entry.Model, entry.LatencyMs)
+			lineMsg := entry.ErrorMessage
+			if lineMsg == "" {
+				lineMsg = fmt.Sprintf("[%s] [%s] %s %s (%d) - Model: %s - Latency: %dms", entry.Timestamp, entry.Provider, entry.Method, entry.Endpoint, entry.StatusCode, entry.Model, entry.LatencyMs)
+			}
 			payload := map[string]interface{}{
 				"type": "line",
 				"line": lineMsg,

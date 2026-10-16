@@ -809,6 +809,12 @@
             <span id="header-gateway-text" class="text-xs font-mono font-bold text-emerald-400">ONLINE 24/24</span>
           </div>
 
+          <!-- Badge máy khách Antigravity IDE kết nối thời gian thực -->
+          <div id="header-client-badge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06B6D4]"></span>
+            <span id="header-client-badge-text" class="text-xs font-mono font-bold text-cyan-300">🟢 1 Client Online (Antigravity IDE)</span>
+          </div>
+
           <!-- Nút Điều Chỉnh Hiệu Ứng Nền (Ẩn khỏi thanh điều hướng để giao diện tinh gọn, thoáng đãng) -->
           <div class="relative hidden">
             <button id="btn-toggle-bg-menu" onclick="toggleBgEffectMenu()" class="px-2.5 py-1.5 rounded-xl text-slate-300 hover:text-cyan-300 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/40 transition-all text-xs font-mono flex items-center gap-1.5 cursor-pointer shadow-sm" title="Tùy chỉnh Hiệu ứng Ảnh Nền OmniRouter">
@@ -10206,7 +10212,15 @@ curl -X POST "${v1Url}/chat/completions" \\
       let textColor = 'text-cyan-300';
       let badgeHtml = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-cyan-950/80 text-cyan-400 border border-cyan-500/30 mr-1.5 font-bold shrink-0">[ENGINE]</span>';
 
-      if (upper.includes('[UI') || upper.includes('[UI:')) {
+      if (upper.includes('[CLIENT') || upper.includes('KẾT NỐI') || upper.includes('CONNECTED')) {
+        level = 'CLIENT';
+        textColor = 'text-emerald-300 font-bold';
+        badgeHtml = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 mr-1.5 font-bold shadow-[0_0_8px_rgba(16,185,129,0.3)] shrink-0">[CLIENT]</span>';
+      } else if (upper.includes('NGẮT KẾT NỐI') || upper.includes('DISCONNECTED')) {
+        level = 'CLIENT';
+        textColor = 'text-slate-400';
+        badgeHtml = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-900/80 text-slate-400 border border-slate-600/40 mr-1.5 font-bold shrink-0">[CLIENT]</span>';
+      } else if (upper.includes('[UI') || upper.includes('[UI:')) {
         level = 'UI';
         textColor = 'text-sky-300';
         badgeHtml = '<span class="px-1.5 py-0.5 rounded text-[10px] bg-sky-950/80 text-sky-400 border border-sky-500/30 mr-1.5 font-bold shrink-0">[UI]</span>';
@@ -10273,6 +10287,24 @@ curl -X POST "${v1Url}/chat/completions" \\
       let cleanContent = rawLine.trim();
       if (cleanContent.startsWith('[ENGINE] ')) {
         cleanContent = cleanContent.substring(9).trim();
+      }
+
+      // Phát hiện sự kiện kết nối máy khách để kích hoạt toast và badge
+      if (cleanContent.includes('[CLIENT]') || cleanContent.includes('KẾT NỐI')) {
+        const clientBadge = document.getElementById('header-client-badge');
+        const portStatus = document.getElementById('sidebar-gw-port-status');
+        if (cleanContent.includes('NGẮT KẾT NỐI') || cleanContent.includes('DISCONNECTED')) {
+          if (clientBadge) { clientBadge.classList.add('hidden'); clientBadge.classList.remove('flex'); }
+          if (portStatus) { portStatus.textContent = '🟢 ONLINE 24/24'; }
+          showToastNotification('⚪ Máy khách Antigravity IDE đã đóng phiên kết nối.', false);
+        } else {
+          if (clientBadge) { clientBadge.classList.remove('hidden'); clientBadge.classList.add('flex'); }
+          if (portStatus) { portStatus.textContent = '🟢 1 CLIENT ONLINE'; }
+          showToastNotification('🎉 Máy khách Antigravity IDE vừa kết nối qua Web Gateway!', true);
+          if (typeof loadAllAccountQuotas === 'function') {
+            try { loadAllAccountQuotas(true); } catch (_) {}
+          }
+        }
       }
 
       const now = Date.now();

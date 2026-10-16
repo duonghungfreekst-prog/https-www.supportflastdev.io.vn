@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # SUPPORTFLAST.DEV - TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY IDE ĐẾN WEB GATEWAY
 # ==============================================================================
 param(
@@ -10,7 +10,7 @@ param(
 
 $WebGateway = "https://www.supportflastdev.io.vn/v1"
 $DefaultKey = "sk-supportflastdev.io.vn-master-live"
-$ConfigPath = Join-Path $HOME ".gemini\config\config.json"
+$ConfigFiles = @((Join-Path $HOME ".gemini\config.json"), (Join-Path $HOME ".gemini\config\config.json"))
 
 Write-Host ""
 Write-Host "==============================================================================" -ForegroundColor Cyan
@@ -24,13 +24,19 @@ Write-Host ""
 
 # Xử lý lệnh đặc biệt: --reset
 if ($ApiKey -eq "--reset" -or $ApiKey -eq "reset") {
-    if (Test-Path $ConfigPath) {
-        $c = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-        $c.PSObject.Properties.Remove('apiEndpoint')
-        $c.PSObject.Properties.Remove('apiKey')
-        $c | ConvertTo-Json -Depth 20 | Set-Content $ConfigPath -Encoding UTF8
-        Write-Host "  [OK] Đã gỡ bỏ cấu hình Web Gateway, khôi phục Antigravity về mặc định Google." -ForegroundColor Yellow
+    foreach ($p in $ConfigFiles) {
+        if (Test-Path $p) {
+            $c = Get-Content $p -Raw | ConvertFrom-Json
+            $c.PSObject.Properties.Remove('apiEndpoint')
+            $c.PSObject.Properties.Remove('apiKey')
+            $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8
+        }
     }
+    try {
+        $hb = @{ event='disconnected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME } | ConvertTo-Json -Compress
+        Invoke-RestMethod -Uri "https://www.supportflastdev.io.vn/api/v1/client/heartbeat" -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 5 | Out-Null
+    } catch {}
+    Write-Host "  [OK] Đã gỡ bỏ cấu hình Web Gateway, khôi phục Antigravity về mặc định Google." -ForegroundColor Yellow
     Write-Host ""
     exit 0
 }
@@ -51,24 +57,26 @@ $ApiKey = $ApiKey.Trim('"', "'", " ")
 Write-Host "  [*] Đang cấu hình với API Key: $ApiKey" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Ghi đè vào config.json của Antigravity IDE
+# 1. Ghi đè vào config.json của Antigravity IDE (cả 2 đường dẫn gốc và thư mục con)
 try {
-    $configDir = Split-Path $ConfigPath
-    if (!(Test-Path $configDir)) {
-        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    foreach ($p in $ConfigFiles) {
+        $configDir = Split-Path $p
+        if (!(Test-Path $configDir)) {
+            New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        }
+        $c = if (Test-Path $p) { Get-Content $p -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }
+        $c | Add-Member -MemberType NoteProperty -Name "apiEndpoint" -Value $WebGateway -Force
+        $c | Add-Member -MemberType NoteProperty -Name "apiKey" -Value $ApiKey -Force
+        $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8
     }
-
-    if (Test-Path $ConfigPath) {
-        $c = Get-Content $ConfigPath -Raw | ConvertFrom-Json
-    } else {
-        $c = [PSCustomObject]@{}
-    }
-
-    $c | Add-Member -MemberType NoteProperty -Name "apiEndpoint" -Value $WebGateway -Force
-    $c | Add-Member -MemberType NoteProperty -Name "apiKey" -Value $ApiKey -Force
-
-    $c | ConvertTo-Json -Depth 20 | Set-Content $ConfigPath -Encoding UTF8
     Write-Host "  [OK] Đã ghi đè apiEndpoint và apiKey vào config.json của Antigravity IDE!" -ForegroundColor Green
+
+    # Phát tín hiệu kết nối lên Web Gateway
+    try {
+        $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$ApiKey } | ConvertTo-Json -Compress
+        Invoke-RestMethod -Uri "https://www.supportflastdev.io.vn/api/v1/client/heartbeat" -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null
+        Write-Host "  [OK] Đã gửi tín hiệu KẾT NỐI trực tuyến đến Web Gateway thành công!" -ForegroundColor Green
+    } catch {}
 } catch {
     Write-Host "  [X] LỖI ghi cấu hình config.json: $_" -ForegroundColor Red
     exit 1

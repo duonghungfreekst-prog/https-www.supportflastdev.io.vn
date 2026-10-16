@@ -158,6 +158,11 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mux.HandleFunc("/api/v1/quota", clientQuotaHandler)
 	mux.HandleFunc("/api/v1/ping", clientQuotaHandler)
 
+	// 9.2 API Heartbeat tín hiệu kết nối Live từ máy khách CMD / Antigravity IDE
+	clientHeartbeatHandler := HandleClientHeartbeat(db)
+	mux.HandleFunc("/api/v1/client/heartbeat", clientHeartbeatHandler)
+	mux.HandleFunc("/api/client/heartbeat", clientHeartbeatHandler)
+
 	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)
 	mux.HandleFunc("/v1/chat/completions", chatHandler)

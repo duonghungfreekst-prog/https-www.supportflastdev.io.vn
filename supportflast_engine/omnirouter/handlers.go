@@ -301,6 +301,80 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+// ClientHeartbeatPayload đại diện cho gói tin tín hiệu từ client CMD / Antigravity IDE
+type ClientHeartbeatPayload struct {
+	Event    string `json:"event"`
+	Client   string `json:"client"`
+	Hostname string `json:"hostname"`
+	APIKey   string `json:"api_key"`
+}
+
+// HandleClientHeartbeat xử lý tín hiệu kết nối thời gian thực từ các client CMD / IDE
+func HandleClientHeartbeat(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		var payload ClientHeartbeatPayload
+		if r.Method == http.MethodPost {
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+		} else {
+			payload.Event = r.URL.Query().Get("event")
+			payload.Client = r.URL.Query().Get("client")
+			payload.Hostname = r.URL.Query().Get("hostname")
+			payload.APIKey = r.URL.Query().Get("api_key")
+		}
+
+		if payload.Client == "" {
+			payload.Client = "Antigravity IDE"
+		}
+		if payload.Hostname == "" {
+			payload.Hostname = "PC-Client"
+		}
+		if payload.Event == "" {
+			payload.Event = "connected"
+		}
+
+		nowStr := time.Now().Format("15:04:05")
+		maskedKey := maskAPIKey(payload.APIKey)
+
+		var logMsg string
+		if payload.Event == "disconnected" {
+			logMsg = fmt.Sprintf("[CLIENT] [%s] [NGẮT KẾT NỐI] Máy khách %s (%s) đã đóng phiên kết nối và khôi phục Antigravity về mặc định.", nowStr, payload.Client, payload.Hostname)
+		} else {
+			logMsg = fmt.Sprintf("[CLIENT] [%s] [KẾT NỐI THÀNH CÔNG] Máy khách %s (%s) đã kết nối trực tuyến vào Web Gateway qua API Key: %s! Sẵn sàng sử dụng Quota.", nowStr, payload.Client, payload.Hostname, maskedKey)
+		}
+
+		GlobalLogHub.RecordLog(RouterLogEntry{
+			Timestamp:    nowStr,
+			ClientDevice: r.RemoteAddr,
+			APIKeyName:   maskedKey,
+			Endpoint:     "/api/v1/client/heartbeat",
+			Method:       r.Method,
+			Provider:     "CLIENT",
+			Model:        payload.Client,
+			StatusCode:   http.StatusOK,
+			ErrorMessage: logMsg,
+		})
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":   "ok",
+			"event":    payload.Event,
+			"client":   payload.Client,
+			"hostname": payload.Hostname,
+			"message":  logMsg,
+			"time":     nowStr,
+		})
+	}
+}
+
 // ExtractDomainFromKey bóc tách tên miền web từ chuỗi API Key dạng sk-{domain}-{token}
 func ExtractDomainFromKey(key string) string {
 	k := strings.TrimSpace(key)
@@ -538,19 +612,14 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 		}
 
 		effectiveDomain := ExtractDomainFromKey(clientKey)
-		if effectiveDomain == "" || effectiveDomain == "9router" {
-			if r.Host != "" && !strings.HasPrefix(r.Host, "localhost") && !strings.HasPrefix(r.Host, "127.0.0.1") {
-				effectiveDomain = strings.Split(r.Host, ":")[0]
-			} else {
-				effectiveDomain = DefaultDomain
-			}
+		if effectiveDomain == "" || effectiveDomain == "9router" || effectiveDomain == "supportflastdev.io.vn" || strings.HasSuffix(effectiveDomain, "supportflastdev.io.vn") {
+			effectiveDomain = "www.supportflastdev.io.vn"
 		}
 
-		scheme := "https"
+		gatewayURL := fmt.Sprintf("https://%s", effectiveDomain)
 		if strings.HasPrefix(r.Host, "localhost") || strings.HasPrefix(r.Host, "127.0.0.1") {
-			scheme = "http"
+			gatewayURL = fmt.Sprintf("http://%s", r.Host)
 		}
-		gatewayURL := fmt.Sprintf("%s://%s", scheme, effectiveDomain)
 
 		// Phục vụ script run.bat (Live Session 1-Click), link.bat, unlink.bat hoặc quota.bat
 		if strings.HasSuffix(r.URL.Path, ".bat") {
@@ -576,11 +645,15 @@ echo   [*] May chu Gateway:  %s/v1
 echo   [*] Khoa API Key:     %%ACTIVE_KEY%%
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $p = Join-Path $HOME '.gemini\config\config.json'; $dir = Split-Path $p; if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; $c = if (Test-Path $p) { Get-Content $p -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value '%s/v1' -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ket noi Antigravity vao Web Gateway thanh cong!' -ForegroundColor Green; Write-Host '  [*] Dang kiem tra ket noi den Web Cloud...' -ForegroundColor Cyan; try { $res = Invoke-RestMethod -Uri '%s/v1/models' -Headers @{ 'Authorization' = ('Bearer ' + $key) } -TimeoutSec 10; Write-Host ('  [OK] San sang su dung! So models hoat dong: ' + $res.data.Count) -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da cau hinh Antigravity IDE tro ve Web Gateway!' -ForegroundColor Green; try { $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null; Write-Host '  [OK] Da phat tin hieu KET NOI den Web Gateway thanh cong!' -ForegroundColor Green } catch {}; Write-Host '  [*] Dang do kiem AI qua Web Cloud va tu dong tru Quota...' -ForegroundColor Cyan; try { $body = @{ model='gemini-1.5-flash'; messages=@(@{ role='user'; content='Phan hoi 1 tu: OK' }); stream=$false } | ConvertTo-Json -Compress; $res = Invoke-RestMethod -Uri ($gw + '/v1/chat/completions') -Headers @{ 'Authorization' = ('Bearer ' + $key) } -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType 'application/json' -TimeoutSec 15; $reply = $res.choices[0].message.content.Trim(); Write-Host ('  [OK] AI Cloud phan hoi: ' + $reply + ' (Da tu dong tru 1 Quota tren Web!)') -ForegroundColor Green } catch { Write-Host ('  [!] Ket noi test AI: ' + $_.Exception.Message) -ForegroundColor Yellow }"
 
 echo.
 echo ==============================================================================
 echo   [DANG HOAT DONG] Antigravity dang su dung Quota va 19 tai khoan tu Web Cloud.
+echo.
+echo   [TIN HIEU LIVE] Hay nhin sang Web Gateway tren trinh duyet:
+echo   - Tab 'Nhat Ky Console': Da nhan tin hieu [KET NOI] tu may cua ban!
+echo   - Tab 'Theo Doi Han Muc': Da ghi nhan luot do kiem AI vua roi!
 echo.
 echo   [*] KHI KHONG DUNG NUA: CHI CAN NHAN PHIM BAT KY DE DUNG VA VE MAC DINH
 echo ==============================================================================
@@ -589,20 +662,20 @@ pause
 
 echo.
 echo [*] Dang ngat ket noi va dua Antigravity ve che do mac dinh...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da khoi phuc Antigravity ve che do mac dinh ban dau!' -ForegroundColor Cyan } else { Write-Host '  [!] Khong tim thay file config.json.' -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $gw = '%s'; try { $hb = @{ event='disconnected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null } catch {}; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da khoi phuc Antigravity ve che do mac dinh ban dau!' -ForegroundColor Cyan"
 echo.
 echo ==============================================================================
 echo   DA KET THUC PHIEN! Antigravity da tro ve binh thuong.
 echo ==============================================================================
 timeout /t 2 >nul
-`, activeKey, gatewayURL, activeKey, gatewayURL, gatewayURL)
+`, activeKey, gatewayURL, activeKey, gatewayURL, activeKey, gatewayURL)
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
 
 			if strings.Contains(r.URL.Path, "unlink") {
 				w.Header().Set("Content-Disposition", `attachment; filename="unlink.bat"`)
-				batCode := `@echo off
+				batCode := fmt.Sprintf(`@echo off
 chcp 65001 >nul
 title SupportFlast - Tra Antigravity Ve Che Do Mac Dinh
 echo ==============================================================================
@@ -611,15 +684,15 @@ echo ===========================================================================
 echo   [*] Dang xoa cau hinh tro Web Gateway khoi Antigravity config...
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; if (Test-Path $p) { $c = Get-Content $p -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da xoa apiEndpoint va apiKey khoi config.json.' -ForegroundColor Green; Write-Host '  [OK] Antigravity IDE da quay ve che do mac dinh ban dau!' -ForegroundColor Cyan } else { Write-Host '  [!] Khong tim thay file config.json.' -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$gw = '%s'; try { $hb = @{ event='disconnected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 5 | Out-Null } catch {}; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da xoa apiEndpoint va apiKey khoi Antigravity IDE.' -ForegroundColor Green; Write-Host '  [OK] Antigravity IDE da quay ve che do mac dinh ban dau!' -ForegroundColor Cyan"
 echo.
 echo ==============================================================================
 echo   HOAN TAT! Antigravity gio day hoat dong binh thuong nhu mac dinh.
-echo   Khi nao can dung Quota Web Cloud, chi can chay lai file link.bat!
+echo   Khi nao can dung Quota Web Cloud, chi can chay lai file run.bat!
 echo ==============================================================================
 echo.
 pause
-`
+`, gatewayURL)
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
@@ -640,7 +713,7 @@ echo   [*] May chu Gateway:  %s/v1
 echo   [*] Khoa API Key:     %s
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path $HOME '.gemini\config\config.json'; $dir = Split-Path $p; if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; $c = if (Test-Path $p) { Get-Content $p -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value '%s/v1' -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value '%s' -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config.json thanh cong.' -ForegroundColor Green; Write-Host '  [*] Dang kiem tra ket noi den Web Gateway...' -ForegroundColor Cyan; try { $res = Invoke-RestMethod -Uri '%s/v1/models' -Headers @{ 'Authorization' = 'Bearer %s' } -TimeoutSec 10; Write-Host ('  [OK] Ket noi thanh cong! So models kha dung: ' + $res.data.Count) -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = '%s'; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config thanh cong!' -ForegroundColor Green; try { $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null; Write-Host '  [OK] Da gui tin hieu KET NOI den Web Gateway!' -ForegroundColor Green } catch {}; try { $body = @{ model='gemini-1.5-flash'; messages=@(@{ role='user'; content='Phan hoi 1 tu: OK' }); stream=$false } | ConvertTo-Json -Compress; $res = Invoke-RestMethod -Uri ($gw + '/v1/chat/completions') -Headers @{ 'Authorization' = ('Bearer ' + $key) } -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType 'application/json' -TimeoutSec 15; $reply = $res.choices[0].message.content.Trim(); Write-Host ('  [OK] AI Cloud phan hoi: ' + $reply + ' (Da tu dong tru 1 Quota tren Web!)') -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
 echo.
 echo ==============================================================================
 echo   THANH CONG! Antigravity IDE da tu dong tro ve Web Gateway.
@@ -648,7 +721,7 @@ echo   Moi request tu IDE se duoc tu dong tru Quota tren web supportflastdev.io.
 echo ==============================================================================
 echo.
 pause
-`, gatewayURL, activeKey, gatewayURL, activeKey, gatewayURL, activeKey)
+`, gatewayURL, activeKey, activeKey, gatewayURL)
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
@@ -1020,31 +1093,40 @@ func HandleUsageStats(db *sql.DB) http.HandlerFunc {
 func HandleRealtimeLogsJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	now := time.Now()
-	rawStringLogs := []string{
-		fmt.Sprintf("[ENGINE] [%s] [OMNIROUTER] SupportFlast Master Gateway sẵn sàng 24/24 trên Cloud", now.Add(-10*time.Second).Format("15:04:05")),
-		fmt.Sprintf("[CORE] [%s] [CRYPTO] Khởi tạo mã hóa phần cứng AES-256-GCM bảo vệ an toàn Token Pool", now.Add(-7*time.Second).Format("15:04:05")),
-		fmt.Sprintf("[ENGINE] [%s] [TIDB] Cơ sở dữ liệu TiDB Cloud Serverless kết nối ổn định (Latency: < 150ms)", now.Add(-4*time.Second).Format("15:04:05")),
-		fmt.Sprintf("[ENGINE] [%s] [ROUTER] 15 cổng định tuyến AI và 160+ Brand Logos đã sẵn sàng", now.Add(-2*time.Second).Format("15:04:05")),
-		fmt.Sprintf("[SYSTEM] [%s] Lắng nghe yêu cầu trực tiếp qua API Gateway /v1/chat/completions...", now.Format("15:04:05")),
-	}
+	recent := GlobalLogHub.GetRecentLogs(50)
+	var rawStringLogs []string
+	var sampleLogs []map[string]interface{}
 
-	sampleLogs := []map[string]interface{}{
-		{
-			"timestamp": now.Add(-2 * time.Second).Format("15:04:05"),
-			"level":     "INFO",
-			"message":   rawStringLogs[3],
-		},
-		{
-			"timestamp": now.Add(-4 * time.Second).Format("15:04:05"),
-			"level":     "INFO",
-			"message":   rawStringLogs[2],
-		},
-		{
-			"timestamp": now.Add(-7 * time.Second).Format("15:04:05"),
-			"level":     "INFO",
-			"message":   rawStringLogs[1],
-		},
+	if len(recent) > 0 {
+		for _, entry := range recent {
+			msg := entry.ErrorMessage
+			if msg == "" {
+				msg = fmt.Sprintf("[%s] [%s] %s %s (%d) - Model: %s - Latency: %dms", entry.Timestamp, entry.Provider, entry.Method, entry.Endpoint, entry.StatusCode, entry.Model, entry.LatencyMs)
+			}
+			rawStringLogs = append(rawStringLogs, msg)
+			sampleLogs = append(sampleLogs, map[string]interface{}{
+				"timestamp": entry.Timestamp,
+				"level":     "INFO",
+				"message":   msg,
+				"data":      entry,
+			})
+		}
+	} else {
+		now := time.Now()
+		rawStringLogs = []string{
+			fmt.Sprintf("[ENGINE] [%s] [OMNIROUTER] SupportFlast Master Gateway sẵn sàng 24/24 trên Cloud", now.Add(-10*time.Second).Format("15:04:05")),
+			fmt.Sprintf("[CORE] [%s] [CRYPTO] Khởi tạo mã hóa phần cứng AES-256-GCM bảo vệ an toàn Token Pool", now.Add(-7*time.Second).Format("15:04:05")),
+			fmt.Sprintf("[ENGINE] [%s] [TIDB] Cơ sở dữ liệu TiDB Cloud Serverless kết nối ổn định (Latency: < 150ms)", now.Add(-4*time.Second).Format("15:04:05")),
+			fmt.Sprintf("[ENGINE] [%s] [ROUTER] 15 cổng định tuyến AI và 160+ Brand Logos đã sẵn sàng", now.Add(-2*time.Second).Format("15:04:05")),
+			fmt.Sprintf("[SYSTEM] [%s] Lắng nghe yêu cầu trực tiếp qua API Gateway /v1/chat/completions...", now.Format("15:04:05")),
+		}
+		for i, s := range rawStringLogs {
+			sampleLogs = append(sampleLogs, map[string]interface{}{
+				"timestamp": now.Add(time.Duration(-10+i*2) * time.Second).Format("15:04:05"),
+				"level":     "INFO",
+				"message":   s,
+			})
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
