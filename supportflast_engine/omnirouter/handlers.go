@@ -582,7 +582,7 @@ echo.
 echo ==============================================================================
 echo   [DANG HOAT DONG] Antigravity dang su dung Quota va 19 tai khoan tu Web Cloud.
 echo.
-echo   >>> KHI KHONG DUNG NUA: CHI CAN NHAN PHIM BAT KY DE DUNG VA VE MAC DINH <<<
+echo   [*] KHI KHONG DUNG NUA: CHI CAN NHAN PHIM BAT KY DE DUNG VA VE MAC DINH
 echo ==============================================================================
 echo.
 pause
