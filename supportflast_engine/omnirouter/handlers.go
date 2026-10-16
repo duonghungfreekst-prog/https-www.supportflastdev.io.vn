@@ -645,15 +645,11 @@ echo   [*] May chu Gateway:  %s/v1
 echo   [*] Khoa API Key:     %%ACTIVE_KEY%%
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da cau hinh Antigravity IDE tro ve Web Gateway!' -ForegroundColor Green; try { $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null; Write-Host '  [OK] Da phat tin hieu KET NOI den Web Gateway thanh cong!' -ForegroundColor Green } catch {}; Write-Host '  [*] Dang do kiem AI qua Web Cloud va tu dong tru Quota...' -ForegroundColor Cyan; try { $body = @{ model='gemini-2.5-flash'; messages=@(@{ role='user'; content='Phan hoi 1 tu: OK' }); stream=$false } | ConvertTo-Json -Compress; $res = Invoke-RestMethod -Uri ($gw + '/v1/chat/completions') -Headers @{ 'Authorization' = ('Bearer ' + $key) } -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType 'application/json' -TimeoutSec 15; $reply = $res.choices[0].message.content.Trim(); Write-Host ('  [OK] AI Cloud phan hoi: ' + $reply + ' (Da tu dong tru 1 Quota tren Web!)') -ForegroundColor Green } catch { Write-Host ('  [!] Ket noi test AI: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da cau hinh Antigravity IDE tro ve Web Gateway!' -ForegroundColor Green"
 
 echo.
 echo ==============================================================================
 echo   [DANG HOAT DONG] Antigravity dang su dung Quota va 19 tai khoan tu Web Cloud.
-echo.
-echo   [TIN HIEU LIVE] Hay nhin sang Web Gateway tren trinh duyet:
-echo   - Tab 'Nhat Ky Console': Da nhan tin hieu [KET NOI] tu may cua ban!
-echo   - Tab 'Theo Doi Han Muc': Da ghi nhan luot do kiem AI vua roi!
 echo.
 echo   [*] KHI KHONG DUNG NUA: CHI CAN NHAN PHIM BAT KY DE DUNG VA VE MAC DINH
 echo ==============================================================================
@@ -662,20 +658,20 @@ pause
 
 echo.
 echo [*] Dang ngat ket noi va dua Antigravity ve che do mac dinh...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = $env:ACTIVE_KEY; if (!$key) { $key = '%s' }; $gw = '%s'; try { $hb = @{ event='disconnected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null } catch {}; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da khoi phuc Antigravity ve che do mac dinh ban dau!' -ForegroundColor Cyan"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da khoi phuc Antigravity ve che do mac dinh ban dau!' -ForegroundColor Cyan"
 echo.
 echo ==============================================================================
 echo   DA KET THUC PHIEN! Antigravity da tro ve binh thuong.
 echo ==============================================================================
 timeout /t 2 >nul
-`, activeKey, gatewayURL, activeKey, gatewayURL, activeKey, gatewayURL)
+`, activeKey, gatewayURL, activeKey, gatewayURL)
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
 
 			if strings.Contains(r.URL.Path, "unlink") {
 				w.Header().Set("Content-Disposition", `attachment; filename="unlink.bat"`)
-				batCode := fmt.Sprintf(`@echo off
+				batCode := `@echo off
 chcp 65001 >nul
 title SupportFlast - Tra Antigravity Ve Che Do Mac Dinh
 echo ==============================================================================
@@ -684,7 +680,7 @@ echo ===========================================================================
 echo   [*] Dang xoa cau hinh tro Web Gateway khoi Antigravity config...
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$gw = '%s'; try { $hb = @{ event='disconnected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 5 | Out-Null } catch {}; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da xoa apiEndpoint va apiKey khoi Antigravity IDE.' -ForegroundColor Green; Write-Host '  [OK] Antigravity IDE da quay ve che do mac dinh ban dau!' -ForegroundColor Cyan"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { if (Test-Path $f) { $c = Get-Content $f -Raw | ConvertFrom-Json; $c.PSObject.Properties.Remove('apiEndpoint'); $c.PSObject.Properties.Remove('apiKey'); $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8 } }; Write-Host '  [OK] Da xoa apiEndpoint va apiKey khoi Antigravity IDE.' -ForegroundColor Green; Write-Host '  [OK] Antigravity IDE da quay ve che do mac dinh ban dau!' -ForegroundColor Cyan"
 echo.
 echo ==============================================================================
 echo   HOAN TAT! Antigravity gio day hoat dong binh thuong nhu mac dinh.
@@ -692,7 +688,7 @@ echo   Khi nao can dung Quota Web Cloud, chi can chay lai file run.bat!
 echo ==============================================================================
 echo.
 pause
-`, gatewayURL)
+`
 				_, _ = w.Write([]byte(batCode))
 				return
 			}
@@ -713,7 +709,7 @@ echo   [*] May chu Gateway:  %s/v1
 echo   [*] Khoa API Key:     %s
 echo ==============================================================================
 echo.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = '%s'; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config thanh cong!' -ForegroundColor Green; try { $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$key } | ConvertTo-Json -Compress; Invoke-RestMethod -Uri ($gw + '/api/v1/client/heartbeat') -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null; Write-Host '  [OK] Da gui tin hieu KET NOI den Web Gateway!' -ForegroundColor Green } catch {}; try { $body = @{ model='gemini-1.5-flash'; messages=@(@{ role='user'; content='Phan hoi 1 tu: OK' }); stream=$false } | ConvertTo-Json -Compress; $res = Invoke-RestMethod -Uri ($gw + '/v1/chat/completions') -Headers @{ 'Authorization' = ('Bearer ' + $key) } -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -ContentType 'application/json' -TimeoutSec 15; $reply = $res.choices[0].message.content.Trim(); Write-Host ('  [OK] AI Cloud phan hoi: ' + $reply + ' (Da tu dong tru 1 Quota tren Web!)') -ForegroundColor Green } catch { Write-Host ('  [!] Canh bao ket noi: ' + $_.Exception.Message) -ForegroundColor Yellow }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$key = '%s'; $gw = '%s'; $files = @((Join-Path $HOME '.gemini\config.json'), (Join-Path $HOME '.gemini\config\config.json')); foreach ($f in $files) { $d = Split-Path $f; if (!(Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; $c = if (Test-Path $f) { Get-Content $f -Raw | ConvertFrom-Json } else { [PSCustomObject]@{} }; $c | Add-Member -MemberType NoteProperty -Name 'apiEndpoint' -Value ($gw + '/v1') -Force; $c | Add-Member -MemberType NoteProperty -Name 'apiKey' -Value $key -Force; $c | ConvertTo-Json -Depth 20 | Set-Content $f -Encoding UTF8; }; Write-Host '  [OK] Da ghi de apiEndpoint va apiKey vao config thanh cong!' -ForegroundColor Green"
 echo.
 echo ==============================================================================
 echo   THANH CONG! Antigravity IDE da tu dong tro ve Web Gateway.

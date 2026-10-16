@@ -69,70 +69,10 @@ try {
         $c | Add-Member -MemberType NoteProperty -Name "apiKey" -Value $ApiKey -Force
         $c | ConvertTo-Json -Depth 20 | Set-Content $p -Encoding UTF8
     }
-    Write-Host "  [OK] Đã ghi đè apiEndpoint và apiKey vào config.json của Antigravity IDE!" -ForegroundColor Green
-
-    # Phát tín hiệu kết nối lên Web Gateway
-    try {
-        $hb = @{ event='connected'; client='Antigravity IDE'; hostname=$env:COMPUTERNAME; api_key=$ApiKey } | ConvertTo-Json -Compress
-        Invoke-RestMethod -Uri "https://www.supportflastdev.io.vn/api/v1/client/heartbeat" -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($hb)) -ContentType 'application/json' -TimeoutSec 6 | Out-Null
-        Write-Host "  [OK] Đã gửi tín hiệu KẾT NỐI trực tuyến đến Web Gateway thành công!" -ForegroundColor Green
-    } catch {}
+    Write-Host "  [OK] Đã cấu hình Antigravity IDE trỏ về Web Gateway thành công!" -ForegroundColor Green
 } catch {
     Write-Host "  [X] LỖI ghi cấu hình config.json: $_" -ForegroundColor Red
     exit 1
-}
-
-Write-Host ""
-Write-Host "==============================================================================" -ForegroundColor Cyan
-Write-Host "  [*] ĐANG ĐO KIỂM KẾT NỐI VÀ LẤY TOKEN THỰC TẾ QUA WEB GATEWAY..." -ForegroundColor White
-Write-Host "==============================================================================" -ForegroundColor Cyan
-
-# 2. Đo kiểm tra danh sách Model chính
-try {
-    Write-Host "  [1/3] Kiểm tra danh mục Model chính..." -ForegroundColor Cyan -NoNewline
-    $modelsRes = Invoke-RestMethod -Uri "$WebGateway/models" -Headers @{ "Authorization" = "Bearer $ApiKey" } -TimeoutSec 10 -Method Get
-    $count = $modelsRes.data.Count
-    $modelList = ($modelsRes.data | ForEach-Object { $_.id }) -join ", "
-    Write-Host " OK ($count models: $modelList)" -ForegroundColor Green
-} catch {
-    Write-Host " CẢNH BÁO: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# 3. Tra cứu Quota trên Web
-try {
-    Write-Host "  [2/3] Tra cứu hạn mức Quota của Key trên Web..." -ForegroundColor Cyan -NoNewline
-    $subRes = Invoke-RestMethod -Uri "$WebGateway/dashboard/billing/subscription" -Headers @{ "Authorization" = "Bearer $ApiKey" } -TimeoutSec 10 -Method Get
-    $planName = $subRes.plan.title
-    $usedReq = $subRes.plan.used_requests
-    $limitReq = $subRes.plan.quota_limit
-    Write-Host " OK ($planName | Đã dùng: $usedReq / $limitReq requests)" -ForegroundColor Green
-} catch {
-    Write-Host " BỎ QUA: $($_.Exception.Message)" -ForegroundColor Gray
-}
-
-# 4. Gửi test prompt lấy Token thật và kiểm tra trừ Quota
-try {
-    Write-Host "  [3/3] Gửi test prompt và lấy Token thật từ Web Gateway..." -ForegroundColor Cyan -NoNewline
-    $body = @{
-        model = "gemini-3.8-flash-high"
-        messages = @(
-            @{ role = "user"; content = "Phản hồi đúng 1 từ: SẴN SÀNG" }
-        )
-        stream = $false
-    } | ConvertTo-Json -Compress
-
-    $chatRes = Invoke-RestMethod -Uri "$WebGateway/chat/completions" -Headers @{
-        "Authorization" = "Bearer $ApiKey"
-        "Content-Type" = "application/json"
-    } -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 25
-
-    $reply = $chatRes.choices[0].message.content.Trim()
-    $totalTok = $chatRes.usage.total_tokens
-    Write-Host " THÀNH CÔNG!" -ForegroundColor Green
-    Write-Host "        > Phản hồi từ AI: $reply" -ForegroundColor Yellow
-    Write-Host "        > Tokens tiêu thụ: $totalTok tokens (Đã tự động trừ Quota trên Web)" -ForegroundColor Yellow
-} catch {
-    Write-Host " THẤT BẠI: $($_.Exception.Message)" -ForegroundColor Red
 }
 
 Write-Host ""
