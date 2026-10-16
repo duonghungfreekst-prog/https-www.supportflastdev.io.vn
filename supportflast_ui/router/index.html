@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>SupportFlast Router v2.8.5 - AI Gateway Cloud</title>
   
   <!-- Font Google: Plus Jakarta Sans & JetBrains Mono -->
@@ -2258,30 +2261,6 @@
             </div>
           </div>
 
-          <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (WINDOWS COMMAND PROMPT) CHUẨN XÁC THEO YÊU CẦU -->
-          <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono text-base font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] flex-shrink-0">
-                  &gt;_
-                </div>
-                <div>
-                  <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-wider font-mono flex flex-wrap items-center gap-2">
-                    <span>CÁCH 1: LỆNH 1 DÒNG TRÊN CMD (WINDOWS COMMAND PROMPT)</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">CLI Live</span>
-                  </h3>
-                  <p class="text-xs text-slate-300 mt-0.5">Bạn mở Command Prompt (CMD) và dán lệnh cURL:</p>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
-                <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.2)]">
-                  <span>▶ Chạy Thử Ngay</span>
-                </button>
-                <button onclick="downloadClientQuotaBatScript()" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]">
-                  <span>📊 Tải quota.bat</span>
-                </button>
-              </div>
-            </div>
 
           <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (WINDOWS COMMAND PROMPT) CHUẨN XÁC THEO YÊU CẦU -->
           <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
@@ -4062,6 +4041,7 @@
                 <option value="off">Off</option>
               </select>
             </div>
+          </div>
           <div class="flex flex-wrap items-center gap-2">
             <input type="text" id="provider-models-search-input" oninput="onProviderModelsSearchInput(this.value)" placeholder="🔍 Tìm model (flash, claude, r1...)" class="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-200 font-mono placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 w-48">
             <button onclick="toggleAllProviderModelsAction(true)" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 font-mono text-xs border border-emerald-500/30 cursor-pointer flex items-center gap-1.5 transition-all">
