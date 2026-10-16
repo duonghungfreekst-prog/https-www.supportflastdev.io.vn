@@ -742,7 +742,7 @@
                 <span class="text-sm">🔑</span>
                 <span>SINH API KEY MÁY TÍNH</span>
               </div>
-              <span class="text-[9px] font-mono font-normal opacity-85 text-slate-900 group-hover:opacity-100">Cấp mã kết nối cho Cursor / Antigravity / PC</span>
+              <span class="text-[9px] font-mono font-normal opacity-85 text-slate-900 group-hover:opacity-100">Cấp mã kết nối cho Cursor / Cline / PC / App</span>
             </button>
             
             <button onclick="loadQuotaTrackerLive(true)" class="w-full py-1.5 px-2 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]">
@@ -809,11 +809,6 @@
             <span id="header-gateway-text" class="text-xs font-mono font-bold text-emerald-400">ONLINE 24/24</span>
           </div>
 
-          <!-- Badge máy khách Antigravity IDE kết nối thời gian thực -->
-          <div id="header-client-badge" class="hidden items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse">
-            <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06B6D4]"></span>
-            <span id="header-client-badge-text" class="text-xs font-mono font-bold text-cyan-300">🟢 1 Client Online (Antigravity IDE)</span>
-          </div>
 
           <!-- Nút Điều Chỉnh Hiệu Ứng Nền (Ẩn khỏi thanh điều hướng để giao diện tinh gọn, thoáng đãng) -->
           <div class="relative hidden">
@@ -921,7 +916,7 @@
 
             <!-- Mục đích & Cách hoạt động -->
             <div class="text-xs space-y-1 text-slate-300">
-              <p><span class="font-bold text-white">Mục đích:</span> Cho phép Antigravity IDE, Cursor, Claude Code, Cline, Roo Code, Desktop App trên máy tính trỏ về Web Server để dùng chung kho 19 tài khoản AI.</p>
+              <p><span class="font-bold text-white">Mục đích:</span> Cung cấp Base URL và API Key cho Cursor, Claude Code, Cline, Roo Code, Python/Go scripts và App máy tính dùng chung kho 19 tài khoản AI.</p>
               <p><span class="font-bold text-white">Cách hoạt động:</span> Máy tính gửi request kèm API Key &rarr; Web Server kiểm tra RAM Cache (0.001ms) &rarr; Tự động tráo Token thật sang Google/Anthropic/OpenAI từ TiDB &rarr; Trả kết quả streaming về máy tính.</p>
             </div>
 
@@ -940,7 +935,7 @@
                 <div class="flex items-center gap-2">
                   <input type="text" id="mitm-base-url-input" readonly value="https://supportflastdev.io.vn/v1" class="flex-1 px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-cyan-300 font-mono focus:outline-none focus:border-cyan-500/50 select-all">
                 </div>
-                <div class="text-[10px] text-slate-400 font-sans">Dán link này vào Base URL của Antigravity, Cursor, Claude Code, Cline, Roo Code...</div>
+                <div class="text-[10px] text-slate-400 font-sans">Dán link này vào Base URL của Cursor, Claude Code, Cline, Roo Code, OpenAI SDK...</div>
               </div>
 
               <!-- Khối 2: API Key -->
@@ -996,7 +991,7 @@
                   <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">DNS Intercept</span>
                 </div>
                 <p class="text-[11px] text-slate-300 leading-relaxed font-sans">
-                  Dành cho trường hợp muốn chặn DNS hệ thống của Antigravity/Copilot qua cổng 443. Desktop Client tự động đồng bộ tài khoản từ Web Cloud về RAM máy tính:
+                  Dành cho trường hợp muốn cấu hình Desktop Client tự động đồng bộ tài khoản từ Web Cloud về RAM máy tính:
                 </p>
                 <div class="flex flex-wrap items-center gap-2 pt-1 font-sans">
                   <button onclick="downloadDesktopConfigFile()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.3)]">
@@ -1026,261 +1021,6 @@
               </div>
             </div>
 
-          </div>
-
-          <!-- 3. ACCORDION 1: ANTIGRAVITY (KHỚP 100% ẢNH CỦA NGƯỜI DÙNG) -->
-          <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
-            
-            <!-- Header Accordion -->
-            <div onclick="toggleAccordion('acc-antigravity')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors select-none">
-              <div class="flex items-center gap-3">
-                <!-- Icon Antigravity Nhiều Màu -->
-                <div class="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/30 flex items-center justify-center font-bold text-cyan-400 font-mono text-sm shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                  <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 2L3 21h18L12 2z"/></svg>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <h4 class="text-sm font-bold text-white font-sans">Antigravity</h4>
-                    <span id="badge-dns-antigravity" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700">⚪ Đã Tắt DNS</span>
-                  </div>
-                  <p class="text-xs text-slate-400 mt-0.5">Intercept Antigravity requests via MITM proxy</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                  <span class="text-[11px] font-mono text-slate-400">DNS Intercept:</span>
-                  <button id="switch-dns-antigravity" onclick="toggleToolDnsSwitch('antigravity')" data-active="false" class="nexus-switch" title="Bật/Tắt Intercept DNS cho Antigravity">
-                    <div class="nexus-switch-knob"></div>
-                  </button>
-                </div>
-                <button class="p-1 rounded text-slate-400 hover:text-white transition-transform duration-200" id="chevron-acc-antigravity">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Body Accordion: Cấu Hình Hosts & Danh Sách Setup Model Mapping -->
-            <div id="acc-antigravity" class="p-5 pt-0 space-y-4 border-t border-white/5">
-              
-              <!-- Hộp Tự Động Trỏ Antigravity Bằng CMD (Run Loco Style) -->
-              <div class="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 font-mono text-xs text-slate-300 space-y-2.5">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <div class="text-xs font-bold text-cyan-300 flex items-center gap-1.5 font-sans">
-                    <span>⚡ Tự Động Định Tuyến Antigravity Qua CMD (Run Loco Style)</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button onclick="copyAntigravityWebCmd()" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                      <span>📋 COPY LỆNH TRỎ WEB</span>
-                    </button>
-                    <button onclick="copyAntigravityLocalCmd()" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]">
-                      <span>🔄 RUN LOCO (CỔNG 20128)</span>
-                    </button>
-                    <button onclick="copyAntigravityStatusCmd()" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 border border-white/20 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer">
-                      <span>🔍 XEM TRẠNG THÁI</span>
-                    </button>
-                  </div>
-                </div>
-                <div class="text-[11px] text-slate-400 font-sans">
-                  Chỉ cần dán vào CMD và nhấn Enter: Antigravity IDE sẽ tự động cập nhật endpoint và kết nối trực tiếp, không cần phải vào menu Settings chỉnh tay!
-                </div>
-                <div class="p-2 rounded-lg bg-black/60 border border-cyan-500/20 text-cyan-300 text-[11px] select-all break-all" id="antigravity-cmd-preview">
-                  f:\supportflast.dev\link_antigravity.bat
-                </div>
-              </div>
-
-              <!-- Hộp Hướng Dẫn Edit Hosts File -->
-              <div class="p-3.5 rounded-xl bg-black/60 border border-white/5 font-mono text-xs text-slate-300 space-y-2">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                  <div class="text-[11px] text-slate-400">Edit hosts file manually to add the following entries:</div>
-                  <div class="flex items-center gap-2">
-                    <button onclick="autoAddHostsEntriesDirectly()" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                      <span>⚡ THÊM VÀO HOSTS</span>
-                    </button>
-                    <button onclick="autoRemoveHostsEntriesDirectly()" class="px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[11px] font-sans font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.3)]">
-                      <span>🛑 XÓA KHỎI HOSTS</span>
-                    </button>
-                  </div>
-                </div>
-                <div class="text-emerald-400 font-bold select-all">127.0.0.1 daily-cloudcode-pa.googleapis.com</div>
-                <div class="text-emerald-400 font-bold select-all">127.0.0.1 cloudcode-pa.googleapis.com</div>
-              </div>
-
-              <div class="text-xs text-slate-400">
-                Toggle DNS to redirect Antigravity traffic through OmniRouter via MITM.
-              </div>
-
-              <!-- ========================================================================= -->
-              <!-- BẢNG SETUP MODEL MAPPING CHUẨN XÁC 100% NHƯ ẢNH -->
-              <!-- ========================================================================= -->
-              <div id="antigravity-mapping-list" class="space-y-2 font-mono text-xs pt-1">
-                
-                <!-- Dòng 1: Gemini 3.8 Flash (High) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.8 Flash (High)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.8 Flash (High)" value="gemini-3.8-flash-high" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.8 Flash (High)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 2: Gemini 3.8 Flash (Medium) / Default -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.8 Flash (Medium) / Default</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.8 Flash (Medium) / Default" value="gemini-3.8-flash-medium" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.8 Flash (Medium) / Default')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 3: Gemini 3.8 Flash (Low) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.8 Flash (Low)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.8 Flash (Low)" value="gemini-3.8-flash-low" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.8 Flash (Low)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 4: Gemini 3.7 Flash (High) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.7 Flash (High)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.7 Flash (High)" value="gemini-3.7-flash-high" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.7 Flash (High)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 5: Gemini 3.7 Flash (Medium) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.7 Flash (Medium)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.7 Flash (Medium)" value="gemini-3.7-flash-medium" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.7 Flash (Medium)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 6: Gemini 3.7 Flash (Low) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.7 Flash (Low)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.7 Flash (Low)" value="gemini-3.7-flash-low" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.7 Flash (Low)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 7: Gemini 3.6 Flash (High) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.6 Flash (High)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.6 Flash (High)" value="gemini-3.6-flash-high" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.6 Flash (High)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 8: Gemini 3.6 Flash (Medium) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.6 Flash (Medium)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.6 Flash (Medium)" value="gemini-3.6-flash-medium" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.6 Flash (Medium)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng Mới: 4 Argon (Nhiệm vụ phức tạp) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <div class="flex items-center gap-2 sm:justify-end">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-pink-500/20 text-pink-400 border border-pink-500/30">NEW</span>
-                    <span class="text-white font-semibold">4 Argon</span>
-                  </div>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="4 Argon" value="4-argon" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', '4 Argon')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 9: Gemini 3.1 Pro (High) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Gemini 3.1 Pro (High)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Gemini 3.1 Pro (High)" value="gemini-pro-agent" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Gemini 3.1 Pro (High)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 10: Claude Sonnet 4.6 (Thinking) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Claude Sonnet 4.6 (Thinking)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Claude Sonnet 4.6 (Thinking)" value="claude-sonnet-4-6" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Claude Sonnet 4.6 (Thinking)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 11: Claude Sonnet 5.5 (Thinking) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Claude Sonnet 5.5 (Thinking)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Claude Sonnet 5.5 (Thinking)" value="claude-sonnet-5-5" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Claude Sonnet 5.5 (Thinking)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 12: Claude Opus 5.5 (Thinking) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">Claude Opus 5.5 (Thinking)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="Claude Opus 5.5 (Thinking)" value="claude-opus-5-5" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'Claude Opus 5.5 (Thinking)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-                <!-- Dòng 13: GPT-OSS 120B (Medium) -->
-                <div class="grid grid-cols-1 sm:grid-cols-[14rem_auto_1fr_auto] items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                  <span class="text-white font-semibold sm:text-right">GPT-OSS 120B (Medium)</span>
-                  <span class="text-slate-500 hidden sm:inline">&rarr;</span>
-                  <div class="relative flex-1">
-                    <input type="text" data-tool="antigravity" data-alias="GPT-OSS 120B (Medium)" value="gpt-oss-120b-medium" onchange="saveSingleMapping(this)" class="w-full px-3 py-1.5 pr-7 rounded-lg bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50">
-                    <button onclick="clearSingleMapping(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white" title="Xóa mapping">&times;</button>
-                  </div>
-                  <button onclick="openSelectModelForAlias('antigravity', 'GPT-OSS 120B (Medium)')" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-sans font-medium transition-all">Chọn</button>
-                </div>
-
-              </div>
-
-              <!-- Nút Thêm Mapping Mới -->
-              <div class="pt-2">
-                <button onclick="addNewCustomMapping('antigravity')" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-400 border border-cyan-500/30 text-xs font-mono font-medium transition-all flex items-center gap-1.5">
-                  <span>+ Thêm Ánh Xạ Model Mới</span>
-                </button>
-              </div>
-
-            </div>
           </div>
 
           <!-- 4. ACCORDION 2: KIRO AI ASSISTANT -->
@@ -1543,75 +1283,6 @@
           </div>
 
         
-
-          <!-- 3. KHỐI TIỆN ÍCH LỆNH 1 DÒNG TRÊN CMD (BẬT LÀ DÙNG - TẮT CMD LÀ XONG) -->
-          <div id="section-cmd-quota-quickview" class="glass-card rounded-2xl p-5 md:p-6 border border-cyan-500/30 bg-[#070b14]/95 backdrop-blur-xl shadow-[0_0_35px_rgba(6,182,212,0.15)] space-y-4 transition-all">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-mono text-base font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)] flex-shrink-0">
-                  &gt;_
-                </div>
-                <div>
-                  <h3 class="text-sm md:text-base font-bold text-white uppercase tracking-wider font-mono flex flex-wrap items-center gap-2">
-                    <span>LỆNH 1 DÒNG TRÊN CMD: TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY IDE VỀ WEB GATEWAY</span>
-                    <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">Tự Động Trừ Quota</span>
-                  </h3>
-                  <p class="text-xs text-slate-300 mt-0.5">Mở Windows Command Prompt (CMD), dán lệnh dưới đây và nhấn Enter để Antigravity tự động trỏ đến Web Gateway:</p>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 flex-shrink-0">
-                <button onclick="downloadClientRunBatScript()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  <span>⚡ Tải run.bat (1-Click)</span>
-                </button>
-                <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer" title="Khôi phục mặc định nếu lỡ tắt bằng nút X">
-                  <span>↩ Về Mặc Định</span>
-                </button>
-                <button onclick="loadWebCliQuotaOutput(true)" id="btn-run-live-quota-curl" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer">
-                  <span>📊 Tra Cứu Quota</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Khung mã lệnh cmd ĐƠN GIẢN DUY NHẤT: BẬT LÀ DÙNG - TẮT CMD LÀ XONG -->
-            <div class="space-y-1.5 p-3.5 rounded-2xl bg-gradient-to-br from-black/95 to-slate-950 border border-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                <span class="text-xs font-bold text-emerald-300 flex items-center gap-2">
-                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
-                  <span>LỆNH 1 DÒNG DUY NHẤT (Bật là Dùng — Tắt CMD là Xong):</span>
-                </span>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="text-emerald-400 hover:text-emerald-300 text-xs font-mono flex items-center gap-1 cursor-pointer font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all">
-                  <span>📋 Sao chép Lệnh</span>
-                </button>
-              </div>
-              <div class="p-3 rounded-xl bg-black/90 border border-emerald-500/40 text-xs font-mono text-emerald-300 break-all select-all flex items-center justify-between gap-3 group shadow-inner">
-                <code id="web-cli-run-command" class="flex-1 font-mono font-bold">curl -sL "https://www.supportflastdev.io.vn/api/v1/client/run.bat?key=sk-supportflastdev.io.vn-master-live" -o run.bat && run.bat</code>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-run-command').textContent.trim()); showToastNotification('📋 Đã sao chép lệnh chạy 1-Click!');" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer opacity-70 group-hover:opacity-100 flex-shrink-0" title="Sao chép lệnh">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                </button>
-              </div>
-              <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-sans pt-1">
-                <div class="flex items-center gap-1.5">
-                  <span class="text-emerald-400 font-bold">💡 Cách hoạt động siêu gọn:</span>
-                  <span>Mở CMD chạy lệnh &rarr; Antigravity dùng Quota Web. Khi không dùng nữa &rarr; <b>Nhấn phím bất kỳ hoặc tắt CMD</b> là Antigravity tự động trở về bình thường!</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Khung kết quả hiển thị trên màn hình đen của CMD -->
-            <div class="space-y-1.5 pt-2">
-              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 px-1">
-                <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <span>🖥 Màn hình phản hồi trực tiếp từ Web Gateway:</span>
-                </span>
-                <button onclick="copyToClipboard(document.getElementById('web-cli-cmd-preview-output').textContent.trim()); showToastNotification('📋 Đã sao chép toàn bộ kết quả terminal!');" class="text-slate-400 hover:text-white text-xs font-mono flex items-center gap-1 cursor-pointer">
-                  <span>📋 Sao chép text</span>
-                </button>
-              </div>
-              <div class="relative">
-                <pre id="web-cli-cmd-preview-output" class="p-4 rounded-xl bg-black border border-white/15 text-[11px] md:text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed select-all max-h-72 shadow-inner">Đang nạp kết quả Quota & DNS trực tiếp từ Gateway...</pre>
-              </div>
-            </div>
-          </div>
 
         </div>
 
@@ -4003,12 +3674,6 @@
           <span>📁 Tải Tệp Cấu Hình Trực Tiếp Cho App / CMD:</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button onclick="downloadClientRunBatScript()" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-            <span>⚡ Tải run.bat (Bật Là Dùng — Tắt Là Xong)</span>
-          </button>
-          <button onclick="downloadClientUnlinkBatScript()" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.3)]">
-            <span>↩ Tải unlink_antigravity.bat (Về Mặc Định)</span>
-          </button>
           <button onclick="downloadClientQuotaBatScript()" class="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer">
             <span>📊 Tải quota.bat (Ping DNS & Quota CLI)</span>
           </button>
@@ -5563,33 +5228,27 @@
       const v1Url = `${baseUrl}/v1`;
 
       return {
-        win: `:: [Windows Command Prompt (CMD) - Antigravity & Gateway Quickstart]
-:: 1. TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY ĐẾN GATEWAY (Chuẩn Run Loco - 1 Lệnh CMD Tự Động):
-curl -sL "${baseUrl}/api/v1/client/link.bat?key=${activeKey}" -o link_antigravity.bat && link_antigravity.bat
+        win: `:: [Windows Command Prompt (CMD) - SupportFlast Gateway API Quickstart]
+:: 1. Thiết lập biến môi trường trỏ trực tiếp vào SupportFlast Gateway (Cursor / App / Script):
+set OPENAI_BASE_URL=${v1Url}
+set OPENAI_API_KEY=${activeKey}
 
 :: 2. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
 curl -sL "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
-:: 3. Hoặc tải file script tự động ping và xem quota:
-curl -sL "${baseUrl}/api/v1/client/quota.bat?key=${activeKey}" -o quota.bat && quota.bat
+:: 3. Tải file script tự động ping và xem quota:
+curl -sL "${baseUrl}/api/v1/client/quota.bat?key=${activeKey}" -o quota.bat && quota.bat`,
 
-:: 4. Thiết lập biến môi trường trỏ trực tiếp vào SupportFlast Gateway:
-set OPENAI_BASE_URL=${v1Url}
-set OPENAI_API_KEY=${activeKey}`,
-
-        ps: `# [Windows PowerShell - Antigravity & Gateway Quickstart]
-# 1. TỰ ĐỘNG ĐỊNH TUYẾN ANTIGRAVITY ĐẾN GATEWAY (Chuẩn Run Loco - 1 Lệnh PowerShell):
-irm "${baseUrl}/api/v1/client/link.bat?key=${activeKey}" -OutFile "link_antigravity.bat"; .\link_antigravity.bat
+        ps: `# [Windows PowerShell - SupportFlast Gateway API Quickstart]
+# 1. Thiết lập biến môi trường trỏ trực tiếp:
+$env:OPENAI_BASE_URL = "${v1Url}"
+$env:OPENAI_API_KEY = "${activeKey}"
 
 # 2. Ping DNS & Lấy ngay bảng Quota 19 tài khoản (Không cần vào Web):
 irm "${baseUrl}/api/v1/client/quota?key=${activeKey}"
 
 # 3. Kiểm tra Ping độ trễ kết nối DNS:
-Test-NetConnection -ComputerName "${domain}" -Port 443
-
-# 4. Thiết lập biến môi trường trỏ trực tiếp:
-$env:OPENAI_BASE_URL = "${v1Url}"
-$env:OPENAI_API_KEY = "${activeKey}"`,
+Test-NetConnection -ComputerName "${domain}" -Port 443`,
 
         bash: `# [Linux / macOS / WSL / Termux]
 # 1. Tra cứu Quota & Ping DNS trực tiếp từ Terminal (Không cần vào Web):
