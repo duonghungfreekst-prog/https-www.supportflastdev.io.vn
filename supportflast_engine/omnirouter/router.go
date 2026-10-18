@@ -70,16 +70,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	}
 	SetSkillsDB(db)
 
-	// 2. Tự động nạp hạt nhân 19 tài khoản AI vào TiDB Cloud/SQLite nếu bảng providers đang trống
-	go func() {
-		providers := GetCachedActiveProviders()
-		if len(providers) == 0 {
-			log.Println("[ENGINE] [OMNIROUTER] Kho tài khoản rỗng, đang tự động nạp cố định 19 tài khoản AI vào TiDB/SQLite...")
-			if err := SeedEmbeddedDataToDB(db); err != nil {
-				log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed hạt nhân thất bại: %v", err)
-			}
-		}
-	}()
+	// 2. Tuân thủ Rule 9: Không tự ý nạp tài khoản mẫu/giả lập vào CSDL
 
 	// 3. Khởi chạy worker tự động làm mới token OAuth ngầm & nạp Quota định kỳ
 	StartAutoTokenRefreshWorker(context.Background(), db)

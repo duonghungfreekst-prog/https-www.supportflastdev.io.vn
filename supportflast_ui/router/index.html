@@ -10586,122 +10586,25 @@
 
 
 
-    // Dữ liệu hạt giống 19 tài khoản Antigravity từ CSDL LibSQL đảm bảo luôn sẵn sàng, không bao giờ bị 'Chưa cấu hình'
-
-    const SEED_PROXY_POOLS = [
-
-      {
-
-        id: "42db42b6-7136-4c0c-8feb-20759c8e0946",
-
-        name: "Imported 58.186.63.192:18753",
-
-        proxyUrl: "http://pyYXdt:QWfItD@58.186.63.192:18753/",
-
-        type: "http",
-
-        isActive: true,
-
-        testStatus: "active",
-
-        lastTestedLatency: 8,
-
-        strictProxy: false,
-
-        boundConnectionCount: 18,
-
-        boundProviders: ["ANTIGRAVITY"]
-
-      },
-
-      {
-
-        id: "96684253-0dbb-471a-ad1f-6a1fb23a6213",
-
-        name: "Imported 36.50.175.113:20329",
-
-        proxyUrl: "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
-
-        type: "http",
-
-        isActive: true,
-
-        testStatus: "active",
-
-        lastTestedLatency: 12,
-
-        strictProxy: false,
-
-        boundConnectionCount: 1,
-
-        boundProviders: ["ANTIGRAVITY"]
-
-      }
-
-    ];
-
-
-
-    const SEED_CONNECTIONS = [
-
-      { id: "6121513d-2e8c-4b62-ae41-b1ff49d5b2d9", provider: "antigravity", name: "duongtronghiep1911@gmail.com", email: "duongtronghiep1911@gmail.com", priority: 3, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "09582dfc-9c78-4b8b-b485-c49d06d04232", provider: "antigravity", name: "manhhungkstfreefide@gmail.com", email: "manhhungkstfreefide@gmail.com", priority: 4, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "55e0efec-f980-4f01-84cc-80b7489d39cf", provider: "antigravity", name: "acckepff0@gmail.com", email: "acckepff0@gmail.com", priority: 6, isActive: false, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "272bd1ab-d0f2-47cf-a068-408016fb24b6", provider: "antigravity", name: "han075224@gmail.com", email: "han075224@gmail.com", priority: 18, isActive: true, proxyPoolId: "96684253-0dbb-471a-ad1f-6a1fb23a6213" },
-
-      { id: "b09d7893-b788-48e6-bffb-f91b45bf2244", provider: "antigravity", name: "duongmanhhung9900@gmail.com", email: "duongmanhhung9900@gmail.com", priority: 7, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "196ab4ed-64ca-4823-b725-457a06a8dcfc", provider: "antigravity", name: "duonghungfreekst@gmail.com", email: "duonghungfreekst@gmail.com", priority: 8, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "b6c3fd6c-31a3-4449-96ca-f68b0ca4a7f4", provider: "antigravity", name: "duongmanhhunghospital@gmail.com", email: "duongmanhhunghospital@gmail.com", priority: 9, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "0adb4c96-6922-446f-915a-8e65a7f367f2", provider: "antigravity", name: "it.phuthai@gmail.com", email: "it.phuthai@gmail.com", priority: 12, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "76a21653-96ab-48e0-970a-8739cdf0fb84", provider: "antigravity", name: "kstlaodai@gmail.com", email: "kstlaodai@gmail.com", priority: 13, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "3365c852-9fae-4915-baf8-5965ebfe7b6a", provider: "antigravity", name: "pcnttphongkhamdakhoaphuthai@gmail.com", email: "pcnttphongkhamdakhoaphuthai@gmail.com", priority: 5, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "57f6be9d-e803-46da-90b6-067e3db7a515", provider: "antigravity", name: "pcnttyhocphuthai@gmail.com", email: "pcnttyhocphuthai@gmail.com", priority: 11, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "6848756d-09ba-426a-91ff-88c1fd64705a", provider: "antigravity", name: "picolosv8sao@gmail.com", email: "picolosv8sao@gmail.com", priority: 1, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "fc3e65e7-fa7e-4981-9abe-da7044ef6464", provider: "antigravity", name: "mbe39820@gmail.com", email: "mbe39820@gmail.com", priority: 10, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "e59c9c29-0ce7-46b4-952d-ed8645f7c10d", provider: "antigravity", name: "vuha0813386623@gmail.com", email: "vuha0813386623@gmail.com", priority: 14, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "d920dd93-038e-4cb1-8489-2bb5a3677341", provider: "antigravity", name: "phephabaylac@gmail.com", email: "phephabaylac@gmail.com", priority: 2, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "cc4a79cf-44bb-4ed0-b3f0-024d1bdc16bb", provider: "antigravity", name: "vuha89ss89@gmail.com", email: "vuha89ss89@gmail.com", priority: 19, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "6fdeea30-e0be-4ffe-8f82-7a63c57d265d", provider: "antigravity", name: "vuha1907@gmail.com", email: "vuha1907@gmail.com", priority: 15, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "2b4f6617-d357-4bd1-9229-c0c4e641bdf2", provider: "antigravity", name: "hmanh8479@gmail.com", email: "hmanh8479@gmail.com", priority: 17, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" },
-
-      { id: "2be26e58-58ec-43d7-8fd5-1ae27231bf43", provider: "antigravity", name: "cautao446@gmail.com", email: "cautao446@gmail.com", priority: 16, isActive: true, proxyPoolId: "42db42b6-7136-4c0c-8feb-20759c8e0946" }
-
-    ];
-
-
+    // Danh sách kết nối thực tế từ người dùng (Không sử dụng dữ liệu giả lập/hardcode theo Rule 9)
+    const SEED_PROXY_POOLS = [];
+    const SEED_CONNECTIONS = [];
 
     let cachedConns = null;
-
     try {
-
       const stored = localStorage.getItem('omnirouter_cached_connections');
-
-      if (stored) cachedConns = JSON.parse(stored);
-
+      if (stored) {
+        cachedConns = JSON.parse(stored);
+        // Tự động xóa dữ liệu mẫu cũ nếu còn tồn đọng trong localStorage
+        if (Array.isArray(cachedConns) && cachedConns.some(c => c.name && (c.name.includes('vuha') || c.name.includes('duongtronghiep') || c.name.includes('manhhung')))) {
+          localStorage.removeItem('omnirouter_cached_connections');
+          cachedConns = [];
+        }
+      }
     } catch (_) {}
 
-
-
-    window._allConnectionsList = (cachedConns && Array.isArray(cachedConns) && cachedConns.length > 0) ? cachedConns : SEED_CONNECTIONS;
-
+    window._allConnectionsList = (cachedConns && Array.isArray(cachedConns)) ? cachedConns : [];
     window._currentProviderDetailId = null;
-
     let _showAllApikey = false;
 
 
