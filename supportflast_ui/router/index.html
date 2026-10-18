@@ -4461,13 +4461,10 @@
 
               <div onclick="toggleAutoRefreshQuota()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-white/5 border border-white/10 cursor-pointer select-none transition-colors">
 
-                <div id="quota-auto-toggle-switch" class="nexus-switch nexus-switch-sm active-amber" title="Tự động làm mới quota sau mỗi 60 giây">
-
+                <div id="quota-auto-toggle-switch" class="nexus-switch nexus-switch-sm active-amber" title="Tự động làm mới quota sau mỗi 15 giây">
                   <div class="nexus-switch-knob"></div>
-
                 </div>
-
-                <span class="text-xs text-slate-300 font-mono">Auto-refresh (<span id="quota-refresh-countdown" class="text-amber-400">60s</span>)</span>
+                <span class="text-xs text-slate-300 font-mono">Auto-refresh (<span id="quota-refresh-countdown" class="text-amber-400">15s</span>)</span>
 
               </div>
 
@@ -16776,8 +16773,12 @@
               data.lines.forEach(line => appendConsoleLog(line));
 
             } else if (data.type === 'line' && data.line) {
-
               appendConsoleLog(data.line);
+              if (typeof data.line === 'string' && data.line.includes('[QUOTA]')) {
+                if (window.location.hash === '#quota' || document.getElementById('tab-quotas')?.classList.contains('active')) {
+                  loadQuotaTrackerLive(false);
+                }
+              }
 
             } else if (data.type === 'clear') {
 
@@ -28749,45 +28750,55 @@
 
 
 
-    // Tải toàn bộ danh sách kết nối và hạn mức thời gian thực từ Backend (Batch Tối Ưu)
+    let _isQuotaLoading = false;
 
+    // Tải toàn bộ danh sách kết nối và hạn mức thời gian thực từ Backend (Cache-First Instant Display)
     async function loadQuotaTrackerLive(force = false) {
+      if (_isQuotaLoading && !force) return;
+      _isQuotaLoading = true;
 
       const spinEl = document.getElementById('quota-global-spin');
-
       if (spinEl) spinEl.classList.add('animate-spin');
 
-
-
       try {
-
         const res = await apiRequest('/api/providers');
-
         const data = await res.json();
-
         const connections = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : []);
 
+        // Lọc các kết nối tài khoản (antigravity, google, codex, oauth...)
+        const trackable = connections.filter(c => c && (c.provider === 'antigravity' || c.provider === 'google' || c.provider === 'codex' || c.authType === 'oauth' || c.email));
 
+        // 🚀 BƯỚC 1: CACHE-FIRST INSTANT DISPLAY - RENDER THẺ NGAY LẬP TỨC (<50ms)
+        // Lấy ngay dữ liệu quota đã được lưu sẵn trong CSDL TiDB/RAM của từng tài khoản
+        _quotaAccountsList = trackable.map(conn => {
+          let cachedQuotas = null;
+          if (conn.data) {
+            try {
+              const d = typeof conn.data === 'string' ? JSON.parse(conn.data) : conn.data;
+              if (d && d.quotas) cachedQuotas = d.quotas;
+            } catch(e) {}
+          }
+          return {
+            ...conn,
+            usageData: { quotas: cachedQuotas }
+          };
+        });
 
-        // Lọc các kết nối tài khoản (antigravity, codex, oauth...)
+        // Vẽ ngay toàn bộ thẻ tài khoản lên lưới - Loại bỏ 100% tình trạng kẹt spinner quay tròn!
+        renderQuotaCards();
 
-        const trackable = connections.filter(c => c && (c.provider === 'antigravity' || c.provider === 'codex' || c.authType === 'oauth' || c.email));
-
-
-
+        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (8s)
         let quotasMap = {};
-
         let batchLoaded = false;
 
-
-
-        // Ưu tiên gọi Endpoint Batch /api/quotas/refresh-all do Go Backend quản lý song song cực nhanh
-
         try {
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout 8s")), 8000));
+          const batchRes = await Promise.race([
+            apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`),
+            timeoutPromise
+          ]);
 
-          const batchRes = await apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`);
-
-          if (batchRes.ok) {
+          if (batchRes && batchRes.ok) {
             const batchData = await batchRes.json();
             if (batchData && (batchData.accountData || batchData.results)) {
               quotasMap = batchData.accountData || batchData.results;
@@ -28795,84 +28806,50 @@
             }
           }
         } catch (e) {
-          console.warn("Batch quota fetch không khả dụng, chuyển sang chế độ dự phòng:", e);
+          console.warn("Batch quota fetch ngầm từ Google:", e.message || e);
         }
 
         if (batchLoaded) {
           _quotaAccountsList = trackable.map(conn => ({
             ...conn,
-            usageData: { quotas: quotasMap[conn.id] || null }
+            usageData: { quotas: quotasMap[conn.id] || (conn.data && typeof conn.data === 'object' ? conn.data.quotas : null) }
           }));
-        } else {
-
-          // Chế độ dự phòng: Gọi từng account
-
+          // Cập nhật lại số liệu tươi mới nhất từ Google mà không giật lag màn hình
+          renderQuotaCards();
+        } else if (force) {
+          // Dự phòng khi gọi ép buộc force=1: Gọi từng tài khoản nhanh
           const fetched = await Promise.allSettled(trackable.map(async conn => {
-
             try {
-
-              const uRes = await apiRequest(`/api/usage/${conn.id}${force ? '?force=1' : ''}`);
-
+              const uRes = await apiRequest(`/api/usage/${conn.id}?force=1`);
               if (uRes.ok) {
-
                 const uData = await uRes.json();
-
                 return { conn, usage: uData };
-
               }
-
-            } catch (err) {
-
-              console.warn(`Lỗi lấy usage cho ${conn.id}:`, err);
-
-            }
-
+            } catch (err) {}
             return { conn, usage: null };
-
           }));
-
-
 
           _quotaAccountsList = fetched.map(r => ({
-
             ...(r.value?.conn || {}),
-
             usageData: r.value?.usage || null
-
           }));
-
+          renderQuotaCards();
         }
 
-
-
-        // Reset thời gian đếm ngược về 60s
-
-        _quotaCountdownSeconds = 60;
-
+        // Reset thời gian đếm ngược siêu nhanh về 15 giây
+        _quotaCountdownSeconds = 15;
         const cdEl = document.getElementById('quota-refresh-countdown');
-
-        if (cdEl) cdEl.textContent = '60s';
-
-
-
-        renderQuotaCards();
+        if (cdEl) cdEl.textContent = '15s';
 
       } catch (e) {
-
         console.warn("Lỗi tải Quota Tracker Live:", e);
-
       } finally {
-
+        _isQuotaLoading = false;
         if (spinEl) {
-
           setTimeout(() => spinEl.classList.remove('animate-spin'), 300);
-
         }
-
         renderQuotaCards();
-
       }
-
     }
 
 
@@ -30667,42 +30644,30 @@
 
       if (!_quotaAutoRefreshEnabled) return;
 
-      _quotaCountdownSeconds = 60;
+      _quotaCountdownSeconds = 15;
+      const cdEl = document.getElementById('quota-refresh-countdown');
+      if (cdEl) cdEl.textContent = '15s';
 
       _quotaCountdownTimer = setInterval(() => {
-
         _quotaCountdownSeconds--;
-
-        const cdEl = document.getElementById('quota-refresh-countdown');
-
-        if (cdEl) cdEl.textContent = _quotaCountdownSeconds + 's';
+        const el = document.getElementById('quota-refresh-countdown');
+        if (el) el.textContent = _quotaCountdownSeconds + 's';
 
         if (_quotaCountdownSeconds <= 0) {
-
-          _quotaCountdownSeconds = 60;
-
-          loadQuotaTrackerLive(false);
-
+          _quotaCountdownSeconds = 15;
+          loadQuotaTrackerLive(true);
         }
-
       }, 1000);
-
     }
 
-
-
     // Dừng đếm ngược khi rời tab hoặc tắt auto-refresh
-
     function stopQuotaCountdown() {
-
       if (_quotaCountdownTimer) {
-
         clearInterval(_quotaCountdownTimer);
-
         _quotaCountdownTimer = null;
-
       }
-
+      const el = document.getElementById('quota-refresh-countdown');
+      if (el) el.textContent = 'Tắt';
     }
 
 

@@ -22,7 +22,7 @@ const (
 	AntigravityQuotaSummaryApiUrl = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
 	AntigravityUserAgent          = "antigravity/ide/2.11.0 windows/amd64"
 	AntigravityIdeVersion         = "2.11.0"
-	QuotaCacheTTL                 = 60 * time.Second
+	QuotaCacheTTL                 = 15 * time.Second
 )
 
 // QuotaItem đại diện cho một hạn mức quota hiển thị trên UI
@@ -593,22 +593,30 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 	wg.Wait()
 	result.DurationMs = time.Since(startTime).Milliseconds()
 	log.Printf("[ENGINE] [OMNIROUTER] 📊 Hoàn tất làm mới hạn mức: %d/%d tài khoản thành công (%dms)", result.Success, result.Total, result.DurationMs)
+
+	// Phát sự kiện SSE để UI cập nhật số liệu ngay lập tức (Zero Latency)
+	if result.Success > 0 {
+		BroadcastLog("QUOTA", fmt.Sprintf("✔ Đã đồng bộ thời gian thực %d/%d tài khoản AI (%dms)", result.Success, result.Total, result.DurationMs))
+	}
 	return result
 }
 
-// StartBackgroundQuotaPollingWorker chạy ngầm chu kỳ kiểm tra và nạp hạn mức định kỳ 3 phút
+var backgroundQuotaPollingMu sync.Mutex
+
+// StartBackgroundQuotaPollingWorker chạy ngầm chu kỳ kiểm tra và nạp hạn mức định kỳ 30 giây
 func StartBackgroundQuotaPollingWorker(ctx context.Context, db *sql.DB) {
 	go func() {
-		// Chạy lần đầu sau 10 giây khi khởi động server
+		// Chạy lần đầu ngay sau 1 giây khi khởi động server để UI có ngay dữ liệu thật
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(1 * time.Second):
 			log.Println("[ENGINE] [OMNIROUTER] 🚀 Khởi chạy đợt nạp Quota đầu tiên từ Google Cloud Code PA...")
 			_ = FetchAllAntigravityQuotas(db, false)
 		}
 
-		ticker := time.NewTicker(3 * time.Minute)
+		// Chu kỳ polling siêu nhanh 30 giây (đáp ứng yêu cầu làm mới hạn mức thời gian thực)
+		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -616,7 +624,10 @@ func StartBackgroundQuotaPollingWorker(ctx context.Context, db *sql.DB) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_ = FetchAllAntigravityQuotas(db, false)
+				if backgroundQuotaPollingMu.TryLock() {
+					_ = FetchAllAntigravityQuotas(db, false)
+					backgroundQuotaPollingMu.Unlock()
+				}
 			}
 		}
 	}()
