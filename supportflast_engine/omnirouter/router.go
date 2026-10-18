@@ -211,6 +211,10 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/client/config.json", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/setup.bat", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/setup.sh", clientConfigHandler)
+	setupPs1Handler := HandleClientSetupPs1(db)
+	safeRegister(mux, "/api/v1/client/setup.ps1", setupPs1Handler)
+	safeRegister(mux, "/client/setup.ps1", setupPs1Handler)
+	safeRegister(mux, "/setup.ps1", setupPs1Handler)
 	safeRegister(mux, "/api/v1/config", clientConfigHandler)
 	safeRegister(mux, "/api/v1/mitm-dns", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/sync", HandleClientSync(db))
@@ -386,6 +390,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
 				http.ServeFile(w, r, cand)
 				return
 			}

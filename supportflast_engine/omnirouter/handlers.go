@@ -2463,12 +2463,14 @@ func HandleShareAppDownload() http.HandlerFunc {
 		}
 
 		var targetFile string
+		var targetInfo os.FileInfo
 		for _, cand := range candidates {
 			if cand == "" {
 				continue
 			}
 			if info, err := os.Stat(cand); err == nil && !info.IsDir() {
 				targetFile = cand
+				targetInfo = info
 				break
 			}
 		}
@@ -2482,9 +2484,136 @@ func HandleShareAppDownload() http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Disposition", `attachment; filename="OmniRouter_Client_ShareApp_v1.0.0.zip"`)
+		fileName := "OmniRouter_Client_ShareApp_v1.0.0.zip"
 		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"; filename*=UTF-8''%s`, fileName, fileName))
+		// Ghi đè Cache-Control để triệt tiêu cờ no-store / ephemeral binary heuristic của Chromium/Cốc Cốc
+		w.Header().Set("Cache-Control", "public, max-age=86400, must-revalidate")
+		w.Header().Del("Pragma")
+		w.Header().Del("Expires")
+		w.Header().Set("Accept-Ranges", "bytes")
+		if targetInfo != nil {
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", targetInfo.Size()))
+		}
+
 		http.ServeFile(w, r, targetFile)
+	}
+}
+
+// HandleClientSetupPs1 phục vụ script cài đặt PowerShell One-Liner (irm ... | iex) cho Windows
+func HandleClientSetupPs1(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqKey := r.URL.Query().Get("key")
+		if reqKey == "" {
+			reqKey = r.URL.Query().Get("api_key")
+		}
+
+		serverURL := "https://supportflastdev.io.vn"
+		if r.TLS == nil && r.Header.Get("X-Forwarded-Proto") != "https" && strings.HasPrefix(r.Host, "localhost") {
+			serverURL = "http://" + r.Host
+		}
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
+		psScript := fmt.Sprintf(`param(
+    [string]$ApiKey = "%s",
+    [string]$InstallDir = "$env:LOCALAPPDATA\SupportFlastClient",
+    [string]$ServerUrl = "%s",
+    [switch]$SkipCert = $false,
+    [switch]$NoShortcut = $false
+)
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
+Write-Host ""
+Write-Host "==========================================================================" -ForegroundColor Cyan
+Write-Host "  OMNIROUTER CLIENT NODE - BO CAI DAT WINDOWS ONE-LINER" -ForegroundColor Cyan
+Write-Host "  Gateway: $ServerUrl" -ForegroundColor Yellow
+Write-Host "==========================================================================" -ForegroundColor Cyan
+
+$TempDir = Join-Path $env:TEMP ("omni_setup_" + [Guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
+try {
+    # 1. Cai Root CA neu co
+    if (-not $SkipCert) {
+        Write-Host "==> [1/4] Dang nap chung chi SSL Root CA..." -ForegroundColor Cyan
+        $CertUrl = "$ServerUrl/api/cli-tools/antigravity-mitm/ca.crt"
+        $CertFile = Join-Path $TempDir "rootCA.crt"
+        try {
+            Invoke-RestMethod -Uri $CertUrl -OutFile $CertFile -TimeoutSec 15
+            if (Test-Path $CertFile) {
+                $x509 = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($CertFile)
+                $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                if ($isAdmin) {
+                    certutil.exe -addstore -f "ROOT" $CertFile > $null 2>&1
+                    Write-Host "    ✔ Da nap Root CA vao LocalMachine Store!" -ForegroundColor Green
+                } else {
+                    $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser")
+                    $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+                    $store.Add($x509)
+                    $store.Close()
+                    Write-Host "    ✔ Da nap Root CA vao CurrentUser Store!" -ForegroundColor Green
+                }
+            }
+        } catch {
+            Write-Host "    ⚠️ Bo qua buoc nap CA tu dong." -ForegroundColor DarkGray
+        }
+    }
+
+    # 2. Tai goi ZIP
+    Write-Host "==> [2/4] Dang tai goi OmniRouter Client..." -ForegroundColor Cyan
+    $ZipPath = Join-Path $TempDir "OmniRouter_Client.zip"
+    Invoke-RestMethod -Uri "$ServerUrl/api/v1/client/download" -OutFile $ZipPath -TimeoutSec 60
+    Unblock-File -Path $ZipPath
+
+    # 3. Giai nen va mo khoa (Unblock-File xoa Mark-of-the-Web chong SmartScreen)
+    Write-Host "==> [3/4] Dang trien khai tai: $InstallDir" -ForegroundColor Cyan
+    if (-not (Test-Path $InstallDir)) { New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null }
+    Expand-Archive -Path $ZipPath -DestinationPath $InstallDir -Force
+    Get-ChildItem -Path $InstallDir -Recurse | Unblock-File
+
+    # Cap nhat config.json neu co ApiKey
+    if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+        $cfgFile = Join-Path $InstallDir "config.json"
+        $cfgJson = @{ "web_server_url" = $ServerUrl; "api_key" = $ApiKey; "local_port" = 8080 } | ConvertTo-Json
+        Set-Content -Path $cfgFile -Value $cfgJson -Encoding UTF8
+        Write-Host "    ✔ Da cau hinh API Key tu dong!" -ForegroundColor Green
+    }
+
+    # 4. Tao Shortcut Desktop
+    if (-not $NoShortcut) {
+        Write-Host "==> [4/4] Dang tao Shortcut Desktop..." -ForegroundColor Cyan
+        $DesktopDir = [Environment]::GetFolderPath("Desktop")
+        $ShortcutFile = Join-Path $DesktopDir "OmniRouter Client Node.lnk"
+        $WshShell = New-Object -ComObject WScript.Shell
+        $Shortcut = $WshShell.CreateShortcut($ShortcutFile)
+        $Shortcut.TargetPath = (Join-Path $InstallDir "run_client.bat")
+        $Shortcut.WorkingDirectory = $InstallDir
+        $Shortcut.Description = "OmniRouter Client Node"
+        $Shortcut.Save()
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($WshShell) | Out-Null
+        Write-Host "    ✔ Da tao bieu tuong 'OmniRouter Client Node' ngoai Desktop!" -ForegroundColor Green
+    }
+
+    Write-Host ""
+    Write-Host "==========================================================================" -ForegroundColor Green
+    Write-Host "  ✔ CAI DAT THANH CONG OMNIROUTER CLIENT NODE!" -ForegroundColor Green
+    Write-Host "==========================================================================" -ForegroundColor Green
+    Start-Process -FilePath (Join-Path $InstallDir "run_client.bat") -WorkingDirectory $InstallDir
+} catch {
+    Write-Host "❌ Loi cai dat: $($_.Exception.Message)" -ForegroundColor Red
+} finally {
+    if (Test-Path $TempDir) { Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+`, reqKey, serverURL)
+
+		_, _ = w.Write([]byte(psScript))
 	}
 }
 

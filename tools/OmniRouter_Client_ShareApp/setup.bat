@@ -30,16 +30,7 @@ if exist "%~dp0rootCA.crt" (
 
 echo.
 echo [2/3] Đang tạo Shortcut "OmniRouter Client Node" trên Màn hình Desktop...
-set SCRIPT="%TEMP%\create_omni_shortcut.vbs"
-echo Set oWS = WScript.CreateObject("WScript.Shell") >> %SCRIPT%
-echo sLinkFile = oWS.SpecialFolders("Desktop") ^& "\OmniRouter Client Node.lnk" >> %SCRIPT%
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %SCRIPT%
-echo oLink.TargetPath = "%~dp0run_client.bat" >> %SCRIPT%
-echo oLink.WorkingDirectory = "%~dp0" >> %SCRIPT%
-echo oLink.Description = "OmniRouter Client Node - App Chia Se Du Lieu & DNS" >> %SCRIPT%
-echo oLink.Save >> %SCRIPT%
-cscript /nologo %SCRIPT%
-del %SCRIPT%
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop 'OmniRouter Client Node.lnk')); $s.TargetPath = '%~dp0run_client.bat'; $s.WorkingDirectory = '%~dp0'; $s.Description = 'OmniRouter Client Node - App Chia Se Du Lieu & DNS'; $s.Save()"
 echo   ✔ Đã tạo Shortcut ngoài Desktop thành công!
 
 echo.
