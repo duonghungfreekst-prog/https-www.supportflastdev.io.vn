@@ -7931,16 +7931,60 @@
           badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
           badge.textContent = 'ĐÃ KẾT NỐI SQL (TIDB)';
         }
-        let provCount = 0;
+        let provList = [];
         try {
           const parsed = typeof data.providers === 'string' ? JSON.parse(data.providers || '[]') : data.providers;
-          provCount = (parsed && parsed.providers) ? parsed.providers.length : (Array.isArray(parsed) ? parsed.length : 0);
-        } catch (_) {}
+          if (parsed && Array.isArray(parsed.providers) && parsed.providers.length > 0) {
+            provList = parsed.providers;
+          } else if (parsed && Array.isArray(parsed.connections) && parsed.connections.length > 0) {
+            provList = parsed.connections;
+          } else if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
+            provList = parsed.data;
+          } else if (Array.isArray(parsed)) {
+            provList = parsed;
+          }
+        } catch (parseErr) {
+          console.warn('[WebSync] Lỗi phân tích dữ liệu providers:', parseErr);
+        }
+
+        const provCount = provList.length;
+
+        // Lưu danh sách tài khoản đã đồng bộ vào bộ nhớ và cập nhật toàn bộ giao diện Desktop
+        if (provCount > 0) {
+          window._allConnectionsList = provList;
+          try {
+            localStorage.setItem('omnirouter_cached_connections', JSON.stringify(provList));
+          } catch (_) {}
+
+          // Cập nhật lại toàn bộ lưới nhà cung cấp, selects và tabs
+          if (typeof renderProvidersCardsGrid === 'function') renderProvidersCardsGrid();
+          if (typeof populateNewConnProviderSelect === 'function') populateNewConnProviderSelect();
+          if (typeof syncTopologyTabsWithConnectedProviders === 'function') syncTopologyTabsWithConnectedProviders();
+          if (typeof renderProviderDetailModal === 'function' && window._currentProviderDetailId) {
+            renderProviderDetailModal(window._currentProviderDetailId);
+          }
+          if (typeof renderQuotasTab === 'function') renderQuotasTab();
+          if (typeof renderQuotaView === 'function') renderQuotaView();
+        }
+
+        // Đồng bộ các số liệu thống kê thời gian thực từ stats
+        if (data.stats) {
+          try {
+            const parsedStats = typeof data.stats === 'string' ? JSON.parse(data.stats) : data.stats;
+            const statsObj = parsedStats.data || parsedStats.stats || parsedStats;
+            if (statsObj) {
+              window._lastUsageStats = statsObj;
+              const totalReq = (statsObj.total_requests !== undefined) ? statsObj.total_requests : (statsObj.totalRequests || 0);
+              const reqEl = document.getElementById('kpi-total-requests');
+              if (reqEl && totalReq > 0) reqEl.textContent = totalReq.toLocaleString();
+            }
+          } catch (_) {}
+        }
 
         if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${data.latencyMs || 0}ms)`;
-        if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} nhà cung cấp</strong>)` : ''}`;
+        if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
         if (icon) icon.textContent = '🟢';
-        if (!silent) showToast(`Kết nối máy chủ Web thành công (${data.latencyMs || 0}ms)!`, 'success');
+        if (!silent) showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web TiDB Cloud!`, 'success');
         return true;
       } else {
         const isAuthErr = data && (data.statusCode === 401 || data.statusCode === 403);
@@ -7975,6 +8019,20 @@
 
     function initWebSQLSync() {
       try {
+        // 1. Phục hồi ngay danh sách tài khoản đã cache trước đó để giao diện hiện lập tức
+        const cachedConns = localStorage.getItem('omnirouter_cached_connections');
+        if (cachedConns) {
+          try {
+            const parsedConns = JSON.parse(cachedConns);
+            if (Array.isArray(parsedConns) && parsedConns.length > 0) {
+              window._allConnectionsList = parsedConns;
+              if (typeof renderProvidersCardsGrid === 'function') renderProvidersCardsGrid();
+              if (typeof populateNewConnProviderSelect === 'function') populateNewConnProviderSelect();
+              if (typeof syncTopologyTabsWithConnectedProviders === 'function') syncTopologyTabsWithConnectedProviders();
+            }
+          } catch (_) {}
+        }
+
         let savedUrl = localStorage.getItem('omnirouter_web_url') || 'https://www.supportflastdev.io.vn';
         if (savedUrl === 'https://supportflastdev.io.vn') {
           savedUrl = 'https://www.supportflastdev.io.vn';
@@ -7986,7 +8044,8 @@
         if (urlInput && savedUrl) urlInput.value = savedUrl;
         if (keyInput && savedKey) {
           keyInput.value = savedKey;
-          testWebConnection(true);
+          // Tự động kiểm tra và đồng bộ nền từ Web TiDB Cloud
+          setTimeout(() => testWebConnection(true), 600);
         }
       } catch (e) {
         console.warn('[WebSQL] Không thể nạp key từ localStorage:', e);
@@ -8029,7 +8088,7 @@
           } catch (e) {
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
-          // Timeout dự phòng 10 giây nếu C# không phản hồi
+          // Timeout dự phòng 12 giây nếu C# không phản hồi
           setTimeout(() => {
             if (_webConnectionCallback && _webConnectionCallback.resolve === resolve) {
               _webConnectionCallback = null;
@@ -8040,7 +8099,7 @@
               }, silent);
               resolve(false);
             }
-          }, 10000);
+          }, 12000);
         });
       }
 
@@ -8051,27 +8110,40 @@
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
+            'x-api-key': apiKey,
             'Accept': 'application/json'
           }
         });
         const latency = Date.now() - startTime;
-        let provCount = 0;
+        let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
+            headers: { 
+              'Authorization': `Bearer ${apiKey}`,
+              'x-api-key': apiKey,
+              'Accept': 'application/json' 
+            }
           });
           if (provRes.ok) {
             const pData = await provRes.json();
-            provCount = (pData && pData.providers) ? pData.providers.length : (Array.isArray(pData) ? pData.length : 0);
+            realProvidersData = (pData && pData.providers) ? pData.providers : (Array.isArray(pData) ? pData : (pData && pData.connections ? pData.connections : []));
+          } else {
+            const provRes2 = await fetch(`${serverUrl}/api/providers`, {
+              headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey }
+            });
+            if (provRes2.ok) {
+              const pData2 = await provRes2.json();
+              realProvidersData = (pData2 && pData2.providers) ? pData2.providers : (Array.isArray(pData2) ? pData2 : []);
+            }
           }
         } catch (_) {}
 
         return applyWebConnectionResult({
-          success: res.ok,
+          success: res.ok || realProvidersData.length > 0,
           statusCode: res.status,
           serverUrl: serverUrl,
           latencyMs: latency,
-          providers: JSON.stringify({ providers: Array(provCount).fill({}) })
+          providers: JSON.stringify({ providers: realProvidersData, total: realProvidersData.length })
         }, silent);
       } catch (err) {
         return applyWebConnectionResult({
@@ -8643,29 +8715,35 @@
 
       let hostsToTry = [...ROUTER_API_HOSTS];
 
-      if (onOmniGateway) {
-
-        hostsToTry = Array.from(new Set(['http://127.0.0.1:20128', 'http://localhost:20128', ...hostsToTry]));
-
-        if (typeof endpoint === 'string' && (endpoint.startsWith('http://omnigateway.local') || endpoint.startsWith('https://omnigateway.local'))) {
-
-          endpoint = endpoint.replace(/^https?:\/\/omnigateway\.local(:\d+)?/, 'http://127.0.0.1:20128');
-
+      // Bổ sung máy chủ Web TiDB Cloud vào danh sách fallback nếu có cấu hình
+      let savedWebUrl = '';
+      let savedWebKey = '';
+      try {
+        savedWebUrl = (localStorage.getItem('omnirouter_web_url') || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
+        savedWebKey = (localStorage.getItem('omnirouter_web_key') || '').trim();
+        if (savedWebUrl && savedWebUrl.startsWith('http')) {
+          if (!hostsToTry.includes(savedWebUrl)) {
+            hostsToTry.push(savedWebUrl);
+          }
         }
+      } catch (_) {}
 
+      if (onOmniGateway) {
+        hostsToTry = Array.from(new Set(['http://127.0.0.1:20128', 'http://localhost:20128', ...hostsToTry]));
+        if (typeof endpoint === 'string' && (endpoint.startsWith('http://omnigateway.local') || endpoint.startsWith('https://omnigateway.local'))) {
+          endpoint = endpoint.replace(/^https?:\/\/omnigateway\.local(:\d+)?/, 'http://127.0.0.1:20128');
+        }
       }
 
-
-
       for (const host of hostsToTry) {
-
         let reqTimer = null;
-
         try {
-
           let effEndpoint = endpoint;
-          if (typeof effEndpoint === 'string' && !host.includes('127.0.0.1') && !host.includes('localhost:20128') && !host.includes('localhost:20127')) {
-            if (effEndpoint === '/api/keys' || effEndpoint.startsWith('/api/keys/') || effEndpoint.startsWith('/api/keys?')) {
+          const isRemoteWebHost = (savedWebUrl && host === savedWebUrl) || host.includes('supportflastdev.io.vn');
+          if (isRemoteWebHost || (!host.includes('127.0.0.1') && !host.includes('localhost:20128') && !host.includes('localhost:20127'))) {
+            if (effEndpoint === '/api/providers' || effEndpoint.startsWith('/api/providers/')) {
+              effEndpoint = effEndpoint.replace('/api/providers', '/api/router/providers');
+            } else if (effEndpoint === '/api/keys' || effEndpoint.startsWith('/api/keys/') || effEndpoint.startsWith('/api/keys?')) {
               effEndpoint = effEndpoint.replace('/api/keys', '/api/router/keys');
             } else if (effEndpoint === '/api/settings' || effEndpoint.startsWith('/api/settings/') || effEndpoint.startsWith('/api/settings?')) {
               effEndpoint = effEndpoint.replace('/api/settings', '/api/router/settings');
@@ -8676,41 +8754,29 @@
           const targetUrl = (typeof effEndpoint === 'string' && effEndpoint.startsWith('http')) ? effEndpoint : `${host}${effEndpoint}`;
 
           const abortCtrl = new AbortController();
-
           const reqTimeout = typeof restOptions.timeout === 'number' ? restOptions.timeout : 15000;
-
           if (reqTimeout > 0) {
-
             reqTimer = setTimeout(() => abortCtrl.abort(new Error(`Quá thời gian chờ phản hồi (${reqTimeout}ms)`)), reqTimeout);
-
           }
-
           if (restOptions.signal) {
-
             restOptions.signal.addEventListener('abort', () => abortCtrl.abort(restOptions.signal.reason), { once: true });
-
           }
 
-
+          const reqHeaders = {
+            'Content-Type': 'application/json',
+            'x-9r-cli-token': GET_CLI_TOKEN(),
+            ...(optHeaders || {})
+          };
+          if (isRemoteWebHost && savedWebKey) {
+            reqHeaders['Authorization'] = `Bearer ${savedWebKey}`;
+            reqHeaders['x-api-key'] = savedWebKey;
+          }
 
           const res = await fetch(targetUrl, {
-
             credentials: 'include',
-
             ...restOptions,
-
             signal: abortCtrl.signal,
-
-            headers: {
-
-              'Content-Type': 'application/json',
-
-              'x-9r-cli-token': GET_CLI_TOKEN(),
-
-              ...(optHeaders || {})
-
-            }
-
+            headers: reqHeaders
           });
 
 
@@ -10656,80 +10722,68 @@
 
         
 
-        // Lưu cache toàn bộ connections
-
-        const fetched = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : []);
+        // Lưu cache toàn bộ connections sống thật
+        let fetched = [];
+        if (Array.isArray(data)) {
+          fetched = data;
+        } else if (data && Array.isArray(data.providers) && data.providers.length > 0) {
+          fetched = data.providers;
+        } else if (data && Array.isArray(data.connections) && data.connections.length > 0) {
+          fetched = data.connections;
+        } else if (data && Array.isArray(data.data) && data.data.length > 0) {
+          fetched = data.data;
+        }
 
         if (fetched && fetched.length > 0) {
-
           window._allConnectionsList = fetched;
-
           try {
-
             localStorage.setItem('omnirouter_cached_connections', JSON.stringify(fetched));
-
           } catch (storageErr) {}
-
         } else if (!window._allConnectionsList || window._allConnectionsList.length === 0) {
-
-          window._allConnectionsList = SEED_CONNECTIONS;
-
+          try {
+            const cached = localStorage.getItem('omnirouter_cached_connections');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                window._allConnectionsList = parsed;
+              }
+            }
+          } catch (_) {}
+          if (!window._allConnectionsList || window._allConnectionsList.length === 0) {
+            window._allConnectionsList = SEED_CONNECTIONS;
+          }
         }
 
-        
-
-        // Cập nhật số lượng badge tab Header
-
+        // Cập nhật số lượng badge tab Header và các lưới giao diện
         renderProvidersCardsGrid();
-
         populateNewConnProviderSelect();
-
         if (typeof syncTopologyTabsWithConnectedProviders === 'function') {
-
           syncTopologyTabsWithConnectedProviders();
-
         }
-
       } catch (e) {
-
         console.warn("Chưa tải được providers từ backend:", e);
 
-        // Khôi phục từ cache hoặc dữ liệu hạt giống CSDL
-
-        if (!window._allConnectionsList || window._allConnectionsList.length === 0) {
-
-          try {
-
-            const cached = localStorage.getItem('omnirouter_cached_connections');
-
-            if (cached) {
-
-              window._allConnectionsList = JSON.parse(cached);
-
+        // Khôi phục từ cache lưu trữ
+        try {
+          const cached = localStorage.getItem('omnirouter_cached_connections');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              window._allConnectionsList = parsed;
             }
-
-          } catch (storageErr) {}
-
-        }
+          }
+        } catch (storageErr) {}
 
         if (!window._allConnectionsList || window._allConnectionsList.length === 0) {
-
           window._allConnectionsList = SEED_CONNECTIONS;
-
         }
 
         renderProvidersCardsGrid();
-
         populateNewConnProviderSelect();
-
         if (typeof syncTopologyTabsWithConnectedProviders === 'function') {
-
           syncTopologyTabsWithConnectedProviders();
-
         }
-
       }
-
     }
 
 

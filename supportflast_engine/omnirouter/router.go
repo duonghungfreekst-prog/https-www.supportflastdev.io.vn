@@ -358,6 +358,11 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/router", routerHandler)
 	safeRegister(mux, "/router/", routerHandler)
 	safeRegister(mux, "/router/index.html", routerHandler)
+	safeRegister(mux, "/client", routerHandler)
+	safeRegister(mux, "/client/", routerHandler)
+	safeRegister(mux, "/app", routerHandler)
+	safeRegister(mux, "/share", routerHandler)
+	safeRegister(mux, "/share-app", routerHandler)
 
 	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ cổng định tuyến Master Gateway")
 }
