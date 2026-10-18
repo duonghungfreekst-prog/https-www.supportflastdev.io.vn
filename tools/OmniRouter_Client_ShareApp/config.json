@@ -1,5 +1,7 @@
 {
   "web_server_url": "https://supportflastdev.io.vn",
-  "api_key": "",
+  "render_url": "https://supportflastdev.io.vn",
+  "master_api_key": "sk-omnirouter-client",
+  "api_key": "sk-omnirouter-client",
   "local_port": 20128
 }

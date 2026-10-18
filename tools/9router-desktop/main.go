@@ -51,7 +51,7 @@ func (c *DesktopClient) loadConfig(path string) {
 	if err != nil {
 		c.config = Config{
 			RenderURL:    "https://supportflastdev.io.vn",
-			MasterAPIKey: "sk-9router-master-live",
+			MasterAPIKey: "sk-omnirouter-client",
 			LocalPort:    20128,
 		}
 		data, _ := json.MarshalIndent(c.config, "", "  ")
@@ -64,14 +64,18 @@ func (c *DesktopClient) loadConfig(path string) {
 	if c.config.LocalPort <= 0 {
 		c.config.LocalPort = 20128
 	}
+	if c.config.RenderURL == "" {
+		c.config.RenderURL = "https://supportflastdev.io.vn"
+	}
 }
 
 func main() {
 	configFlag := flag.String("config", "config.json", "Đường dẫn file config.json")
+	portFlag := flag.Int("port", 0, "Ghi đè cổng lắng nghe")
 	flag.Parse()
 
 	log.Println("=====================================================================")
-	log.Println("             9ROUTER DESKTOP CLIENT (SYSTEM TRAY & PROXY)            ")
+	log.Println("         OMNIROUTER CLIENT - NATIVE DESKTOP GUI & SMART DNS          ")
 	log.Println("=====================================================================")
 
 	execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -82,19 +86,21 @@ func main() {
 
 	client := &DesktopClient{}
 	client.loadConfig(cfgPath)
+	if *portFlag > 0 {
+		client.config.LocalPort = *portFlag
+	}
 
-	// 1. Luồng ngầm đồng bộ Token & Quota với Render + TiDB mỗi 3 phút
+	// 1. Luồng ngầm đồng bộ Token & Quota với Render Web Master mỗi 3 phút
 	go client.startSyncWorker()
 
 	// 2. Thiết lập HTTP ServeMux
 	mux := http.NewServeMux()
 
-	// Cổng Proxy cho AI Tools (Antigravity, Cursor, Claude Code)
-	mux.HandleFunc("/v1/chat/completions", client.handleProxy)
-	mux.HandleFunc("/chat/completions", client.handleProxy)
-	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+	// Cổng Proxy AI Cho Antigravity, Cursor, Claude Code (0ms Local Routing)
+	mux.HandleFunc("/v1/chat/completions", corsMiddleware(client.handleProxy))
+	mux.HandleFunc("/chat/completions", corsMiddleware(client.handleProxy))
+	mux.HandleFunc("/v1/models", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"object": "list",
 			"data": []map[string]string{
@@ -103,43 +109,75 @@ func main() {
 				{"id": "gemini-2.5-flash"},
 				{"id": "claude-3-5-sonnet"},
 				{"id": "claude-3-opus"},
+				{"id": "gpt-4o"},
 			},
 		})
+	}))
+
+	// API Quản lý Giao diện Desktop & 4 Tabs
+	mux.HandleFunc("/ping", corsMiddleware(client.handlePing))
+	mux.HandleFunc("/api/status", corsMiddleware(client.handleStatusAPI))
+	mux.HandleFunc("/api/config", corsMiddleware(client.handleConfigAPI))
+	mux.HandleFunc("/api/toggle", corsMiddleware(client.handleToggleProxy))
+	mux.HandleFunc("/api/sync-now", corsMiddleware(client.handleManualSyncEndpoint))
+
+	// Endpoint hỗ trợ Tab 1 (MITM) & Tab 2 (DNS)
+	mux.HandleFunc("/api/cli-tools/antigravity-mitm", corsMiddleware(client.handleMitmApi))
+	mux.HandleFunc("/api/flush-dns", corsMiddleware(client.handleFlushDNS))
+
+	// Endpoint hỗ trợ Tab 4 (Quota & Skills)
+	mux.HandleFunc("/api/v1/client/quota", corsMiddleware(client.handleQuotaAPI))
+	mux.HandleFunc("/api/client/sync", corsMiddleware(client.handleClientSyncAPI))
+	mux.HandleFunc("/api/v1/client/sync", corsMiddleware(client.handleClientSyncAPI))
+
+	// Phục vụ Favicon & Static assets
+	mux.HandleFunc("/app.ico", func(w http.ResponseWriter, r *http.Request) {
+		icoPath := filepath.Join(execDir, "app.ico")
+		if data, err := os.ReadFile(icoPath); err == nil {
+			w.Header().Set("Content-Type", "image/x-icon")
+			w.Write(data)
+			return
+		}
+		http.NotFound(w, r)
+	})
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		icoPath := filepath.Join(execDir, "app.ico")
+		if data, err := os.ReadFile(icoPath); err == nil {
+			w.Header().Set("Content-Type", "image/x-icon")
+			w.Write(data)
+			return
+		}
+		http.NotFound(w, r)
 	})
 
-	// API Quản lý Giao diện Desktop
-	mux.HandleFunc("/api/status", client.handleStatusAPI)
-	mux.HandleFunc("/api/config", client.handleConfigAPI)
-	mux.HandleFunc("/api/toggle", client.handleToggleProxy)
-	mux.HandleFunc("/api/sync-now", client.handleManualSyncEndpoint)
-
-	// Giao diện Desktop UI
+	// Giao diện Cyberpunk 4 Tabs chính thức
+	mux.HandleFunc("/client", client.handleDesktopUI)
 	mux.HandleFunc("/desktop", client.handleDesktopUI)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			http.Redirect(w, r, "/desktop", http.StatusTemporaryRedirect)
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			client.handleDesktopUI(w, r)
 			return
 		}
 		http.NotFound(w, r)
 	})
 
 	addr := fmt.Sprintf("127.0.0.1:%d", client.config.LocalPort)
-	log.Printf("[DESKTOP] 🚀 Proxy Core đang chạy tại: http://%s/v1", addr)
-	log.Printf("[DESKTOP] 💻 Bảng Điều Khiển: http://%s/desktop", addr)
+	log.Printf("[DESKTOP] 🚀 OmniRouter Client đang chạy tại: http://%s", addr)
+	log.Printf("[DESKTOP] 💻 Bảng Điều Khiển Native App: http://%s/", addr)
 
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
-		ReadHeaderTimeout: 10 * time.Second,
+		ReadHeaderTimeout: 15 * time.Second,
 	}
 
-	// Chạy HTTP Server trong goroutine
+	// Chạy HTTP Server trong goroutine ngầm
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("[FATAL] Không thể mở cổng %s: %v", addr, err)
 		}
 	}()
 
-	// 3. Khởi động System Tray và Cửa sổ Desktop (Chạy Message Loop của Windows)
+	// 3. Khởi động System Tray và Cửa sổ Desktop (Message Loop Windows native)
 	StartSystemTray(client)
 }

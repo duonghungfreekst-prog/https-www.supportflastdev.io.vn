@@ -2581,7 +2581,7 @@ try {
     # Cap nhat config.json neu co ApiKey
     if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
         $cfgFile = Join-Path $InstallDir "config.json"
-        $cfgJson = @{ "web_server_url" = $ServerUrl; "api_key" = $ApiKey; "local_port" = 8080 } | ConvertTo-Json
+        $cfgJson = @{ "render_url" = $ServerUrl; "web_server_url" = $ServerUrl; "master_api_key" = $ApiKey; "api_key" = $ApiKey; "local_port" = 20128 } | ConvertTo-Json
         Set-Content -Path $cfgFile -Value $cfgJson -Encoding UTF8
         Write-Host "    ✔ Da cau hinh API Key tu dong!" -ForegroundColor Green
     }
@@ -2593,9 +2593,13 @@ try {
         $ShortcutFile = Join-Path $DesktopDir "OmniRouter Client Node.lnk"
         $WshShell = New-Object -ComObject WScript.Shell
         $Shortcut = $WshShell.CreateShortcut($ShortcutFile)
-        $Shortcut.TargetPath = (Join-Path $InstallDir "run_client.bat")
+        $exeTarget = Join-Path $InstallDir "OmniRouter_Client.exe"
+        if (-not (Test-Path $exeTarget)) { $exeTarget = Join-Path $InstallDir "run_client.bat" }
+        $Shortcut.TargetPath = $exeTarget
+        $icoTarget = Join-Path $InstallDir "app.ico"
+        if (Test-Path $icoTarget) { $Shortcut.IconLocation = "$icoTarget,0" }
         $Shortcut.WorkingDirectory = $InstallDir
-        $Shortcut.Description = "OmniRouter Client Node"
+        $Shortcut.Description = "OmniRouter Client Node — Native GUI & Smart DNS"
         $Shortcut.Save()
         [System.Runtime.Interopservices.Marshal]::ReleaseComObject($WshShell) | Out-Null
         Write-Host "    ✔ Da tao bieu tuong 'OmniRouter Client Node' ngoai Desktop!" -ForegroundColor Green
@@ -2605,7 +2609,12 @@ try {
     Write-Host "==========================================================================" -ForegroundColor Green
     Write-Host "  ✔ CAI DAT THANH CONG OMNIROUTER CLIENT NODE!" -ForegroundColor Green
     Write-Host "==========================================================================" -ForegroundColor Green
-    Start-Process -FilePath (Join-Path $InstallDir "run_client.bat") -WorkingDirectory $InstallDir
+    $runExe = Join-Path $InstallDir "OmniRouter_Client.exe"
+    if (Test-Path $runExe) {
+        Start-Process -FilePath $runExe -WorkingDirectory $InstallDir
+    } else {
+        Start-Process -FilePath (Join-Path $InstallDir "run_client.bat") -WorkingDirectory $InstallDir
+    }
 } catch {
     Write-Host "❌ Loi cai dat: $($_.Exception.Message)" -ForegroundColor Red
 } finally {

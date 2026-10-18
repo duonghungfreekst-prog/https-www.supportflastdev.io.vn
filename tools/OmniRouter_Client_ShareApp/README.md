@@ -1,27 +1,26 @@
-# OmniRouter Client Node — Bản App Chia Sẻ Dữ Liệu & Điều Hướng DNS
+# OmniRouter Client Node — Bản App Desktop Chia Sẻ Dữ Liệu & Điều Hướng DNS
 
-Ứng dụng máy khách tinh gọn dành riêng cho các thành viên/máy phát triển cần sử dụng AI qua Antigravity IDE, GitHub Copilot, Cursor AI mà không cần can thiệp vào trang web quản trị của hệ thống.
-
----
-
-## 4 TÍNH NĂNG CỐT LÕI (DUY NHẤT 4 TABS)
-
-1. **Tab [1] Máy Chủ MITM**: Bật/tắt máy chủ proxy cục bộ cổng 443, tự động kiểm tra chứng chỉ SSL (Cert, Trusted, Server).
-2. **Tab [2] DNS Intercept**: Bật/tắt chuyển hướng DNS cho Antigravity IDE, GitHub Copilot, Cursor AI về máy chủ MITM 127.0.0.1:443.
-3. **Tab [3] Tab Tốc Độ**: Đo đạc độ trễ ping RTT, TTFT, tốc độ tạo token (tokens/s) và kiểm tra kết nối tới Web Master `https://supportflastdev.io.vn`.
-4. **Tab [4] Nhập API & Quota/Skills**: Dán Client API Key nhận được từ người quản trị, bấm **"Đồng Bộ Dữ Liệu Từ Web Master"** để tự động kéo Token Quota và danh mục AI Skills về máy.
+Ứng dụng máy khách Desktop GUI đồ họa tinh gọn, chuyên nghiệp dành cho người dùng AI qua Antigravity IDE, GitHub Copilot, Cursor AI, Claude Code...
 
 ---
 
-## CÁCH CÀI ĐẶT & SỬ DỤNG (1 CLICK)
+## 4 TÍNH NĂNG CỐT LÕI (4 TABS TRỰC QUAN)
 
-### Cách 1: Cài Đặt Tự Động (Khuyên Dùng)
+1. **Tab [1] Máy Chủ MITM**: Bật/tắt máy chủ proxy cục bộ cổng 20128/443, kiểm tra chứng chỉ SSL và bắt gói tin AI an toàn.
+2. **Tab [2] DNS Intercept**: Bật/tắt chuyển hướng Smart DNS cho Antigravity IDE, GitHub Copilot, Cursor AI về node 127.0.0.1. Có nút xóa sạch bộ đệm DNS hệ thống.
+3. **Tab [3] Tab Tốc Độ**: Đo đạc thời gian thực độ trễ ping RTT (ms), TTFT (Time To First Token), tốc độ tạo token (tokens/s) và chất lượng đường truyền.
+4. **Tab [4] Nhập API & Quota/Skills**: Nhập Web Master URL và Client API Key, bấm **"Kéo Dữ Liệu & Quota"** để đồng bộ tự động hạn mức token còn lại và danh mục AI Skills khả dụng.
+
+---
+
+## CÁCH SỬ DỤNG CỰC KỲ ĐƠN GIẢN
+
+### Cách 1: Chạy trực tiếp File Thực Thi (.exe) — KHUYÊN DÙNG
+- Nhấp đúp chuột vào file **`OmniRouter_Client.exe`** (hoặc `9router-client.exe`).
+- **Giao diện App Desktop Đồ Họa 4 Tab sẽ mở ra ngay lập tức!**
+- **100% Native Windows GUI — TUYỆT ĐỐI KHÔNG BẬT MÀN HÌNH ĐEN CMD!**
+- App sẽ xuất hiện ở Khay Hệ Thống (System Tray) góc phải dưới màn hình. Bạn có thể thu nhỏ hoặc mở lại bất kỳ lúc nào.
+
+### Cách 2: Cài Đặt Tự Động Tạo Shortcut Desktop
 - Nhấp đúp chuột vào file `setup.bat`.
-- File cài đặt sẽ tự động:
-  1. Cài đặt chứng chỉ Root CA vào Windows.
-  2. Tạo biểu tượng Shortcut **"OmniRouter Client Node"** ngoài Màn hình Desktop.
-  3. Mở ngay ứng dụng dưới dạng cửa sổ App độc lập.
-
-### Cách 2: Chạy Trực Tiếp (Portable)
-- Nhấp đúp vào `run_client.bat` để mở ngay giao diện App Chia Sẻ mà không cần cài đặt.
-- Hoặc mở trực tiếp file `index.html` trên bất kỳ trình duyệt nào.
+- Cài đặt chứng chỉ Root CA vào Windows và tạo icon **"OmniRouter Client Node"** ngoài Desktop.
