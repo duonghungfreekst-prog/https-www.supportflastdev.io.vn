@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -63,10 +64,59 @@ func main() {
 		htmlCandidate = filepath.Join(baseDir, "supportflast_ui", "router", "index.html")
 	}
 
-	mux.HandleFunc("/nexusroute_ai_next_gen_gateway.html", func(w http.ResponseWriter, r *http.Request) {
+	// Phục vụ file giao diện HTML trực tiếp cho Desktop App WebView2 và Browser
+	serveHTML := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		http.ServeFile(w, r, htmlCandidate)
+	}
+	mux.HandleFunc("/nexusroute_ai_next_gen_gateway.html", serveHTML)
+	mux.HandleFunc("/index.html", serveHTML)
+	mux.HandleFunc("/router", serveHTML)
+	mux.HandleFunc("/router/", serveHTML)
+
+	// Phục vụ logo và tài nguyên ảnh
+	appPngCandidate := filepath.Join(baseDir, "app.png")
+	if _, err := os.Stat(appPngCandidate); err != nil {
+		appPngCandidate = filepath.Join(baseDir, "public", "app.png")
+	}
+	if _, err := os.Stat(appPngCandidate); err != nil {
+		appPngCandidate = filepath.Join(baseDir, "icons", "app.png")
+	}
+	serveLogo := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+		http.ServeFile(w, r, appPngCandidate)
+	}
+	mux.HandleFunc("/app.png", serveLogo)
+	mux.HandleFunc("/router/app.png", serveLogo)
+	mux.HandleFunc("/icons/app.png", serveLogo)
+	mux.HandleFunc("/public/app.png", serveLogo)
+
+	// Phục vụ tĩnh các thư mục assets
+	for _, folder := range []string{"icons", "images", "public"} {
+		dirPath := filepath.Join(baseDir, folder)
+		if fi, err := os.Stat(dirPath); err == nil && fi.IsDir() {
+			fs := http.StripPrefix("/"+folder+"/", http.FileServer(http.Dir(dirPath)))
+			mux.Handle("/"+folder+"/", fs)
+			mux.Handle("/router/"+folder+"/", http.StripPrefix("/router/"+folder+"/", http.FileServer(http.Dir(dirPath))))
+		}
+	}
+
+	// Route gốc fallback về trang giao diện nếu không khớp route API
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			serveHTML(w, r)
+			return
+		}
+		// Thử tìm file tĩnh tương ứng trong baseDir
+		cleanRel := filepath.Clean(strings.TrimPrefix(r.URL.Path, "/"))
+		target := filepath.Join(baseDir, cleanRel)
+		if fi, err := os.Stat(target); err == nil && !fi.IsDir() {
+			http.ServeFile(w, r, target)
+			return
+		}
+		http.NotFound(w, r)
 	})
 
 	server := &http.Server{
