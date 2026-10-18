@@ -62,16 +62,33 @@ func main() {
 		htmlCandidate = filepath.Join(baseDir, "supportflast_ui", "router", "index.html")
 	}
 
+	// Hàm đăng ký route an toàn chống panic nếu trùng pattern (Rule 12)
+	safeRegister := func(pattern string, handler http.HandlerFunc) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [WARN] Bỏ qua đăng ký trùng route '%s': %v", pattern, r)
+			}
+		}()
+		mux.HandleFunc(pattern, handler)
+	}
+
+	safeRegisterHandler := func(pattern string, handler http.Handler) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [WARN] Bỏ qua đăng ký trùng handler '%s': %v", pattern, r)
+			}
+		}()
+		mux.Handle(pattern, handler)
+	}
+
 	// Phục vụ file giao diện HTML trực tiếp cho Desktop App WebView2 và Browser
 	serveHTML := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		http.ServeFile(w, r, htmlCandidate)
 	}
-	mux.HandleFunc("/nexusroute_ai_next_gen_gateway.html", serveHTML)
-	mux.HandleFunc("/index.html", serveHTML)
-	mux.HandleFunc("/router", serveHTML)
-	mux.HandleFunc("/router/", serveHTML)
+	safeRegister("/nexusroute_ai_next_gen_gateway.html", serveHTML)
+	safeRegister("/index.html", serveHTML)
 
 	// Phục vụ logo và tài nguyên ảnh
 	appPngCandidate := filepath.Join(baseDir, "app.png")
@@ -86,23 +103,21 @@ func main() {
 		w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
 		http.ServeFile(w, r, appPngCandidate)
 	}
-	mux.HandleFunc("/app.png", serveLogo)
-	mux.HandleFunc("/router/app.png", serveLogo)
-	mux.HandleFunc("/icons/app.png", serveLogo)
-	mux.HandleFunc("/public/app.png", serveLogo)
+	safeRegister("/app.png", serveLogo)
+	safeRegister("/icons/app.png", serveLogo)
+	safeRegister("/public/app.png", serveLogo)
 
 	// Phục vụ tĩnh các thư mục assets
 	for _, folder := range []string{"icons", "images", "public"} {
 		dirPath := filepath.Join(baseDir, folder)
 		if fi, err := os.Stat(dirPath); err == nil && fi.IsDir() {
 			fs := http.StripPrefix("/"+folder+"/", http.FileServer(http.Dir(dirPath)))
-			mux.Handle("/"+folder+"/", fs)
-			mux.Handle("/router/"+folder+"/", http.StripPrefix("/router/"+folder+"/", http.FileServer(http.Dir(dirPath))))
+			safeRegisterHandler("/"+folder+"/", fs)
 		}
 	}
 
 	// Route gốc fallback về trang giao diện nếu không khớp route API
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	safeRegister("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			serveHTML(w, r)
 			return
