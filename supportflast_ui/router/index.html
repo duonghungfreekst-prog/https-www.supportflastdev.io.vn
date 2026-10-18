@@ -284,11 +284,19 @@
     /* 1. Mặc định & trên Web: Ẩn khối đồng bộ Desktop, hiển thị đầy đủ quản lý API Key của Web */
     .desktop-only-block,
     html.web-mode .desktop-only-block,
-    body.web-mode .desktop-only-block {
+    body.web-mode .desktop-only-block,
+    .desktop-only-inline,
+    html.web-mode .desktop-only-inline,
+    body.web-mode .desktop-only-inline {
       display: none !important;
     }
     html.web-mode .web-only-block {
       display: block !important;
+    }
+    .web-only-inline,
+    html.web-mode .web-only-inline,
+    body.web-mode .web-only-inline {
+      display: inline-block !important;
     }
 
     /* 2. Trên App Desktop: Hiển thị khối đồng bộ, ẩn hoàn toàn danh sách khóa API nội bộ */
@@ -297,9 +305,17 @@
     .desktop-app .desktop-only-block {
       display: block !important;
     }
+    html.desktop-mode .desktop-only-inline,
+    body.desktop-mode .desktop-only-inline,
+    .desktop-app .desktop-only-inline {
+      display: inline-block !important;
+    }
     html.desktop-mode .web-only-block,
     body.desktop-mode .web-only-block,
     .desktop-app .web-only-block,
+    html.desktop-mode .web-only-inline,
+    body.desktop-mode .web-only-inline,
+    .desktop-app .web-only-inline,
     html.desktop-mode #internal-api-keys-section,
     body.desktop-mode #internal-api-keys-section {
       display: none !important;
@@ -789,17 +805,12 @@
     }
 
   
-    /* Web Mode Styling: Ẩn các tính năng máy tính cục bộ không dùng trên Web (MITM, Media Hub, CLI Tools, Protocol Translator) */
+    /* Web Mode Styling: Giữ nguyên 100% đầy đủ tính năng & tabs trên Web */
     html.web-mode .desktop-only-action { display: none !important; }
     html.web-mode .web-only-action { display: flex !important; }
-    html.web-mode #btn-tab-mitm,
-    html.web-mode #tab-mitm,
-    html.web-mode #btn-tab-media,
-    html.web-mode #tab-media,
-    html.web-mode #btn-tab-cli-tools,
-    html.web-mode #tab-cli-tools,
-    html.web-mode #btn-tab-translator,
-    html.web-mode #tab-translator {
+
+    /* Trên App Desktop: Ẩn các tabs phụ khi chạy trong ứng dụng Desktop theo yêu cầu */
+    html.desktop-mode .desktop-hide-tab {
       display: none !important;
     }
   </style>
@@ -979,39 +990,28 @@
             
 
             <!-- Mục 1: MITM Proxy & CLI -->
-
-            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
+            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
-
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-
                 </svg>
-
                 <span>MITM Proxy & CLI</span>
-
               </div>
-
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
             </button>
 
-
-
             <!-- Mục 2: Endpoint & Key -->
-
-            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
+            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
                 <span>Endpoint & API Key</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Đồng Bộ SQL</span>
-                <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+                <span class="text-[10px] font-mono text-slate-400 web-only-inline">3 Tunnels</span>
+                <span class="text-[10px] font-mono text-cyan-400 desktop-only-inline">Đồng Bộ SQL</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
               </div>
             </button>
 
@@ -1029,7 +1029,29 @@
               </div>
             </button>
 
-            <!-- Mục 4: Theo dõi hạn mức -->
+            <!-- Mục 4: Vision Optimizer (Nén Ảnh) -->
+            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Vision Optimizer</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục 5: Thống kê lưu lượng & Live Topology (MÀN HÌNH CHÍNH MẶC ĐỊNH TRÊN WEB) -->
+            <button onclick="switchTab('stats')" id="btn-tab-stats" class="nav-btn desktop-hide-tab active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Live Topology & Thống Kê</span>
+              </div>
+              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục 6: Theo dõi hạn mức -->
             <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1040,30 +1062,57 @@
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
             </button>
 
-            <!-- Các tab ẩn: Vision, Stats, Token Optimizer -->
-            <button onclick="switchTab('combo')" id="btn-tab-combo" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('stats')" id="btn-tab-stats" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" style="display:none !important;" class="nav-btn hidden"></button>
-
-
+            <!-- Mục 7: Token Optimizer (badge -38%) -->
+            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span>Token Optimizer</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
+            </button>
 
           </div>
 
         </div>
 
-
-
         <!-- Nhóm: INTERACTIVE & SYSTEM TOOLS -->
-
         <div class="space-y-1">
 
           <div class="px-3 pb-1 text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
-
             Tương Tác & Hệ Thống
-
           </div>
 
           <div class="space-y-1">
+
+            <!-- Mục: Proxy Pools IP -->
+            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <span>Proxy Pools IP</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="proxy-pool-count-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">0 Active</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
+            </button>
+
+            <!-- Mục: AI Skills Hub -->
+            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <span>AI Skills Hub</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
 
             <!-- Mục: Nhật ký Console (Stream logs) -->
             <button onclick="switchTab('console')" id="btn-tab-console" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
@@ -1076,14 +1125,53 @@
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
             </button>
 
-            <!-- Các tab ẩn trong nhóm tương tác -->
-            <button onclick="switchTab('proxies')" id="btn-tab-proxies" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('skills')" id="btn-tab-skills" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('media')" id="btn-tab-media" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('translator')" id="btn-tab-translator" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" style="display:none !important;" class="nav-btn hidden"></button>
-            <button onclick="switchTab('settings')" id="btn-tab-settings" style="display:none !important;" class="nav-btn hidden"></button>
+            <!-- Mục: Media & Voice Hub -->
+            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                <span>Media & Voice Hub</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: CLI Tools & MCP -->
+            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>CLI & MCP Tools</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: Protocol Translator -->
+            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                <span>Protocol Translator</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: PxPipe Prompt Compression -->
+            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <span>PxPipe Compression</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục: Cài đặt hệ thống -->
+            <button onclick="switchTab('settings')" id="btn-tab-settings" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Cài Đặt Hệ Thống</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
 
 
 
@@ -8205,10 +8293,6 @@
 
     function switchTab(tabId) {
 
-      const desktopOnlyTabs = ['mitm', 'media', 'cli-tools', 'translator'];
-      if (!IS_DESKTOP_ENV && desktopOnlyTabs.includes(tabId)) {
-        tabId = 'quota';
-      }
       if (!tabId || !document.getElementById('tab-' + tabId)) {
         tabId = getSavedActiveTab();
       }
@@ -32270,21 +32354,7 @@
           sidebarCard.className = 'glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]';
         }
 
-        // 4 & 5. BỎ CÁC TÍNH NĂNG MÁY TÍNH CỤC BỘ TRÊN WEB: MITM, Media Hub, CLI & MCP Tools, Protocol Translator
-        // Lưu ý: Các tính năng này vẫn giữ nguyên 100% đầy đủ trên App Desktop
-        const desktopOnlyElementIds = [
-          'btn-tab-mitm', 'tab-mitm',
-          'btn-tab-media', 'tab-media',
-          'btn-tab-cli-tools', 'tab-cli-tools',
-          'btn-tab-translator', 'tab-translator'
-        ];
-        desktopOnlyElementIds.forEach(id => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.style.display = 'none';
-            el.remove();
-          }
-        });
+
 
         // 6. Cập nhật các URL và Lệnh CLI mẫu sang Endpoint của Web
         const cloudBaseUrl = window.location.origin + '/v1';
