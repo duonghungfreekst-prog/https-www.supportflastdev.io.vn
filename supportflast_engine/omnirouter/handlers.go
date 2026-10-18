@@ -416,10 +416,6 @@ func HandleClientConfig(db *sql.DB) http.HandlerFunc {
 			// Thử tìm master key
 			masterKey := "sk-" + DefaultDomain + "-master-live"
 			keyItem, valid = ValidateClientKey(masterKey)
-			if !valid {
-				masterKey = "sk-9router-master-live"
-				keyItem, valid = ValidateClientKey(masterKey)
-			}
 		}
 
 		if !valid || keyItem == nil {

@@ -209,31 +209,22 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		_, _ = db.Exec(alterSQL)
 	}
 
-	// Tự động seed Master Key mặc định có chứa tên miền web (supportflastdev.io.vn)
-	now := NowISO()
-	masterDomainKey := "sk-" + DefaultDomain + "-master-live"
-	masterDomainHash := HashString(masterDomainKey)
+	// Dọn dẹp key cũ thừa thãi sk-9router-master-live theo yêu cầu
+	_, _ = db.Exec("DELETE FROM omni_client_keys WHERE id = 'key_master_legacy' OR api_key = 'sk-9router-master-live'")
 
-	var masterDomainExists int
-	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys WHERE api_key = ?", masterDomainKey).Scan(&masterDomainExists)
-	if masterDomainExists == 0 {
+	// Chỉ tạo Master Key mặc định nếu bảng omni_client_keys hoàn toàn RỖNG (khởi tạo lần đầu)
+	// Nếu người dùng đã chủ động xóa key, server TUYỆT ĐỐI không tự ý chèn lại
+	var totalKeysCount int
+	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys").Scan(&totalKeysCount)
+	if totalKeysCount == 0 {
+		now := NowISO()
+		masterDomainKey := "sk-" + DefaultDomain + "-master-live"
+		masterDomainHash := HashString(masterDomainKey)
 		_, _ = db.Exec(`
 			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
 			VALUES ('key_master_domain_cloud', 'Master Web Domain Key (`+DefaultDomain+`)', ?, ?, 0, 0, 1, ?, ?)
 		`, masterDomainKey, masterDomainHash, now, now)
-		log.Println("[ENGINE] [OMNIROUTER] ✔ Đã khởi tạo Master API Key chứa tên miền web:", masterDomainKey)
-	}
-
-	// Đảm bảo tương thích ngược với key cũ sk-9router-master-live
-	legacyKey := "sk-9router-master-live"
-	var legacyExists int
-	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys WHERE api_key = ?", legacyKey).Scan(&legacyExists)
-	if legacyExists == 0 {
-		legacyHash := HashString(legacyKey)
-		_, _ = db.Exec(`
-			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
-			VALUES ('key_master_legacy', 'Legacy Master Key', ?, ?, 0, 0, 1, ?, ?)
-		`, legacyKey, legacyHash, now, now)
+		log.Println("[ENGINE] [OMNIROUTER] ✔ Khởi tạo Master API Key ban đầu:", masterDomainKey)
 	}
 
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")
