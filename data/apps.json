@@ -1,6 +1,26 @@
 {
   "apps": [
     {
+      "id": "APP-ROUTER",
+      "name": "SupportFlast OmniRouter AI Gateway (TiDB Edition)",
+      "version": "v2.9.0",
+      "platform": "Windows 10 / 11 (x64) & Termux",
+      "category": "Cổng Định Tuyến AI & Bảo Mật Siêu Tốc",
+      "desc": "Cổng định tuyến AI Gateway thế hệ mới: Bỏ hoàn toàn LibSQL cục bộ, trỏ 100% dữ liệu tài khoản và khóa API lên TiDB Cloud Serverless phân tán. Tích hợp 149 AI Skills, Transparent MITM Cổng 443 cho Antigravity IDE, Cursor, Claude Code, Cline, STT Audio Transcription, Fusion Combos và Bộ tăng tốc Vision Optimizer.",
+      "file_name": "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip",
+      "size_bytes": 132888664,
+      "size_formatted": "126.7 MB",
+      "sha256": "a1d6122b15e129a39cd6351f93c5c1cc067746f5cd20b71ce48bdbf8f352f8d9",
+      "author": "SupportFlast Core Team & Antigravity",
+      "downloads": 542,
+      "status": "published",
+      "published_at": "2026-10-18 16:30:00",
+      "download_url": "/api/v1/client/download",
+      "video_url": "",
+      "guide": "Chạy run_OmniRouter.bat với quyền Administrator để tự động kích hoạt Cổng 20128 và MITM 443 kết nối trực tiếp TiDB Cloud.",
+      "user_id": "usr-admin-001"
+    },
+    {
       "id": "APP-4964",
       "name": "DMH Tools Enterprise Suite",
       "version": "v1.2.0",

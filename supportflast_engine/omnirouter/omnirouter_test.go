@@ -16,10 +16,11 @@ import (
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("sqlite", ":memory:")
+	db, err := sql.Open("sqlite", "file:memtest?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatalf("Không thể mở CSDL in-memory: %v", err)
 	}
+	db.SetMaxOpenConns(1)
 
 	if err := InitStorage(db, false); err != nil {
 		t.Fatalf("InitStorage thất bại: %v", err)
@@ -485,4 +486,46 @@ func TestClientKeyHourlyAndQuotaLimit(t *testing.T) {
 		t.Fatalf("Response không chứa đúng quotaLimit hoặc durationHours: %+v", res)
 	}
 }
+
+func TestUpgradedRouterEndpoints(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	mux := http.NewServeMux()
+	RegisterOmniRouterRoutes(mux, db, false, ".")
+
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		wantStatus int
+	}{
+		{"Ping", "GET", "/ping", http.StatusOK},
+		{"Health", "GET", "/api/health", http.StatusOK},
+		{"SettingsGet", "GET", "/api/settings", http.StatusOK},
+		{"SettingsDB", "GET", "/api/settings/database", http.StatusOK},
+		{"KeysList", "GET", "/api/keys", http.StatusOK},
+		{"ProvidersList", "GET", "/api/providers", http.StatusOK},
+		{"ProvidersTestBatch", "GET", "/api/providers/test-batch", http.StatusOK},
+		{"ProxyPools", "GET", "/api/proxy-pools", http.StatusOK},
+		{"Combos", "GET", "/api/combos", http.StatusOK},
+		{"OptimizerStats", "GET", "/api/optimizer/stats", http.StatusOK},
+		{"TunnelStatus", "GET", "/api/tunnel/status", http.StatusOK},
+		{"SkillsCore", "GET", "/api/skills/core", http.StatusOK},
+		{"SkillsActive", "GET", "/api/skills/active", http.StatusOK},
+		{"RouterDashboard", "GET", "/router", http.StatusOK},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+			if rec.Code != tc.wantStatus {
+				t.Errorf("[%s %s] status = %d, want %d (body: %s)", tc.method, tc.path, rec.Code, tc.wantStatus, rec.Body.String())
+			}
+		})
+	}
+}
+
 

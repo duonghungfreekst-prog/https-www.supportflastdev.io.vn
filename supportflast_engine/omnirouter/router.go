@@ -46,12 +46,29 @@ func initRouterCache(filePath string) {
 	}
 }
 
+// safeRegister đăng ký route an toàn, tránh panic nếu pattern đã tồn tại trên ServeMux của Host Server
+func safeRegister(mux *http.ServeMux, pattern string, handler http.HandlerFunc) {
+	defer func() {
+		_ = recover()
+	}()
+	mux.HandleFunc(pattern, handler)
+}
+
+// safeRegisterHandler đăng ký http.Handler an toàn, tránh panic nếu pattern đã tồn tại
+func safeRegisterHandler(mux *http.ServeMux, pattern string, handler http.Handler) {
+	defer func() {
+		_ = recover()
+	}()
+	mux.Handle(pattern, handler)
+}
+
 // RegisterOmniRouterRoutes đăng ký toàn bộ routes của 9Router vào ServeMux của hệ thống
 func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir string) {
 	// 1. Khởi tạo cấu trúc lưu trữ bảng
 	if err := InitStorage(db, isTiDB); err != nil {
 		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khởi tạo bảng OmniRouter: %v", err)
 	}
+	SetSkillsDB(db)
 
 	// 2. Tự động nạp hạt nhân 19 tài khoản AI vào TiDB Cloud/SQLite nếu bảng providers đang trống
 	go func() {
@@ -67,52 +84,97 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 3. Khởi chạy worker tự động làm mới token OAuth ngầm
 	StartAutoTokenRefreshWorker(context.Background(), db)
 
-	// 4. API Ping siêu nhẹ (0 RU TiDB, 0.1ms, giữ Render thức 24/24)
-	mux.HandleFunc("/ping", HandlePing)
+	// 4. API Ping siêu nhẹ & Health check
+	safeRegister(mux, "/ping", HandlePing)
+	safeRegister(mux, "/api/health", HandleHealth)
+	safeRegister(mux, "/api/router/health", HandleHealth)
 
-	// 5. API Quản lý API Key cho Web UI & CLI Tools (Dùng /api/router/keys)
+	// 4.1 Cài đặt hệ thống & CSDL TiDB Cloud
+	settingsHandler := HandleSettings(db)
+	safeRegister(mux, "/api/settings", settingsHandler)
+	safeRegister(mux, "/api/settings/", settingsHandler)
+	safeRegister(mux, "/api/router/settings", settingsHandler)
+	safeRegister(mux, "/api/router/settings/", settingsHandler)
+	safeRegister(mux, "/api/settings/database", HandleSettingsDatabase(db))
+	safeRegister(mux, "/api/router/settings/database", HandleSettingsDatabase(db))
+
+	// 5. API Quản lý API Key cho Web UI & CLI Tools (Hỗ trợ cả /api/keys và /api/router/keys)
 	keysHandler := HandleManageKeys(db)
-	mux.HandleFunc("/api/router/keys", keysHandler)
-	mux.HandleFunc("/api/router/keys/", keysHandler)
-	mux.HandleFunc("/api/router/keys/toggle", HandleToggleKey(db))
+	safeRegister(mux, "/api/keys", keysHandler)
+	safeRegister(mux, "/api/keys/", keysHandler)
+	safeRegister(mux, "/api/router/keys", keysHandler)
+	safeRegister(mux, "/api/router/keys/", keysHandler)
+	safeRegister(mux, "/api/router/keys/toggle", HandleToggleKey(db))
 
 	// 6. API Danh sách tài khoản AI & Tương tác (Hỗ trợ cả dạng /api/providers và /api/router/providers)
 	providersHandler := HandleListProviders(db)
-	mux.HandleFunc("/api/providers", providersHandler)
-	mux.HandleFunc("/api/providers/", providersHandler)
-	mux.HandleFunc("/api/router/providers", providersHandler)
-	mux.HandleFunc("/api/router/providers/", providersHandler)
-	mux.HandleFunc("/api/router/providers/toggle", HandleToggleProvider(db))
-	mux.HandleFunc("/api/providers/toggle", HandleToggleProvider(db))
+	safeRegister(mux, "/api/providers", providersHandler)
+	safeRegister(mux, "/api/providers/", providersHandler)
+	safeRegister(mux, "/api/router/providers", providersHandler)
+	safeRegister(mux, "/api/router/providers/", providersHandler)
+	safeRegister(mux, "/api/router/providers/toggle", HandleToggleProvider(db))
+	safeRegister(mux, "/api/providers/toggle", HandleToggleProvider(db))
+	safeRegister(mux, "/api/providers/test-batch", HandleBatchHealthCheck(db))
+	safeRegister(mux, "/api/providers/health-check-all", HandleBatchHealthCheck(db))
+	safeRegister(mux, "/api/quotas/refresh-all", HandleRefreshAllQuotas(db))
 
 	// 6.0 API Available Models của Provider (/api/models/provider)
 	providerModelsHandler := HandleProviderModels(db)
-	mux.HandleFunc("/api/models/provider", providerModelsHandler)
-	mux.HandleFunc("/api/models/provider/", providerModelsHandler)
-	mux.HandleFunc("/api/router/models/provider", providerModelsHandler)
-	mux.HandleFunc("/api/router/models/provider/", providerModelsHandler)
+	safeRegister(mux, "/api/models/provider", providerModelsHandler)
+	safeRegister(mux, "/api/models/provider/", providerModelsHandler)
+	safeRegister(mux, "/api/router/models/provider", providerModelsHandler)
+	safeRegister(mux, "/api/router/models/provider/", providerModelsHandler)
 
 	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
 	usageHandler := HandleAccountUsage(db)
 	usageStatsHandler := HandleUsageStats(db)
-	mux.HandleFunc("/api/usage/stats", usageStatsHandler)
-	mux.HandleFunc("/api/usage-stats", usageStatsHandler)
-	mux.HandleFunc("/api/usage/", usageHandler)
-	mux.HandleFunc("/api/usage", usageHandler)
+	safeRegister(mux, "/api/usage/stats", usageStatsHandler)
+	safeRegister(mux, "/api/usage-stats", usageStatsHandler)
+	safeRegister(mux, "/api/usage/request-logs", HandleRequestDetails(db))
+	safeRegister(mux, "/api/usage/request-details", HandleRequestDetails(db))
+	safeRegister(mux, "/api/usage/", usageHandler)
+	safeRegister(mux, "/api/usage", usageHandler)
 
 	// 6.2 API Proxy Pools (/api/proxy-pools)
 	proxyPoolsHandler := HandleProxyPools(db)
-	mux.HandleFunc("/api/proxy-pools", proxyPoolsHandler)
-	mux.HandleFunc("/api/proxy-pools/", proxyPoolsHandler)
-	mux.HandleFunc("/api/router/proxy/switch", HandleSwitchProxy(db))
-	mux.HandleFunc("/api/proxy-pools/switch", HandleSwitchProxy(db))
+	safeRegister(mux, "/api/proxy-pools", proxyPoolsHandler)
+	safeRegister(mux, "/api/proxy-pools/", proxyPoolsHandler)
+	safeRegister(mux, "/api/proxy-pools/bind", HandleBindProxyPool(db))
+	safeRegister(mux, "/api/router/proxy/switch", HandleSwitchProxy(db))
+	safeRegister(mux, "/api/proxy-pools/switch", HandleSwitchProxy(db))
+
+	// 6.2.1 API Combos & Optimizer
+	combosHandler := HandleCombos(db)
+	safeRegister(mux, "/api/combos", combosHandler)
+	safeRegister(mux, "/api/combos/", combosHandler)
+	safeRegister(mux, "/api/optimizer/stats", HandleOptimizerStats)
+	safeRegister(mux, "/api/cache/stats", HandleCacheStats)
+	safeRegister(mux, "/api/cache/clear", HandleCacheStats)
+	safeRegister(mux, "/api/cache/toggle", HandleCacheStats)
+	safeRegister(mux, "/api/backup/list", HandleBackup)
+	safeRegister(mux, "/api/backup/trigger", HandleBackup)
+
+	// 6.2.2 API Tunnel & PxPipe
+	safeRegister(mux, "/api/tunnel/status", HandleTunnel)
+	safeRegister(mux, "/api/tunnel/tailscale-check", HandleTunnel)
+	safeRegister(mux, "/api/tunnel/enable", HandleTunnel)
+	safeRegister(mux, "/api/tunnel/disable", HandleTunnel)
+	safeRegister(mux, "/api/pxpipe/status", HandleTunnel)
+
+	// 6.2.3 API 149 AI Skills Ecosystem
+	safeRegister(mux, "/api/skills/core", HandleCoreSkillsEndpoint)
+	safeRegister(mux, "/api/skills/load", HandleLoadSkillEndpoint)
+	safeRegister(mux, "/api/skills/active", HandleActiveSkillsEndpoint)
+	safeRegister(mux, "/api/skills/scan", HandleScanSkillsEndpoint)
+	safeRegister(mux, "/api/skills/toggle", HandleToggleSkillEndpoint)
 
 	// 6.3 API CLI Tools & Model Aliases (/api/cli-tools/antigravity-mitm/alias...)
 	mitmAliasesHandler := HandleMitmAliases(db)
 	mitmStatusHandler := HandleMitmStatus(db)
-	mux.HandleFunc("/api/cli-tools/antigravity-mitm/alias", mitmAliasesHandler)
-	mux.HandleFunc("/api/cli-tools/antigravity-mitm", mitmStatusHandler)
-	mux.HandleFunc("/api/cli-tools/all-statuses", mitmStatusHandler)
+	safeRegister(mux, "/api/cli-tools/antigravity-mitm/alias", mitmAliasesHandler)
+	safeRegister(mux, "/api/cli-tools/antigravity-mitm", mitmStatusHandler)
+	safeRegister(mux, "/api/cli-tools/all-statuses", mitmStatusHandler)
+	safeRegister(mux, "/api/cli-tools", mitmStatusHandler)
 
 	// 7. API Live Telemetry Logs qua SSE & JSON fallback
 	unifiedLogHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -122,69 +184,74 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 			HandleRealtimeLogsJSON(w, r)
 		}
 	}
-	mux.HandleFunc("/api/router/logs/stream", HandleLogStream)
-	mux.HandleFunc("/api/realtime/stream-logs", unifiedLogHandler)
-	mux.HandleFunc("/api/logs", unifiedLogHandler)
-	mux.HandleFunc("/api/translator/console-logs", unifiedLogHandler)
-	mux.HandleFunc("/api/translator/console-logs/stream", HandleLogStream)
+	safeRegister(mux, "/api/router/logs/stream", HandleLogStream)
+	safeRegister(mux, "/api/realtime/stream-logs", unifiedLogHandler)
+	safeRegister(mux, "/api/logs", unifiedLogHandler)
+	safeRegister(mux, "/api/translator/console-logs", unifiedLogHandler)
+	safeRegister(mux, "/api/translator/console-logs/stream", HandleLogStream)
 
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
-	mux.HandleFunc("/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
+	safeRegister(mux, "/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
+
+	// 8.1 API Tải về gói App Desktop OmniRouter (Đã bỏ LibSQL, trỏ TiDB Cloud)
+	appDownloadHandler := HandleClientAppDownload()
+	safeRegister(mux, "/api/v1/client/download", appDownloadHandler)
+	safeRegister(mux, "/api/apps/download/APP-ROUTER", appDownloadHandler)
 
 	// 9. API Đồng bộ, Cấu hình MITM & DNS và Báo cáo dành riêng cho App PC / Termux / CMD
 	clientConfigHandler := HandleClientConfig(db)
-	mux.HandleFunc("/api/v1/client/config", clientConfigHandler)
-	mux.HandleFunc("/api/v1/client/config.json", clientConfigHandler)
-	mux.HandleFunc("/api/v1/client/setup.bat", clientConfigHandler)
-	mux.HandleFunc("/api/v1/client/setup.sh", clientConfigHandler)
-	mux.HandleFunc("/api/v1/config", clientConfigHandler)
-	mux.HandleFunc("/api/v1/mitm-dns", clientConfigHandler)
-	mux.HandleFunc("/api/v1/client/sync", HandleClientSync(db))
-	mux.HandleFunc("/api/v1/client/report", HandleClientReport(db))
-	mux.HandleFunc("/api/v1/sync", HandleClientSync(db))
-	mux.HandleFunc("/api/v1/report", HandleClientReport(db))
+	safeRegister(mux, "/api/v1/client/config", clientConfigHandler)
+	safeRegister(mux, "/api/v1/client/config.json", clientConfigHandler)
+	safeRegister(mux, "/api/v1/client/setup.bat", clientConfigHandler)
+	safeRegister(mux, "/api/v1/client/setup.sh", clientConfigHandler)
+	safeRegister(mux, "/api/v1/config", clientConfigHandler)
+	safeRegister(mux, "/api/v1/mitm-dns", clientConfigHandler)
+	safeRegister(mux, "/api/v1/client/sync", HandleClientSync(db))
+	safeRegister(mux, "/api/v1/client/report", HandleClientReport(db))
+	safeRegister(mux, "/api/v1/sync", HandleClientSync(db))
+	safeRegister(mux, "/api/v1/report", HandleClientReport(db))
 
 	// 9.1 API Tra cứu Quota & Ping DNS trực tiếp qua CMD / Terminal / cURL
 	clientQuotaHandler := HandleClientQuotaCLI(db)
-	mux.HandleFunc("/api/v1/client/quota", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/quota.bat", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/run.bat", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/run", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/link.bat", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/link", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/unlink.bat", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/unlink", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/client/ping", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/quota", clientQuotaHandler)
-	mux.HandleFunc("/api/v1/ping", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/quota", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/quota.bat", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/run.bat", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/run", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/link.bat", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/link", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/unlink.bat", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/unlink", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/client/ping", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/quota", clientQuotaHandler)
+	safeRegister(mux, "/api/v1/ping", clientQuotaHandler)
 
 	// 9.2 API Heartbeat tín hiệu kết nối Live từ máy khách CMD / Antigravity IDE
 	clientHeartbeatHandler := HandleClientHeartbeat(db)
-	mux.HandleFunc("/api/v1/client/heartbeat", clientHeartbeatHandler)
-	mux.HandleFunc("/api/client/heartbeat", clientHeartbeatHandler)
+	safeRegister(mux, "/api/v1/client/heartbeat", clientHeartbeatHandler)
+	safeRegister(mux, "/api/client/heartbeat", clientHeartbeatHandler)
 
 	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)
-	mux.HandleFunc("/v1/chat/completions", chatHandler)
-	mux.HandleFunc("/api/v1/chat/completions", chatHandler)
+	safeRegister(mux, "/v1/chat/completions", chatHandler)
+	safeRegister(mux, "/api/v1/chat/completions", chatHandler)
 
-	mux.HandleFunc("/v1/models", HandleModels)
-	mux.HandleFunc("/api/v1/models", HandleModels)
+	safeRegister(mux, "/v1/models", HandleModels)
+	safeRegister(mux, "/api/v1/models", HandleModels)
 
 	// 10.1 API Billing Subscription & Usage chuẩn OpenAI cho Antigravity IDE / Extension
 	billingSubHandler := HandleBillingSubscription(db)
 	billingUsageHandler := HandleBillingUsage(db)
-	mux.HandleFunc("/v1/dashboard/billing/subscription", billingSubHandler)
-	mux.HandleFunc("/api/v1/dashboard/billing/subscription", billingSubHandler)
-	mux.HandleFunc("/v1/dashboard/billing/usage", billingUsageHandler)
-	mux.HandleFunc("/api/v1/dashboard/billing/usage", billingUsageHandler)
-	mux.HandleFunc("/v1/user/keys", HandleManageKeys(db))
-	mux.HandleFunc("/v1/me", billingSubHandler)
+	safeRegister(mux, "/v1/dashboard/billing/subscription", billingSubHandler)
+	safeRegister(mux, "/api/v1/dashboard/billing/subscription", billingSubHandler)
+	safeRegister(mux, "/v1/dashboard/billing/usage", billingUsageHandler)
+	safeRegister(mux, "/api/v1/dashboard/billing/usage", billingUsageHandler)
+	safeRegister(mux, "/v1/user/keys", HandleManageKeys(db))
+	safeRegister(mux, "/v1/me", billingSubHandler)
 
 	sttHandler := HandleAudioTranscriptions(db)
-	mux.HandleFunc("/v1/audio/transcriptions", sttHandler)
-	mux.HandleFunc("/api/v1/audio/transcriptions", sttHandler)
-	mux.HandleFunc("/v1/models/stt", HandleSTTModels)
+	safeRegister(mux, "/v1/audio/transcriptions", sttHandler)
+	safeRegister(mux, "/api/v1/audio/transcriptions", sttHandler)
+	safeRegister(mux, "/v1/models/stt", HandleSTTModels)
 
 	// 10.2 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua hosts file)
 	// IDE gửi request thẳng đến daily-cloudcode-pa.googleapis.com/v1internal:...
@@ -192,9 +259,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// Handler này thay OAuth token của user bằng token tài khoản AI pool,
 	// forward qua IP thật, pipe SSE response nguyên bản về IDE
 	geminiProxyHandler := HandleGeminiNativeProxy(db)
-	mux.HandleFunc("/v1internal:", geminiProxyHandler) // Catch: /v1internal:streamGenerateContent, /v1internal:generateContent, ...
-	mux.HandleFunc("/v1internal/", geminiProxyHandler) // Catch: /v1internal/models/xxx
-	mux.HandleFunc("/v1beta/", geminiProxyHandler)     // Catch: /v1beta/models/xxx:generateContent
+	safeRegister(mux, "/v1internal:", geminiProxyHandler) // Catch: /v1internal:streamGenerateContent, /v1internal:generateContent, ...
+	safeRegister(mux, "/v1internal/", geminiProxyHandler) // Catch: /v1internal/models/xxx
+	safeRegister(mux, "/v1beta/", geminiProxyHandler)     // Catch: /v1beta/models/xxx:generateContent
 	log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã đăng ký Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
 
 	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp (/providers/ và /router/providers/)
@@ -220,8 +287,8 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	}
 	if resolvedProvidersDir != "" {
 		fileServer := http.FileServer(http.Dir(resolvedProvidersDir))
-		mux.Handle("/providers/", http.StripPrefix("/providers/", fileServer))
-		mux.Handle("/router/providers/", http.StripPrefix("/router/providers/", fileServer))
+		safeRegisterHandler(mux, "/providers/", http.StripPrefix("/providers/", fileServer))
+		safeRegisterHandler(mux, "/router/providers/", http.StripPrefix("/router/providers/", fileServer))
 		log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã gắn cổng phục vụ tĩnh 160+ Logo nhà cung cấp từ: %s", resolvedProvidersDir)
 	}
 
@@ -281,9 +348,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 </html>`))
 	}
 
-	mux.HandleFunc("/router", routerHandler)
-	mux.HandleFunc("/router/", routerHandler)
-	mux.HandleFunc("/router/index.html", routerHandler)
+	safeRegister(mux, "/router", routerHandler)
+	safeRegister(mux, "/router/", routerHandler)
+	safeRegister(mux, "/router/index.html", routerHandler)
 
 	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 15 cổng định tuyến 9Router Master Gateway")
 }

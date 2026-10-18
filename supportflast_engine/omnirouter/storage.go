@@ -554,3 +554,56 @@ func SetOmniKV(db *sql.DB, scope, keyName, valData string) error {
 	return err
 }
 
+// GetSettingsRaw đọc JSON settings từ bảng omni_settings
+func GetSettingsRaw(db *sql.DB) (string, error) {
+	var data string
+	err := db.QueryRow("SELECT data FROM omni_settings WHERE id = 1").Scan(&data)
+	if err != nil {
+		return "", err
+	}
+	return data, nil
+}
+
+// SaveSettingsRaw lưu JSON settings vào bảng omni_settings
+func SaveSettingsRaw(db *sql.DB, data string) error {
+	_, err := db.Exec("REPLACE INTO omni_settings (id, data) VALUES (1, ?)", data)
+	return err
+}
+
+// GetRecentUsageHistory lấy các bản ghi lịch sử sử dụng gần nhất từ omni_usage_history
+func GetRecentUsageHistory(db *sql.DB, limit int) []map[string]interface{} {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := db.Query("SELECT id, timestamp, provider, model, endpoint, prompt_tokens, completion_tokens, total_tokens, cost, status, latency_ms FROM omni_usage_history ORDER BY id DESC LIMIT ?", limit)
+	if err != nil {
+		return []map[string]interface{}{}
+	}
+	defer rows.Close()
+
+	var list []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var ts, prov, model, ep, status string
+		var pt, ct, tt, lat int64
+		var cost float64
+		if err := rows.Scan(&id, &ts, &prov, &model, &ep, &pt, &ct, &tt, &cost, &status, &lat); err == nil {
+			list = append(list, map[string]interface{}{
+				"id":                id,
+				"timestamp":         ts,
+				"provider":          prov,
+				"model":             model,
+				"endpoint":          ep,
+				"prompt_tokens":     pt,
+				"completion_tokens": ct,
+				"total_tokens":      tt,
+				"cost":              cost,
+				"status":            status,
+				"latency_ms":        lat,
+			})
+		}
+	}
+	return list
+}
+
+
