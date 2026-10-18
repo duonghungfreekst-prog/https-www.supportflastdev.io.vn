@@ -295,6 +295,18 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 12. Giao diện Web Dashboard Quản lý 9Router với Pre-compressed Gzip & ETag HTTP 304
 	routerUIFile := filepath.Join(uiDir, "router", "index.html")
 	routerHandler := func(w http.ResponseWriter, r *http.Request) {
+		// 1. Phục vụ tài nguyên tĩnh trong thư mục router/ (app.png, icons/, images/, i18n/, ...)
+		relPath := strings.TrimPrefix(r.URL.Path, "/router")
+		relPath = strings.TrimPrefix(relPath, "/")
+		if relPath != "" && relPath != "index.html" {
+			targetFile := filepath.Join(uiDir, "router", filepath.Clean(relPath))
+			if fi, err := os.Stat(targetFile); err == nil && !fi.IsDir() {
+				w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+				http.ServeFile(w, r, targetFile)
+				return
+			}
+		}
+
 		// Nạp cache nén sẵn một lần duy nhất
 		routerGzipOnce.Do(func() {
 			initRouterCache(routerUIFile)
