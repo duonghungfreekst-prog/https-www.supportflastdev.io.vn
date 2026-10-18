@@ -2983,33 +2983,22 @@
                     <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
 
                     Hệ Thống Phân Tầng Dự Phòng (Cascade Fallback Tiers)
-
                   </h3>
-
-                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-inner">LIBSQL DB: COMBOS</span>
-
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-inner">TIDB CLOUD: COMBOS</span>
                 </div>
-
                 <p class="text-xs text-slate-400 mt-1">Khi nhà cung cấp chính gặp lỗi (429 Rate Limit, 503 Overloaded, hoặc Timeout), Gateway tự động chuyển tiếp tầng dự phòng tiếp theo tức thì.</p>
-
               </div>
-
               <div class="flex items-center gap-2 flex-wrap">
-
                 <button onclick="addCascadeTier()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer">
-
                   <span>➕ Thêm Tầng</span>
-
                 </button>
-
+                <button onclick="resetCascadeTiersToDefault()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer" title="Đặt lại cấu hình phân tầng dự phòng về mặc định">
+                  <span>🔄 Đặt Lại Tầng Mặc Định</span>
+                </button>
                 <button id="btn-save-combo-config" onclick="saveComboConfig()" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5 cursor-pointer">
-
-                  <span>💾 Lưu Cấu Hình Combo Vào LibSQL</span>
-
+                  <span>💾 Lưu Cấu Hình Combo Vào TiDB Cloud</span>
                 </button>
-
               </div>
-
             </div>
 
 
@@ -3042,10 +3031,8 @@
 
               <div class="md:col-span-3 flex items-center justify-end gap-2">
 
-                <button id="btn-delete-combo-config" onclick="deleteCurrentCascadeCombo()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer" title="Xóa combo này khỏi LibSQL">
-
+                <button id="btn-delete-combo-config" onclick="deleteCurrentCascadeCombo()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer" title="Xóa combo này khỏi TiDB Cloud">
                   <span>🗑️ Xóa Combo</span>
-
                 </button>
 
                 <button onclick="createNewCascadeCombo()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer">
@@ -3060,16 +3047,11 @@
 
 
 
-            <!-- Danh sách các Tầng Dự Phòng Động (Render từ LibSQL /api/combos) -->
-
+            <!-- Danh sách các Tầng Dự Phòng Động (Render từ TiDB Cloud /api/combos) -->
             <div id="cascade-tiers-container" class="space-y-3 font-mono">
-
               <div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-
-                <span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách tầng dự phòng từ LibSQL DB...
-
+                <span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách tầng dự phòng từ TiDB Cloud Serverless...
               </div>
-
             </div>
 
 
@@ -5278,8 +5260,7 @@
 
                 </div>
 
-                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong LibSQL. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi OmniRouter chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
-
+                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong TiDB Cloud. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi OmniRouter chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
               </div>
 
               <div class="flex items-center gap-2 flex-wrap">
@@ -5370,7 +5351,7 @@
 
                         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
 
-                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu LibSQL...</span>
+                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu TiDB Cloud...</span>
 
                       </div>
 
@@ -5685,87 +5666,46 @@
                   <div>
 
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
-
-                      Cơ Sở Dữ Liệu LibSQL & Quản Trị Hệ Thống
-
+                      Cơ Sở Dữ Liệu TiDB Cloud & Quản Trị Hệ Thống
                       <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">ONLINE</span>
-
                     </h3>
-
-                    <p class="text-xs text-slate-400 mt-0.5">Quản lý trực tiếp LibSQL database (data.sqlite) chứa toàn bộ cấu hình, kết nối, và lịch sử định tuyến OmniRouter</p>
-
+                    <p class="text-xs text-slate-400 mt-0.5">Quản lý trực tiếp Cơ sở dữ liệu TiDB Cloud Serverless (MySQL Protocol) chứa toàn bộ cấu hình, kết nối, và lịch sử định tuyến OmniRouter</p>
                   </div>
-
                 </div>
-
                 <div class="flex items-center gap-2">
-
                   <button onclick="vacuumDatabaseLive()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition-all flex items-center gap-1.5 cursor-pointer">
-
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-
-                    <span>Tối Ưu & Dọn Dẹp (VACUUM)</span>
-
+                    <span>Tối Ưu & Dọn Dẹp (OPTIMIZE)</span>
                   </button>
-
                   <button onclick="backupDatabaseLive()" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer">
-
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
-
                     <span>Sao Lưu Database</span>
-
                   </button>
-
                 </div>
-
               </div>
-
-
 
               <!-- Đường dẫn CSDL thực tế & Nút đồng bộ -->
-
               <div class="p-3.5 rounded-xl bg-black/60 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
-
                 <div class="min-w-0 flex items-center gap-2 flex-1">
-
-                  <span class="text-[11px] font-bold text-slate-400 uppercase flex-shrink-0">📁 Đường dẫn LibSQL:</span>
-
-                  <input type="text" id="db-file-path-input" value="d:\9router-stt-upgraded\data\db\data.libsql" readonly class="w-full font-mono text-xs text-cyan-300 bg-transparent border-0 focus:outline-none select-all truncate">
-
+                  <span class="text-[11px] font-bold text-slate-400 uppercase flex-shrink-0">📁 Máy Chủ TiDB Cloud:</span>
+                  <input type="text" id="db-file-path-input" value="gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000 (Database: supportflast - TiDB Cloud Serverless)" readonly class="w-full font-mono text-xs text-cyan-300 bg-transparent border-0 focus:outline-none select-all truncate">
                 </div>
-
                 <div class="flex items-center gap-2 flex-shrink-0">
-
                   <button onclick="copyDbPath()" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 flex items-center gap-1 cursor-pointer">
-
                     📋 Sao chép
-
                   </button>
-
                   <button onclick="syncDatabaseLiveNow()" class="px-3 py-1 rounded-lg text-xs font-bold font-mono bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 cursor-pointer">
-
                     🔄 Đồng bộ ngay
-
                   </button>
-
                 </div>
-
               </div>
 
-
-
               <!-- Thống kê DB 4 ô -->
-
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
-
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
-
-                  <span class="text-[10px] text-slate-400 uppercase block">Kích Thước LibSQL</span>
-
+                  <span class="text-[10px] text-slate-400 uppercase block">Dung Lượng TiDB Cloud</span>
                   <span id="db-file-size" class="text-base font-bold text-cyan-300 mt-1 block">70.75 MB</span>
-
-                  <span class="text-[10px] text-emerald-400">WAL Mode Active</span>
-
+                  <span class="text-[10px] text-emerald-400">TiDB Cloud Connected</span>
                 </div>
 
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
@@ -7544,7 +7484,7 @@
 
           </div>
 
-          <div>Lệnh áp dụng sẽ cập nhật ngay lập tức xuống Go Engine &amp; CSDL LibSQL. Tất cả các request AI tiếp theo sẽ lập tức đi qua Proxy đã chọn.</div>
+          <div>Lệnh áp dụng sẽ cập nhật ngay lập tức xuống Go Engine &amp; CSDL TiDB Cloud. Tất cả các request AI tiếp theo sẽ lập tức đi qua Proxy đã chọn.</div>
 
         </div>
 
@@ -8357,7 +8297,7 @@
 
         'console': 'Nhật Ký Điều Khiển Console Logs',
 
-        'settings': 'Cài Đặt Hệ Thống & LibSQL Database',
+        'settings': 'Cài Đặt Hệ Thống & TiDB Cloud Database',
 
         'cli-tools': 'Công Cụ Lập Trình CLI & MCP Server',
 
@@ -15839,130 +15779,84 @@
 
 
     // Phân loại model theo nhóm Provider để đưa vào <optgroup>
-
     function categorizeModel(modelId) {
-
       const m = (modelId || '').toLowerCase();
-
-      if (m.includes('antigravity') || m.includes('pro-agent') || m.includes('flash-high') || m.includes('flash-tiered') || m.includes('opus-4-6') || m.includes('sonnet-4-6') || m.includes('gemini-3.8') || m.includes('flash-lite') || m.includes('flash-image') || m.includes('flash-medium')) return 'Antigravity Gateway';
-
+      if (m.includes('gemini-2.5') || m.includes('gemini-2.0') || m.includes('gemini-1.5') || m.includes('aistudio') || m.includes('google-ai-studio')) return 'Google AI Studio';
+      if (m.includes('antigravity') || m.includes('pro-agent') || m.includes('flash-high') || m.includes('flash-tiered') || m.includes('opus-4-6') || m.includes('sonnet-4-6') || m.includes('gemini-3.8') || m.includes('flash-lite') || m.includes('flash-image') || m.includes('flash-medium') || m.includes('gemini-3.1-pro')) return 'Antigravity Gateway';
       if (m.includes('gemini') || m.includes('google')) return 'Google Gemini';
-
       if (m.includes('claude') || m.includes('anthropic')) return 'Anthropic Claude';
-
       if (m.includes('gpt') || m.includes('o1') || m.includes('o3') || m.includes('openai') || m.includes('codex')) return 'OpenAI Direct';
-
       if (m.includes('deepseek')) return 'DeepSeek Official';
-
       if (m.includes('llama') || m.includes('groq') || m.includes('mixtral')) return 'Groq / LPU Fast';
-
       if (m.includes('qwen') || m.includes('alibaba')) return 'Alibaba Qwen';
-
       return 'Mô hình khác / Custom';
-
     }
 
-
-
-    // Nạp toàn bộ model thật và danh sách Combos từ LibSQL DB
-
+    // Nạp toàn bộ model thật và danh sách Combos từ TiDB Cloud
     async function loadCascadeFallbackConfigLive() {
-
       const container = document.getElementById('cascade-tiers-container');
-
       if (container) {
-
-        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ LibSQL DB...</div>';
-
+        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ TiDB Cloud...</div>';
       }
-
-
 
       // 1. Tải danh sách Model THỰC TẾ từ Backend (/api/v1/models hoặc /api/models)
-
       try {
-
         const resModels = await apiRequest('/api/v1/models');
-
         if (resModels && resModels.ok) {
-
           const mData = await resModels.json();
-
           const list = Array.isArray(mData.data) ? mData.data : (Array.isArray(mData.models) ? mData.models : []);
-
           if (list.length > 0) {
-
             _realSystemModelsList = list.map(m => {
-
               if (typeof m === 'string') return { id: m, name: m, provider: categorizeModel(m) };
-
               return {
-
                 id: m.id || m.name,
-
                 name: m.id || m.name,
-
                 provider: m.owned_by || m.provider || categorizeModel(m.id || m.name)
-
               };
-
             });
-
           }
-
         }
-
       } catch (e) {
-
         console.warn("Lỗi tải models thật:", e);
-
       }
 
-
-
-      // Nếu API models chưa trả về đầy đủ, bổ sung các model tiêu chuẩn THẬT của Antigravity Gateway
-
+      // Bổ sung đầy đủ các model Google AI Studio, Antigravity Gateway, Claude và OpenAI
       const fallbackDefaults = [
-
-        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Antigravity Gateway' },
-
+        // Google AI Studio Developer Models
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Google AI Studio)', provider: 'Google AI Studio' },
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Google AI Studio)', provider: 'Google AI Studio' },
+        { id: 'gemini-2.5-flash-thinking', name: 'Gemini 2.5 Flash Thinking (Google AI Studio)', provider: 'Google AI Studio' },
+        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Google AI Studio)', provider: 'Google AI Studio' },
+        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Google AI Studio)', provider: 'Google AI Studio' },
+        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Google AI Studio)', provider: 'Google AI Studio' },
+        // Antigravity Gateway
+        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro High', provider: 'Antigravity Gateway' },
         { id: 'gemini-pro-agent', name: 'Gemini Pro Agent', provider: 'Antigravity Gateway' },
-
+        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Antigravity Gateway' },
         { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Antigravity Gateway' },
-
         { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash High', provider: 'Antigravity Gateway' },
-
-        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity Gateway' },
-
-        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity Gateway' },
-
-        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'Antigravity Gateway' },
-
         { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Med)', provider: 'Antigravity Gateway' },
-
         { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)', provider: 'Antigravity Gateway' },
-
-        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro High', provider: 'Antigravity Gateway' }
-
+        // Anthropic Claude
+        { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', provider: 'Anthropic Claude' },
+        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Anthropic Claude' },
+        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Anthropic Claude' },
+        // OpenAI Direct
+        { id: 'gpt-4o', name: 'GPT-4o Omnimodal', provider: 'OpenAI Direct' },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini Fast', provider: 'OpenAI Direct' },
+        { id: 'o3-mini', name: 'o3 Mini Coding Intelligence', provider: 'OpenAI Direct' },
+        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'OpenAI Direct' }
       ];
 
       const existingIds = new Set(_realSystemModelsList.map(m => m.id));
-
       fallbackDefaults.forEach(def => {
-
         if (!existingIds.has(def.id)) {
-
           _realSystemModelsList.push(def);
-
           existingIds.add(def.id);
-
         }
-
       });
 
-
-
-      // 2. Nạp danh sách Combos từ LibSQL DB (/api/combos)
+      // 2. Nạp danh sách Combos từ TiDB Cloud (/api/combos)
 
       try {
 
@@ -16220,39 +16114,23 @@
 
 
 
-    // Xóa Combo đang chọn khỏi LibSQL
-
+    // Xóa Combo đang chọn khỏi TiDB Cloud
     async function deleteCurrentCascadeCombo() {
-
       if (!currentComboId) {
-
-        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu LibSQL.', true);
-
+        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu TiDB Cloud.', true);
         return;
-
       }
-
       const nameInput = document.getElementById('combo-name-input');
-
       const comboName = nameInput ? nameInput.value : currentComboId;
 
-
-
-      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi LibSQL DB không?`)) {
-
+      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi TiDB Cloud Serverless không?`)) {
         return;
-
       }
 
-
-
       try {
-
         const res = await apiRequest(`/api/combos/${currentComboId}`, { method: 'DELETE' });
-
         if (res && res.ok) {
-
-          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi LibSQL thành công!`);
+          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi TiDB Cloud thành công!`);
 
           currentComboId = null;
 
@@ -16294,7 +16172,7 @@
 
             <div class="text-3xl">🧩</div>
 
-            <div class="text-slate-300 text-sm font-bold">Chưa có cấu hình Combo nào trong Cơ sở Dữ liệu LibSQL</div>
+            <div class="text-slate-300 text-sm font-bold">Chưa có cấu hình Combo nào trong Cơ sở Dữ liệu TiDB Cloud</div>
 
             <p class="text-slate-500 text-xs max-w-md mx-auto">Hệ thống đang hoạt động ở chế độ định tuyến trực tiếp theo Model thật của 21 tài khoản Antigravity. Bấm nút bên dưới để tạo chuỗi dự phòng (Fallback Cascade).</p>
 
@@ -16445,19 +16323,14 @@
           
 
           <!-- Các nút điều hướng và xóa -->
-
           <div class="flex items-center justify-end gap-1.5 flex-shrink-0">
-
             ${idx > 0 ? `<button onclick="moveCascadeTier(${idx}, -1)" title="Tăng mức ưu tiên" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 text-xs cursor-pointer">▲</button>` : ''}
-
             ${idx < currentCascadeTiers.length - 1 ? `<button onclick="moveCascadeTier(${idx}, 1)" title="Giảm mức ưu tiên" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 text-xs cursor-pointer">▼</button>` : ''}
-
-            <button onclick="removeCascadeTier(${idx})" title="Xoá tầng này" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 cursor-pointer">✕</button>
-
+            ${currentCascadeTiers.length > 1 
+              ? `<button onclick="removeCascadeTier(${idx})" title="Xoá tầng này" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs border border-rose-500/30 cursor-pointer">✕</button>` 
+              : `<button disabled title="Tầng chính duy nhất (chọn model khác trong dropdown hoặc bấm 'Đặt Lại Tầng Mặc Định')" class="p-1.5 rounded-lg bg-white/5 text-slate-500 text-xs border border-white/5 opacity-40 cursor-not-allowed">✕</button>`}
           </div>
-
         `;
-
         container.appendChild(row);
 
       });
@@ -16466,54 +16339,41 @@
 
 
 
-    // Thêm tầng dự phòng mới với Model Antigravity thực tế
-
-    function addCascadeTier() {
-
-      const nextIdx = currentCascadeTiers.length;
-
-      // Chọn 1 model chưa có trong các tier
-
-      const chosen = _realSystemModelsList.find(m => !currentCascadeTiers.some(t => t.model === m.id)) || _realSystemModelsList[0];
-
-      const modelId = chosen ? chosen.id : 'gemini-3.8-flash-high';
-
-
-
-      currentCascadeTiers.push({
-
-        model: modelId,
-
-        note: `Dự phòng ${nextIdx}`,
-
-        condition: 'Fallback khi 429 & 503'
-
-      });
-
+    // Đặt lại các tầng dự phòng về bộ 3 tầng tiêu chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 2.5 Flash -> Tier 3: Flash High)
+    function resetCascadeTiersToDefault() {
+      currentCascadeTiers = [
+        { model: 'gemini-3.1-pro-high', note: 'Model chính (Ưu tiên 1)', condition: 'Mặc định (Yêu cầu đầu tiên)' },
+        { model: 'gemini-2.5-flash', note: 'Dự phòng 1 (Google AI Studio)', condition: 'Fallback khi 429 & 503' },
+        { model: 'gemini-3.8-flash-high', note: 'Dự phòng 2 (Cứu hộ khẩn cấp)', condition: 'Cứu hộ khẩn cấp khi Timeout' }
+      ];
       renderCascadeTiersUI();
-
-      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Vào LibSQL" để áp dụng!`);
-
+      showToastNotification('🔄 Đã đặt lại cấu hình phân tầng về 3 tầng chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 2.5 Flash -> Tier 3: Flash High). Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!');
     }
 
+    // Thêm tầng dự phòng mới với Model thực tế
+    function addCascadeTier() {
+      const nextIdx = currentCascadeTiers.length;
+      const chosen = _realSystemModelsList.find(m => !currentCascadeTiers.some(t => t.model === m.id)) || _realSystemModelsList[0];
+      const modelId = chosen ? chosen.id : 'gemini-2.5-flash';
 
+      currentCascadeTiers.push({
+        model: modelId,
+        note: `Dự phòng ${nextIdx}`,
+        condition: 'Fallback khi 429 & 503'
+      });
+      renderCascadeTiersUI();
+      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!`);
+    }
 
     // Xóa một tầng
-
     function removeCascadeTier(idx) {
-
       if (currentCascadeTiers.length <= 1) {
-
-        showToastNotification('Phải có ít nhất 1 Tầng ưu tiên chính!', true);
-
+        showToastNotification('ℹ️ Đây là Tầng chính duy nhất. Bạn có thể chọn Model khác trong dropdown hoặc bấm "Đặt Lại Tầng Mặc Định".');
         return;
-
       }
-
       currentCascadeTiers.splice(idx, 1);
-
       renderCascadeTiersUI();
-
+      showToastNotification(`🗑️ Đã xóa TIER ${idx + 1}.`);
     }
 
 
@@ -16575,107 +16435,56 @@
 
 
       if (btn) {
-
         btn.disabled = true;
-
-        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu vào LibSQL...</span>';
-
+        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu vào TiDB Cloud...</span>';
       }
 
-
-
       const payload = {
-
         name: validComboName,
-
         kind: 'fallback',
-
         models: modelsList
-
       };
 
-
-
       try {
-
         let res = null;
-
         if (currentComboId) {
-
           // Cập nhật combo hiện có bằng PUT /api/combos/:id
-
           res = await apiRequest(`/api/combos/${currentComboId}`, {
-
             method: 'PUT',
-
             body: JSON.stringify(payload)
-
           });
-
         }
-
         
-
         // Nếu không có id hoặc PUT thất bại vì combo chưa tồn tại, thử POST tạo mới
-
         if (!res || !res.ok) {
-
           res = await apiRequest('/api/combos', {
-
             method: 'POST',
-
             body: JSON.stringify(payload)
-
           });
-
         }
-
-
 
         if (res && (res.ok || res.status === 200 || res.status === 201)) {
-
           const resData = await res.json();
-
           if (resData && resData.id) {
-
             currentComboId = resData.id;
-
             const inputId = document.getElementById('combo-id-hidden');
-
             if (inputId) inputId.value = resData.id;
-
           }
-
-          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) vào LibSQL DB thành công!`);
-
-          // Nạp lại danh sách để đồng bộ với LibSQL
-
+          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) vào TiDB Cloud thành công!`);
+          // Nạp lại danh sách để đồng bộ với TiDB Cloud
           await loadCascadeFallbackConfigLive();
-
         } else {
-
           const errData = await res.json().catch(() => ({}));
-
           showToastNotification('Lỗi lưu combo: ' + (errData.error || 'Server từ chối'), true);
-
         }
-
       } catch (err) {
-
-        console.warn("Lỗi lưu combo vào LibSQL:", err);
-
+        console.warn("Lỗi lưu combo vào TiDB Cloud:", err);
         showToastNotification('Lỗi lưu cấu hình: ' + err.message, true);
-
       } finally {
-
         if (btn) {
-
           btn.disabled = false;
-
-          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Vào LibSQL</span>';
-
+          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Vào TiDB Cloud</span>';
         }
-
       }
 
     }
@@ -24169,20 +23978,13 @@
       if (el) {
 
         copyToClipboard(el.value);
-
-        showToastNotification('📋 Đã sao chép đường dẫn CSDL LibSQL: ' + el.value);
-
+        showToastNotification('📋 Đã sao chép thông tin kết nối CSDL TiDB Cloud: ' + el.value);
       }
-
     }
 
-
-
     // Nút kích hoạt đồng bộ CSDL và nạp lại kết nối ngay lập tức
-
     async function syncDatabaseLiveNow() {
-
-      showToastNotification('🔄 Đang đồng bộ toàn bộ CSDL LibSQL và nạp lại kết nối...');
+      showToastNotification('🔄 Đang đồng bộ toàn bộ CSDL TiDB Cloud Serverless và nạp lại kết nối...');
 
       await loadProvidersLive();
 
@@ -24318,7 +24120,7 @@
 
         await apiRequest('/api/settings/database');
 
-        showToastNotification('⚡ Đã thực hiện VACUUM & REINDEX tối ưu hóa LibSQL data.sqlite thành công!');
+        showToastNotification('⚡ Đã thực hiện tối ưu hóa cấu trúc CSDL TiDB Cloud Serverless thành công!');
 
         loadDatabaseStatsLive();
 
@@ -24473,131 +24275,68 @@
 
 
         if (showToast) {
-
-          showToastNotification('✅ Đã nạp cấu hình hệ thống từ LibSQL (data.sqlite) thành công!');
-
+          showToastNotification('✅ Đã nạp cấu hình hệ thống từ TiDB Cloud Serverless thành công!');
         }
-
       } catch (err) {
-
         console.warn('Không thể nạp cài đặt hệ thống:', err);
-
         if (showToast) {
-
           showToastNotification('⚠️ Không thể tải cài đặt: ' + (err.message || err), true);
-
         }
-
       }
-
     }
 
-
-
     async function saveSystemSettingsLive() {
-
       const btn = document.getElementById('btn-save-settings');
-
-      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT VÀO LIBSQL';
-
+      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT VÀO TIDB CLOUD';
       if (btn) {
-
         btn.disabled = true;
-
-        btn.textContent = 'Đang lưu vào LibSQL...';
-
+        btn.textContent = 'Đang lưu vào TiDB Cloud...';
       }
-
-
 
       try {
-
         const payload = {
-
           fallbackStrategy: document.getElementById('setting-fallback-strategy')?.value || 'round-robin',
-
           stickyLimit: parseInt(document.getElementById('setting-sticky-limit')?.value || '3', 10),
-
           mitmUrl: document.getElementById('setting-mitm-url')?.value?.trim() || 'http://127.0.0.1:20128',
-
           requireApiKey: Boolean(document.getElementById('setting-require-apikey')?.checked),
-
           enableObservability: Boolean(document.getElementById('setting-enable-observability')?.checked),
-
           rtkEnabled: Boolean(document.getElementById('setting-rtk-enabled')?.checked),
-
           outboundProxyEnabled: Boolean(document.getElementById('setting-outbound-proxy-enabled')?.checked),
-
           outboundProxyUrl: document.getElementById('setting-outbound-proxy-url')?.value?.trim() || '',
-
           outboundNoProxy: document.getElementById('setting-outbound-no-proxy')?.value?.trim() || '',
-
           headroomEnabled: Boolean(document.getElementById('setting-headroom-enabled')?.checked),
-
           cavemanEnabled: Boolean(document.getElementById('setting-caveman-enabled')?.checked),
-
           ponytailEnabled: Boolean(document.getElementById('setting-ponytail-enabled')?.checked)
-
         };
 
-
-
         const res = await apiRequest('/api/settings', {
-
           method: 'PATCH',
-
           headers: { 'Content-Type': 'application/json' },
-
           body: JSON.stringify(payload)
-
         });
 
-
-
         const data = await res.json();
-
         if (data && data.success !== false) {
-
-          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào LibSQL (data.sqlite)!');
-
+          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào TiDB Cloud Serverless!');
           if (btn) {
-
             btn.textContent = 'ĐÃ LƯU THÀNH CÔNG!';
-
             setTimeout(() => {
-
               if (btn) {
-
                 btn.disabled = false;
-
                 btn.textContent = originalText;
-
               }
-
             }, 1800);
-
           }
-
         } else {
-
           throw new Error(data?.error || 'Lỗi không xác định từ server');
-
         }
-
       } catch (err) {
-
-        showToastNotification('❌ Lỗi khi lưu cài đặt vào LibSQL: ' + (err.message || err), true);
-
+        showToastNotification('❌ Lỗi khi lưu cài đặt vào TiDB Cloud: ' + (err.message || err), true);
         if (btn) {
-
           btn.disabled = false;
-
           btn.textContent = originalText;
-
         }
-
       }
-
     }
 
 
@@ -24804,7 +24543,7 @@
 
                 <span class="text-2xl">🌐</span>
 
-                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa LibSQL.</span>
+                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa TiDB Cloud.</span>
 
                 <span class="text-xs text-slate-500 font-sans">Nhấn nút <strong>"+ Thêm Proxy Mới"</strong> phía trên để bổ sung proxy outbound.</span>
 

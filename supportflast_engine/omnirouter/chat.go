@@ -72,6 +72,85 @@ func attachRateLimitHeaders(w http.ResponseWriter, keyItem *ClientKey) {
 	w.Header().Set("x-ratelimit-total-tokens", fmt.Sprintf("%d", keyItem.TotalTokens))
 }
 
+// resolveCascadeModelTiers phân giải danh sách model tiers theo thứ tự ưu tiên (Tier 1 Primary -> Tier 2 Fallback 1 -> Tier 3 Fallback 2...)
+// TUÂN THỦ NGUYÊN TẮC: Luôn luôn giữ Model chính ở vị trí đầu tiên (Tier 1). Chỉ chuyển sang Tier tiếp theo khi Tier 1 thực sự chết.
+func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
+	reqTrim := strings.TrimSpace(requestedModel)
+	if reqTrim == "" {
+		return []string{"gemini-3.8-flash-high"}
+	}
+
+	// 1. Kiểm tra nếu requestedModel là ID của Combo (ví dụ: combo/smart-code, combo/fast-flash, ...)
+	if db != nil {
+		var valData string
+		err := db.QueryRow("SELECT val_data FROM omni_kv WHERE scope = 'combos' AND key_name = ?", reqTrim).Scan(&valData)
+		if err == nil && valData != "" {
+			var combo struct {
+				Models []string `json:"models"`
+			}
+			if err := json.Unmarshal([]byte(valData), &combo); err == nil && len(combo.Models) > 0 {
+				return combo.Models
+			}
+		}
+	}
+
+	// 2. requestedModel chính là Model TIER 1 (Primary Model)
+	normPrimary := reqTrim
+	lowerNorm := strings.ToLower(normPrimary)
+	switch {
+	case lowerNorm == "gemini-flash":
+		normPrimary = "gemini-3.8-flash-high"
+	case strings.Contains(lowerNorm, "opus"):
+		normPrimary = "claude-opus-4-6-thinking"
+	case strings.Contains(lowerNorm, "sonnet") && !strings.Contains(lowerNorm, "claude-3-7") && !strings.Contains(lowerNorm, "claude-3-5"):
+		normPrimary = "claude-sonnet-4-6"
+	case lowerNorm == "gpt-oss":
+		normPrimary = "gpt-oss-120b-medium"
+	default:
+		// Giữ nguyên 100% model do người dùng yêu cầu (gemini-3.1-pro-high, gemini-pro-agent, gemini-2.5-pro, gemini-2.5-flash, gemini-1.5-pro, gpt-4o, v.v.)
+		normPrimary = reqTrim
+	}
+
+	tiers := []string{normPrimary}
+
+	// 3. Nếu trong TiDB Cloud có cấu hình fallback mặc định, bổ sung các model dự phòng tiếp theo
+	if db != nil {
+		rows, err := db.Query("SELECT val_data FROM omni_kv WHERE scope = 'combos'")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var val string
+				if err := rows.Scan(&val); err == nil && val != "" {
+					var combo struct {
+						Kind   string   `json:"kind"`
+						Models []string `json:"models"`
+					}
+					if err := json.Unmarshal([]byte(val), &combo); err == nil && combo.Kind == "fallback" {
+						for _, m := range combo.Models {
+							mTrim := strings.TrimSpace(m)
+							if mTrim != "" && mTrim != normPrimary {
+								exists := false
+								for _, ex := range tiers {
+									if ex == mTrim {
+										exists = true
+										break
+									}
+								}
+								if !exists {
+									tiers = append(tiers, mTrim)
+								}
+							}
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return tiers
+}
+
 // ConvertMessagesToGeminiContents chuyển đổi messages OpenAI sang contents của Gemini
 func ConvertMessagesToGeminiContents(messages []map[string]interface{}) []map[string]interface{} {
 	var contents []map[string]interface{}
@@ -256,23 +335,8 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		var req ChatCompletionRequest
 		_ = json.Unmarshal(bodyBytes, &req)
 
-		model := strings.ToLower(strings.TrimSpace(req.Model))
-		switch {
-		case model == "" || model == "gemini-3.8-flash-high" || model == "gemini-flash" || strings.Contains(model, "flash-high") || model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" || strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6") || strings.Contains(model, "1.5") || strings.Contains(model, "pro"):
-			model = "gemini-3.8-flash-high"
-		case strings.Contains(model, "opus"):
-			model = "claude-opus-4-6-thinking"
-		case strings.Contains(model, "sonnet") || strings.Contains(model, "claude"):
-			model = "claude-sonnet-4-6"
-		case strings.Contains(model, "gpt") || strings.Contains(model, "oss") || strings.Contains(model, "120b"):
-			model = "gpt-oss-120b-medium"
-		case strings.Contains(model, "flash-medium"):
-			model = "gemini-3.8-flash-medium"
-		case strings.Contains(model, "flash-low"):
-			model = "gemini-3.8-flash-low"
-		default:
-			model = "gemini-3.8-flash-high"
-		}
+		// 1. Phân giải danh sách Tầng Ưu Tiên (Tier 1: Model chính -> Tier 2, Tier 3: Dự phòng)
+		modelTiers := resolveCascadeModelTiers(db, req.Model)
 
 		isStream := true
 		if req.Stream != nil && !*req.Stream {
@@ -307,84 +371,108 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		var lastErr error
 		var resp *http.Response
 		var usedAccount *ProviderConnection
-		var creds *Credentials
+		var usedModel string
 		maxAttempts := 5
 		if maxAttempts > numAccounts {
 			maxAttempts = numAccounts
 		}
 
-		// 3. Vòng lặp xoay vòng tài khoản (Load balancing & Failover)
-		for attempt := 0; attempt < maxAttempts; attempt++ {
-			idx := (startIdx + attempt) % numAccounts
-			acc := readyAccounts[idx]
-
-			c, cErr := GetValidCredentials(db, &acc)
-			if cErr != nil {
-				lastErr = cErr
-				continue
+		// 3. THUẬT TOÁN CASCADE FALLBACK TIERS:
+		// Duyệt tuần tự qua từng Tier (Tier 1 là Model chính do client chọn).
+		// LUÔN LUÔN thử Model chính trước 100%.
+		// CHỈ KHI Model chính gặp lỗi thực sự (429 Quota Exceeded, 503 Overloaded, 500, Timeout) trên toàn bộ tài khoản
+		// thì mới tự động chuyển mạch (cascade fallback) sang tầng dự phòng tiếp theo.
+		for tierIdx, currentTierModel := range modelTiers {
+			tierSucceeded := false
+			tierLabel := fmt.Sprintf("TIER %d (Model: %s)", tierIdx+1, currentTierModel)
+			if tierIdx == 0 {
+				tierLabel = fmt.Sprintf("TIER 1 CHÍNH (Model: %s)", currentTierModel)
 			}
 
-			creds = c
-			usedAccount = &acc
+			for attempt := 0; attempt < maxAttempts; attempt++ {
+				idx := (startIdx + attempt) % numAccounts
+				acc := readyAccounts[idx]
 
-			upstreamURL := "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
-			generatedReqID := fmt.Sprintf("agent/%s/%d/%s/1", generateUUID(), time.Now().UnixMilli(), generateUUID())
+				c, cErr := GetValidCredentials(db, &acc)
+				if cErr != nil {
+					lastErr = cErr
+					continue
+				}
 
-			contents := ConvertMessagesToGeminiContents(req.Messages)
-			geminiReq := map[string]interface{}{
-				"model":     model,
-				"userAgent": "antigravity",
-				"requestId": generatedReqID,
-				"request": map[string]interface{}{
-					"contents": contents,
-				},
+				upstreamURL := "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+				generatedReqID := fmt.Sprintf("agent/%s/%d/%s/1", generateUUID(), time.Now().UnixMilli(), generateUUID())
+
+				contents := ConvertMessagesToGeminiContents(req.Messages)
+				geminiReq := map[string]interface{}{
+					"model":     currentTierModel,
+					"userAgent": "antigravity",
+					"requestId": generatedReqID,
+					"request": map[string]interface{}{
+						"contents": contents,
+					},
+				}
+
+				if c.ProjectId != "" && c.ProjectId != "aicode-consumers" {
+					geminiReq["project"] = c.ProjectId
+				}
+
+				if len(contents) == 0 && req.Request != nil {
+					geminiReq["request"] = req.Request
+				}
+
+				outboundBody, _ := json.Marshal(geminiReq)
+				fReq, reqErr := http.NewRequestWithContext(r.Context(), "POST", upstreamURL, bytes.NewReader(outboundBody))
+				if reqErr != nil {
+					lastErr = reqErr
+					continue
+				}
+
+				fReq.Header.Set("Content-Type", "application/json")
+				fReq.Header.Set("Authorization", "Bearer "+c.AccessToken)
+				fReq.Header.Set("User-Agent", "antigravity/ide/2.11.0 darwin/arm64")
+
+				rResp, doErr := chatHTTPClient.Do(fReq)
+				if doErr != nil {
+					lastErr = doErr
+					continue
+				}
+
+				if rResp.StatusCode == http.StatusTooManyRequests {
+					rResp.Body.Close()
+					accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
+					lastErr = fmt.Errorf("rate limited (429 Quota) trên %s cho model %s", acc.Name, currentTierModel)
+					continue
+				}
+
+				if rResp.StatusCode != http.StatusOK {
+					errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
+					rResp.Body.Close()
+					lastErr = fmt.Errorf("upstream error %d trên %s cho model %s: %s", rResp.StatusCode, acc.Name, currentTierModel, strings.TrimSpace(string(errBody)))
+					continue
+				}
+
+				// Tầng hiện tại đã phục vụ thành công!
+				resp = rResp
+				usedAccount = &acc
+				usedModel = currentTierModel
+				tierSucceeded = true
+				break
 			}
 
-			if creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
-				geminiReq["project"] = creds.ProjectId
+			if tierSucceeded {
+				if tierIdx > 0 {
+					log.Printf("[ENGINE] [CASCADE] ⚡ Model chính gặp sự cố, đã chuyển mạch sang %s thành công qua tài khoản %s", tierLabel, usedAccount.Name)
+				} else {
+					log.Printf("[ENGINE] [CASCADE] ✔ Model chính %s phản hồi thành công qua tài khoản %s", tierLabel, usedAccount.Name)
+				}
+				break
 			}
 
-			if len(contents) == 0 && req.Request != nil {
-				geminiReq["request"] = req.Request
-			}
-
-			outboundBody, _ := json.Marshal(geminiReq)
-			fReq, reqErr := http.NewRequestWithContext(r.Context(), "POST", upstreamURL, bytes.NewReader(outboundBody))
-			if reqErr != nil {
-				lastErr = reqErr
-				continue
-			}
-
-			fReq.Header.Set("Content-Type", "application/json")
-			fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-			fReq.Header.Set("User-Agent", "antigravity/ide/2.11.0 darwin/arm64")
-
-			rResp, doErr := chatHTTPClient.Do(fReq)
-			if doErr != nil {
-				lastErr = doErr
-				continue
-			}
-
-			if rResp.StatusCode == http.StatusTooManyRequests {
-				rResp.Body.Close()
-				accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
-				lastErr = fmt.Errorf("rate limited (429) on %s", acc.Name)
-				continue
-			}
-
-			if rResp.StatusCode != http.StatusOK {
-				errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
-				rResp.Body.Close()
-				lastErr = fmt.Errorf("upstream error %d on %s: %s", rResp.StatusCode, acc.Name, strings.TrimSpace(string(errBody)))
-				continue
-			}
-
-			resp = rResp
-			break
+			log.Printf("[ENGINE] [CASCADE] ⚠ %s gặp lỗi không thể phục vụ trên tất cả tài khoản (%v). Kích hoạt cascade fallback sang tầng tiếp theo...", tierLabel, lastErr)
 		}
 
 		if resp == nil {
-			http.Error(w, fmt.Sprintf(`{"error":"Tất cả tài khoản AI đều bận hoặc gặp lỗi: %v"}`, lastErr), http.StatusBadGateway)
+			http.Error(w, fmt.Sprintf(`{"error":"Tất cả tầng phân luồng và tài khoản AI đều bận hoặc gặp lỗi: %v"}`, lastErr), http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
@@ -423,7 +511,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 									"id":      chatCmplID,
 									"object":  "chat.completion.chunk",
 									"created": createdTimestamp,
-									"model":   model,
+									"model":   usedModel,
 									"choices": []map[string]interface{}{
 										{
 											"index": 0,
@@ -453,7 +541,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				"id":      chatCmplID,
 				"object":  "chat.completion.chunk",
 				"created": createdTimestamp,
-				"model":   model,
+				"model":   usedModel,
 				"choices": []map[string]interface{}{
 					{
 						"index":         0,
@@ -512,7 +600,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				"id":      chatCmplID,
 				"object":  "chat.completion",
 				"created": createdTimestamp,
-				"model":   model,
+				"model":   usedModel,
 				"choices": []map[string]interface{}{
 					{
 						"index": 0,
@@ -536,7 +624,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		}
 
 		if usedAccount != nil {
-			log.Printf("[ENGINE] [OMNIROUTER] ✔ Chat hoàn thành qua %s (%s)", usedAccount.Name, model)
+			log.Printf("[ENGINE] [OMNIROUTER] ✔ Chat hoàn thành qua %s (Model: %s)", usedAccount.Name, usedModel)
 			keyName := "Direct API"
 			if clientKeyItem != nil {
 				keyName = clientKeyItem.Name
@@ -549,7 +637,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				Provider:         usedAccount.Provider,
 				AccountID:        usedAccount.ID,
 				AccountName:      usedAccount.Email,
-				Model:            model,
+				Model:            usedModel,
 				LatencyMs:        time.Since(startTime).Milliseconds(),
 				StatusCode:       http.StatusOK,
 				PromptTokens:     promptTokens,

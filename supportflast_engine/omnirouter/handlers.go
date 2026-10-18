@@ -1138,16 +1138,27 @@ func HandleSyncLibSQLEndpoint(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// HandleModels trả về danh mục mô hình chuẩn OpenAI (chỉ giữ các model chính hoạt động 200 OK)
+// HandleModels trả về danh mục mô hình chuẩn OpenAI (hỗ trợ đầy đủ Google AI Studio, Antigravity Gateway, Claude, OpenAI)
 func HandleModels(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	models := []map[string]interface{}{
 		{"id": "gemini-3.8-flash-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-3.1-pro-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-pro-agent", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-2.5-pro", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-2.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-2.5-flash-thinking", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-2.0-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-1.5-pro", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-1.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
 		{"id": "claude-sonnet-4-6", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
 		{"id": "claude-opus-4-6-thinking", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
-		{"id": "gpt-oss-120b-medium", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
-		{"id": "gemini-2.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "claude-3-7-sonnet", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
 		{"id": "claude-3-5-sonnet", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
+		{"id": "gpt-oss-120b-medium", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
+		{"id": "gpt-4o", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
+		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
+		{"id": "o3-mini", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"object": "list",
@@ -1453,6 +1464,15 @@ func GetDefaultModelsForProvider(provider string) []ProviderModelItem {
 			{ID: "command-r-plus", Name: "Cohere Command R+", FullModel: "command-r-plus", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
 			{ID: "command-r", Name: "Cohere Command R", FullModel: "command-r", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
 			{ID: "command-light", Name: "Cohere Command Light", FullModel: "command-light", Caps: &ProviderModelCaps{Thinking: false, Vision: false}},
+		}
+	case p == "gemini" || p == "google" || p == "google-ai-studio" || p == "aistudio" || strings.Contains(p, "google"):
+		return []ProviderModelItem{
+			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro (Google AI Studio)", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash (Google AI Studio)", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.5-flash-thinking", Name: "Gemini 2.5 Flash Thinking (Google AI Studio)", FullModel: "gemini-2.5-flash-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-2.0-flash", Name: "Gemini 2.0 Flash (Google AI Studio)", FullModel: "gemini-2.0-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gemini-1.5-pro", Name: "Gemini 1.5 Pro (Google AI Studio)", FullModel: "gemini-1.5-pro", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gemini-1.5-flash", Name: "Gemini 1.5 Flash (Google AI Studio)", FullModel: "gemini-1.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
 		}
 	default:
 		// Danh mục 14 Model Chính Thức cho Antigravity
@@ -1829,13 +1849,15 @@ func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 		keysList, _ := ListAllClientKeys(db)
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"engine":       "TiDB Cloud Serverless (MySQL Protocol)",
-			"host":         "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000",
-			"database":     "supportflast",
-			"status":       "online",
-			"architecture": "Distributed NewSQL Cloud Architecture",
-			"tls":          "TLS 1.2+ Enforced (tidb)",
-			"libsql":       "Bỏ hoàn toàn LibSQL / SQLite - Trỏ 100% lên TiDB Cloud",
+			"engine":        "TiDB Cloud Serverless (MySQL Protocol)",
+			"host":          "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000",
+			"database":      "supportflast",
+			"path":          "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000 (Database: supportflast - TiDB Cloud Serverless)",
+			"database_type": "TiDB Cloud Serverless",
+			"status":        "online",
+			"architecture":  "Distributed NewSQL Cloud Architecture",
+			"tls":           "TLS 1.2+ Enforced (tidb)",
+			"libsql":        "Bỏ hoàn toàn LibSQL / SQLite - Trỏ 100% lên TiDB Cloud",
 			"tables": []string{
 				"omni_providers",
 				"omni_client_keys",
@@ -1959,37 +1981,150 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		defaultCombos := []map[string]interface{}{
-			{
-				"id":          "combo/smart-code",
-				"name":        "Combo Smart Code Routing",
-				"description": "Tự động phân luồng code phức tạp sang Claude 3.7 Sonnet / Gemini 3.1 Pro High",
-				"provider":    "OmniRouter Cascade",
-				"badge":       "Smart",
-				"models":      []string{"gemini-3.1-pro-high", "claude-3-7-sonnet"},
-			},
-			{
-				"id":          "combo/fast-flash",
-				"name":        "Combo Fast Flash Fallback",
-				"description": "Tối ưu tốc độ phản hồi siêu nhanh dưới 200ms cho tác vụ nhẹ",
-				"provider":    "OmniRouter Cascade",
-				"badge":       "Fast",
-				"models":      []string{"gemini-2.5-flash", "gpt-4o-mini"},
-			},
+		// Lấy combo ID từ URL Path nếu có (VD: /api/combos/combo/smart-code hoặc /api/combos/smart-code)
+		urlPath := strings.TrimPrefix(r.URL.Path, "/api/combos")
+		urlPath = strings.TrimPrefix(urlPath, "/")
+		targetID := urlPath
+		if targetID == "" {
+			targetID = r.URL.Query().Get("id")
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ok",
-			"combos": defaultCombos,
-		})
+		switch r.Method {
+		case http.MethodGet:
+			var combosList []map[string]interface{}
+			if db != nil {
+				rows, err := db.Query("SELECT key_name, val_data FROM omni_kv WHERE scope = 'combos'")
+				if err == nil {
+					defer rows.Close()
+					for rows.Next() {
+						var k, v string
+						if err := rows.Scan(&k, &v); err == nil && v != "" {
+							var item map[string]interface{}
+							if err := json.Unmarshal([]byte(v), &item); err == nil {
+								if _, hasID := item["id"]; !hasID || item["id"] == "" {
+									item["id"] = k
+								}
+								combosList = append(combosList, item)
+							}
+						}
+					}
+				}
+			}
+
+			// Nếu bảng rỗng, tự động gieo mầm (seed) 2 Combo Cascade chuẩn vào TiDB Cloud
+			if len(combosList) == 0 {
+				defaultCombos := []map[string]interface{}{
+					{
+						"id":          "combo/smart-code",
+						"name":        "Combo Smart Code Routing",
+						"description": "Tự động quét Model chính (Gemini 3.1 Pro High / Gemini 2.5 Pro). Chỉ khi gặp lỗi 429/503 mới cascade fallback sang Claude Sonnet / Gemini Flash",
+						"provider":    "OmniRouter Cascade",
+						"badge":       "Smart",
+						"kind":        "fallback",
+						"models":      []string{"gemini-3.1-pro-high", "gemini-2.5-pro", "gemini-3.8-flash-high"},
+					},
+					{
+						"id":          "combo/fast-flash",
+						"name":        "Combo Fast Flash Fallback",
+						"description": "Tối ưu tốc độ phản hồi siêu nhanh dưới 200ms cho tác vụ nhẹ, quét Gemini Flash trước",
+						"provider":    "OmniRouter Cascade",
+						"badge":       "Fast",
+						"kind":        "fallback",
+						"models":      []string{"gemini-2.5-flash", "gemini-3.8-flash-high", "gpt-oss-120b-medium"},
+					},
+				}
+				for _, c := range defaultCombos {
+					if db != nil {
+						b, _ := json.Marshal(c)
+						_ = SetOmniKV(db, "combos", c["id"].(string), string(b))
+					}
+					combosList = append(combosList, c)
+				}
+			}
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": "ok",
+				"combos": combosList,
+			})
+			return
+
+		case http.MethodPost, http.MethodPut:
+			body, err := io.ReadAll(r.Body)
+			if err != nil || len(body) == 0 {
+				http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ hoặc rỗng"}`, http.StatusBadRequest)
+				return
+			}
+			defer r.Body.Close()
+
+			var combo map[string]interface{}
+			if err := json.Unmarshal(body, &combo); err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":"Lỗi giải mã JSON: %v"}`, err), http.StatusBadRequest)
+				return
+			}
+
+			cID, _ := combo["id"].(string)
+			if cID == "" {
+				cID = targetID
+			}
+			if cID == "" {
+				name, _ := combo["name"].(string)
+				if name != "" {
+					slug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
+					cID = "combo/" + slug
+				} else {
+					cID = "combo/custom-" + fmt.Sprintf("%d", time.Now().Unix())
+				}
+			}
+			combo["id"] = cID
+
+			if db != nil {
+				bytesData, _ := json.Marshal(combo)
+				if err := SetOmniKV(db, "combos", cID, string(bytesData)); err != nil {
+					http.Error(w, fmt.Sprintf(`{"error":"Lỗi lưu vào TiDB Cloud: %v"}`, err), http.StatusInternalServerError)
+					return
+				}
+			}
+
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"status":  "ok",
+				"message": "Đã lưu cấu hình Phân Tầng Dự Phòng Combo vào TiDB Cloud thành công",
+				"id":      cID,
+				"combo":   combo,
+			})
+			return
+
+		case http.MethodDelete:
+			if targetID == "" {
+				http.Error(w, `{"error":"Thiếu combo ID để xóa"}`, http.StatusBadRequest)
+				return
+			}
+			if db != nil {
+				_, err := db.Exec("DELETE FROM omni_kv WHERE scope = 'combos' AND key_name = ?", targetID)
+				if err != nil {
+					http.Error(w, fmt.Sprintf(`{"error":"Lỗi xóa khỏi TiDB Cloud: %v"}`, err), http.StatusInternalServerError)
+					return
+				}
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"status":  "ok",
+				"message": fmt.Sprintf("Đã xóa vĩnh viễn Combo [%s] khỏi TiDB Cloud", targetID),
+			})
+			return
+
+		default:
+			http.Error(w, `{"error":"Phương thức HTTP không được hỗ trợ"}`, http.StatusMethodNotAllowed)
+			return
+		}
 	}
 }
 
