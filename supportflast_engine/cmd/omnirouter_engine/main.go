@@ -19,8 +19,6 @@ import (
 
 func main() {
 	portFlag := flag.Int("port", 20128, "Cổng lắng nghe Gateway Core (mặc định 20128)")
-	mitmPortFlag := flag.Int("mitm-port", 443, "Cổng lắng nghe MITM Proxy (mặc định 443)")
-	autoMitmFlag := flag.Bool("auto-mitm", false, "Tự động kích hoạt MITM Proxy cổng 443")
 	dirFlag := flag.String("dir", "", "Thư mục gốc của dự án (mặc định tự động nhận diện)")
 	flag.Parse()
 
@@ -74,38 +72,6 @@ func main() {
 	mux.HandleFunc("/index.html", serveHTML)
 	mux.HandleFunc("/router", serveHTML)
 	mux.HandleFunc("/router/", serveHTML)
-
-	// Phục vụ giao diện Client App chia sẻ dữ liệu tinh gọn (Chỉ 4 tab: MITM, DNS, Tốc Độ, Nhập API)
-	clientAppCandidate := filepath.Join(baseDir, "client_app.html")
-	if _, err := os.Stat(clientAppCandidate); err != nil {
-		clientAppCandidate = filepath.Join(baseDir, "public", "client_app.html")
-	}
-	if _, err := os.Stat(clientAppCandidate); err != nil {
-		clientAppCandidate = filepath.Join(baseDir, "supportflast_ui", "router", "client_app.html")
-	}
-	if _, err := os.Stat(clientAppCandidate); err != nil {
-		clientAppCandidate = filepath.Join("..", "supportflast_ui", "router", "client_app.html")
-	}
-	if _, err := os.Stat(clientAppCandidate); err != nil {
-		clientAppCandidate = filepath.Join("..", "..", "supportflast_ui", "router", "client_app.html")
-	}
-
-	serveClientHTML := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		if _, err := os.Stat(clientAppCandidate); err == nil {
-			http.ServeFile(w, r, clientAppCandidate)
-			return
-		}
-		http.ServeFile(w, r, htmlCandidate)
-	}
-	mux.HandleFunc("/client", serveClientHTML)
-	mux.HandleFunc("/client/", serveClientHTML)
-	mux.HandleFunc("/share-app", serveClientHTML)
-	mux.HandleFunc("/share-app/", serveClientHTML)
-	mux.HandleFunc("/share", serveClientHTML)
-	mux.HandleFunc("/share/", serveClientHTML)
-	mux.HandleFunc("/client_app.html", serveClientHTML)
 
 	// Phục vụ logo và tài nguyên ảnh
 	appPngCandidate := filepath.Join(baseDir, "app.png")
@@ -172,11 +138,6 @@ func main() {
 		log.Println("[ENGINE] Dọn dẹp hoàn tất. Thoát an toàn.")
 		os.Exit(0)
 	}()
-
-	// 4. Khởi động MITM Proxy cổng 443 nếu được kích hoạt
-	if *autoMitmFlag {
-		log.Printf("[ENGINE] [MITM] Chuẩn bị khởi chạy MITM Proxy trên cổng %d...", *mitmPortFlag)
-	}
 
 	log.Printf("[ENGINE] ✔ OmniRouter Gateway Core đã sẵn sàng phục vụ trên cổng %d (Trỏ CSDL TiDB Cloud)", *portFlag)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -197,13 +197,6 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
 	safeRegister(mux, "/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
-	// 8.1 API Tải về gói App Desktop OmniRouter & App Chia Sẻ Dữ Liệu Client
-	appDownloadHandler := HandleClientAppDownload()
-	shareAppDownloadHandler := HandleShareAppDownload()
-	safeRegister(mux, "/api/v1/client/download", shareAppDownloadHandler)
-	safeRegister(mux, "/api/v1/client/download-share-app", shareAppDownloadHandler)
-	safeRegister(mux, "/api/apps/download/APP-SHARE", shareAppDownloadHandler)
-	safeRegister(mux, "/api/apps/download/APP-ROUTER", appDownloadHandler)
 
 	// 9. API Đồng bộ, Cấu hình MITM & DNS và Báo cáo dành riêng cho App PC / Termux / CMD
 	clientConfigHandler := HandleClientConfig(db)
@@ -211,10 +204,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/client/config.json", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/setup.bat", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/setup.sh", clientConfigHandler)
-	setupPs1Handler := HandleClientSetupPs1(db)
-	safeRegister(mux, "/api/v1/client/setup.ps1", setupPs1Handler)
-	safeRegister(mux, "/client/setup.ps1", setupPs1Handler)
-	safeRegister(mux, "/setup.ps1", setupPs1Handler)
+
 	safeRegister(mux, "/api/v1/config", clientConfigHandler)
 	safeRegister(mux, "/api/v1/mitm-dns", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/sync", HandleClientSync(db))
@@ -378,37 +368,5 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/router/", routerHandler)
 	safeRegister(mux, "/router/index.html", routerHandler)
 
-	// 13. Giao diện Client Node tinh gọn (Chỉ gồm MITM, DNS, Tốc Độ & Nhập API Quota/Skills)
-	clientAppCandidates := []string{
-		filepath.Join(uiDir, "router", "client_app.html"),
-		filepath.Join("..", uiDir, "router", "client_app.html"),
-		filepath.Join("..", "..", "supportflast_ui", "router", "client_app.html"),
-		filepath.Join("supportflast_ui", "router", "client_app.html"),
-	}
-	clientAppHandler := func(w http.ResponseWriter, r *http.Request) {
-		for _, cand := range clientAppCandidates {
-			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-				w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
-				http.ServeFile(w, r, cand)
-				return
-			}
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>OmniRouter Client</title></head><body style="background:#07090e;color:#fff;padding:40px;font-family:sans-serif;"><h2>⚡ OmniRouter Client Node</h2><p>Đang tải tài nguyên giao diện...</p></body></html>`))
-	}
-
-	safeRegister(mux, "/client", clientAppHandler)
-	safeRegister(mux, "/client/", clientAppHandler)
-	safeRegister(mux, "/app", clientAppHandler)
-	safeRegister(mux, "/app/", clientAppHandler)
-	safeRegister(mux, "/share-app", clientAppHandler)
-	safeRegister(mux, "/share-app/", clientAppHandler)
-	safeRegister(mux, "/share", clientAppHandler)
-	safeRegister(mux, "/share/", clientAppHandler)
-	safeRegister(mux, "/router/client_app.html", clientAppHandler)
-
-	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 15 cổng định tuyến 9Router Master Gateway & Client App (/client, /app, /share-app)")
+	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ cổng định tuyến Master Gateway")
 }

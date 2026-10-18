@@ -59,7 +59,6 @@ storage/packages/*
 !storage/packages/*ThongBaoSoDu*
 !storage/packages/*AIEqualizer*
 !storage/packages/*Mau09*
-!storage/packages/OmniRouter_Client_ShareApp_v1.0.0.zip
 storage/uploads/*
 !storage/uploads/.gitkeep
 storage/chunks/*
@@ -74,7 +73,6 @@ storage/temp/*
 *.out
 *.test
 *.zip
-!storage/packages/OmniRouter_Client_ShareApp_v1.0.0.zip
 *.tar.gz
 *.7z
 *.apk
@@ -89,8 +87,6 @@ supportflast_engine.exe
 phone_server/cloudflared*
 tools/cloudflared*
 tools/dist/
-tools/9router-client/9router-client*
-tools/9router-desktop/9router-desktop*
 supportflast_core/target/
 
 # 3.1 .NET / C# WPF Build Artifacts
