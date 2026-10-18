@@ -96,6 +96,10 @@ var (
 		"https://supportflastdev.io.vn":              true,
 		"https://www.supportflastdev.io.vn":          true,
 		"https://supportflastdev-io-vn.onrender.com": true,
+		"http://omnigateway.local":                   true,
+		"https://omnigateway.local":                  true,
+		"http://localhost:20128":                     true,
+		"http://127.0.0.1:20128":                     true,
 	}
 )
 

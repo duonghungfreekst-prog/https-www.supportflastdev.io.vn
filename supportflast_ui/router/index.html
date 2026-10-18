@@ -2202,7 +2202,7 @@
                   <span>Đồng Bộ Dữ Liệu SQL Từ Máy Chủ Web (Thay Thế LibSQL Cục Bộ)</span>
                 </h3>
                 <p class="text-xs text-slate-300 mt-1">
-                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL TiDB Cloud, thay vì sử dụng database LibSQL nhúng cục bộ.
+                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://www.supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL TiDB Cloud, thay vì sử dụng database LibSQL nhúng cục bộ.
                 </p>
               </div>
             </div>
@@ -2210,7 +2210,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-2">
               <div class="lg:col-span-5 space-y-1">
                 <label class="text-[11px] font-mono text-slate-400">ĐỊA CHỈ MÁY CHỦ WEB (GATEWAY URL)</label>
-                <input type="text" id="web-server-url-input" value="https://supportflastdev.io.vn" class="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none" placeholder="https://supportflastdev.io.vn" />
+                <input type="text" id="web-server-url-input" value="https://www.supportflastdev.io.vn" class="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none" placeholder="https://www.supportflastdev.io.vn" />
               </div>
               <div class="lg:col-span-7 space-y-1">
                 <label class="text-[11px] font-mono text-cyan-300">KHÓA API DO WEB CẤP (PERSONAL / MASTER KEY)</label>
@@ -7895,9 +7895,68 @@
       input.type = input.type === 'password' ? 'text' : 'password';
     }
 
+    let _webConnectionCallback = null;
+
+    function applyWebConnectionResult(data, silent = false) {
+      const badge = document.getElementById('web-sql-status-badge');
+      const title = document.getElementById('web-sync-title');
+      const desc = document.getElementById('web-sync-desc');
+      const icon = document.getElementById('web-sync-icon');
+
+      if (data && data.success) {
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
+          badge.textContent = 'ĐÃ KẾT NỐI SQL (TIDB)';
+        }
+        let provCount = 0;
+        try {
+          const parsed = typeof data.providers === 'string' ? JSON.parse(data.providers || '[]') : data.providers;
+          provCount = (parsed && parsed.providers) ? parsed.providers.length : (Array.isArray(parsed) ? parsed.length : 0);
+        } catch (_) {}
+
+        if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${data.latencyMs || 0}ms)`;
+        if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} nhà cung cấp</strong>)` : ''}`;
+        if (icon) icon.textContent = '🟢';
+        if (!silent) showToast(`Kết nối máy chủ Web thành công (${data.latencyMs || 0}ms)!`, 'success');
+        return true;
+      } else {
+        const isAuthErr = data && (data.statusCode === 401 || data.statusCode === 403);
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/20 text-red-300 font-bold border border-red-500/30';
+          badge.textContent = isAuthErr ? 'LỖI XÁC THỰC' : 'LỖI KẾT NỐI';
+        }
+        if (title) title.textContent = isAuthErr ? 'Khóa API không hợp lệ hoặc đã bị khóa' : 'Không thể kết nối đến Máy chủ Web';
+        if (desc) desc.textContent = data.errorMessage || (isAuthErr ? 'Vui lòng kiểm tra lại mã API Key trên trang web https://www.supportflastdev.io.vn' : `Mã lỗi HTTP: ${data.statusCode || 0}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`);
+        if (icon) icon.textContent = isAuthErr ? '🔴' : '⚠️';
+        if (!silent) showToast(isAuthErr ? 'Khóa API không hợp lệ trên máy chủ Web!' : 'Không thể kết nối tới máy chủ Web!', 'error');
+        return false;
+      }
+    }
+
+    // Lắng nghe WebMessage từ C# Host cho webConnectionResult
+    if (typeof window !== 'undefined' && window.chrome && window.chrome.webview) {
+      window.chrome.webview.addEventListener('message', function(event) {
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (data && data.type === 'webConnectionResult') {
+            const silent = _webConnectionCallback ? _webConnectionCallback.silent : false;
+            const ok = applyWebConnectionResult(data, silent);
+            if (_webConnectionCallback && _webConnectionCallback.resolve) {
+              _webConnectionCallback.resolve(ok);
+              _webConnectionCallback = null;
+            }
+          }
+        } catch (_) {}
+      });
+    }
+
     function initWebSQLSync() {
       try {
-        const savedUrl = localStorage.getItem('omnirouter_web_url') || 'https://supportflastdev.io.vn';
+        let savedUrl = localStorage.getItem('omnirouter_web_url') || 'https://www.supportflastdev.io.vn';
+        if (savedUrl === 'https://supportflastdev.io.vn') {
+          savedUrl = 'https://www.supportflastdev.io.vn';
+          localStorage.setItem('omnirouter_web_url', savedUrl);
+        }
         const savedKey = localStorage.getItem('omnirouter_web_key') || '';
         const urlInput = document.getElementById('web-server-url-input');
         const keyInput = document.getElementById('web-api-key-input');
@@ -7914,14 +7973,16 @@
     async function testWebConnection(silent = false) {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
-      const serverUrl = (urlInput?.value || 'https://supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
+      if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
+        serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
+                             .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
+        if (urlInput) urlInput.value = serverUrl;
+      }
       const apiKey = (keyInput?.value || '').trim();
 
       const badge = document.getElementById('web-sql-status-badge');
-      const title = document.getElementById('web-sync-title');
-      const desc = document.getElementById('web-sync-desc');
-      const icon = document.getElementById('web-sync-icon');
-
       if (!apiKey) {
         if (!silent) showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
         return false;
@@ -7932,6 +7993,35 @@
         badge.textContent = 'ĐANG KIỂM TRA...';
       }
 
+      // Nếu đang chạy trong Desktop App (WebView2), ưu tiên gọi qua C# Native HttpClient để chống 100% lỗi CORS & 301
+      if (window.chrome && window.chrome.webview) {
+        return new Promise((resolve) => {
+          _webConnectionCallback = { resolve, silent };
+          try {
+            window.chrome.webview.postMessage(JSON.stringify({
+              action: 'testWebConnection',
+              serverUrl: serverUrl,
+              apiKey: apiKey
+            }));
+          } catch (e) {
+            console.warn('[WebSQL] postMessage testWebConnection failed:', e);
+          }
+          // Timeout dự phòng 10 giây nếu C# không phản hồi
+          setTimeout(() => {
+            if (_webConnectionCallback && _webConnectionCallback.resolve === resolve) {
+              _webConnectionCallback = null;
+              applyWebConnectionResult({
+                success: false,
+                statusCode: 0,
+                errorMessage: 'Hết thời gian chờ phản hồi từ C# Gateway Bridge.'
+              }, silent);
+              resolve(false);
+            }
+          }, 10000);
+        });
+      }
+
+      // Chế độ Web Browser chuẩn: Dùng fetch trực tiếp
       try {
         const startTime = Date.now();
         const res = await fetch(`${serverUrl}/api/usage/stats`, {
@@ -7941,46 +8031,44 @@
             'Accept': 'application/json'
           }
         });
-
         const latency = Date.now() - startTime;
-        if (res.ok) {
-          if (badge) {
-            badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
-            badge.textContent = 'ĐÃ KẾT NỐI SQL (TIDB)';
+        let provCount = 0;
+        try {
+          const provRes = await fetch(`${serverUrl}/api/router/providers`, {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+          });
+          if (provRes.ok) {
+            const pData = await provRes.json();
+            provCount = (pData && pData.providers) ? pData.providers.length : (Array.isArray(pData) ? pData.length : 0);
           }
-          if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${latency}ms)`;
-          if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${serverUrl}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless`;
-          if (icon) icon.textContent = '🟢';
-          if (!silent) showToast(`Kết nối máy chủ Web thành công (${latency}ms)!`, 'success');
-          return true;
-        } else {
-          if (badge) {
-            badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/20 text-red-300 font-bold border border-red-500/30';
-            badge.textContent = 'LỖI XÁC THỰC';
-          }
-          if (title) title.textContent = 'Khóa API không hợp lệ hoặc đã bị khóa';
-          if (desc) desc.textContent = 'Vui lòng kiểm tra lại mã API Key trên trang web https://supportflastdev.io.vn';
-          if (icon) icon.textContent = '🔴';
-          if (!silent) showToast('Khóa API không hợp lệ trên máy chủ Web!', 'error');
-          return false;
-        }
+        } catch (_) {}
+
+        return applyWebConnectionResult({
+          success: res.ok,
+          statusCode: res.status,
+          serverUrl: serverUrl,
+          latencyMs: latency,
+          providers: JSON.stringify({ providers: Array(provCount).fill({}) })
+        }, silent);
       } catch (err) {
-        if (badge) {
-          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/20 text-red-300 font-bold border border-red-500/30';
-          badge.textContent = 'LỖI KẾT NỐI';
-        }
-        if (title) title.textContent = 'Không thể kết nối đến Máy chủ Web';
-        if (desc) desc.textContent = `Lỗi mạng: ${err.message || err}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`;
-        if (icon) icon.textContent = '⚠️';
-        if (!silent) showToast('Không thể kết nối tới máy chủ Web!', 'error');
-        return false;
+        return applyWebConnectionResult({
+          success: false,
+          statusCode: 0,
+          errorMessage: `Lỗi mạng: ${err.message || err}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`
+        }, silent);
       }
     }
 
     async function saveAndSyncWebSQL() {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
-      const serverUrl = (urlInput?.value || 'https://supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
+      if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
+        serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
+                             .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
+        if (urlInput) urlInput.value = serverUrl;
+      }
       const apiKey = (keyInput?.value || '').trim();
 
       if (!apiKey) {
@@ -7995,34 +8083,20 @@
         localStorage.setItem('omnirouter_web_key', apiKey);
       } catch (_) {}
 
-      try {
-        if (window.chrome && window.chrome.webview) {
+      if (window.chrome && window.chrome.webview) {
+        try {
           window.chrome.webview.postMessage(JSON.stringify({
             action: 'saveWebApiKey',
             serverUrl: serverUrl,
             apiKey: apiKey
           }));
+        } catch (e) {
+          console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
         }
-      } catch (e) {
-        console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
       }
 
-      const isConnected = await testWebConnection(true);
+      const isConnected = await testWebConnection(false);
       if (isConnected) {
-        try {
-          const provRes = await fetch(`${serverUrl}/api/router/providers`, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-          });
-          if (provRes.ok) {
-            const provData = await provRes.json();
-            const count = (provData && provData.providers) ? provData.providers.length : (Array.isArray(provData) ? provData.length : 0);
-            const desc = document.getElementById('web-sync-desc');
-            if (desc) {
-              desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${serverUrl}</code> | Đã đồng bộ <strong class="text-cyan-300">${count} nhà cung cấp</strong> từ CSDL SQL TiDB Cloud!`;
-            }
-          }
-        } catch (_) {}
-
         showToast('✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!', 'success');
       }
     }
