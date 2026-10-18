@@ -280,8 +280,18 @@
 
 
 
-    /* Glassmorphism & Neon Shadows (Tối ưu GPU blur radius 6px, tăng background opacity để sắc nét và giảm 75% GPU load) */
+    /* Ẩn hoàn toàn Danh Sách Khóa API Cổng Nội Bộ ở bản App Desktop theo yêu cầu */
+    html.desktop-mode #internal-api-keys-section,
+    body.desktop-mode #internal-api-keys-section,
+    .desktop-app #internal-api-keys-section,
+    .app-hidden-block {
+      display: none !important;
+    }
+    html.web-mode .app-hidden-block {
+      display: block !important;
+    }
 
+    /* Glassmorphism & Neon Shadows (Tối ưu GPU blur radius 6px, tăng background opacity để sắc nét và giảm 75% GPU load) */
     .glass-card {
 
       background: rgba(11, 15, 25, 0.85);
@@ -2358,9 +2368,8 @@
 
 
 
-          <!-- Quản lý API Keys -->
-
-          <div class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+          <!-- Quản lý API Keys (Ẩn hoàn toàn trên bản App Desktop theo yêu cầu) -->
+          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4 app-hidden-block" style="display: none !important;">
 
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
@@ -8518,6 +8527,12 @@
     const IS_DESKTOP_ENV = isDesktopAppEnv();
     if (!IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('web-mode');
+    } else if (IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.classList.add('desktop-mode');
+      const apiSec = document.getElementById('internal-api-keys-section');
+      if (apiSec) {
+        apiSec.style.setProperty('display', 'none', 'important');
+      }
     }
     const checkIsOmniGatewayHost = () => {
       try {
