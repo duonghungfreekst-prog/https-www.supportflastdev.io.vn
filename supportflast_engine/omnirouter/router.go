@@ -151,7 +151,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	combosHandler := HandleCombos(db)
 	safeRegister(mux, "/api/combos", combosHandler)
 	safeRegister(mux, "/api/combos/", combosHandler)
-	safeRegister(mux, "/api/optimizer/stats", HandleOptimizerStats)
+	safeRegister(mux, "/api/optimizer/stats", HandleOptimizerStats(db))
 	safeRegister(mux, "/api/cache/stats", HandleCacheStats)
 	safeRegister(mux, "/api/cache/clear", HandleCacheStats)
 	safeRegister(mux, "/api/cache/toggle", HandleCacheStats)
