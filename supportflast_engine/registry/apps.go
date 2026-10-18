@@ -1081,6 +1081,12 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 				FileName: "APP-0909_Mau09_v1.0.0_FullPackage.zip", SizeFormatted: "69.2 MB",
 			}
 			err = nil
+		case "APP-ROUTER":
+			targetApp = AppItem{
+				ID: "APP-ROUTER", Name: "OmniRouter AI Gateway (TiDB Edition)", Version: "2.9.0",
+				FileName: "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip", SizeFormatted: "125.7 MB",
+			}
+			err = nil
 		}
 	}
 

@@ -2035,13 +2035,33 @@ func HandleClientAppDownload() http.HandlerFunc {
 			filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
 			filepath.Join("..", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
 			filepath.Join("..", "..", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("/app", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("/app", "data", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join(os.Getenv("STORAGE_DIR"), "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
 		}
 
 		var targetFile string
 		for _, cand := range candidates {
+			if cand == "" {
+				continue
+			}
 			if info, err := os.Stat(cand); err == nil && !info.IsDir() {
 				targetFile = cand
 				break
+			}
+			// Nếu file zip chưa có nhưng có .part1 và .part2, tự động ghép lại
+			p1 := cand + ".part1"
+			p2 := cand + ".part2"
+			if _, err1 := os.Stat(p1); err1 == nil {
+				if _, err2 := os.Stat(p2); err2 == nil {
+					if d1, err := os.ReadFile(p1); err == nil {
+						if d2, err := os.ReadFile(p2); err == nil {
+							_ = os.WriteFile(cand, append(d1, d2...), 0644)
+							targetFile = cand
+							break
+						}
+					}
+				}
 			}
 		}
 
