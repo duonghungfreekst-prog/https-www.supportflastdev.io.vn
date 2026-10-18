@@ -514,6 +514,12 @@ func TestUpgradedRouterEndpoints(t *testing.T) {
 		{"SkillsCore", "GET", "/api/skills/core", http.StatusOK},
 		{"SkillsActive", "GET", "/api/skills/active", http.StatusOK},
 		{"RouterDashboard", "GET", "/router", http.StatusOK},
+		{"ClientApp", "GET", "/client", http.StatusOK},
+		{"ClientAppSlash", "GET", "/client/", http.StatusOK},
+		{"AppRoute", "GET", "/app", http.StatusOK},
+		{"ShareAppRoute", "GET", "/share-app", http.StatusOK},
+		{"ShareRoute", "GET", "/share", http.StatusOK},
+		{"ClientSyncAlias", "GET", "/api/client/sync", http.StatusUnauthorized},
 	}
 
 	for _, tc := range tests {

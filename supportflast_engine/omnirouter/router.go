@@ -214,6 +214,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/client/report", HandleClientReport(db))
 	safeRegister(mux, "/api/v1/sync", HandleClientSync(db))
 	safeRegister(mux, "/api/v1/report", HandleClientReport(db))
+	safeRegister(mux, "/api/client/sync", HandleClientSync(db))
+	safeRegister(mux, "/api/client/report", HandleClientReport(db))
+	safeRegister(mux, "/api/sync", HandleClientSync(db))
 
 	// 9.1 API Tra cứu Quota & Ping DNS trực tiếp qua CMD / Terminal / cURL
 	clientQuotaHandler := HandleClientQuotaCLI(db)
@@ -368,5 +371,36 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/router/", routerHandler)
 	safeRegister(mux, "/router/index.html", routerHandler)
 
-	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 15 cổng định tuyến 9Router Master Gateway")
+	// 13. Giao diện Client Node tinh gọn (Chỉ gồm MITM, DNS, Tốc Độ & Nhập API Quota/Skills)
+	clientAppCandidates := []string{
+		filepath.Join(uiDir, "router", "client_app.html"),
+		filepath.Join("..", uiDir, "router", "client_app.html"),
+		filepath.Join("..", "..", "supportflast_ui", "router", "client_app.html"),
+		filepath.Join("supportflast_ui", "router", "client_app.html"),
+	}
+	clientAppHandler := func(w http.ResponseWriter, r *http.Request) {
+		for _, cand := range clientAppCandidates {
+			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				http.ServeFile(w, r, cand)
+				return
+			}
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<!DOCTYPE html><html><head><title>OmniRouter Client</title></head><body style="background:#07090e;color:#fff;padding:40px;font-family:sans-serif;"><h2>⚡ OmniRouter Client Node</h2><p>Đang tải tài nguyên giao diện...</p></body></html>`))
+	}
+
+	safeRegister(mux, "/client", clientAppHandler)
+	safeRegister(mux, "/client/", clientAppHandler)
+	safeRegister(mux, "/app", clientAppHandler)
+	safeRegister(mux, "/app/", clientAppHandler)
+	safeRegister(mux, "/share-app", clientAppHandler)
+	safeRegister(mux, "/share-app/", clientAppHandler)
+	safeRegister(mux, "/share", clientAppHandler)
+	safeRegister(mux, "/share/", clientAppHandler)
+	safeRegister(mux, "/router/client_app.html", clientAppHandler)
+
+	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ 15 cổng định tuyến 9Router Master Gateway & Client App (/client, /app, /share-app)")
 }
