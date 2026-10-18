@@ -978,151 +978,48 @@
 
             <!-- Mục 2: Endpoint & Key -->
 
-            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
+            <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
               <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-
                 </svg>
-
                 <span>Endpoint & API Key</span>
-
               </div>
-
               <div class="flex items-center gap-1.5">
-
-                <span class="text-[10px] font-mono text-slate-400">3 Tunnels</span>
-
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Đồng Bộ SQL</span>
+                <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
               </div>
-
             </button>
-
-
 
             <!-- Mục 3: Nhà cung cấp -->
-
             <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
               <div class="flex items-center gap-3">
-
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-
                 </svg>
-
                 <span>Nhà Cung Cấp</span>
-
               </div>
-
               <div class="flex items-center gap-1.5">
-
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">129 Hub</span>
-
                 <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
               </div>
-
             </button>
 
-
-
-            <!-- Mục 4: Vision Optimizer (Nén Ảnh) -->
-
-            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-
-                </svg>
-
-                <span>Vision Optimizer</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục 5: Thống kê lưu lượng & Live Topology (MÀN HÌNH CHÍNH MẶC ĐỊNH) -->
-
-            <button onclick="switchTab('stats')" id="btn-tab-stats" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-
-                </svg>
-
-                <span>Live Topology & Thống Kê</span>
-
-              </div>
-
-              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục 6: Theo dõi hạn mức -->
-
+            <!-- Mục 4: Theo dõi hạn mức -->
             <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
               <div class="flex items-center gap-3">
-
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-
                 </svg>
-
                 <span>Theo Dõi Hạn Mức</span>
-
               </div>
-
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
             </button>
 
-
-
-            <!-- Mục 7: Token Optimizer (badge -38%) -->
-
-            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-
-                </svg>
-
-                <span>Token Optimizer</span>
-
-              </div>
-
-              <div class="flex items-center gap-1.5">
-
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
-
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-              </div>
-
-            </button>
+            <!-- Các tab ẩn: Vision, Stats, Token Optimizer -->
+            <button onclick="switchTab('combo')" id="btn-tab-combo" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('stats')" id="btn-tab-stats" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" style="display:none !important;" class="nav-btn hidden"></button>
 
 
 
@@ -1144,171 +1041,25 @@
 
           <div class="space-y-1">
 
-            <!-- Mục: Proxy Pools IP -->
-
-            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-
-                </svg>
-
-                <span>Proxy Pools IP</span>
-
-              </div>
-
-              <div class="flex items-center gap-1.5">
-
-                <span id="proxy-pool-count-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">0 Active</span>
-
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-              </div>
-
-            </button>
-
-
-
-            <!-- Mục: AI Skills Hub -->
-
-            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-
-                </svg>
-
-                <span>AI Skills Hub</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
             <!-- Mục: Nhật ký Console (Stream logs) -->
-
             <button onclick="switchTab('console')" id="btn-tab-console" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
               <div class="flex items-center gap-3">
-
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-
                 </svg>
-
                 <span>Nhật Ký Console</span>
-
               </div>
-
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
             </button>
 
-
-
-            <!-- Mục: Media & Voice Hub -->
-
-            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
-
-                <span>Media & Voice Hub</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục: CLI Tools & MCP -->
-
-            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-
-                <span>CLI & MCP Tools</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục: Protocol Translator -->
-
-            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-
-                <span>Protocol Translator</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục: PxPipe Prompt Compression -->
-
-            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-
-                <span>PxPipe Compression</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
-
-
-
-            <!-- Mục: Cài đặt hệ thống -->
-
-            <button onclick="switchTab('settings')" id="btn-tab-settings" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-
-              <div class="flex items-center gap-3">
-
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-
-                </svg>
-
-                <span>Cài Đặt Hệ Thống</span>
-
-              </div>
-
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-
-            </button>
+            <!-- Các tab ẩn trong nhóm tương tác -->
+            <button onclick="switchTab('proxies')" id="btn-tab-proxies" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('skills')" id="btn-tab-skills" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('media')" id="btn-tab-media" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('translator')" id="btn-tab-translator" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" style="display:none !important;" class="nav-btn hidden"></button>
+            <button onclick="switchTab('settings')" id="btn-tab-settings" style="display:none !important;" class="nav-btn hidden"></button>
 
 
 
@@ -2436,12 +2187,61 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-endpoints" class="tab-content space-y-6">
+        <div id="tab-endpoints" class="tab-content active space-y-6">
 
+          <!-- KHỐI 1: KẾT NỐI MÁY CHỦ WEB & ĐỒNG BỘ DỮ LIỆU SQL (TIDB CLOUD) -->
+          <div class="glass-card rounded-2xl p-6 border border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-black space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">KẾT NỐI ĐIỀU HƯỚNG SQL CLOUD</span>
+                  <span id="web-sql-status-badge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">CHỜ NHẬP API KEY</span>
+                </div>
+                <h3 class="text-base font-bold text-white mt-1.5 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                  <span>Đồng Bộ Dữ Liệu SQL Từ Máy Chủ Web (Thay Thế LibSQL Cục Bộ)</span>
+                </h3>
+                <p class="text-xs text-slate-300 mt-1">
+                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL TiDB Cloud, thay vì sử dụng database LibSQL nhúng cục bộ.
+                </p>
+              </div>
+            </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-2">
+              <div class="lg:col-span-5 space-y-1">
+                <label class="text-[11px] font-mono text-slate-400">ĐỊA CHỈ MÁY CHỦ WEB (GATEWAY URL)</label>
+                <input type="text" id="web-server-url-input" value="https://supportflastdev.io.vn" class="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white font-mono text-xs focus:border-cyan-400 focus:outline-none" placeholder="https://supportflastdev.io.vn" />
+              </div>
+              <div class="lg:col-span-7 space-y-1">
+                <label class="text-[11px] font-mono text-cyan-300">KHÓA API DO WEB CẤP (PERSONAL / MASTER KEY)</label>
+                <div class="flex items-center gap-2">
+                  <input type="password" id="web-api-key-input" class="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs focus:border-cyan-300 focus:outline-none placeholder-slate-600" placeholder="sk-..." />
+                  <button type="button" onclick="toggleWebKeyVisibility()" class="px-2.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 text-xs cursor-pointer" title="Ẩn/hiện khóa">👁</button>
+                  <button type="button" onclick="saveAndSyncWebSQL()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs flex-shrink-0 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5">
+                    <span>⚡ LƯU & ĐỒNG BỘ SQL</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hộp thông báo trạng thái kết nối SQL -->
+            <div id="web-sync-result-box" class="p-3.5 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 font-sans flex items-start justify-between gap-3">
+              <div class="flex items-start gap-2.5">
+                <span id="web-sync-icon" class="text-base">📡</span>
+                <div>
+                  <div id="web-sync-title" class="font-bold text-white">Chưa kết nối Máy chủ Web</div>
+                  <div id="web-sync-desc" class="text-slate-400 text-[11px] mt-0.5">Dán mã API Key sinh ra từ trang quản trị Web vào ô trên rồi bấm "LƯU & ĐỒNG BỘ SQL".</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button type="button" onclick="testWebConnection()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-mono cursor-pointer">
+                  Kiểm Tra Kết Nối
+                </button>
+              </div>
+            </div>
+          </div>
 
           <!-- 3 Thẻ Endpoint lớn -->
-
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
             
@@ -3116,7 +2916,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-stats" class="tab-content active space-y-6">
+        <div id="tab-stats" class="tab-content space-y-6">
 
 
 
@@ -8082,11 +7882,157 @@
 
       } catch (_) {}
 
-      return (typeof IS_DESKTOP_ENV !== 'undefined' && !IS_DESKTOP_ENV) ? 'quota' : 'stats';
-
+      return 'endpoints';
     }
 
+    // =========================================================================
+    // MODULE ĐỒNG BỘ CSDL SQL (TIDB CLOUD) QUA API KEY WEB
+    // Thay thế hoàn toàn LibSQL / SQLite cục bộ trong ứng dụng Desktop
+    // =========================================================================
+    function toggleWebKeyVisibility() {
+      const input = document.getElementById('web-api-key-input');
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
 
+    function initWebSQLSync() {
+      try {
+        const savedUrl = localStorage.getItem('omnirouter_web_url') || 'https://supportflastdev.io.vn';
+        const savedKey = localStorage.getItem('omnirouter_web_key') || '';
+        const urlInput = document.getElementById('web-server-url-input');
+        const keyInput = document.getElementById('web-api-key-input');
+        if (urlInput && savedUrl) urlInput.value = savedUrl;
+        if (keyInput && savedKey) {
+          keyInput.value = savedKey;
+          testWebConnection(true);
+        }
+      } catch (e) {
+        console.warn('[WebSQL] Không thể nạp key từ localStorage:', e);
+      }
+    }
+
+    async function testWebConnection(silent = false) {
+      const urlInput = document.getElementById('web-server-url-input');
+      const keyInput = document.getElementById('web-api-key-input');
+      const serverUrl = (urlInput?.value || 'https://supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      const apiKey = (keyInput?.value || '').trim();
+
+      const badge = document.getElementById('web-sql-status-badge');
+      const title = document.getElementById('web-sync-title');
+      const desc = document.getElementById('web-sync-desc');
+      const icon = document.getElementById('web-sync-icon');
+
+      if (!apiKey) {
+        if (!silent) showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        return false;
+      }
+
+      if (badge) {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/30';
+        badge.textContent = 'ĐANG KIỂM TRA...';
+      }
+
+      try {
+        const startTime = Date.now();
+        const res = await fetch(`${serverUrl}/api/usage/stats`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        const latency = Date.now() - startTime;
+        if (res.ok) {
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
+            badge.textContent = 'ĐÃ KẾT NỐI SQL (TIDB)';
+          }
+          if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${latency}ms)`;
+          if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${serverUrl}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless`;
+          if (icon) icon.textContent = '🟢';
+          if (!silent) showToast(`Kết nối máy chủ Web thành công (${latency}ms)!`, 'success');
+          return true;
+        } else {
+          if (badge) {
+            badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/20 text-red-300 font-bold border border-red-500/30';
+            badge.textContent = 'LỖI XÁC THỰC';
+          }
+          if (title) title.textContent = 'Khóa API không hợp lệ hoặc đã bị khóa';
+          if (desc) desc.textContent = 'Vui lòng kiểm tra lại mã API Key trên trang web https://supportflastdev.io.vn';
+          if (icon) icon.textContent = '🔴';
+          if (!silent) showToast('Khóa API không hợp lệ trên máy chủ Web!', 'error');
+          return false;
+        }
+      } catch (err) {
+        if (badge) {
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/20 text-red-300 font-bold border border-red-500/30';
+          badge.textContent = 'LỖI KẾT NỐI';
+        }
+        if (title) title.textContent = 'Không thể kết nối đến Máy chủ Web';
+        if (desc) desc.textContent = `Lỗi mạng: ${err.message || err}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`;
+        if (icon) icon.textContent = '⚠️';
+        if (!silent) showToast('Không thể kết nối tới máy chủ Web!', 'error');
+        return false;
+      }
+    }
+
+    async function saveAndSyncWebSQL() {
+      const urlInput = document.getElementById('web-server-url-input');
+      const keyInput = document.getElementById('web-api-key-input');
+      const serverUrl = (urlInput?.value || 'https://supportflastdev.io.vn').trim().replace(/\/+$/, '');
+      const apiKey = (keyInput?.value || '').trim();
+
+      if (!apiKey) {
+        showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        return;
+      }
+
+      showToast('Đang lưu khóa và đồng bộ dữ liệu SQL từ Web...', 'info');
+
+      try {
+        localStorage.setItem('omnirouter_web_url', serverUrl);
+        localStorage.setItem('omnirouter_web_key', apiKey);
+      } catch (_) {}
+
+      try {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage(JSON.stringify({
+            action: 'saveWebApiKey',
+            serverUrl: serverUrl,
+            apiKey: apiKey
+          }));
+        }
+      } catch (e) {
+        console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
+      }
+
+      const isConnected = await testWebConnection(true);
+      if (isConnected) {
+        try {
+          const provRes = await fetch(`${serverUrl}/api/router/providers`, {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
+          });
+          if (provRes.ok) {
+            const provData = await provRes.json();
+            const count = (provData && provData.providers) ? provData.providers.length : (Array.isArray(provData) ? provData.length : 0);
+            const desc = document.getElementById('web-sync-desc');
+            if (desc) {
+              desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${serverUrl}</code> | Đã đồng bộ <strong class="text-cyan-300">${count} nhà cung cấp</strong> từ CSDL SQL TiDB Cloud!`;
+            }
+          }
+        } catch (_) {}
+
+        showToast('✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!', 'success');
+      }
+    }
+
+    // Tự động khởi chạy nạp cấu hình khi mở app
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWebSQLSync);
+    } else {
+      setTimeout(initWebSQLSync, 200);
+    }
 
     function switchTab(tabId) {
 
