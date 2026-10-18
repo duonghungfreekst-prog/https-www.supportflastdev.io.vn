@@ -280,15 +280,29 @@
 
 
 
-    /* Ẩn hoàn toàn Danh Sách Khóa API Cổng Nội Bộ ở bản App Desktop theo yêu cầu */
-    html.desktop-mode #internal-api-keys-section,
-    body.desktop-mode #internal-api-keys-section,
-    .desktop-app #internal-api-keys-section,
-    .app-hidden-block {
+    /* Phân định rõ ràng giữa Bản Web và Bản App Desktop */
+    /* 1. Mặc định & trên Web: Ẩn khối đồng bộ Desktop, hiển thị đầy đủ quản lý API Key của Web */
+    .desktop-only-block,
+    html.web-mode .desktop-only-block,
+    body.web-mode .desktop-only-block {
       display: none !important;
     }
-    html.web-mode .app-hidden-block {
+    html.web-mode .web-only-block {
       display: block !important;
+    }
+
+    /* 2. Trên App Desktop: Hiển thị khối đồng bộ, ẩn hoàn toàn danh sách khóa API nội bộ */
+    html.desktop-mode .desktop-only-block,
+    body.desktop-mode .desktop-only-block,
+    .desktop-app .desktop-only-block {
+      display: block !important;
+    }
+    html.desktop-mode .web-only-block,
+    body.desktop-mode .web-only-block,
+    .desktop-app .web-only-block,
+    html.desktop-mode #internal-api-keys-section,
+    body.desktop-mode #internal-api-keys-section {
+      display: none !important;
     }
 
     /* Glassmorphism & Neon Shadows (Tối ưu GPU blur radius 6px, tăng background opacity để sắc nét và giảm 75% GPU load) */
@@ -2199,8 +2213,8 @@
 
         <div id="tab-endpoints" class="tab-content active space-y-6">
 
-          <!-- KHỐI 1: KẾT NỐI MÁY CHỦ WEB & ĐỒNG BỘ DỮ LIỆU SQL (TIDB CLOUD) -->
-          <div class="glass-card rounded-2xl p-6 border border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-black space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden">
+          <!-- KHỐI 1: KẾT NỐI MÁY CHỦ WEB & ĐỒNG BỘ DỮ LIỆU SQL (CHỈ HIỂN THỊ TRÊN BẢN APP DESKTOP) -->
+          <div id="desktop-web-sync-section" class="glass-card rounded-2xl p-6 border border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-black space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden desktop-only-block">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div class="flex items-center gap-2">
@@ -2368,8 +2382,8 @@
 
 
 
-          <!-- Quản lý API Keys (Ẩn hoàn toàn trên bản App Desktop theo yêu cầu) -->
-          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4 app-hidden-block" style="display: none !important;">
+          <!-- Quản lý API Keys (CHỈ HIỂN THỊ TRÊN WEB, ẨN HOÀN TOÀN TRÊN BẢN APP DESKTOP) -->
+          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4 web-only-block">
 
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
@@ -8527,12 +8541,18 @@
     const IS_DESKTOP_ENV = isDesktopAppEnv();
     if (!IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('web-mode');
+      document.documentElement.classList.remove('desktop-mode');
+      const syncSec = document.getElementById('desktop-web-sync-section');
+      if (syncSec) syncSec.style.setProperty('display', 'none', 'important');
+      const apiSec = document.getElementById('internal-api-keys-section');
+      if (apiSec) apiSec.style.removeProperty('display');
     } else if (IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('desktop-mode');
+      document.documentElement.classList.remove('web-mode');
+      const syncSec = document.getElementById('desktop-web-sync-section');
+      if (syncSec) syncSec.style.setProperty('display', 'block', 'important');
       const apiSec = document.getElementById('internal-api-keys-section');
-      if (apiSec) {
-        apiSec.style.setProperty('display', 'none', 'important');
-      }
+      if (apiSec) apiSec.style.setProperty('display', 'none', 'important');
     }
     const checkIsOmniGatewayHost = () => {
       try {
