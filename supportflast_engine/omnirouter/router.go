@@ -81,8 +81,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		}
 	}()
 
-	// 3. Khởi chạy worker tự động làm mới token OAuth ngầm
+	// 3. Khởi chạy worker tự động làm mới token OAuth ngầm & nạp Quota định kỳ
 	StartAutoTokenRefreshWorker(context.Background(), db)
+	StartBackgroundQuotaPollingWorker(context.Background(), db)
 
 	// 4. API Ping siêu nhẹ & Health check
 	safeRegister(mux, "/ping", HandlePing)
@@ -117,6 +118,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/providers/test-batch", HandleBatchHealthCheck(db))
 	safeRegister(mux, "/api/providers/health-check-all", HandleBatchHealthCheck(db))
 	safeRegister(mux, "/api/quotas/refresh-all", HandleRefreshAllQuotas(db))
+	safeRegister(mux, "/api/router/quotas/refresh-all", HandleRefreshAllQuotas(db))
 
 	// 6.0 API Available Models của Provider (/api/models/provider)
 	providerModelsHandler := HandleProviderModels(db)
@@ -134,6 +136,8 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/usage/request-details", HandleRequestDetails(db))
 	safeRegister(mux, "/api/usage/", usageHandler)
 	safeRegister(mux, "/api/usage", usageHandler)
+	safeRegister(mux, "/api/router/usage/", usageHandler)
+	safeRegister(mux, "/api/router/usage", usageHandler)
 
 	// 6.2 API Proxy Pools (/api/proxy-pools)
 	proxyPoolsHandler := HandleProxyPools(db)

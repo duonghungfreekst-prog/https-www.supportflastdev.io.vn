@@ -1211,43 +1211,66 @@ func HandleSwitchProxy(db *sql.DB) http.HandlerFunc {
 func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		targetID := strings.TrimPrefix(r.URL.Path, "/api/usage/")
 		targetID = strings.TrimPrefix(targetID, "/api/usage")
+		targetID = strings.TrimPrefix(targetID, "/api/router/usage/")
+		targetID = strings.TrimPrefix(targetID, "/api/router/usage")
 		targetID = strings.TrimSpace(targetID)
 
-		var quotas map[string]interface{}
+		force := r.URL.Query().Get("force") == "1" || r.Method == http.MethodPost
+
+		var targetProvider *ProviderConnection
 		if targetID != "" {
 			providers, _ := GetAllProviders(db)
 			if len(providers) == 0 {
 				providers = GetCachedActiveProviders()
 			}
-			for _, p := range providers {
+			for i := range providers {
+				p := &providers[i]
 				if p.ID == targetID || p.Email == targetID || p.Name == targetID {
-					var dataMap map[string]interface{}
-					if err := json.Unmarshal(p.Data, &dataMap); err == nil {
-						if q, ok := dataMap["quotas"].(map[string]interface{}); ok && len(q) > 0 {
-							quotas = q
-							break
-						}
-					}
+					targetProvider = p
+					break
 				}
 			}
 		}
 
-		if quotas == nil || len(quotas) == 0 {
-			now := time.Now()
-			quotas = map[string]interface{}{
-				"gemini_session":     map[string]interface{}{"total": 1000, "used": 0, "remainingPercentage": 100, "resetAt": now.Add(5 * time.Hour).Format(time.RFC3339)},
-				"claude_gpt_session": map[string]interface{}{"total": 1000, "used": 0, "remainingPercentage": 100, "resetAt": now.Add(5 * time.Hour).Format(time.RFC3339)},
-				"gemini_flash_image": map[string]interface{}{"total": 1000, "used": 0, "remainingPercentage": 100, "resetAt": now.Add(5 * time.Hour).Format(time.RFC3339)},
-				"gemini_weekly":      map[string]interface{}{"total": 1000, "used": 0, "remainingPercentage": 100, "resetAt": now.Add(7 * 24 * time.Hour).Format(time.RFC3339)},
-				"claude_gpt_weekly":  map[string]interface{}{"total": 1000, "used": 0, "remainingPercentage": 100, "resetAt": now.Add(7 * 24 * time.Hour).Format(time.RFC3339)},
+		if targetProvider != nil && (targetProvider.Provider == "antigravity" || targetProvider.Provider == "google") {
+			qMap, err := FetchAntigravityQuota(db, targetProvider, force)
+			if err == nil && len(qMap) > 0 {
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"status": "ok",
+					"quotas": qMap,
+				})
+				return
+			}
+			// Nếu lỗi live fetch, thử đọc quotas cũ từ data
+			var dataMap map[string]interface{}
+			if json.Unmarshal(targetProvider.Data, &dataMap) == nil {
+				if qRaw, ok := dataMap["quotas"].(map[string]interface{}); ok && len(qRaw) > 0 {
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"status": "ok",
+						"quotas": qRaw,
+						"cached": true,
+					})
+					return
+				}
 			}
 		}
 
+		// Fallback nếu không tìm thấy hoặc chưa có quota
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ok",
-			"quotas": quotas,
+			"status": "error",
+			"message": fmt.Sprintf("Không tìm thấy thông tin hạn mức cho tài khoản: %s", targetID),
+			"quotas": map[string]interface{}{},
 		})
 	}
 }
@@ -1866,20 +1889,32 @@ func HandleBatchHealthCheck(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// HandleRefreshAllQuotas kích hoạt làm mới hạn mức toàn bộ tài khoản
+// HandleRefreshAllQuotas kích hoạt làm mới hạn mức toàn bộ tài khoản từ Google Cloud Code PA
 func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-		RefreshProviderCache(db)
-		providers := GetCachedActiveProviders()
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		force := r.URL.Query().Get("force") == "1" || r.Method == http.MethodPost
+		result := FetchAllAntigravityQuotas(db, force)
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success":      true,
-			"message":      fmt.Sprintf("Đã làm mới quota cho %d tài khoản AI", len(providers)),
+			"total":        result.Total,
+			"successCount": result.Success,
+			"failedCount":  result.Failed,
+			"durationMs":   result.DurationMs,
+			"accountData":  result.AccountData,
+			"results":      result.Results,
 			"refreshedAt":  time.Now().Format(time.RFC3339),
-			"activeCount":  len(providers),
+			"message":      fmt.Sprintf("Đã làm mới thành công %d/%d tài khoản AI (%dms)", result.Success, result.Total, result.DurationMs),
 		})
 	}
 }

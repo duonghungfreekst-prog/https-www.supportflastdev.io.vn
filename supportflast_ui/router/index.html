@@ -28550,14 +28550,10 @@
       const quotas = [];
 
       const uData = item.usageData;
-
-      const qMap = uData && uData.quotas ? uData.quotas : null;
-
+      const qMap = uData ? (uData.quotas || (uData.gemini_session ? uData : null)) : null;
       const isLoaded = Boolean(qMap);
 
-
-
-      if (item.provider === 'antigravity') {
+      if (item.provider === 'antigravity' || item.provider === 'google') {
 
         // 1. Gemini (5h)
 
@@ -28792,37 +28788,21 @@
           const batchRes = await apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`);
 
           if (batchRes.ok) {
-
             const batchData = await batchRes.json();
-
-            if (batchData && batchData.results) {
-
-              quotasMap = batchData.results;
-
+            if (batchData && (batchData.accountData || batchData.results)) {
+              quotasMap = batchData.accountData || batchData.results;
               batchLoaded = true;
-
             }
-
           }
-
         } catch (e) {
-
           console.warn("Batch quota fetch không khả dụng, chuyển sang chế độ dự phòng:", e);
-
         }
 
-
-
         if (batchLoaded) {
-
           _quotaAccountsList = trackable.map(conn => ({
-
             ...conn,
-
-            usageData: quotasMap[conn.id] || null
-
+            usageData: { quotas: quotasMap[conn.id] || null }
           }));
-
         } else {
 
           // Chế độ dự phòng: Gọi từng account
