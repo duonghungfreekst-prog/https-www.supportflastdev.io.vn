@@ -11966,7 +11966,7 @@
 
       }
 
-      return `<img src="providers/${filename}" alt="${id}" class="${sizeClass} object-contain rounded-sm" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='/providers/${filename}';}else{this.onerror=null;this.parentElement.innerHTML='<span class=\\'font-bold font-mono text-xs text-${color}-400\\'>${fallback}</span>';}" />`;
+      return `<img src="/router/providers/${filename}" alt="${id}" class="${sizeClass} object-contain rounded-sm" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='providers/${filename}';}else if(!this.dataset.retried2){this.dataset.retried2='1';this.src='/providers/${filename}';}else{this.onerror=null;this.parentElement.innerHTML='<span class=\\'font-bold font-mono text-xs text-${color}-400\\'>${fallback}</span>';}" />`;
 
     }
 
@@ -29134,14 +29134,8 @@
 
               <div class="flex items-center gap-2 min-w-0">
 
-                <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500/20 via-rose-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-
-                  <svg class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-
-                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-
-                  </svg>
-
+                <div class="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-inner p-1">
+                  ${getProviderIconImg(item.provider || 'antigravity', (providerName[0] || 'A'), 'cyan', 'w-full h-full')}
                 </div>
 
                 <div class="min-w-0">
