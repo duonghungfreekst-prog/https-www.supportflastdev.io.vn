@@ -2450,6 +2450,44 @@ func HandleClientAppDownload() http.HandlerFunc {
 	}
 }
 
+// HandleShareAppDownload phục vụ tải về gói App Chia Sẻ Dữ Liệu & DNS Client (tinh gọn 4 tab: MITM, DNS, Tốc Độ, Nhập API)
+func HandleShareAppDownload() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		candidates := []string{
+			filepath.Join("storage", "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+			filepath.Join("..", "storage", "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+			filepath.Join("..", "..", "storage", "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+			filepath.Join("/app", "storage", "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+			filepath.Join("/app", "data", "storage", "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+			filepath.Join(os.Getenv("STORAGE_DIR"), "packages", "OmniRouter_Client_ShareApp_v1.0.0.zip"),
+		}
+
+		var targetFile string
+		for _, cand := range candidates {
+			if cand == "" {
+				continue
+			}
+			if info, err := os.Stat(cand); err == nil && !info.IsDir() {
+				targetFile = cand
+				break
+			}
+		}
+
+		if targetFile == "" {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Gói cài đặt App Chia Sẻ Dữ Liệu đang được chuẩn bị. Vui lòng thử lại sau.",
+			})
+			return
+		}
+
+		w.Header().Set("Content-Disposition", `attachment; filename="OmniRouter_Client_ShareApp_v1.0.0.zip"`)
+		w.Header().Set("Content-Type", "application/zip")
+		http.ServeFile(w, r, targetFile)
+	}
+}
+
 var serverStartTime = time.Now()
 
 

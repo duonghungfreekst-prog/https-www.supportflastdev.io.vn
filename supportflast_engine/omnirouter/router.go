@@ -197,9 +197,12 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
 	safeRegister(mux, "/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
-	// 8.1 API Tải về gói App Desktop OmniRouter (Đã bỏ LibSQL, trỏ TiDB Cloud)
+	// 8.1 API Tải về gói App Desktop OmniRouter & App Chia Sẻ Dữ Liệu Client
 	appDownloadHandler := HandleClientAppDownload()
-	safeRegister(mux, "/api/v1/client/download", appDownloadHandler)
+	shareAppDownloadHandler := HandleShareAppDownload()
+	safeRegister(mux, "/api/v1/client/download", shareAppDownloadHandler)
+	safeRegister(mux, "/api/v1/client/download-share-app", shareAppDownloadHandler)
+	safeRegister(mux, "/api/apps/download/APP-SHARE", shareAppDownloadHandler)
 	safeRegister(mux, "/api/apps/download/APP-ROUTER", appDownloadHandler)
 
 	// 9. API Đồng bộ, Cấu hình MITM & DNS và Báo cáo dành riêng cho App PC / Termux / CMD

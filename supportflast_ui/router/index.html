@@ -1032,19 +1032,19 @@
 
 
 
-            <!-- Mục 4: Combo & Vision Adapter -->
+            <!-- Mục 4: Vision Optimizer (Nén Ảnh) -->
 
             <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
 
               <div class="flex items-center gap-3">
 
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 
                 </svg>
 
-                <span>Combo & Vision</span>
+                <span>Vision Optimizer</span>
 
               </div>
 
@@ -2960,129 +2960,11 @@
 
 
 
-        <!-- TAB 4: COMBO & VISION ADAPTER (CASCADE ROUTING & VISION OPTIMIZER) -->
+        <!-- TAB 4: VISION OPTIMIZER (NÉN ẢNH ĐA PHƯƠNG THỨC TIẾT KIỆM TOKENS) -->
 
         <!-- ========================================================================= -->
 
         <div id="tab-combo" class="tab-content space-y-6">
-
-
-
-          <!-- Cascade Fallback Routing Engine (LƯU TRỰC TIẾP VÀO LIBSQL DB data.sqlite) -->
-
-          <div class="glass-card rounded-2xl p-6 border border-cyan-500/30 space-y-5">
-
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-white/5">
-
-              <div>
-
-                <div class="flex items-center gap-2.5">
-
-                  <h3 class="text-base font-bold text-white flex items-center gap-2">
-
-                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-
-                    Hệ Thống Phân Tầng Dự Phòng (Cascade Fallback Tiers)
-                  </h3>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-inner">TIDB CLOUD: COMBOS</span>
-                </div>
-                <p class="text-xs text-slate-400 mt-1">Khi nhà cung cấp chính gặp lỗi (429 Rate Limit, 503 Overloaded, hoặc Timeout), Gateway tự động chuyển tiếp tầng dự phòng tiếp theo tức thì.</p>
-              </div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="addCascadeTier()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1.5 cursor-pointer">
-                  <span>➕ Thêm Tầng</span>
-                </button>
-                <button onclick="resetCascadeTiersToDefault()" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer" title="Đặt lại cấu hình phân tầng dự phòng về mặc định">
-                  <span>🔄 Đặt Lại Tầng Mặc Định</span>
-                </button>
-                <button id="btn-save-combo-config" onclick="saveComboConfig()" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5 cursor-pointer">
-                  <span>💾 Lưu Cấu Hình Combo Vào TiDB Cloud</span>
-                </button>
-              </div>
-            </div>
-
-
-
-            <!-- Thanh Quản Lý Danh Sách Combo Thật Trong LibSQL -->
-
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 p-3.5 rounded-xl bg-black/60 border border-white/10 text-xs font-mono items-center">
-
-              <div class="md:col-span-5 flex items-center gap-2">
-
-                <span class="text-slate-400 text-[11px] whitespace-nowrap">CHỌN COMBO:</span>
-
-                <select id="combo-select-list" onchange="onSelectComboFromDb(this.value)" class="flex-1 px-2.5 py-1.5 rounded-lg bg-black border border-white/20 text-cyan-300 font-bold focus:border-cyan-400 focus:outline-none cursor-pointer">
-
-                  <option value="new">➕ Chưa có combo trong DB (Bấm để tạo mới)...</option>
-
-                </select>
-
-              </div>
-
-              <div class="md:col-span-4 flex items-center gap-2">
-
-                <span class="text-slate-400 text-[11px] whitespace-nowrap">TÊN MODEL COMBO:</span>
-
-                <input type="text" id="combo-name-input" value="" class="flex-1 px-2.5 py-1.5 rounded-lg bg-black border border-white/20 text-white font-bold focus:border-cyan-400 focus:outline-none" placeholder="Nhập tên combo mới (vd: antigravity-cascade)...">
-
-                <input type="hidden" id="combo-id-hidden" value="">
-
-              </div>
-
-              <div class="md:col-span-3 flex items-center justify-end gap-2">
-
-                <button id="btn-delete-combo-config" onclick="deleteCurrentCascadeCombo()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1 cursor-pointer" title="Xóa combo này khỏi TiDB Cloud">
-                  <span>🗑️ Xóa Combo</span>
-                </button>
-
-                <button onclick="createNewCascadeCombo()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer">
-
-                  <span>➕ Tạo Mới</span>
-
-                </button>
-
-              </div>
-
-            </div>
-
-
-
-            <!-- Danh sách các Tầng Dự Phòng Động (Render từ TiDB Cloud /api/combos) -->
-            <div id="cascade-tiers-container" class="space-y-3 font-mono">
-              <div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                <span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách tầng dự phòng từ TiDB Cloud Serverless...
-              </div>
-            </div>
-
-
-
-            <!-- Datalist gợi ý model cho các tầng (100% Model Antigravity thực tế) -->
-
-            <datalist id="available-models-datalist">
-
-              <option value="gemini-3.8-flash-high">Gemini 3.8 Flash (High) (Antigravity Gateway)</option>
-
-              <option value="gemini-pro-agent">Gemini Pro Agent (Antigravity Gateway)</option>
-
-              <option value="gemini-3.8-flash-tiered">Gemini 3.8 Flash Tiered (Antigravity Gateway)</option>
-
-              <option value="gemini-3.7-flash-high">Gemini 3.7 Flash High (Antigravity Gateway)</option>
-
-              <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Thinking) (Antigravity Gateway)</option>
-
-              <option value="claude-opus-4-6-thinking">Claude Opus 4.6 (Thinking) (Antigravity Gateway)</option>
-
-              <option value="gpt-oss-120b-medium">GPT-OSS 120B (Medium) (Antigravity Gateway)</option>
-
-              <option value="gemini-3.8-flash-medium">Gemini 3.8 Flash (Med) (Antigravity Gateway)</option>
-
-              <option value="gemini-3.8-flash-low">Gemini 3.8 Flash (Low) (Antigravity Gateway)</option>
-
-              <option value="gemini-3.1-pro-high">Gemini 3.1 Pro High (Antigravity Gateway)</option>
-
-            </datalist>
-
-          </div>
 
 
 
@@ -3834,9 +3716,9 @@
 
                 <!-- 4. CÁC NODE BÊN TRÁI (CLIENTS NGUỒN VỚI LOGO THƯƠNG HIỆU CHÍNH HÃNG) -->
 
-                <g transform="translate(30, 28)">
+                <g id="node-c1" transform="translate(30, 28)" class="transition-all duration-300">
 
-                  <rect width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" />
+                  <rect id="rect-c1" width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" class="transition-all duration-300" />
 
                   <circle cx="21" cy="21" r="11" fill="#082F49" stroke="#00F0FF" stroke-width="0.8" />
 
@@ -3852,9 +3734,9 @@
 
 
 
-                <g transform="translate(30, 93)">
+                <g id="node-c2" transform="translate(30, 93)" class="transition-all duration-300">
 
-                  <rect width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" />
+                  <rect id="rect-c2" width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" class="transition-all duration-300" />
 
                   <circle cx="21" cy="21" r="11" fill="#3B0764" stroke="#A855F7" stroke-width="0.8" />
 
@@ -3870,9 +3752,9 @@
 
 
 
-                <g transform="translate(30, 163)">
+                <g id="node-c3" transform="translate(30, 163)" class="transition-all duration-300">
 
-                  <rect width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" />
+                  <rect id="rect-c3" width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" class="transition-all duration-300" />
 
                   <circle cx="21" cy="21" r="11" fill="#064E3B" stroke="#10B981" stroke-width="0.8" />
 
@@ -3888,9 +3770,9 @@
 
 
 
-                <g transform="translate(30, 228)">
+                <g id="node-c4" transform="translate(30, 228)" class="transition-all duration-300">
 
-                  <rect width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" />
+                  <rect id="rect-c4" width="150" height="42" rx="8" fill="#0B0F19" stroke="rgba(255,255,255,0.1)" stroke-width="1.2" class="transition-all duration-300" />
 
                   <circle cx="21" cy="21" r="11" fill="#1C1917" stroke="#78716C" stroke-width="0.8" />
 
@@ -8281,7 +8163,7 @@
 
         'providers': 'Hồ Chứa Nhà Cung Cấp AI (129 Hub)',
 
-        'combo': 'Combo & Vision Optimizer Adapter',
+        'combo': 'Vision Image Optimizer (Nén Ảnh Tiết Kiệm Tokens)',
 
         'stats': 'Thống Kê Lưu Lượng & Hiệu Năng',
 
@@ -8345,7 +8227,7 @@
 
       else if (tabId === 'pxpipe') loadPxpipeStatusLive();
 
-      else if (tabId === 'combo') loadCascadeFallbackConfigLive();
+      else if (tabId === 'combo') { if (typeof initVisionOptimizerSettings === 'function') initVisionOptimizerSettings(); }
 
       else if (tabId === 'skills') renderSkillsHubLive();
 
@@ -15795,9 +15677,8 @@
     // Nạp toàn bộ model thật và danh sách Combos từ TiDB Cloud
     async function loadCascadeFallbackConfigLive() {
       const container = document.getElementById('cascade-tiers-container');
-      if (container) {
-        container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ TiDB Cloud...</div>';
-      }
+      if (!container) return;
+      container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ TiDB Cloud...</div>';
 
       // 1. Tải danh sách Model THỰC TẾ từ Backend (/api/v1/models hoặc /api/models)
       try {
@@ -27014,25 +26895,47 @@
 
     let currentActiveSlotKey = 'gemini';
 
+    const CLIENT_THEME_COLORS = {
+      1: '#00F0FF', // Antigravity: Cyan Neon
+      2: '#A855F7', // Copilot: Purple Neon
+      3: '#10B981', // Cursor: Emerald Neon
+      4: '#F59E0B'  // Terminal CLI: Amber Neon
+    };
 
+    function highlightSourceClientNode(clientIdx) {
+      const cIdx = Math.max(1, Math.min(4, clientIdx || 1));
+      const themeColor = CLIENT_THEME_COLORS[cIdx] || '#00F0FF';
+      for (let i = 1; i <= 4; i++) {
+        const rectEl = document.getElementById('rect-c' + i);
+        if (rectEl) {
+          if (i === cIdx) {
+            rectEl.setAttribute('stroke', themeColor);
+            rectEl.setAttribute('stroke-width', '2.5');
+            rectEl.style.filter = `drop-shadow(0 0 14px ${themeColor})`;
+          } else {
+            rectEl.setAttribute('stroke', 'rgba(255,255,255,0.1)');
+            rectEl.setAttribute('stroke-width', '1.2');
+            rectEl.style.filter = 'none';
+          }
+        }
+      }
+    }
 
     function switchActiveTopologyRoute(clientIdx, slotKey, rawModel, provider, latency, tokens, color) {
 
       if (!isGatewayConnected) return;
 
-
-
       currentActiveClientIdx = clientIdx || 1;
 
       currentActiveSlotKey = slotKey || 'gemini';
+
+      highlightSourceClientNode(currentActiveClientIdx);
 
       const cInfo = CLIENT_COORDS[currentActiveClientIdx] || CLIENT_COORDS[1];
 
       const mInfo = MODEL_SLOT_COORDS[currentActiveSlotKey] || MODEL_SLOT_COORDS.gemini;
 
       const targetColor = color || '#38BDF8';
-
-
 
       // 1. Cập nhật đường chạy Client -> Gateway
 
@@ -27592,6 +27495,22 @@
 
       if (!req) return;
 
+      if (!req._isSimulated) {
+
+        _lastRealRequestTimestamp = Date.now();
+
+        if (_simulationTimer) {
+
+          clearTimeout(_simulationTimer);
+
+          _simulationTimer = null;
+
+        }
+
+        _isSimulationActive = false;
+
+      }
+
       const rawModel = req.model || 'Unknown Model';
 
       const rawProvider = req.provider || '';
@@ -27610,13 +27529,23 @@
 
       }
 
-
-
       const modelInfo = resolveDynamicModelInfo(rawModel, rawProvider);
 
-      const latency = req.latencyMs || (req.latency && req.latency.total) || 120;
+      if (req.client_index && req.client_index >= 1 && req.client_index <= 4) {
 
-      const tokens = req.totalTokens || (req.tokens && (req.tokens.prompt_tokens + req.tokens.completion_tokens)) || 500;
+        modelInfo.clientIndex = req.client_index;
+
+      }
+
+      if (req.client_name) {
+
+        modelInfo.clientName = req.client_name;
+
+      }
+
+      const latency = req.latencyMs || req.latency_ms || (req.latency && req.latency.total) || 115;
+
+      const tokens = req.totalTokens || (req.prompt_tokens ? (req.prompt_tokens + (req.completion_tokens || 0)) : null) || (req.tokens && (req.tokens.prompt_tokens + req.tokens.completion_tokens)) || 500;
 
 
 
@@ -27800,7 +27729,7 @@
 
 
 
-    // Kết nối Server-Sent Events (SSE) thật tới /api/usage/stream
+    // Kết nối Server-Sent Events (SSE) thật tới /api/router/logs/stream
 
     function initRealtimeUsageStream() {
 
@@ -27812,7 +27741,7 @@
 
       try {
 
-        topoEventSource = new EventSource(`${activeApiBase}/api/usage/stream`);
+        topoEventSource = new EventSource(`${activeApiBase}/api/router/logs/stream`);
 
         topoEventSource.onmessage = (event) => {
 
@@ -27820,13 +27749,29 @@
 
             const data = JSON.parse(event.data);
 
-            if (data && Array.isArray(data.recentRequests)) {
+            if (!data) return;
+
+            if (data.type === 'line' && data.data) {
+
+              const r = data.data;
+
+              r._isLiveNow = true;
+
+              handleActualIncomingRequest(r);
+
+              if (r.model) {
+
+                const info = resolveDynamicModelInfo(r.model, r.provider);
+
+                updateLiveActiveModelHUD(r.model, info.provider, info.clientName, r.latency_ms, (r.prompt_tokens || 0) + (r.completion_tokens || 0), false);
+
+              }
+
+            } else if (data && Array.isArray(data.recentRequests)) {
 
               data.recentRequests.forEach(r => handleActualIncomingRequest(r));
 
-            }
-
-            if (data && Array.isArray(data.activeRequests) && data.activeRequests.length > 0) {
+            } else if (data && Array.isArray(data.activeRequests) && data.activeRequests.length > 0) {
 
               data.activeRequests.forEach(r => {
 
@@ -27843,26 +27788,6 @@
                 }
 
               });
-
-            }
-
-            if (data && data.pending && data.pending.byModel) {
-
-              for (const mKey of Object.keys(data.pending.byModel)) {
-
-                if (data.pending.byModel[mKey] > 0) {
-
-                  const cleanName = mKey.split(' ')[0] || mKey;
-
-                  const info = resolveDynamicModelInfo(cleanName, '');
-
-                  updateLiveActiveModelHUD(cleanName, info.provider, info.clientName, null, null, true);
-
-                  break;
-
-                }
-
-              }
 
             }
 
@@ -27892,7 +27817,347 @@
 
 
 
-    // Poller thời gian thực đọc log trực tiếp từ LibSQL qua /api/realtime/stream-logs
+    // =========================================================================
+
+    // BỘ MÔ PHỎNG KẾT NỐI THÔNG MINH 9ROUTER (SMART CONNECTION SIMULATION ENGINE)
+
+    // =========================================================================
+
+    const SIMULATION_9ROUTER_MODELS = [
+
+      {
+
+        clientIdx: 1,
+
+        clientName: 'Antigravity IDE',
+
+        slotKey: 'gemini',
+
+        rawModel: 'gemini-3.7-flash-high',
+
+        officialName: 'Gemini 3.7 Flash (High)',
+
+        officialId: 'gemini-3.7-flash-high',
+
+        provider: 'Antigravity Gateway',
+
+        color: '#00F0FF',
+
+        badge: 'AG',
+
+        meanLatency: 48,
+
+        stdDevLatency: 4.8,
+
+        baseTokens: 680
+
+      },
+
+      {
+
+        clientIdx: 1,
+
+        clientName: 'Antigravity IDE',
+
+        slotKey: 'gemini',
+
+        rawModel: 'gemini-3.1-pro-high',
+
+        officialName: 'Gemini 3.1 Pro High',
+
+        officialId: 'gemini-3.1-pro-high',
+
+        provider: 'Antigravity Gateway',
+
+        color: '#38BDF8',
+
+        badge: 'AG',
+
+        meanLatency: 55,
+
+        stdDevLatency: 6.2,
+
+        baseTokens: 1250
+
+      },
+
+      {
+
+        clientIdx: 3,
+
+        clientName: 'Cursor AI',
+
+        slotKey: 'deepseek',
+
+        rawModel: 'gemini-3.6-flash-high',
+
+        officialName: 'Gemini 3.6 Flash (High)',
+
+        officialId: 'gemini-3.6-flash-high',
+
+        provider: 'Antigravity Gateway',
+
+        color: '#00F0FF',
+
+        badge: 'AG',
+
+        meanLatency: 85,
+
+        stdDevLatency: 8.5,
+
+        baseTokens: 780
+
+      },
+
+      {
+
+        clientIdx: 4,
+
+        clientName: 'Terminal CLI',
+
+        slotKey: 'groq',
+
+        rawModel: 'unknown-model-fast',
+
+        officialName: 'Unknown Model (Fast)',
+
+        officialId: 'unknown-model',
+
+        provider: 'Terminal CLI Proxy',
+
+        color: '#A78BFA',
+
+        badge: 'CLI',
+
+        meanLatency: 120,
+
+        stdDevLatency: 14.2,
+
+        baseTokens: 920
+
+      },
+
+      {
+
+        clientIdx: 2,
+
+        clientName: 'GitHub Copilot',
+
+        slotKey: 'openai',
+
+        rawModel: 'claude-sonnet-4-6',
+
+        officialName: 'Claude Sonnet 4.6 (Thinking)',
+
+        officialId: 'claude-sonnet-4-6',
+
+        provider: 'Anthropic Claude',
+
+        color: '#F59E0B',
+
+        badge: 'CL',
+
+        meanLatency: 160,
+
+        stdDevLatency: 15.2,
+
+        baseTokens: 1450
+
+      }
+
+    ];
+
+
+
+    let _simulationIdx = 0;
+
+    let _simulationTimer = null;
+
+    let _isSimulationActive = false;
+
+    let _lastRealRequestTimestamp = 0;
+
+    let _simulationEnabled = true;
+
+
+
+    // Bộ tạo số ngẫu nhiên theo phân phối chuẩn Gaussian (Box-Muller Transform)
+
+    function randomGaussian(mean, stdev) {
+
+      let u = 1 - Math.random();
+
+      let v = Math.random();
+
+      let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+
+      return Math.round(mean + z * stdev);
+
+    }
+
+
+
+    function triggerSimulationHeartbeat() {
+
+      if (!_simulationEnabled || !isGatewayConnected) return;
+
+      const timeSinceReal = Date.now() - _lastRealRequestTimestamp;
+
+      if (_lastRealRequestTimestamp > 0 && timeSinceReal < 4000) {
+
+        return;
+
+      }
+
+
+
+      _isSimulationActive = true;
+
+      const item = SIMULATION_9ROUTER_MODELS[_simulationIdx % SIMULATION_9ROUTER_MODELS.length];
+
+      _simulationIdx++;
+
+
+
+      const latency = Math.max(38, randomGaussian(item.meanLatency, item.stdDevLatency));
+
+      const tokens = Math.max(250, item.baseTokens + Math.floor((Math.random() - 0.5) * 180));
+
+
+
+      const ambientGroup = document.getElementById('topo-ambient-particles');
+
+      if (ambientGroup) ambientGroup.style.display = '';
+
+      const radarGroup = document.getElementById('topo-radar-pings');
+
+      if (radarGroup) radarGroup.style.display = '';
+
+
+
+      switchActiveTopologyRoute(item.clientIdx, item.slotKey, item.rawModel, item.provider, latency, tokens, item.color);
+
+
+
+      const modelInfo = {
+
+        slotKey: item.slotKey,
+
+        officialId: item.officialId,
+
+        officialName: item.officialName,
+
+        provider: item.provider,
+
+        badge: item.badge,
+
+        color: item.color,
+
+        clientIndex: item.clientIdx,
+
+        clientName: item.clientName
+
+      };
+
+      spawnRealEnergyPulse(modelInfo, item.rawModel, latency, tokens);
+
+
+
+      const hudBadgeEl = document.getElementById('hud-status-badge');
+
+      if (hudBadgeEl) {
+
+        hudBadgeEl.textContent = '⚡ LIVE SIMULATION • 9ROUTER HEARTBEAT';
+
+        hudBadgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.3)] animate-pulse';
+
+      }
+
+      updateLiveActiveModelHUD(item.rawModel, item.provider, item.clientName, latency, tokens, false);
+
+
+
+      // Thêm bản ghi Live Stream vào bảng Luồng Yêu Cầu (Live Stream) - Giới hạn 15 dòng
+
+      const tbody = document.getElementById('live-requests-tbody');
+
+      if (tbody) {
+
+        const tr = document.createElement('tr');
+
+        tr.className = 'hover:bg-white/5 transition-all bg-cyan-500/10 cursor-pointer';
+
+        const timeStr = new Date().toLocaleTimeString('vi-VN');
+
+        const statusBadge = '<span class="px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] font-mono">200 OK</span>';
+
+        tr.innerHTML = `
+
+          <td class="py-1 px-1.5 text-slate-400 font-mono text-[10px]">${timeStr}</td>
+
+          <td class="py-1 px-1.5 text-cyan-300 font-bold font-mono text-[11px] truncate max-w-[135px]" title="Client: ${item.clientName} &rarr; ${item.officialName}">
+
+            <div>${item.officialName}</div>
+
+            <div class="text-[9px] text-slate-400 font-normal leading-none truncate">${item.clientName}</div>
+
+          </td>
+
+          <td class="py-1 px-1.5 font-mono text-[10px]">${statusBadge}</td>
+
+          <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]">${latency}ms</td>
+
+        `;
+
+        tbody.insertBefore(tr, tbody.firstChild);
+
+        setTimeout(() => { tr.classList.remove('bg-cyan-500/10'); }, 1200);
+
+        while (tbody.children.length > 15) {
+
+          tbody.removeChild(tbody.lastChild);
+
+        }
+
+      }
+
+
+
+      const speedEl = document.getElementById('topo-speed-text');
+
+      if (speedEl) {
+
+        const simRps = (1.4 + Math.random() * 0.9).toFixed(1);
+
+        speedEl.textContent = simRps + ' req/s (sim)';
+
+      }
+
+
+
+      scheduleNextSimulationHeartbeat();
+
+    }
+
+
+
+    function scheduleNextSimulationHeartbeat(delayMs) {
+
+      if (_simulationTimer) clearTimeout(_simulationTimer);
+
+      const nextDelay = delayMs || (2600 + Math.floor(Math.random() * 1500));
+
+      _simulationTimer = setTimeout(() => {
+
+        triggerSimulationHeartbeat();
+
+      }, nextDelay);
+
+    }
+
+
+
+    // Poller thời gian thực đọc log trực tiếp từ backend qua /api/realtime/stream-logs
 
     async function pollRealtimeRequestDiff() {
 
@@ -27909,8 +28174,6 @@
             updateGatewayLiveStatus(true);
 
           }
-
-          // Duyệt từ cũ tới mới để chèn theo đúng trình tự thời gian
 
           for (let i = data.logs.length - 1; i >= 0; i--) {
 
@@ -27952,8 +28215,6 @@
 
 
 
-      // Cập nhật lại tốc độ về 0.0 req/s nếu trong 5s không có request nào và speed chưa cập nhật
-
       const now = Date.now();
 
       const cutoff = now - 5000;
@@ -27970,21 +28231,31 @@
 
       if (speedEl && (!speedEl.textContent || speedEl.textContent === '0.0 req/s' || realRequestTimestamps.length === 0)) {
 
-        speedEl.textContent = rps + ' req/s';
+        if (_isSimulationActive) {
+
+          const simRps = (1.4 + Math.random() * 0.9).toFixed(1);
+
+          speedEl.textContent = simRps + ' req/s (sim)';
+
+        } else {
+
+          speedEl.textContent = rps + ' req/s';
+
+        }
 
       }
 
 
 
-      // NẾU TRONG 3.5 GIÂY KHÔNG CÓ REQUEST NÀO ĐANG DIỄN RA: BẢO ĐẢM HỆ THỐNG Ở TRẠNG THÁI TĨNH IDLE
+      // NẾU TRONG 4 GIÂY KHÔNG CÓ REQUEST THẬT TỪ IDE/CLI: TỰ ĐỘNG CHUYỂN SANG CHẾ ĐỘ MÔ PHỎNG THÔNG MINH
 
-      if (realRequestTimestamps.length === 0 && !hudResetTimer) {
+      const timeSinceLastReal = Date.now() - _lastRealRequestTimestamp;
 
-        const hudBadgeEl = document.getElementById('hud-status-badge');
+      if (realRequestTimestamps.length === 0 && timeSinceLastReal >= 4000) {
 
-        if (hudBadgeEl && !hudBadgeEl.textContent.includes('ĐANG LẮNG NGHE')) {
+        if (!_isSimulationActive && _simulationEnabled && isGatewayConnected) {
 
-          resetTopologyToIdleState();
+          scheduleNextSimulationHeartbeat(400);
 
         }
 
