@@ -392,9 +392,17 @@ func CreateNewClientKeyWithDomain(db *sql.DB, name string, domain string) (*Clie
 	return CreateNewClientKeyWithQuotaAndExpiry(db, name, domain, 0, 0)
 }
 
-// ListAllClientKeys lấy toàn bộ danh sách API Key
+// ListAllClientKeys lấy danh sách API Key thông thường (ẨN HOÀN TOÀN Master Web Domain Key không bao giờ hiện)
 func ListAllClientKeys(db *sql.DB) ([]ClientKey, error) {
-	rows, err := db.Query("SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at FROM omni_client_keys ORDER BY created_at DESC")
+	rows, err := db.Query(`
+		SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at 
+		FROM omni_client_keys 
+		WHERE id != 'key_master_domain_cloud' 
+		  AND id != 'key_master_legacy' 
+		  AND api_key NOT LIKE '%master-live%' 
+		  AND name NOT LIKE '%Master%' 
+		ORDER BY created_at DESC
+	`)
 	if err != nil {
 		return nil, err
 	}

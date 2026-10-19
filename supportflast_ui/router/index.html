@@ -10035,6 +10035,15 @@
 
           data.keys.forEach(k => {
 
+            // Ẩn hoàn toàn Master Web Domain Key - tuyệt đối không bao giờ hiển thị trên bảng quản trị
+            if (k.id === 'key_master_domain_cloud' || 
+                k.id === 'key_master_legacy' ||
+                (k.name && k.name.toLowerCase().includes('master')) ||
+                (k.key && k.key.includes('master-live')) ||
+                (k.id && k.id.toLowerCase().includes('master'))) {
+              return;
+            }
+
             const tr = document.createElement('tr');
 
             tr.className = 'hover:bg-white/5 transition-colors';
