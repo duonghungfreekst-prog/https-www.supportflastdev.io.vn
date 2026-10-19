@@ -7982,7 +7982,15 @@
     // =========================================================================
     // MODULE ĐỒNG BỘ CSDL SQL (AIVEN POSTGRESQL) QUA API KEY WEB
     // Thay thế hoàn toàn LibSQL / SQLite cục bộ trong ứng dụng Desktop
-    // =========================================================================
+    function showToast(msg, type = 'info') {
+      if (typeof showToastNotification === 'function') {
+        showToastNotification(msg, type === 'error' || type === 'warning');
+      } else {
+        console.log(`[TOAST][${type}] ${msg}`);
+      }
+    }
+    window.showToast = showToast;
+
     function toggleWebKeyVisibility() {
       const input = document.getElementById('web-api-key-input');
       if (!input) return;
