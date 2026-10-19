@@ -192,7 +192,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	}
 	log.Printf("[BOOTSTRAP] [RSA] Cặp khóa RSA 2048-bit sẵn sàng tại: '%s'", keysDir)
 
-	// 5. Tự động khởi tạo CSDL (TiDB Cloud hoặc fallback sang SQLite)
+	// 5. Tự động khởi tạo CSDL (Aiven PostgreSQL hoặc fallback sang SQLite)
 	log.Printf("[BOOTSTRAP] [DATABASE] Đang khởi tạo CSDL (%s)...", database.ActiveDriver())
 	db, err := database.InitDB()
 	if err != nil {
@@ -204,8 +204,8 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		res.MainDBPath = filepath.Join(dataDir, "supportflast.db")
 	} else {
 		log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu đã kết nối và sẵn sàng!")
-		if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
-			res.MainDBPath = fmt.Sprintf("tidb://%s:%s/%s", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"), os.Getenv("TIDB_DATABASE"))
+		if database.ActiveDriver() == "postgres" {
+			res.MainDBPath = "postgres://aiven-cluster/defaultdb"
 		} else {
 			res.MainDBPath = filepath.Join(dataDir, "supportflast.db")
 		}
@@ -216,25 +216,21 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	_ = database.SeedInitialKeys(db, dataDir)
 	_ = database.SeedInitialReleases(db, dataDir)
 
-	// 6. Tự động khởi tạo CSDL CloudPool Storage kết nối TiDB Cloud hoặc fallback SQLite
+	// 6. Tự động khởi tạo CSDL CloudPool Storage kết nối Aiven PostgreSQL hoặc fallback SQLite
 	var storageDB *cloudpoolStorage.DB
-	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
-		tidbCfg := database.DefaultTiDBConfig()
-		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage kết nối trực tiếp TiDB Cloud (%s:%d/%s)...",
-			tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
-
-		storageDB, err = cloudpoolStorage.NewTiDB(tidbCfg)
+	if database.ActiveDriver() == "postgres" {
+		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage kết nối trực tiếp Aiven PostgreSQL...")
+		storageDB, err = cloudpoolStorage.NewPostgres()
 		if err != nil {
-			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Khởi tạo TiDB CloudPool thất bại (%v), tự động fallback sang SQLite...", err)
+			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Khởi tạo Aiven PostgreSQL CloudPool thất bại (%v), tự động fallback sang SQLite...", err)
 			storageDB, err = cloudpoolStorage.NewDB(filepath.Join(dataDir, "cloudpool_metadata.db"))
 			if err != nil {
 				return nil, fmt.Errorf("khởi tạo fallback CloudPool SQLite thất bại: %w", err)
 			}
 			res.CloudPoolDBPath = filepath.Join(dataDir, "cloudpool_metadata.db")
 		} else {
-			cloudpoolURL := fmt.Sprintf("tidb://%s:%d/%s", tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
-			res.CloudPoolDBPath = cloudpoolURL
-			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối và migrate toàn diện trên TiDB Cloud Serverless (%s)!", cloudpoolURL)
+			res.CloudPoolDBPath = "postgres://aiven-cluster/defaultdb"
+			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối toàn diện trên Aiven PostgreSQL!")
 		}
 	} else {
 		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage trên SQLite tại '%s'...", dataDir)

@@ -612,4 +612,22 @@ func GetRecentUsageHistory(db *sql.DB, limit int) []map[string]interface{} {
 	return list
 }
 
+// RecordUsageHistoryAsync ghi nhận bản ghi nhật ký yêu cầu vào bảng omni_usage_history
+func RecordUsageHistoryAsync(db *sql.DB, provider, model, connectionId, apiKey, endpoint string, promptTokens, completionTokens, totalTokens int64, cost float64, status string, latencyMs int64) {
+	if db == nil {
+		return
+	}
+	go func() {
+		defer func() {
+			_ = recover()
+		}()
+		ts := NowISO()
+		_, _ = db.Exec(`
+			INSERT INTO omni_usage_history 
+			(timestamp, provider, model, connection_id, api_key, endpoint, prompt_tokens, completion_tokens, total_tokens, cost, status, latency_ms)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, ts, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, totalTokens, cost, status, latencyMs)
+	}()
+}
+
 

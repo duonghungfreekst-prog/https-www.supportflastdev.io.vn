@@ -343,6 +343,9 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 				CompletionTokens: complTok,
 				ErrorMessage:     msg,
 			})
+
+			// Ghi nhật ký vào omni_usage_history để hiển thị chi tiết trên bảng nhật ký Web & Desktop
+			RecordUsageHistoryAsync(db, "Antigravity", model, report.AccountName, report.ApiKey, endpoint, promptTok, complTok, report.TotalTokens, 0.0, "success", report.LatencyMs)
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1341,22 +1344,12 @@ func HandleModels(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	models := []map[string]interface{}{
 		{"id": "gemini-3.8-flash-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-3.1-pro-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-pro-agent", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-2.5-pro", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-2.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-2.5-flash-thinking", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-2.0-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-1.5-pro", "object": "model", "owned_by": "google", "permission": []interface{}{}},
-		{"id": "gemini-1.5-flash", "object": "model", "owned_by": "google", "permission": []interface{}{}},
 		{"id": "claude-sonnet-4-6", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
 		{"id": "claude-opus-4-6-thinking", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
-		{"id": "claude-3-7-sonnet", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
-		{"id": "claude-3-5-sonnet", "object": "model", "owned_by": "anthropic", "permission": []interface{}{}},
 		{"id": "gpt-oss-120b-medium", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
-		{"id": "gpt-4o", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
-		{"id": "gpt-4o-mini", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
-		{"id": "o3-mini", "object": "model", "owned_by": "openai", "permission": []interface{}{}},
+		{"id": "gemini-3.1-pro-high", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "gemini-pro-agent", "object": "model", "owned_by": "google", "permission": []interface{}{}},
+		{"id": "4-argon", "object": "model", "owned_by": "google", "permission": []interface{}{}},
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"object": "list",
@@ -1770,30 +1763,20 @@ func GetDefaultModelsForProvider(provider string) []ProviderModelItem {
 		}
 	case p == "gemini" || p == "google" || p == "google-ai-studio" || p == "aistudio" || strings.Contains(p, "google"):
 		return []ProviderModelItem{
-			{ID: "gemini-2.5-pro", Name: "Gemini 2.5 Pro (Google AI Studio)", FullModel: "gemini-2.5-pro", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.5-flash", Name: "Gemini 2.5 Flash (Google AI Studio)", FullModel: "gemini-2.5-flash", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.5-flash-thinking", Name: "Gemini 2.5 Flash Thinking (Google AI Studio)", FullModel: "gemini-2.5-flash-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-2.0-flash", Name: "Gemini 2.0 Flash (Google AI Studio)", FullModel: "gemini-2.0-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-1.5-pro", Name: "Gemini 1.5 Pro (Google AI Studio)", FullModel: "gemini-1.5-pro", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
-			{ID: "gemini-1.5-flash", Name: "Gemini 1.5 Flash (Google AI Studio)", FullModel: "gemini-1.5-flash", Caps: &ProviderModelCaps{Thinking: false, Vision: true}},
+			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash High", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro High", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-pro-agent", Name: "Gemini Pro Agent", FullModel: "gemini-pro-agent", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 		}
 	default:
-		// Danh mục 14 Model Chính Thức cho Antigravity
+		// Danh mục Model Chính Thức cho Antigravity IDE
 		return []ProviderModelItem{
-			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash (High)", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-medium", Name: "Gemini 3.8 Flash (Medium) / Default", FullModel: "gemini-3.8-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.8-flash-low", Name: "Gemini 3.8 Flash (Low)", FullModel: "gemini-3.8-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-high", Name: "Gemini 3.7 Flash (High)", FullModel: "gemini-3.7-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-medium", Name: "Gemini 3.7 Flash (Medium)", FullModel: "gemini-3.7-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.7-flash-low", Name: "Gemini 3.7 Flash (Low)", FullModel: "gemini-3.7-flash-low", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.6-flash-high", Name: "Gemini 3.6 Flash (High)", FullModel: "gemini-3.6-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-3.6-flash-medium", Name: "Gemini 3.6 Flash (Medium)", FullModel: "gemini-3.6-flash-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "4-argon", Name: "4 Argon", FullModel: "4-argon", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "gemini-pro-agent", Name: "Gemini 3.1 Pro (High)", FullModel: "gemini-pro-agent", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-3.8-flash-high", Name: "Gemini 3.8 Flash High", FullModel: "gemini-3.8-flash-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 			{ID: "claude-sonnet-4-6", Name: "Claude Sonnet 4.6 (Thinking)", FullModel: "claude-sonnet-4-6", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "claude-sonnet-5-5", Name: "Claude Sonnet 5.5 (Thinking)", FullModel: "claude-sonnet-5-5", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
-			{ID: "claude-opus-5-5", Name: "Claude Opus 5.5 (Thinking)", FullModel: "claude-opus-5-5", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "claude-opus-4-6-thinking", Name: "Claude Opus 4.6 (Thinking)", FullModel: "claude-opus-4-6-thinking", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 			{ID: "gpt-oss-120b-medium", Name: "GPT-OSS 120B (Medium)", FullModel: "gpt-oss-120b-medium", Caps: &ProviderModelCaps{Thinking: true, Vision: false}},
+			{ID: "gemini-3.1-pro-high", Name: "Gemini 3.1 Pro High", FullModel: "gemini-3.1-pro-high", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "gemini-pro-agent", Name: "Gemini Pro Agent", FullModel: "gemini-pro-agent", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
+			{ID: "4-argon", Name: "Gemini 4 Argon (Unavailable)", FullModel: "4-argon", Caps: &ProviderModelCaps{Thinking: true, Vision: true}},
 		}
 	}
 }
@@ -2142,7 +2125,7 @@ func HandleSettings(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// HandleSettingsDatabase trả về thông tin kiến trúc CSDL TiDB Cloud
+// HandleSettingsDatabase trả về thông tin kiến trúc CSDL Aiven PostgreSQL Cloud
 func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -2152,15 +2135,15 @@ func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 		keysList, _ := ListAllClientKeys(db)
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"engine":        "TiDB Cloud Serverless (MySQL Protocol)",
-			"host":          "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000",
-			"database":      "supportflast",
-			"path":          "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000 (Database: supportflast - TiDB Cloud Serverless)",
-			"database_type": "TiDB Cloud Serverless",
+			"engine":        "Aiven PostgreSQL Cloud Cluster (PostgreSQL 18.6)",
+			"host":          "pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204",
+			"database":      "defaultdb",
+			"path":          "pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb (SSL Mode: require)",
+			"database_type": "Aiven PostgreSQL Cloud",
 			"status":        "online",
-			"architecture":  "Distributed NewSQL Cloud Architecture",
-			"tls":           "TLS 1.2+ Enforced (tidb)",
-			"libsql":        "Bỏ hoàn toàn LibSQL / SQLite - Trỏ 100% lên TiDB Cloud",
+			"architecture":  "High-Performance Cloud PostgreSQL Architecture",
+			"tls":           "TLS 1.2+ SSL Enforced (require)",
+			"libsql":        "Loại bỏ hoàn toàn TiDB / SQLite - Hoạt động 100% trên Aiven PostgreSQL",
 			"tables": []string{
 				"omni_providers",
 				"omni_client_keys",

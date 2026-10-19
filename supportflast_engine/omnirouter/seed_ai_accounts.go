@@ -66,10 +66,10 @@ var EmbeddedProxyPools = []CoreProxyPoolSeed{
 	},
 }
 
-// EmbeddedSettingsJSON c?u h?nh router c? ??nh t? data.libsql
-const EmbeddedSettingsJSON = `{"mitmRouterBaseUrl":"http://localhost:20128","mitmCertInstalled":true,"mitmEnabled":true,"dnsToolEnabled":{"antigravity":true},"quotaVisibility":{"antigravity":{"hidden":["gemini-3.1-pro-low","claude-opus-4-6-thinking","gemini-3-flash","gemini-3.6-flash-medium","gemini-3.6-flash-low","gemini-3.5-flash-extra-low","gemini-3.8-flash-medium","gemini-3.8-flash-low","gemini-3.7-flash-medium","gemini-3.7-flash-low","gemini-3.7-flash-high","gemini-3.6-flash-high","gemini-3.5-flash-low","gemini-pro-agent","gpt-oss-120b-medium","gemini-3.1-flash-image"]},"gemini-cli":{"hidden":["gemini-3-flash-preview","gemini-3.1-flash-lite-preview","gemini-2.5-flash"]}},"providerStrategies":{"antigravity":{"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20},"opencode":{"proxyPoolId":"96684253-0dbb-471a-ad1f-6a1fb23a6213","rotateStrategy":"random"}},"password":null,"rtkEnabled":false,"capacityAdapter":{"vision":{"enabled":false,"roundRobin":true,"models":[]},"audioInput":{"enabled":false,"roundRobin":true,"models":[]}},"requireApiKey":false,"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20,"enableObservability":true,"comboStrategies":{},"requireLogin":false}`
+// EmbeddedSettingsJSON cấu hình router cố định
+const EmbeddedSettingsJSON = `{"mitmRouterBaseUrl":"http://localhost:20128","mitmCertInstalled":true,"mitmEnabled":true,"dnsToolEnabled":{"antigravity":true},"quotaVisibility":{"antigravity":{"hidden":[]}},"providerStrategies":{"antigravity":{"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20},"opencode":{"proxyPoolId":"96684253-0dbb-471a-ad1f-6a1fb23a6213","rotateStrategy":"random"}},"password":null,"rtkEnabled":false,"capacityAdapter":{"vision":{"enabled":false,"roundRobin":true,"models":[]},"audioInput":{"enabled":false,"roundRobin":true,"models":[]}},"requireApiKey":false,"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20,"enableObservability":true,"comboStrategies":{},"requireLogin":false}`
 
-// EmbeddedKVList danh s?ch KV c? ??nh t? data.libsql
+// EmbeddedKVList danh sách KV cố định
 var EmbeddedKVList = []CoreKVSeed{
 	{
 		Scope: "customModels",
@@ -84,12 +84,12 @@ var EmbeddedKVList = []CoreKVSeed{
 	{
 		Scope: "disabledModels",
 		KeyName: "ag",
-		ValData: `["gemini-3-flash-agent","gemini-3.5-flash-low","gemini-2.5-flash","gemini-2.5-pro","gemini-3.5-flash-extra-low","gemini-3.5-flash-high","gemini-3.6-flash-high","gpt-oss-120b-medium","gemini-3.6-flash-low","gemini-3.6-flash-medium"]`,
+		ValData: `[]`,
 	},
 	{
 		Scope: "disabledModels",
 		KeyName: "antigravity",
-		ValData: `["gemini-3-flash-agent","gemini-3.5-flash-low","gemini-2.5-flash","gemini-2.5-pro","gemini-3.5-flash-extra-low","gemini-3.5-flash-high","gemini-3.6-flash-high","gpt-oss-120b-medium","gemini-3.6-flash-low","gemini-3.6-flash-medium"]`,
+		ValData: `[]`,
 	},
 	{
 		Scope: "disabledModels",

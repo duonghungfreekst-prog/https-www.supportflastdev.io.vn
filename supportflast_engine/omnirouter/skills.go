@@ -1,6 +1,7 @@
 package omnirouter
 
 import (
+	_ "embed"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,17 @@ import (
 	"sync"
 	"time"
 )
+
+//go:embed skills_149.json
+var embeddedSkills149JSON []byte
+
+type EmbeddedSkillItem struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	CatName  string `json:"catName"`
+	Desc     string `json:"desc"`
+}
 
 
 var sharedDBForSkills *sql.DB
@@ -252,6 +264,40 @@ func normalizeSkillID(rawID string) string {
 	return id
 }
 
+// loadDisabledSkillsFromDB đọc danh sách kỹ năng mà người dùng đã chủ động tắt
+func loadDisabledSkillsFromDB() map[string]bool {
+	disabled := make(map[string]bool)
+	if sharedDBForSkills == nil {
+		return disabled
+	}
+	val, err := GetOmniKV(sharedDBForSkills, "skills", "disabled")
+	if err == nil && val != "" {
+		var list []string
+		if json.Unmarshal([]byte(val), &list) == nil {
+			for _, item := range list {
+				if item != "" {
+					disabled[normalizeSkillID(item)] = true
+				}
+			}
+		}
+	}
+	return disabled
+}
+
+func saveDisabledSkillsToDB(disabled map[string]bool) {
+	if sharedDBForSkills == nil {
+		return
+	}
+	list := make([]string, 0, len(disabled))
+	for k, v := range disabled {
+		if v {
+			list = append(list, k)
+		}
+	}
+	data, _ := json.Marshal(list)
+	_ = SetOmniKV(sharedDBForSkills, "skills", "disabled", string(data))
+}
+
 // loadPinnedSkillsFromDB đọc danh sách kỹ năng mà người dùng đã chủ động ghim từ bảng settings
 func loadPinnedSkillsFromDB() map[string]bool {
 	pinned := make(map[string]bool)
@@ -287,19 +333,65 @@ func savePinnedSkillsToDB(pinned map[string]bool) {
 }
 
 func init() {
-	// Nạp lại các kỹ năng người dùng đã ghim từ trước (nếu có)
-	pinned := loadPinnedSkillsFromDB()
-	for id := range pinned {
-		activeSkillsMap[id] = &ActiveSkillRecord{
-			ID:       id,
-			Name:     id,
-			Category: "core",
+	// 1. Nạp toàn bộ 149 kỹ năng sẵn có của Antigravity Full Suite và kích hoạt trạng thái Sẵn Sàng (Active)
+	var allSkills []EmbeddedSkillItem
+	if len(embeddedSkills149JSON) > 0 {
+		_ = json.Unmarshal(embeddedSkills149JSON, &allSkills)
+	}
+
+	disabled := loadDisabledSkillsFromDB()
+	for _, sk := range allSkills {
+		normID := normalizeSkillID(sk.ID)
+		isDis := disabled[normID]
+		activeSkillsMap[normID] = &ActiveSkillRecord{
+			ID:       normID,
+			Name:     sk.Name,
+			Category: sk.Category,
 			Client:   lastActiveClient,
 			Model:    lastActiveModel,
-			ReqCount: 0,
+			ReqCount: 1,
 			LastUsed: time.Now().Format(time.RFC3339),
-			Source:   "pinned",
-			IsActive: true,
+			Source:   "integrated",
+			IsActive: !isDis,
+		}
+	}
+
+	// 2. Nạp thêm các Core Skills nếu chưa có trong danh sách
+	for _, cs := range coreSkillsList {
+		normID := normalizeSkillID(cs.ID)
+		if _, exists := activeSkillsMap[normID]; !exists {
+			activeSkillsMap[normID] = &ActiveSkillRecord{
+				ID:       normID,
+				Name:     cs.Name,
+				Category: cs.Category,
+				Client:   lastActiveClient,
+				Model:    lastActiveModel,
+				ReqCount: 1,
+				LastUsed: time.Now().Format(time.RFC3339),
+				Source:   "core",
+				IsActive: !disabled[normID],
+			}
+		}
+	}
+
+	// 3. Nạp lại các kỹ năng người dùng đã ghim thủ công
+	pinned := loadPinnedSkillsFromDB()
+	for id := range pinned {
+		if rec, exists := activeSkillsMap[id]; exists {
+			rec.IsActive = true
+			rec.Source = "pinned"
+		} else {
+			activeSkillsMap[id] = &ActiveSkillRecord{
+				ID:       id,
+				Name:     id,
+				Category: "core",
+				Client:   lastActiveClient,
+				Model:    lastActiveModel,
+				ReqCount: 0,
+				LastUsed: time.Now().Format(time.RFC3339),
+				Source:   "pinned",
+				IsActive: true,
+			}
 		}
 	}
 }
@@ -472,23 +564,42 @@ func DeepScanActiveSkills() (int, []*ActiveSkillRecord) {
 	lastActiveClient = clientName
 	lastActiveModel = modelName
 
-	// 2. Đồng bộ các kỹ năng đã được người dùng ghim thủ công
+	// 2. Tự động đồng bộ và nạp toàn bộ 149 kỹ năng của Antigravity Full Suite vào activeSkillsMap
+	var allSkills []EmbeddedSkillItem
+	if len(embeddedSkills149JSON) > 0 {
+		_ = json.Unmarshal(embeddedSkills149JSON, &allSkills)
+	}
+	disabled := loadDisabledSkillsFromDB()
 	pinned := loadPinnedSkillsFromDB()
+
+	for _, sk := range allSkills {
+		normID := normalizeSkillID(sk.ID)
+		isDis := disabled[normID]
+		if rec, exists := activeSkillsMap[normID]; exists {
+			rec.Client = clientName
+			rec.Model = modelName
+			if !isDis {
+				rec.IsActive = true
+			}
+		} else {
+			activeSkillsMap[normID] = &ActiveSkillRecord{
+				ID:       normID,
+				Name:     sk.Name,
+				Category: sk.Category,
+				Client:   clientName,
+				Model:    modelName,
+				ReqCount: 1,
+				LastUsed: time.Now().Format(time.RFC3339),
+				Source:   "integrated",
+				IsActive: !isDis,
+			}
+		}
+	}
+
 	for id := range pinned {
 		if rec, exists := activeSkillsMap[id]; exists {
 			rec.IsActive = true
-		} else {
-			activeSkillsMap[id] = &ActiveSkillRecord{
-				ID:       id,
-				Name:     id,
-				Category: "core",
-				Client:   clientName,
-				Model:    modelName,
-				ReqCount: 0,
-				LastUsed: time.Now().Format(time.RFC3339),
-				Source:   "pinned",
-				IsActive: true,
-			}
+			rec.Source = "pinned"
 		}
 	}
 
@@ -508,22 +619,13 @@ func HandleActiveSkillsEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	activeSkillsLock.RLock()
-	list := make([]*ActiveSkillRecord, 0)
-	for _, v := range activeSkillsMap {
-		if v.IsActive {
-			list = append(list, v)
-		}
-	}
-	curClient := lastActiveClient
-	curModel := lastActiveModel
-	activeSkillsLock.RUnlock()
+	count, list := DeepScanActiveSkills()
 
 	sendJSON(w, http.StatusOK, map[string]interface{}{
-		"total":       len(list),
-		"activeCount": len(list),
-		"client":      curClient,
-		"model":       curModel,
+		"total":       count,
+		"activeCount": count,
+		"client":      lastActiveClient,
+		"model":       lastActiveModel,
 		"skills":      list,
 	})
 }
@@ -570,6 +672,7 @@ func HandleToggleSkillEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	activeSkillsLock.Lock()
 	pinned := loadPinnedSkillsFromDB()
+	disabled := loadDisabledSkillsFromDB()
 
 	rec, exists := activeSkillsMap[id]
 	newState := true
@@ -604,10 +707,13 @@ func HandleToggleSkillEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	if newState {
 		pinned[id] = true
+		delete(disabled, id)
 	} else {
 		delete(pinned, id)
+		disabled[id] = true
 	}
 	savePinnedSkillsToDB(pinned)
+	saveDisabledSkillsToDB(disabled)
 	activeSkillsLock.Unlock()
 
 	actionText := "Đã kích hoạt"

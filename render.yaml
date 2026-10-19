@@ -58,23 +58,15 @@ services:
         value: /app/supportflast_ui
       - key: JWT_KEYS_DIR
         value: /app/data/keys
-      # Cấu hình Cơ sở dữ liệu TiDB Cloud Serverless
+      # Cấu hình Cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster
       - key: DB_DRIVER
-        value: tidb
+        value: postgres
       - key: CLOUDPOOL_DB_DRIVER
-        value: tidb
-      - key: TIDB_HOST
-        value: gateway01.ap-southeast-1.prod.aws.tidbcloud.com
-      - key: TIDB_PORT
-        value: "4000"
-      - key: TIDB_USER
-        sync: false
-      - key: TIDB_PASSWORD
-        sync: false
-      - key: TIDB_DATABASE
-        value: supportflast
-      - key: TIDB_TLS
-        value: "true"
+        value: postgres
+      - key: AIVEN_PG_URI
+        value: postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require
+      - key: DATABASE_URL
+        value: postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require
       - key: ADMIN_USERNAME
         value: admin
       - key: ADMIN_PASSWORD

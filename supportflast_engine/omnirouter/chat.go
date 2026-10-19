@@ -98,16 +98,19 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 	normPrimary := reqTrim
 	lowerNorm := strings.ToLower(normPrimary)
 	switch {
-	case lowerNorm == "gemini-flash":
-		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "opus"):
 		normPrimary = "claude-opus-4-6-thinking"
-	case strings.Contains(lowerNorm, "sonnet") && !strings.Contains(lowerNorm, "claude-3-7") && !strings.Contains(lowerNorm, "claude-3-5"):
+	case strings.Contains(lowerNorm, "sonnet"):
 		normPrimary = "claude-sonnet-4-6"
-	case lowerNorm == "gpt-oss":
+	case strings.Contains(lowerNorm, "gpt-oss") || strings.Contains(lowerNorm, "120b"):
 		normPrimary = "gpt-oss-120b-medium"
+	case strings.Contains(lowerNorm, "3.1-pro") || strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
+		normPrimary = "gemini-pro-agent"
+	case strings.Contains(lowerNorm, "argon"):
+		normPrimary = "4-argon"
+	case strings.Contains(lowerNorm, "flash"):
+		normPrimary = "gemini-3.8-flash-high"
 	default:
-		// Giữ nguyên 100% model do người dùng yêu cầu (gemini-3.1-pro-high, gemini-pro-agent, gemini-2.5-pro, gemini-2.5-flash, gemini-1.5-pro, gpt-4o, v.v.)
 		normPrimary = reqTrim
 	}
 
@@ -567,6 +570,13 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 
 			if clientKeyItem != nil {
 				RecordKeyUsageAsync(db, clientKeyItem.Key, 1, promptTokens+completionTokens)
+				accEmail := ""
+				provName := "Antigravity"
+				if usedAccount != nil {
+					accEmail = usedAccount.Email
+					provName = usedAccount.Provider
+				}
+				RecordUsageHistoryAsync(db, provName, usedModel, accEmail, clientKeyItem.Key, r.URL.Path, promptTokens, completionTokens, promptTokens+completionTokens, 0.0, "success", time.Since(startTime).Milliseconds())
 			}
 		} else {
 			// Non-streaming: Gom toàn bộ phản hồi trả về JSON chuẩn OpenAI
@@ -623,6 +633,13 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 
 			if clientKeyItem != nil {
 				RecordKeyUsageAsync(db, clientKeyItem.Key, 1, promptTokens+completionTokens)
+				accEmail := ""
+				provName := "Antigravity"
+				if usedAccount != nil {
+					accEmail = usedAccount.Email
+					provName = usedAccount.Provider
+				}
+				RecordUsageHistoryAsync(db, provName, usedModel, accEmail, clientKeyItem.Key, r.URL.Path, promptTokens, completionTokens, promptTokens+completionTokens, 0.0, "success", time.Since(startTime).Milliseconds())
 			}
 		}
 

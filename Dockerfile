@@ -113,12 +113,9 @@ ENV PORT=8080 \
     UI_DIR=/app/supportflast_ui \
     STATIC_DIR=/app/supportflast_ui \
     JWT_KEYS_DIR=/app/data/keys \
-    DB_DRIVER=tidb \
-    CLOUDPOOL_DB_DRIVER=tidb \
-    TIDB_HOST=gateway01.ap-southeast-1.prod.aws.tidbcloud.com \
-    TIDB_PORT=4000 \
-    TIDB_DATABASE=supportflast \
-    TIDB_TLS=true \
+    DB_DRIVER=postgres \
+    CLOUDPOOL_DB_DRIVER=postgres \
+    AIVEN_PG_URI=postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require \
     AI_ENGINE_URL=http://supportflast-ai:8000 \
     GOMEMLIMIT=384MiB \
     GOGC=80 \

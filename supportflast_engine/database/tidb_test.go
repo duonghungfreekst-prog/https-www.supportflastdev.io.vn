@@ -275,3 +275,52 @@ func TestOpenTiDBConnection_PingFailOnInvalidHost(t *testing.T) {
 		t.Errorf("Quá trình ping check tốn quá nhiều thời gian (%v), kỳ vọng timeout nhanh", duration)
 	}
 }
+
+func TestQueryTiDBStorageSize(t *testing.T) {
+	cfg := DefaultTiDBConfig()
+	cfg.AutoMigrate = false
+	db, err := OpenTiDBConnection(cfg)
+	if err != nil {
+		t.Skipf("Bỏ qua kiểm tra size vì không kết nối được TiDB: %v", err)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query(`
+		SELECT 
+			table_name,
+			table_rows,
+			COALESCE(data_length, 0),
+			COALESCE(index_length, 0),
+			COALESCE(data_length + index_length, 0)
+		FROM information_schema.TABLES 
+		WHERE table_schema = 'supportflast'
+		ORDER BY (data_length + index_length) DESC
+	`)
+	if err != nil {
+		t.Fatalf("Query lỗi: %v", err)
+	}
+	defer rows.Close()
+
+	var totalBytes int64 = 0
+	t.Logf("\n--- CHI TIẾT DUNG LƯỢNG CÁC BẢNG TRÊN TIDB CLOUD (DATABASE: supportflast) ---")
+	for rows.Next() {
+		var tblName string
+		var tblRows, dataLen, idxLen, totalLen int64
+		if err := rows.Scan(&tblName, &tblRows, &dataLen, &idxLen, &totalLen); err == nil {
+			totalBytes += totalLen
+			kb := float64(totalLen) / 1024.0
+			mb := kb / 1024.0
+			gb := mb / 1024.0
+			t.Logf("Bảng %-22s: %6d dòng | Data: %8.2f KB | Index: %8.2f KB | Tổng: %8.2f KB (%8.4f MB / %10.8f GB)", 
+				tblName, tblRows, float64(dataLen)/1024.0, float64(idxLen)/1024.0, kb, mb, gb)
+		}
+	}
+
+	totalMB := float64(totalBytes) / (1024.0 * 1024.0)
+	totalGB := totalMB / 1024.0
+	t.Logf("\n===> TỔNG DUNG LƯỢNG TOÀN BỘ CSDL TRÊN TIDB CLOUD:")
+	t.Logf("     - Bytes: %d bytes", totalBytes)
+	t.Logf("     - MB:    %.4f MB", totalMB)
+	t.Logf("     - GB:    %.8f GB (tương đương xấp xỉ %.4f GB)\n", totalGB, totalGB)
+}

@@ -18,8 +18,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// DefaultTiDBDriver driver mặc định là TiDB Cloud
-const DefaultTiDBDriverName = "tidb"
+// DefaultDriverName driver mặc định là Aiven PostgreSQL
+const DefaultDriverName = "postgres"
+const DefaultTiDBDriverName = "postgres"
 
 // Hằng số tài khoản quản trị viên hệ thống khởi tạo chuẩn
 const (
@@ -40,10 +41,13 @@ var (
 
 func init() {
 	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if d == "tidb" || d == "mysql" {
-		activeDriver.Store("tidb")
+	if d == "postgres" || d == "postgresql" || d == "aiven" {
+		activeDriver.Store("postgres")
 	} else if d == "sqlite" || d == "sqlite3" {
 		activeDriver.Store("sqlite")
+	} else {
+		// Mặc định toàn hệ thống là Aiven PostgreSQL
+		activeDriver.Store("postgres")
 	}
 }
 
@@ -313,19 +317,31 @@ func isMySQLOrTiDB(db ...*sql.DB) bool {
 	return drv == "tidb" || drv == "mysql"
 }
 
-// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql") (Lock-free)
+// IsPostgres kiểm tra xem driver hiện hành có phải là Aiven PostgreSQL hay không
+func IsPostgres(db ...*sql.DB) bool {
+	if len(db) > 0 && db[0] != nil {
+		driverType := strings.ToLower(fmt.Sprintf("%T", db[0].Driver()))
+		if strings.Contains(driverType, "pgcompat") || strings.Contains(driverType, "pq") || strings.Contains(driverType, "postgres") {
+			return true
+		}
+	}
+	drv := ActiveDriver()
+	return drv == "postgres" || drv == "postgresql" || drv == "aiven"
+}
+
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "tidb") (Lock-free)
 func ActiveDriver() string {
 	if v, ok := activeDriver.Load().(string); ok && v != "" {
 		return v
 	}
 	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if d == "tidb" || d == "mysql" {
-		return d
+	if d == "sqlite" || d == "sqlite3" {
+		return "sqlite"
 	}
-	if d == "" && strings.TrimSpace(os.Getenv("TIDB_HOST")) != "" {
-		return "tidb"
+	if d == "postgres" || d == "postgresql" || d == "aiven" {
+		return "postgres"
 	}
-	return "sqlite"
+	return "postgres"
 }
 
 // GetActiveDriver là bí danh (alias) của ActiveDriver đảm bảo tương thích ngược
@@ -338,30 +354,28 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 	dbInstance = db
-	drv := "tidb"
+	drv := "postgres"
 	if len(driver) > 0 && strings.TrimSpace(driver[0]) != "" {
 		drv = strings.ToLower(strings.TrimSpace(driver[0]))
 	}
 	activeDriver.Store(drv)
-	if drv == "tidb" || drv == "mysql" {
-		SetTiDBInstance(db)
-	}
 }
 
-// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (TiDB Cloud hoặc SQLite)
+// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (Aiven PostgreSQL hoặc fallback SQLite)
 func InitDB(customPath ...string) (*sql.DB, error) {
 	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
 		return InitSQLite(customPath[0])
 	}
 	drv := ActiveDriver()
-	if drv == "tidb" || drv == "mysql" {
-		db, err := InitTiDB()
+	if drv == "postgres" || drv == "postgresql" || drv == "aiven" {
+		db, err := InitPostgres()
 		if err != nil {
-			return nil, err
+			log.Printf("[ENGINE] [DATABASE] [WARN] Kết nối Aiven PostgreSQL thất bại (%v). Tự động fallback sang SQLite...", err)
+			return InitSQLite()
 		}
 		dbMutex.Lock()
 		dbInstance = db
-		activeDriver.Store("tidb")
+		activeDriver.Store("postgres")
 		dbMutex.Unlock()
 		return db, nil
 	}
@@ -406,12 +420,16 @@ func CloseDB() error {
 	}
 	activeDriver.Store("")
 
-	// Đóng đồng thời instance TiDB nếu đang mở độc lập
+	// Đóng đồng thời instance PostgreSQL hoặc TiDB nếu đang mở độc lập
+	_ = ClosePostgres()
 	_ = CloseTiDB()
 	return lastErr
 }
 
 func insertIgnoreClause(db ...*sql.DB) string {
+	if IsPostgres(db...) {
+		return "INSERT INTO"
+	}
 	if isMySQLOrTiDB(db...) {
 		return "INSERT IGNORE INTO"
 	}

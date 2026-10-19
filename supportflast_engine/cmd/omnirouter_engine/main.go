@@ -37,19 +37,15 @@ func main() {
 	}
 
 	fmt.Println("=====================================================================")
-	fmt.Println("    OMNIROUTER / SUPPORTFLAST AI GATEWAY - TIDB CLOUD EDITION       ")
+	fmt.Println("    OMNIROUTER / SUPPORTFLAST AI GATEWAY - AIVEN POSTGRESQL EDITION  ")
 	fmt.Println("=====================================================================")
-	log.Printf("[ENGINE] Khởi động OmniRouter Engine v2.9.0 (PID: %d)", os.Getpid())
-	log.Printf("[ENGINE] [CSDL] BỎ HOÀN TOÀN LIBSQL / SQLITE - TRỎ DỮ LIỆU LÊN TIDB CLOUD")
+	log.Printf("[ENGINE] Khởi động OmniRouter Engine v3.0.0 (PID: %d)", os.Getpid())
+	log.Printf("[ENGINE] [CSDL] BỎ HOÀN TOÀN TIDB - KẾT NỐI 100%% VÀO AIVEN POSTGRESQL")
 
-	// 1. Kết nối cơ sở dữ liệu phân tán TiDB Cloud Serverless (MySQL Protocol)
-	tidbCfg := database.DefaultTiDBConfig()
-	tidbCfg.AutoMigrate = true
-
-	isTiDB := true
-	db, err := database.OpenTiDBConnection(tidbCfg)
+	// 1. Kết nối cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster
+	db, err := database.OpenPostgresConnection()
 	if err != nil {
-		log.Printf("[ENGINE] [TIDB] [CẢNH BÁO] Không thể kết nối trực tiếp TiDB Cloud: %v. Tự động chuyển sang CSDL SQLite cục bộ...", err)
+		log.Printf("[ENGINE] [POSTGRES] [CẢNH BÁO] Không thể kết nối trực tiếp Aiven PostgreSQL: %v. Tự động chuyển sang CSDL SQLite cục bộ...", err)
 		sqlitePath := filepath.Join(baseDir, "data", "supportflast.db")
 		sqliteDB, _, sqliteErr := database.OpenSQLiteConnection(sqlitePath)
 		if sqliteErr != nil {
@@ -57,17 +53,15 @@ func main() {
 			db = nil
 		} else {
 			db = sqliteDB
-			isTiDB = false
 			log.Printf("[ENGINE] [SQLITE] ✔ Đã kích hoạt CSDL SQLite cục bộ tại '%s'", sqlitePath)
 		}
 	} else {
-		log.Printf("[ENGINE] [TIDB] ✔ Đã kết nối thành công tới TiDB Cloud Serverless (Host: %s:%d, DB: %s)",
-			tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
+		log.Printf("[ENGINE] [POSTGRES] ✔ Đã kết nối thành công tới Aiven PostgreSQL Cloud Cluster!")
 	}
 
 	// 2. Khởi tạo ServeMux và đăng ký toàn bộ 15+ cổng định tuyến OmniRouter
 	mux := http.NewServeMux()
-	omnirouter.RegisterOmniRouterRoutes(mux, db, isTiDB, baseDir)
+	omnirouter.RegisterOmniRouterRoutes(mux, db, false, baseDir)
 
 	// Tự động khởi chạy Máy chủ MITM trên cổng 443 nếu chứng chỉ root CA có sẵn
 	go func() {

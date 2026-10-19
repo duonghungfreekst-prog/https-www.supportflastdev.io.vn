@@ -106,36 +106,34 @@ type DB struct {
 	cache   *cache.LRUCache
 }
 
-// Driver trả về loại cơ sở dữ liệu hiện hành ("sqlite", "tidb", "mysql")
-
-
+// Driver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "tidb")
 func (s *DB) Driver() string {
 	if s.driver == "" {
-		return "sqlite"
+		return "postgres"
 	}
 	return s.driver
 }
 
+// IsPostgres kiểm tra xem kết nối hiện tại có phải là Aiven PostgreSQL hay không
+func (s *DB) IsPostgres() bool {
+	d := strings.ToLower(s.Driver())
+	return d == "postgres" || d == "postgresql" || d == "aiven"
+}
+
 // IsMySQLOrTiDB kiểm tra xem kết nối hiện tại có phải là TiDB hoặc MySQL hay không
-
-
 func (s *DB) IsMySQLOrTiDB() bool {
 	d := strings.ToLower(s.Driver())
 	return d == "tidb" || d == "mysql"
 }
 
 // IsSQLite kiểm tra xem kết nối hiện tại có phải là SQLite hay không
-
-
 func (s *DB) IsSQLite() bool {
-	return !s.IsMySQLOrTiDB()
+	return !s.IsMySQLOrTiDB() && !s.IsPostgres()
 }
 
 // Checkpoint thực thi checkpoint WAL đối với SQLite
-
-
 func (s *DB) Checkpoint() error {
-	if s.IsMySQLOrTiDB() {
+	if !s.IsSQLite() {
 		return nil
 	}
 	s.mu.Lock()
@@ -155,25 +153,22 @@ func (s *DB) SQLDB() *sql.DB {
 }
 
 // NewDB khởi tạo đối tượng DB cho CloudPool.
-// Hỗ trợ cả SQLite (local/test) và TiDB Cloud (production).
-
-
+// Hỗ trợ cả Aiven PostgreSQL (production) và SQLite (local/test).
 func NewDB(dbPath string) (*DB, error) {
 	if strings.TrimSpace(dbPath) == "" {
 		envDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
 		if envDriver == "" {
 			envDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 		}
-		if envDriver == "tidb" || envDriver == "mysql" {
-			return NewDBWithConfig(envDriver, "", "")
+		if envDriver == "sqlite" || envDriver == "sqlite3" {
+			return NewDBWithConfig("sqlite", "", dbPath)
 		}
+		return NewDBWithConfig("postgres", "", "")
 	}
 	return NewDBWithConfig("sqlite", "", dbPath)
 }
 
 // NewDBWithConfig khởi tạo kết nối cơ sở dữ liệu đa nền tảng
-
-
 func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
 	normDriver := strings.ToLower(strings.TrimSpace(driver))
 	if normDriver == "" {
@@ -182,14 +177,35 @@ func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
 			normDriver = strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
 		}
 		if normDriver == "" {
-			normDriver = "sqlite"
+			normDriver = "postgres"
 		}
 	}
 
+	if normDriver == "postgres" || normDriver == "postgresql" || normDriver == "aiven" {
+		return openPostgresConnection(dsn)
+	}
 	if normDriver == "tidb" || normDriver == "mysql" {
 		return openTiDBConnection(normDriver, dsn)
 	}
 	return openSQLiteConnection(dbPath)
+}
+
+// NewPostgres khởi tạo đối tượng CloudPool DB kết nối trực tiếp tới Aiven PostgreSQL
+func NewPostgres(customURI ...string) (*DB, error) {
+	uri := ""
+	if len(customURI) > 0 {
+		uri = customURI[0]
+	}
+	return openPostgresConnection(uri)
+}
+
+func openPostgresConnection(dsn string) (*DB, error) {
+	db, err := database.OpenPostgresConnection(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi kết nối Aiven PostgreSQL cho CloudPool: %w", err)
+	}
+	s := &DB{db: db, path: database.GetPostgresURI(), driver: "postgres"}
+	return s, nil
 }
 
 

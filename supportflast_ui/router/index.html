@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <title>SupportFlast OmniRouter v2.9.0 - Next-Gen AI Gateway Engine (TiDB Cloud)</title>
+  <title>SupportFlast OmniRouter v2.9.0 - Next-Gen AI Gateway Engine (Aiven PostgreSQL)</title>
 
 
 
@@ -1104,14 +1104,18 @@
             </button>
 
             <!-- Mục: AI Skills Hub -->
-            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('skills')" id="btn-tab-skills" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
                 <span>AI Skills Hub</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <div class="flex items-center gap-1.5">
+                <span id="skills-count-badge" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40">149 Active</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#10B981] animate-pulse flex-shrink-0"></span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
             </button>
 
             <!-- Mục: Nhật ký Console (Stream logs) -->
@@ -2314,7 +2318,7 @@
                   <span>Đồng Bộ Dữ Liệu SQL Từ Máy Chủ Web (Thay Thế LibSQL Cục Bộ)</span>
                 </h3>
                 <p class="text-xs text-slate-300 mt-1">
-                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://www.supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL TiDB Cloud, thay vì sử dụng database LibSQL nhúng cục bộ.
+                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://www.supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL Aiven PostgreSQL, thay vì sử dụng database LibSQL nhúng cục bộ.
                 </p>
               </div>
             </div>
@@ -5053,7 +5057,7 @@
 
                 </div>
 
-                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong TiDB Cloud. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi OmniRouter chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
+                <p class="text-xs text-slate-400 mt-1">Quản lý các outbound proxy thực tế trong Aiven PostgreSQL. Dùng để xoay vòng IP hoặc vượt rào cản địa lý (Geoblock) khi OmniRouter chuyển tiếp yêu cầu tới các nhà cung cấp AI ngoài lãnh thổ.</p>
               </div>
 
               <div class="flex items-center gap-2 flex-wrap">
@@ -5144,7 +5148,7 @@
 
                         <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
 
-                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu TiDB Cloud...</span>
+                        <span>Đang nạp danh sách Proxy Pools từ cơ sở dữ liệu Aiven PostgreSQL...</span>
 
                       </div>
 
@@ -5459,10 +5463,10 @@
                   <div>
 
                     <h3 class="text-base font-bold text-white flex items-center gap-2">
-                      Cơ Sở Dữ Liệu TiDB Cloud & Quản Trị Hệ Thống
+                      Cơ Sở Dữ Liệu Aiven PostgreSQL & Quản Trị Hệ Thống
                       <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">ONLINE</span>
                     </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Quản lý trực tiếp Cơ sở dữ liệu TiDB Cloud Serverless (MySQL Protocol) chứa toàn bộ cấu hình, kết nối, và lịch sử định tuyến OmniRouter</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Quản lý trực tiếp Cơ sở dữ liệu Aiven PostgreSQL Cloud (MySQL Protocol) chứa toàn bộ cấu hình, kết nối, và lịch sử định tuyến OmniRouter</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -5480,8 +5484,8 @@
               <!-- Đường dẫn CSDL thực tế & Nút đồng bộ -->
               <div class="p-3.5 rounded-xl bg-black/60 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs">
                 <div class="min-w-0 flex items-center gap-2 flex-1">
-                  <span class="text-[11px] font-bold text-slate-400 uppercase flex-shrink-0">📁 Máy Chủ TiDB Cloud:</span>
-                  <input type="text" id="db-file-path-input" value="gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000 (Database: supportflast - TiDB Cloud Serverless)" readonly class="w-full font-mono text-xs text-cyan-300 bg-transparent border-0 focus:outline-none select-all truncate">
+                  <span class="text-[11px] font-bold text-slate-400 uppercase flex-shrink-0">📁 Máy Chủ Aiven PostgreSQL:</span>
+                  <input type="text" id="db-file-path-input" value="pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204 (Database: defaultdb - Aiven PostgreSQL Cloud)" readonly class="w-full font-mono text-xs text-cyan-300 bg-transparent border-0 focus:outline-none select-all truncate">
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                   <button onclick="copyDbPath()" class="px-2.5 py-1 rounded-lg text-xs font-mono bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 flex items-center gap-1 cursor-pointer">
@@ -5496,9 +5500,9 @@
               <!-- Thống kê DB 4 ô -->
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
-                  <span class="text-[10px] text-slate-400 uppercase block">Dung Lượng TiDB Cloud</span>
+                  <span class="text-[10px] text-slate-400 uppercase block">Dung Lượng Aiven PostgreSQL</span>
                   <span id="db-file-size" class="text-base font-bold text-cyan-300 mt-1 block">70.75 MB</span>
-                  <span class="text-[10px] text-emerald-400">TiDB Cloud Connected</span>
+                  <span class="text-[10px] text-emerald-400">Aiven PostgreSQL Connected</span>
                 </div>
 
                 <div class="p-3.5 rounded-xl bg-black/40 border border-white/10">
@@ -7277,7 +7281,7 @@
 
           </div>
 
-          <div>Lệnh áp dụng sẽ cập nhật ngay lập tức xuống Go Engine &amp; CSDL TiDB Cloud. Tất cả các request AI tiếp theo sẽ lập tức đi qua Proxy đã chọn.</div>
+          <div>Lệnh áp dụng sẽ cập nhật ngay lập tức xuống Go Engine &amp; CSDL Aiven PostgreSQL. Tất cả các request AI tiếp theo sẽ lập tức đi qua Proxy đã chọn.</div>
 
         </div>
 
@@ -7976,7 +7980,7 @@
     }
 
     // =========================================================================
-    // MODULE ĐỒNG BỘ CSDL SQL (TIDB CLOUD) QUA API KEY WEB
+    // MODULE ĐỒNG BỘ CSDL SQL (AIVEN POSTGRESQL) QUA API KEY WEB
     // Thay thế hoàn toàn LibSQL / SQLite cục bộ trong ứng dụng Desktop
     // =========================================================================
     function toggleWebKeyVisibility() {
@@ -7996,7 +8000,7 @@
       if (data && data.success) {
         if (badge) {
           badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
-          badge.textContent = 'ĐÃ KẾT NỐI SQL (TIDB)';
+          badge.textContent = 'ĐÃ KẾT NỐI SQL (POSTGRESQL)';
         }
         let provList = [];
         try {
@@ -8052,20 +8056,20 @@
                                    (typeof window !== 'undefined' && window.chrome && window.chrome.webview) || 
                                    (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
 
-        if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${data.latencyMs || 0}ms)`;
+        if (title) title.innerHTML = `✔ Kết nối thành công tới Web Aiven PostgreSQL (${data.latencyMs || 0}ms)`;
         if (desc) {
           if (isDesktopEnvActive) {
-            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless (Đã đồng bộ trực tuyến)`;
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: Aiven PostgreSQL Cloud (Đã đồng bộ trực tuyến)`;
           } else {
-            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: Aiven PostgreSQL Cloud${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
           }
         }
         if (icon) icon.textContent = '🟢';
         if (!silent) {
           if (isDesktopEnvActive) {
-            showToast('Đã kết nối và đồng bộ thành công từ Web TiDB Cloud!', 'success');
+            showToast('Đã kết nối và đồng bộ thành công từ Web Aiven PostgreSQL!', 'success');
           } else {
-            showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web TiDB Cloud!`, 'success');
+            showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web Aiven PostgreSQL!`, 'success');
           }
         }
         return true;
@@ -8127,7 +8131,7 @@
         if (urlInput && savedUrl) urlInput.value = savedUrl;
         if (keyInput && savedKey) {
           keyInput.value = savedKey;
-          // Tự động kiểm tra và đồng bộ nền từ Web TiDB Cloud
+          // Tự động kiểm tra và đồng bộ nền từ Web Aiven PostgreSQL
           setTimeout(() => testWebConnection(true), 600);
         }
       } catch (e) {
@@ -8385,7 +8389,7 @@
 
         'console': 'Nhật Ký Điều Khiển Console Logs',
 
-        'settings': 'Cài Đặt Hệ Thống & TiDB Cloud Database',
+        'settings': 'Cài Đặt Hệ Thống & Aiven PostgreSQL Database',
 
         'cli-tools': 'Công Cụ Lập Trình CLI & MCP Server',
 
@@ -8718,24 +8722,9 @@
       if (apiSec) apiSec.style.setProperty('display', 'none', 'important');
     }
 
-    // Hàm ẩn thông tin/email tài khoản trên bản Desktop thương mại để tránh lộ tài khoản nội bộ (Giữ nguyên 100% trên Web)
+    // Giữ nguyên 100% thông tin tài khoản/email thật trên nhật ký hệ thống theo yêu cầu người dùng
     function maskAccountInfoForDesktop(str) {
-      if (!str || typeof str !== 'string') return str;
-      const isDesktop = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) || 
-                        (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
-      if (!isDesktop) return str;
-      // 1. Ẩn tất cả địa chỉ email tài khoản thành [Tài khoản ẩn]
-      let res = str.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[Tài khoản ẩn]');
-      // 2. Ẩn pattern "qua <tên_tài_khoản> (" trong console logs nếu tên không chứa @
-      res = res.replace(/(qua\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s*\()/g, '$1[Tài khoản ẩn]');
-      // 3. Ẩn pattern "trên <tên_tài_khoản> cho model" nếu tên không chứa @
-      res = res.replace(/(trên\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s+cho\s+)/g, '$1[Tài khoản ẩn]');
-      // 4. Ẩn pattern "cho <tên_tài_khoản>:" nếu tên không chứa @
-      res = res.replace(/(cho\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s*:)/g, '$1[Tài khoản ẩn]');
-      // 5. Ẩn số lượng tài khoản nội bộ (ví dụ: "18/18 tài khoản AI", "19 tài khoản nhà cung cấp")
-      res = res.replace(/\b\d+\/\d+\s+tài khoản AI\b/gi, 'hệ thống tài khoản AI');
-      res = res.replace(/\b\d+\s+tài khoản nhà cung cấp\b/gi, 'hệ thống nhà cung cấp');
-      return res;
+      return str;
     }
 
     const checkIsOmniGatewayHost = () => {
@@ -8827,7 +8816,7 @@
 
       let hostsToTry = [...ROUTER_API_HOSTS];
 
-      // Bổ sung máy chủ Web TiDB Cloud vào danh sách fallback nếu có cấu hình
+      // Bổ sung máy chủ Web Aiven PostgreSQL vào danh sách fallback nếu có cấu hình
       let savedWebUrl = '';
       let savedWebKey = '';
       try {
@@ -15801,22 +15790,21 @@
     // Phân loại model theo nhóm Provider để đưa vào <optgroup>
     function categorizeModel(modelId) {
       const m = (modelId || '').toLowerCase();
-      if (m.includes('gemini-2.5') || m.includes('gemini-2.0') || m.includes('gemini-1.5') || m.includes('aistudio') || m.includes('google-ai-studio')) return 'Google AI Studio';
-      if (m.includes('antigravity') || m.includes('pro-agent') || m.includes('flash-high') || m.includes('flash-tiered') || m.includes('opus-4-6') || m.includes('sonnet-4-6') || m.includes('gemini-3.8') || m.includes('flash-lite') || m.includes('flash-image') || m.includes('flash-medium') || m.includes('gemini-3.1-pro')) return 'Antigravity Gateway';
-      if (m.includes('gemini') || m.includes('google')) return 'Google Gemini';
+      if (m.includes('antigravity') || m.includes('pro-agent') || m.includes('flash-high') || m.includes('opus-4-6') || m.includes('sonnet-4-6') || m.includes('gemini-3.8') || m.includes('gemini-3.1-pro') || m.includes('4-argon')) return 'Antigravity Gateway';
       if (m.includes('claude') || m.includes('anthropic')) return 'Anthropic Claude';
-      if (m.includes('gpt') || m.includes('o1') || m.includes('o3') || m.includes('openai') || m.includes('codex')) return 'OpenAI Direct';
+      if (m.includes('gpt-oss') || m.includes('120b')) return 'OpenAI / GPT-OSS';
+      if (m.includes('gemini') || m.includes('google')) return 'Google Gemini';
       if (m.includes('deepseek')) return 'DeepSeek Official';
       if (m.includes('llama') || m.includes('groq') || m.includes('mixtral')) return 'Groq / LPU Fast';
       if (m.includes('qwen') || m.includes('alibaba')) return 'Alibaba Qwen';
       return 'Mô hình khác / Custom';
     }
 
-    // Nạp toàn bộ model thật và danh sách Combos từ TiDB Cloud
+    // Nạp toàn bộ model thật và danh sách Combos từ Aiven PostgreSQL
     async function loadCascadeFallbackConfigLive() {
       const container = document.getElementById('cascade-tiers-container');
       if (!container) return;
-      container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ TiDB Cloud...</div>';
+      container.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2 font-mono"><span class="animate-spin text-cyan-400">⏳</span> Đang nạp danh sách Model thật & Tầng dự phòng từ Aiven PostgreSQL...</div>';
 
       // 1. Tải danh sách Model THỰC TẾ từ Backend (/api/v1/models hoặc /api/models)
       try {
@@ -15839,30 +15827,15 @@
         console.warn("Lỗi tải models thật:", e);
       }
 
-      // Bổ sung đầy đủ các model Google AI Studio, Antigravity Gateway, Claude và OpenAI
+      // Danh mục Model Chuẩn 100% Antigravity IDE
       const fallbackDefaults = [
-        // Google Cloud Code PA & Antigravity Models
-        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Google AI' },
-        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High)', provider: 'Google AI' },
-        { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Google AI' },
-        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash', provider: 'Google AI' },
-        // Antigravity Gateway
+        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash High', provider: 'Antigravity Gateway' },
+        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity Gateway' },
+        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity Gateway' },
+        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'Antigravity Gateway' },
         { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro High', provider: 'Antigravity Gateway' },
         { id: 'gemini-pro-agent', name: 'Gemini Pro Agent', provider: 'Antigravity Gateway' },
-        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Antigravity Gateway' },
-        { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Antigravity Gateway' },
-        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash High', provider: 'Antigravity Gateway' },
-        { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Med)', provider: 'Antigravity Gateway' },
-        { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)', provider: 'Antigravity Gateway' },
-        // Anthropic Claude
-        { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', provider: 'Anthropic Claude' },
-        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Anthropic Claude' },
-        { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Anthropic Claude' },
-        // OpenAI Direct
-        { id: 'gpt-4o', name: 'GPT-4o Omnimodal', provider: 'OpenAI Direct' },
-        { id: 'gpt-4o-mini', name: 'GPT-4o Mini Fast', provider: 'OpenAI Direct' },
-        { id: 'o3-mini', name: 'o3 Mini Coding Intelligence', provider: 'OpenAI Direct' },
-        { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'OpenAI Direct' }
+        { id: '4-argon', name: 'Gemini 4 Argon (Unavailable)', provider: 'Antigravity Gateway' }
       ];
 
       const existingIds = new Set(_realSystemModelsList.map(m => m.id));
@@ -15873,7 +15846,7 @@
         }
       });
 
-      // 2. Nạp danh sách Combos từ TiDB Cloud (/api/combos)
+      // 2. Nạp danh sách Combos từ Aiven PostgreSQL (/api/combos)
 
       try {
 
@@ -16131,23 +16104,23 @@
 
 
 
-    // Xóa Combo đang chọn khỏi TiDB Cloud
+    // Xóa Combo đang chọn khỏi Aiven PostgreSQL
     async function deleteCurrentCascadeCombo() {
       if (!currentComboId) {
-        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu TiDB Cloud.', true);
+        showToastNotification('Combo này chưa được lưu trong cơ sở dữ liệu Aiven PostgreSQL.', true);
         return;
       }
       const nameInput = document.getElementById('combo-name-input');
       const comboName = nameInput ? nameInput.value : currentComboId;
 
-      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi TiDB Cloud Serverless không?`)) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Combo [${comboName}] khỏi Aiven PostgreSQL Cloud không?`)) {
         return;
       }
 
       try {
         const res = await apiRequest(`/api/combos/${currentComboId}`, { method: 'DELETE' });
         if (res && res.ok) {
-          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi TiDB Cloud thành công!`);
+          showToastNotification(`🗑️ Đã xóa Combo [${comboName}] khỏi Aiven PostgreSQL thành công!`);
 
           currentComboId = null;
 
@@ -16189,7 +16162,7 @@
 
             <div class="text-3xl">🧩</div>
 
-            <div class="text-slate-300 text-sm font-bold">Chưa có cấu hình Combo nào trong Cơ sở Dữ liệu TiDB Cloud</div>
+            <div class="text-slate-300 text-sm font-bold">Chưa có cấu hình Combo nào trong Cơ sở Dữ liệu Aiven PostgreSQL</div>
 
             <p class="text-slate-500 text-xs max-w-md mx-auto">Hệ thống đang hoạt động ở chế độ định tuyến trực tiếp theo Model thật của 21 tài khoản Antigravity. Bấm nút bên dưới để tạo chuỗi dự phòng (Fallback Cascade).</p>
 
@@ -16364,7 +16337,7 @@
         { model: 'gemini-3.8-flash-tiered', note: 'Dự phòng 2 (Cứu hộ khẩn cấp)', condition: 'Cứu hộ khẩn cấp khi Timeout' }
       ];
       renderCascadeTiersUI();
-      showToastNotification('🔄 Đã đặt lại cấu hình phân tầng về 3 tầng chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 3.8 Flash High -> Tier 3: Flash Tiered). Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!');
+      showToastNotification('🔄 Đã đặt lại cấu hình phân tầng về 3 tầng chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 3.8 Flash High -> Tier 3: Flash Tiered). Bấm "Lưu Cấu Hình Combo Vào Aiven PostgreSQL" để áp dụng!');
     }
 
     // Thêm tầng dự phòng mới với Model thực tế
@@ -16379,7 +16352,7 @@
         condition: 'Fallback khi 429 & 503'
       });
       renderCascadeTiersUI();
-      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!`);
+      showToastNotification(`➕ Đã thêm TIER ${nextIdx + 1}. Bấm "Lưu Cấu Hình Combo Vào Aiven PostgreSQL" để áp dụng!`);
     }
 
     // Xóa một tầng
@@ -16453,7 +16426,7 @@
 
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu vào TiDB Cloud...</span>';
+        btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Đang lưu vào Aiven PostgreSQL...</span>';
       }
 
       const payload = {
@@ -16487,20 +16460,20 @@
             const inputId = document.getElementById('combo-id-hidden');
             if (inputId) inputId.value = resData.id;
           }
-          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) vào TiDB Cloud thành công!`);
-          // Nạp lại danh sách để đồng bộ với TiDB Cloud
+          showToastNotification(`🎉 Đã lưu cấu hình Phân Tầng Dự Phòng (Combo: ${validComboName}) vào Aiven PostgreSQL thành công!`);
+          // Nạp lại danh sách để đồng bộ với Aiven PostgreSQL
           await loadCascadeFallbackConfigLive();
         } else {
           const errData = await res.json().catch(() => ({}));
           showToastNotification('Lỗi lưu combo: ' + (errData.error || 'Server từ chối'), true);
         }
       } catch (err) {
-        console.warn("Lỗi lưu combo vào TiDB Cloud:", err);
+        console.warn("Lỗi lưu combo vào Aiven PostgreSQL:", err);
         showToastNotification('Lỗi lưu cấu hình: ' + err.message, true);
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Vào TiDB Cloud</span>';
+          btn.innerHTML = '<span>💾 Lưu Cấu Hình Combo Vào Aiven PostgreSQL</span>';
         }
       }
 
@@ -23998,13 +23971,13 @@
       if (el) {
 
         copyToClipboard(el.value);
-        showToastNotification('📋 Đã sao chép thông tin kết nối CSDL TiDB Cloud: ' + el.value);
+        showToastNotification('📋 Đã sao chép thông tin kết nối CSDL Aiven PostgreSQL: ' + el.value);
       }
     }
 
     // Nút kích hoạt đồng bộ CSDL và nạp lại kết nối ngay lập tức
     async function syncDatabaseLiveNow() {
-      showToastNotification('🔄 Đang đồng bộ toàn bộ CSDL TiDB Cloud Serverless và nạp lại kết nối...');
+      showToastNotification('🔄 Đang đồng bộ toàn bộ CSDL Aiven PostgreSQL Cloud và nạp lại kết nối...');
 
       await loadProvidersLive();
 
@@ -24140,7 +24113,7 @@
 
         await apiRequest('/api/settings/database');
 
-        showToastNotification('⚡ Đã thực hiện tối ưu hóa cấu trúc CSDL TiDB Cloud Serverless thành công!');
+        showToastNotification('⚡ Đã thực hiện tối ưu hóa cấu trúc CSDL Aiven PostgreSQL Cloud thành công!');
 
         loadDatabaseStatsLive();
 
@@ -24295,7 +24268,7 @@
 
 
         if (showToast) {
-          showToastNotification('✅ Đã nạp cấu hình hệ thống từ TiDB Cloud Serverless thành công!');
+          showToastNotification('✅ Đã nạp cấu hình hệ thống từ Aiven PostgreSQL Cloud thành công!');
         }
       } catch (err) {
         console.warn('Không thể nạp cài đặt hệ thống:', err);
@@ -24307,10 +24280,10 @@
 
     async function saveSystemSettingsLive() {
       const btn = document.getElementById('btn-save-settings');
-      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT VÀO TIDB CLOUD';
+      const originalText = btn ? btn.textContent : 'LƯU CÀI ĐẶT VÀO AIVEN POSTGRESQL';
       if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Đang lưu vào TiDB Cloud...';
+        btn.textContent = 'Đang lưu vào Aiven PostgreSQL...';
       }
 
       try {
@@ -24337,7 +24310,7 @@
 
         const data = await res.json();
         if (data && data.success !== false) {
-          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào TiDB Cloud Serverless!');
+          showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào Aiven PostgreSQL Cloud!');
           if (btn) {
             btn.textContent = 'ĐÃ LƯU THÀNH CÔNG!';
             setTimeout(() => {
@@ -24351,7 +24324,7 @@
           throw new Error(data?.error || 'Lỗi không xác định từ server');
         }
       } catch (err) {
-        showToastNotification('❌ Lỗi khi lưu cài đặt vào TiDB Cloud: ' + (err.message || err), true);
+        showToastNotification('❌ Lỗi khi lưu cài đặt vào Aiven PostgreSQL: ' + (err.message || err), true);
         if (btn) {
           btn.disabled = false;
           btn.textContent = originalText;
@@ -24563,7 +24536,7 @@
 
                 <span class="text-2xl">🌐</span>
 
-                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa TiDB Cloud.</span>
+                <span class="font-sans text-sm text-slate-300">Chưa có Proxy Pool nào trong hồ chứa Aiven PostgreSQL.</span>
 
                 <span class="text-xs text-slate-500 font-sans">Nhấn nút <strong>"+ Thêm Proxy Mới"</strong> phía trên để bổ sung proxy outbound.</span>
 
@@ -25739,65 +25712,29 @@
     // =========================================================================
 
     const PROVIDER_MODEL_CATALOG = {
-
       antigravity: {
-
         name: 'Antigravity IDE',
-
         badge: 'AG',
-
         models: [
-
-          { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', latency: 85, context: '1M tokens', type: 'Fast Reasoning SOTA' },
-
-          { id: 'gemini-pro-agent', name: 'Gemini 3.1 Pro (High)', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', latency: 110, context: '2M tokens', type: 'High Intelligence' },
-
+          { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash High', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', latency: 85, context: '1M tokens', type: 'Fast Reasoning SOTA' },
           { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'openai', latency: 160, context: '200k tokens', type: 'Hybrid Reasoning' },
-
           { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'groq', latency: 190, context: '200k tokens', type: 'Deep Reasoning' },
-
-          { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'deepseek', latency: 80, context: '1M tokens', type: 'Tiered Reasoning' },
-
           { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'Antigravity', badge: 'OSS', color: '#10B981', latency: 85, context: '128k tokens', type: 'Open Source Reasoning' },
-
-          { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Med)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 75, context: '1M tokens', type: 'Default Agent' },
-
-          { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 60, context: '1M tokens', type: 'Low Latency' },
-
-          { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash High', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 85, context: '1M tokens', type: 'High Speed Reasoning' }
-
+          { id: 'gemini-pro-agent', name: 'Gemini 3.1 Pro High', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', latency: 110, context: '2M tokens', type: 'High Intelligence' },
+          { id: '4-argon', name: 'Gemini 4 Argon (Unavailable)', provider: 'Antigravity', badge: 'AG', color: '#94A3B8', latency: 999, context: 'Preview', type: 'Next-Gen Preview' }
         ]
-
       },
-
       all: {
-
         name: 'Tất Cả Model Antigravity (21 TK)',
-
         models: [
-
-          { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', latency: 85, context: '1M', type: 'Fast Reasoning SOTA' },
-
-          { id: 'gemini-pro-agent', name: 'Gemini 3.1 Pro (High)', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', latency: 110, context: '2M', type: 'High Intelligence' },
-
+          { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash High', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', latency: 85, context: '1M', type: 'Fast Reasoning SOTA' },
           { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'openai', latency: 160, context: '200k', type: 'Hybrid Reasoning' },
-
           { id: 'claude-opus-4-6-thinking', name: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'groq', latency: 190, context: '200k', type: 'Deep Reasoning' },
-
-          { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'deepseek', latency: 80, context: '1M', type: 'Tiered Reasoning' },
-
           { id: 'gpt-oss-120b-medium', name: 'GPT-OSS 120B (Medium)', provider: 'Antigravity', badge: 'OSS', color: '#10B981', latency: 85, context: '128k', type: 'Open Source Reasoning' },
-
-          { id: 'gemini-3.8-flash-medium', name: 'Gemini 3.8 Flash (Med)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 75, context: '1M', type: 'Default Agent' },
-
-          { id: 'gemini-3.8-flash-low', name: 'Gemini 3.8 Flash (Low)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 60, context: '1M', type: 'Low Latency' },
-
-          { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash High', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', latency: 85, context: '1M', type: 'High Speed Reasoning' }
-
+          { id: 'gemini-pro-agent', name: 'Gemini 3.1 Pro High', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', latency: 110, context: '2M', type: 'High Intelligence' },
+          { id: '4-argon', name: 'Gemini 4 Argon (Unavailable)', provider: 'Antigravity', badge: 'AG', color: '#94A3B8', latency: 999, context: 'Preview', type: 'Next-Gen Preview' }
         ]
-
       }
-
     };
 
 
@@ -28946,7 +28883,7 @@
         const trackable = connections.filter(c => c && (c.provider === 'antigravity' || c.provider === 'google' || c.provider === 'codex' || c.authType === 'oauth' || c.email));
 
         // 🚀 BƯỚC 1: CACHE-FIRST INSTANT DISPLAY - RENDER THẺ NGAY LẬP TỨC (<50ms)
-        // Lấy ngay dữ liệu quota đã được lưu sẵn trong CSDL TiDB/RAM của từng tài khoản
+        // Lấy ngay dữ liệu quota đã được lưu sẵn trong CSDL PostgreSQL/RAM của từng tài khoản
         _quotaAccountsList = trackable.map(conn => {
           let cachedQuotas = null;
           if (conn.data) {
@@ -32326,7 +32263,7 @@
         // 1. Cập nhật Breadcrumb phụ trên Header
         const breadcrumbSub = document.querySelector('#breadcrumb-title + span + span');
         if (breadcrumbSub) {
-          breadcrumbSub.textContent = window.location.host + ' (TiDB Cloud)';
+          breadcrumbSub.textContent = window.location.host + ' (Aiven PostgreSQL)';
         }
 
         // 2. Cập nhật Topbar Header Status
@@ -32339,7 +32276,7 @@
           headerText.className = 'text-xs font-mono font-bold text-cyan-400';
         }
 
-        // 3. Tối ưu Sidebar Footer: Chuyển cụm điều khiển cục bộ thành Card TiDB Cloud & Tải App
+        // 3. Tối ưu Sidebar Footer: Chuyển cụm điều khiển cục bộ thành Card Aiven PostgreSQL & Tải App
         const sidebarCard = document.getElementById('sidebar-gateway-card');
         if (sidebarCard) {
           sidebarCard.innerHTML = `
@@ -32347,7 +32284,7 @@
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00F0FF] animate-pulse"></span>
                 <div class="flex flex-col">
-                  <span class="text-xs font-bold text-white font-mono leading-tight">TiDB Cloud Gateway</span>
+                  <span class="text-xs font-bold text-white font-mono leading-tight">Aiven PostgreSQL Gateway</span>
                   <span class="text-[10px] font-mono text-cyan-400 font-semibold">🟢 ONLINE 24/7 (Multi-AZ)</span>
                 </div>
               </div>

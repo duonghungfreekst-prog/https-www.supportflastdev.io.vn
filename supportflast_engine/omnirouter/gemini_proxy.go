@@ -158,26 +158,24 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		rawModel := extractModelFromBody(bodyBytes)
 		model := sanitizeAndUpgradeModel(rawModel)
 
-		// Chuẩn hóa model và xây dựng cascade fallback tiers - ƯU TIÊN 100% MODEL NGƯỜI DÙNG YÊU CẦU
+		// Chuẩn hóa model và xây dựng cascade fallback tiers chuẩn 100% Antigravity IDE
 		var modelTiers []string
 		if model == "" {
 			// Request không chỉ định model (quota, metadata, autocompletion...) -> giữ nguyên 100% bản gốc
 			modelTiers = []string{""}
+		} else if strings.Contains(model, "opus") {
+			modelTiers = []string{"claude-opus-4-6-thinking", "claude-sonnet-4-6", "gemini-3.8-flash-high"}
+		} else if strings.Contains(model, "sonnet") {
+			modelTiers = []string{"claude-sonnet-4-6", "claude-opus-4-6-thinking", "gemini-3.8-flash-high"}
+		} else if strings.Contains(model, "gpt-oss") || strings.Contains(model, "120b") {
+			modelTiers = []string{"gpt-oss-120b-medium", "gemini-3.8-flash-high", "claude-sonnet-4-6"}
 		} else if strings.Contains(model, "3.1-pro") || strings.Contains(model, "pro-agent") {
-			// Dòng Pro: Tier 1 là đúng model yêu cầu, Fallback sang các model cao cấp khác khi cạn quota
-			modelTiers = []string{model, "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
-		} else if strings.Contains(model, "2.5-pro") {
-			// Dòng 2.5 Pro: Chạy gemini-3.1-pro-high
-			modelTiers = []string{"gemini-3.1-pro-high", "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
-		} else if strings.Contains(model, "3.8-flash") {
-			// Dòng 3.8 Flash: Chạy đúng model được request
-			modelTiers = []string{model, "gemini-3.8-flash-high", "gemini-3.1-pro-high"}
-		} else if strings.Contains(model, "2.5-flash") {
-			// Dòng 2.5 Flash: Chạy gemini-3.8-flash-high
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.8-flash-high", "gemini-3.1-pro-high"}
+			modelTiers = []string{"gemini-pro-agent", "gemini-3.8-flash-high", "claude-sonnet-4-6"}
+		} else if strings.Contains(model, "argon") {
+			modelTiers = []string{"4-argon", "gemini-3.8-flash-high"}
 		} else {
-			// Mọi model khác (Claude, GPT, v.v.): Tier 1 là chính model đó
-			modelTiers = []string{model, "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
+			// Mặc định hoặc dòng Flash (gemini-3.8-flash-high):
+			modelTiers = []string{"gemini-3.8-flash-high", "gemini-pro-agent", "claude-sonnet-4-6"}
 		}
 
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Antigravity IDE: %s %s (Host: %s, Model: %s, Tiers: %v)", r.Method, r.URL.Path, r.Host, model, modelTiers)
@@ -242,8 +240,8 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if len(finalBodyBytes) > 0 && finalBodyBytes[0] == '{' {
 					var rawJSON map[string]interface{}
 					if jErr := json.Unmarshal(finalBodyBytes, &rawJSON); jErr == nil && rawJSON != nil {
-						// Chỉ cập nhật project nếu request gốc có project hoặc là endpoint sinh mã/predict
-						if _, hasProj := rawJSON["project"]; hasProj || strings.Contains(r.URL.Path, "generate") || strings.Contains(r.URL.Path, "predict") {
+						// Chỉ cập nhật project nếu request gốc ĐÃ CÓ trường project
+						if _, hasProj := rawJSON["project"]; hasProj {
 							rawJSON["project"] = targetProject
 						}
 						// TUYỆT ĐỐI CHỈ thay đổi model khi request gốc ĐÃ CÓ trường model
@@ -257,10 +255,14 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 						}
 					}
 				}
-				// Chỉ loại bỏ duy nhất model flash-lite theo yêu cầu của người dùng, giữ nguyên 100% mọi model khác
-				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash-lite")) {
-					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash-lite"), []byte("gemini-3.8-flash-high"))
-				}
+				// Loại bỏ triệt để toàn bộ model đời cũ nếu còn sót trong body
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash-lite"), []byte("gemini-3.8-flash-high"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash"), []byte("gemini-3.8-flash-high"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-pro-agent"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-1.5-pro"), []byte("gemini-pro-agent"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-1.5-flash"), []byte("gemini-3.8-flash-high"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("claude-3-5-sonnet"), []byte("claude-sonnet-4-6"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("claude-3-7-sonnet"), []byte("claude-sonnet-4-6"))
 				// Xây dựng URL upstream thật
 				targetHost := "daily-cloudcode-pa.googleapis.com"
 				reqHostLower := strings.ToLower(r.Host)
@@ -278,10 +280,14 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if r.URL.RawQuery != "" {
 					upstreamURL += "?" + r.URL.RawQuery
 				}
-				// Chỉ loại bỏ flash-lite trên URL upstream nếu có
-				if strings.Contains(upstreamURL, "gemini-2.5-flash-lite") {
-					upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash-lite", "gemini-3.8-flash-high")
-				}
+				// Loại bỏ triệt để model đời cũ trên URL upstream nếu có
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash-lite", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-pro", "gemini-pro-agent")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-1.5-pro", "gemini-pro-agent")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-1.5-flash", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "claude-3-5-sonnet", "claude-sonnet-4-6")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "claude-3-7-sonnet", "claude-sonnet-4-6")
 
 				// Tạo request mới với finalBodyBytes
 				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
@@ -392,7 +398,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					}
 
 					lastErr = fmt.Errorf("upstream error %d on %s for %s: %s", rResp.StatusCode, acc.Name, tierModel, cleanErrStr)
-					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên [Tài khoản ẩn] cho model %s: %s", rResp.StatusCode, tierModel, cleanErrStr)
+					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên %s cho model %s: %s", rResp.StatusCode, acc.Email, tierModel, cleanErrStr)
 
 					if strings.Contains(cleanErrStr, "SUBSCRIPTION_REQUIRED") || strings.Contains(cleanErrStr, "#3501") {
 						accountCooldownMap.Store(acc.ID, time.Now().Add(1*time.Hour))
@@ -501,7 +507,11 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			if completionTokens < 250 {
 				completionTokens = 250
 			}
-			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua [Tài khoản ẩn] (%s) - %dms - Tokens: %d - Path: %s", effectiveModel, latencyMs, promptTokens+completionTokens, r.URL.Path)
+			accEmail := usedAccount.Email
+			if accEmail == "" {
+				accEmail = usedAccount.Name
+			}
+			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua %s (%s) - %dms - Tokens: %d - Path: %s", accEmail, effectiveModel, latencyMs, promptTokens+completionTokens, r.URL.Path)
 			now := time.Now().UTC()
 			GlobalLogHub.RecordLog(RouterLogEntry{
 				Timestamp:        now.Format("15:04:05.000"),
@@ -527,18 +537,31 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// sanitizeAndUpgradeModel chỉ loại bỏ duy nhất model flash-lite cấp thấp theo đúng yêu cầu người dùng
-// Tuyệt đối giữ nguyên 100% tất cả các model chuẩn khác (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-high, gemini-3.8-flash-high, claude...)
+// sanitizeAndUpgradeModel loại bỏ triệt để toàn bộ model đời cũ (2.5, 2.0, 1.5, claude cũ...)
+// và quy về đúng 100% các model đang hoạt động thực tế trên Antigravity IDE
 func sanitizeAndUpgradeModel(model string) string {
 	mLower := strings.ToLower(strings.TrimSpace(model))
 	if mLower == "" || mLower == "gemini-native" || mLower == "functioncall" || mLower == "auto" || mLower == "none" {
 		return ""
 	}
-	// CHỈ loại bỏ duy nhất flash-lite theo yêu cầu người dùng -> nâng lên 3.8-flash-high
-	if strings.Contains(mLower, "flash-lite") {
+	if strings.Contains(mLower, "opus") {
+		return "claude-opus-4-6-thinking"
+	}
+	if strings.Contains(mLower, "sonnet") {
+		return "claude-sonnet-4-6"
+	}
+	if strings.Contains(mLower, "gpt-oss") || strings.Contains(mLower, "120b") {
+		return "gpt-oss-120b-medium"
+	}
+	if strings.Contains(mLower, "3.1-pro") || strings.Contains(mLower, "pro-agent") || strings.Contains(mLower, "2.5-pro") || strings.Contains(mLower, "1.5-pro") {
+		return "gemini-pro-agent"
+	}
+	if strings.Contains(mLower, "argon") {
+		return "4-argon"
+	}
+	if strings.Contains(mLower, "flash") {
 		return "gemini-3.8-flash-high"
 	}
-	// Giữ nguyên 100% model người dùng yêu cầu
 	return model
 }
 
@@ -699,32 +722,53 @@ func GetWebServerURL() string {
 	return cachedWebServerURL
 }
 
-// ReportProxyUsageAsync ghi nhận telemetry thời gian thực lên Web Server mà KHÔNG trừ Quota của Client API Key
+// ReportProxyUsageAsync ghi nhận telemetry thời gian thực và cập nhật hạn mức quota của Active Key
 func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
 	go func() {
-		// Gán cứng ApiKey định danh riêng cho Native Proxy của IDE, tuyệt đối không lấy client key của người dùng
-		activeKey := "sk-antigravity-native-proxy"
+		defer func() {
+			_ = recover()
+		}()
+
+		// Lấy Active Client Key hiện hành của người dùng
+		activeKey := GetActiveClientKey(db)
+		if activeKey == "" {
+			activeKey = "sk-supportflastdev.io.vn-master-live"
+		}
 		totTokens := promptTokens + completionTokens
 		if totTokens <= 0 {
 			totTokens = 520
 		}
 
-		// Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực (UsedRequests: 0, SkipDBIncrement: true)
+		accDisplay := accountEmail
+		if accDisplay == "" {
+			accDisplay = accountName
+		}
+		if accDisplay == "" {
+			accDisplay = "Tài khoản Antigravity"
+		}
+
+		// 1. Cập nhật số lượt gọi (used_requests) và số token tiêu thụ cho Active Client Key
+		RecordKeyUsageAsync(db, activeKey, 1, totTokens)
+
+		// 2. Ghi nhật ký vào bảng omni_usage_history để hiển thị chi tiết trên Web & Desktop
+		RecordUsageHistoryAsync(db, "Antigravity", effectiveModel, accDisplay, activeKey, reqPath, promptTokens, completionTokens, totTokens, 0.0, "success", latencyMs)
+
+		// 3. Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực
 		webURL := GetWebServerURL()
 		reportURL := webURL + "/api/v1/client/report"
 
 		payload := ClientReportPayload{
 			ApiKey:          activeKey,
-			UsedRequests:    0, // Không tăng quota của key
+			UsedRequests:    1,
 			TotalTokens:     totTokens,
 			Model:           effectiveModel,
 			Endpoint:        reqPath,
-			AccountName:     "[Tài khoản ẩn]",
+			AccountName:     accDisplay,
 			ClientDevice:    "Antigravity IDE (Desktop)",
 			LatencyMs:       latencyMs,
 			StatusCode:      statusCode,
-			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua [Tài khoản ẩn] (%dms - %d tokens)", effectiveModel, latencyMs, totTokens),
-			SkipDBIncrement: true, // Tuyệt đối không tăng Quota của Client API Key trên CSDL
+			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua %s (%dms - %d tokens)", effectiveModel, accDisplay, latencyMs, totTokens),
+			SkipDBIncrement: false,
 		}
 
 		bodyBytes, err := json.Marshal(payload)
