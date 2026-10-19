@@ -67,6 +67,14 @@ services:
         value: postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require
       - key: DATABASE_URL
         value: postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require
+      - key: PG_MAX_OPEN_CONNS
+        value: "8"
+      - key: PG_MAX_IDLE_CONNS
+        value: "3"
+      - key: PG_CONN_MAX_LIFETIME
+        value: "3m"
+      - key: PG_CONN_MAX_IDLE_TIME
+        value: "30s"
       - key: ADMIN_USERNAME
         value: admin
       - key: ADMIN_PASSWORD

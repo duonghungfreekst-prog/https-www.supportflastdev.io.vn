@@ -14,10 +14,10 @@ import (
 // Hằng số kết nối mặc định tới cụm Aiven PostgreSQL
 const (
 	DefaultAivenPostgresURI = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
-	DefaultPGMaxOpenConns   = 50
-	DefaultPGMaxIdleConns   = 25
-	DefaultPGConnLifetime   = 5 * time.Minute
-	DefaultPGConnIdleTime   = 3 * time.Minute
+	DefaultPGMaxOpenConns   = 8
+	DefaultPGMaxIdleConns   = 3
+	DefaultPGConnLifetime   = 3 * time.Minute
+	DefaultPGConnIdleTime   = 30 * time.Second
 	DefaultPGConnectTimeout = 10 * time.Second
 )
 

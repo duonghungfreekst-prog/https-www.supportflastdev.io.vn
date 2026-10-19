@@ -200,6 +200,9 @@ func NewPostgres(customURI ...string) (*DB, error) {
 }
 
 func openPostgresConnection(dsn string) (*DB, error) {
+	if existing := database.GetDB(); existing != nil && database.ActiveDriver() == "postgres" && strings.TrimSpace(dsn) == "" {
+		return &DB{db: existing, path: database.GetPostgresURI(), driver: "postgres"}, nil
+	}
 	db, err := database.OpenPostgresConnection(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("lỗi kết nối Aiven PostgreSQL cho CloudPool: %w", err)
