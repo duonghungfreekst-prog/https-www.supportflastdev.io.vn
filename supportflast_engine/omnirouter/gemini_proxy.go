@@ -83,13 +83,17 @@ func getClientForAccount(proxyURL string) *http.Client {
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: false,
 		},
+		DialContext: (&net.Dialer{
+			Timeout:   8 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
 		MaxIdleConns:        50,
 		MaxIdleConnsPerHost: 20,
 		IdleConnTimeout:     120 * time.Second,
 	}
 	client := &http.Client{
 		Transport: tr,
-		Timeout:   300 * time.Second,
+		Timeout:   120 * time.Second,
 	}
 	proxyClientCache.Store(proxyURL, client)
 	return client
@@ -297,6 +301,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				}
 
 				rResp, doErr := targetClient.Do(fReq)
+				if doErr != nil && targetClient != geminiProxyClient {
+					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Proxy %s gặp sự cố (%v), tự động fallback chuyển sang kết nối trực tiếp (Direct)...", creds.ProxyUrl, doErr)
+					fReqDirect, _ := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
+					fReqDirect.Header = fReq.Header.Clone()
+					rResp, doErr = geminiProxyClient.Do(fReqDirect)
+				}
 				if doErr != nil {
 					lastErr = doErr
 					continue
