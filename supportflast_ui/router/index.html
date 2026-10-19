@@ -15111,36 +15111,39 @@
 
 
 
-        const patchRes = await apiRequest('/api/cli-tools/antigravity-mitm', {
+        let patchRes;
+        try {
+          patchRes = await apiRequest('/api/cli-tools/antigravity-mitm', {
+            method: 'PATCH',
+            body: JSON.stringify({ tool: tool, action: targetState ? 'enable' : 'disable' })
+          });
+        } catch (fetchErr) {
+          // Fallback sang C# Native WebView2 Host nếu Go engine chưa kịp phản hồi
+          if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(targetState ? 'startintercept' : 'stopintercept');
+            showToastNotification(`Đã gửi yêu cầu ${targetState ? 'BẬT' : 'TẮT'} DNS Intercept tới hệ thống!`);
+            return;
+          }
+          throw fetchErr;
+        }
 
-          method: 'PATCH',
-
-          body: JSON.stringify({ tool: tool, action: targetState ? 'enable' : 'disable' })
-
-        });
-
-        if (!patchRes.ok) {
-
+        if (!patchRes || !patchRes.ok) {
+          if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(targetState ? 'startintercept' : 'stopintercept');
+            showToastNotification(`Đã chuyển đổi DNS qua C# Host thành công!`);
+            return;
+          }
           const pErr = await patchRes.json().catch(() => ({}));
-
           throw new Error(pErr.error || 'Lỗi cập nhật DNS');
-
         }
 
         showToastNotification(`Đã ${targetState ? 'BẬT' : 'TẮT'} DNS Intercept cho ${tool.toUpperCase()} thành công!`);
-
       } catch (err) {
-
         console.error('Lỗi đổi DNS:', err);
-
         showToastNotification('Lỗi đổi DNS: ' + (err.message || err), true);
-
         updateToolDnsUi(tool, currentActive);
-
       } finally {
-
         setTimeout(loadMitmStatusLive, 300);
-
       }
 
     }

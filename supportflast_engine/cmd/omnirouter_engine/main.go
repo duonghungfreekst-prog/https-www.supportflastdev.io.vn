@@ -182,7 +182,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Printf("[ENGINE] ✔ OmniRouter Gateway Core đã sẵn sàng phục vụ trên cổng %d (Trỏ CSDL TiDB Cloud)", *portFlag)
+	log.Printf("[ENGINE] ✔ OmniRouter Gateway Core đã sẵn sàng phục vụ trên cổng %d (Trỏ CSDL Aiven PostgreSQL)", *portFlag)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[ENGINE] [FATAL] Lỗi khởi chạy Gateway Server: %v", err)
 	}

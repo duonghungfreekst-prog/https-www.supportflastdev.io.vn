@@ -162,7 +162,7 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 			);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_usage_history (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				id SERIAL PRIMARY KEY,
 				timestamp TEXT NOT NULL,
 				provider TEXT NOT NULL,
 				model TEXT NOT NULL,
@@ -190,6 +190,13 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
+			// Nếu gặp lỗi cú pháp PostgreSQL SERIAL trên SQLite, fallback về AUTOINCREMENT
+			if strings.Contains(q, "id SERIAL PRIMARY KEY") {
+				fallbackQ := strings.Replace(q, "id SERIAL PRIMARY KEY", "id INTEGER PRIMARY KEY AUTOINCREMENT", 1)
+				if _, fbErr := db.Exec(fallbackQ); fbErr == nil {
+					continue
+				}
+			}
 			return fmt.Errorf("lỗi khởi tạo bảng omnirouter: %w (query: %s)", err, q)
 		}
 	}

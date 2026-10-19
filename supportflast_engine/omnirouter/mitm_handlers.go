@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -657,13 +658,19 @@ func HandleMitmStatus(db *sql.DB, handler http.Handler, baseDir string) http.Han
 				Tool   string `json:"tool"`
 				Action string `json:"action"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"success": false,
-					"error":   "JSON không hợp lệ",
-				})
-				return
+			bodyBytes, _ := io.ReadAll(r.Body)
+			if len(bodyBytes) > 0 {
+				_ = json.Unmarshal(bodyBytes, &body)
+			}
+			// Fallback sang Query parameters nếu body rỗng hoặc thiếu field
+			if body.Tool == "" {
+				body.Tool = r.URL.Query().Get("tool")
+			}
+			if body.Action == "" {
+				body.Action = r.URL.Query().Get("action")
+			}
+			if body.Tool == "" {
+				body.Tool = "antigravity"
 			}
 
 			enable := strings.ToLower(body.Action) == "enable" || body.Action == "true" || body.Action == "1"
