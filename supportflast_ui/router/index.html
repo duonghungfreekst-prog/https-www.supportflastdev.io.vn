@@ -8869,13 +8869,23 @@
 
 
 
-          // Server phản hồi bất kỳ mã HTTP nào -> TCP kết nối thành công, Gateway đang ONLINE
-
+          // Server phản hồi bất kỳ mã HTTP nào -> TCP kết nối thành công
           activeApiBase = host;
 
-          isGatewayConnected = true;
+          // Chỉ cập nhật trạng thái Gateway Engine (:20128) sang ONLINE nếu host phản hồi thực sự là Local Engine
+          const isLocalEngineHost = host.includes('127.0.0.1:20128') || 
+                                    host.includes('localhost:20128') || 
+                                    host.includes('127.0.0.1:20127') || 
+                                    host.includes('localhost:20127') ||
+                                    (checkIsOmniGatewayHost() && (host.includes('omnigateway.local') || host.startsWith('/')));
 
-          updateGatewayLiveStatus(true);
+          // Nếu đang chạy trong Desktop App (WPF WebView2), chỉ update công tắc Gateway sang ONLINE 
+          // nếu host phản hồi thực sự là Local Engine. Tuyệt đối không để Cloud Server fallback (supportflastdev.io.vn)
+          // ghi đè làm bật công tắc Local Engine gây xung đột bật/tắt (flapping) với C# Health Check!
+          if (isLocalEngineHost || (!window.chrome?.webview && !checkIsOmniGatewayHost())) {
+            isGatewayConnected = true;
+            updateGatewayLiveStatus(true);
+          }
 
 
 
@@ -9008,13 +9018,12 @@
 
 
       // 3. Không làm flip trạng thái isGatewayConnected về false trừ khi thực sự mất kết nối TCP mạng (NetworkError / Failed to fetch)
-
+      // Trong môi trường Desktop App, C# Health Check là nguồn kiểm soát chính xác duy nhất cho Local Port 20128
       if (isNetworkConnectionError(lastErr)) {
-
-        isGatewayConnected = false;
-
-        updateGatewayLiveStatus(false);
-
+        if (!window.chrome?.webview && !checkIsOmniGatewayHost()) {
+          isGatewayConnected = false;
+          updateGatewayLiveStatus(false);
+        }
       }
 
       throw lastErr || new Error("Không thể kết nối mạng tới OmniRouter Gateway");
@@ -28264,11 +28273,11 @@
         const data = await res.json();
 
         if (data && data.success && Array.isArray(data.logs)) {
-
-          if (!isGatewayConnected) {
-
+          const isLocalEngine = activeApiBase.includes('127.0.0.1:20128') || 
+                                activeApiBase.includes('localhost:20128') || 
+                                (checkIsOmniGatewayHost() && (activeApiBase.includes('omnigateway.local') || activeApiBase.startsWith('/')));
+          if ((isLocalEngine || (!window.chrome?.webview && !checkIsOmniGatewayHost())) && !isGatewayConnected) {
             updateGatewayLiveStatus(true);
-
           }
 
           for (let i = data.logs.length - 1; i >= 0; i--) {
