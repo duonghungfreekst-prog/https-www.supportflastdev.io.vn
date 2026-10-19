@@ -15838,13 +15838,11 @@
 
       // Bổ sung đầy đủ các model Google AI Studio, Antigravity Gateway, Claude và OpenAI
       const fallbackDefaults = [
-        // Google AI Studio Developer Models
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Google AI Studio)', provider: 'Google AI Studio' },
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Google AI Studio)', provider: 'Google AI Studio' },
-        { id: 'gemini-2.5-flash-thinking', name: 'Gemini 2.5 Flash Thinking (Google AI Studio)', provider: 'Google AI Studio' },
-        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Google AI Studio)', provider: 'Google AI Studio' },
-        { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Google AI Studio)', provider: 'Google AI Studio' },
-        { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Google AI Studio)', provider: 'Google AI Studio' },
+        // Google Cloud Code PA & Antigravity Models
+        { id: 'gemini-3.8-flash-high', name: 'Gemini 3.8 Flash (High)', provider: 'Google AI' },
+        { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro (High)', provider: 'Google AI' },
+        { id: 'gemini-3.8-flash-tiered', name: 'Gemini 3.8 Flash Tiered', provider: 'Google AI' },
+        { id: 'gemini-3.7-flash-high', name: 'Gemini 3.7 Flash', provider: 'Google AI' },
         // Antigravity Gateway
         { id: 'gemini-3.1-pro-high', name: 'Gemini 3.1 Pro High', provider: 'Antigravity Gateway' },
         { id: 'gemini-pro-agent', name: 'Gemini Pro Agent', provider: 'Antigravity Gateway' },
@@ -16359,18 +16357,18 @@
     function resetCascadeTiersToDefault() {
       currentCascadeTiers = [
         { model: 'gemini-3.1-pro-high', note: 'Model chính (Ưu tiên 1)', condition: 'Mặc định (Yêu cầu đầu tiên)' },
-        { model: 'gemini-2.5-flash', note: 'Dự phòng 1 (Google AI Studio)', condition: 'Fallback khi 429 & 503' },
-        { model: 'gemini-3.8-flash-high', note: 'Dự phòng 2 (Cứu hộ khẩn cấp)', condition: 'Cứu hộ khẩn cấp khi Timeout' }
+        { model: 'gemini-3.8-flash-high', note: 'Dự phòng 1 (Tốc độ cao)', condition: 'Fallback khi 429 & 503' },
+        { model: 'gemini-3.8-flash-tiered', note: 'Dự phòng 2 (Cứu hộ khẩn cấp)', condition: 'Cứu hộ khẩn cấp khi Timeout' }
       ];
       renderCascadeTiersUI();
-      showToastNotification('🔄 Đã đặt lại cấu hình phân tầng về 3 tầng chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 2.5 Flash -> Tier 3: Flash High). Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!');
+      showToastNotification('🔄 Đã đặt lại cấu hình phân tầng về 3 tầng chuẩn (Tier 1: Gemini 3.1 Pro -> Tier 2: Gemini 3.8 Flash High -> Tier 3: Flash Tiered). Bấm "Lưu Cấu Hình Combo Vào TiDB Cloud" để áp dụng!');
     }
 
     // Thêm tầng dự phòng mới với Model thực tế
     function addCascadeTier() {
       const nextIdx = currentCascadeTiers.length;
       const chosen = _realSystemModelsList.find(m => !currentCascadeTiers.some(t => t.model === m.id)) || _realSystemModelsList[0];
-      const modelId = chosen ? chosen.id : 'gemini-2.5-flash';
+      const modelId = chosen ? chosen.id : 'gemini-3.8-flash-high';
 
       currentCascadeTiers.push({
         model: modelId,

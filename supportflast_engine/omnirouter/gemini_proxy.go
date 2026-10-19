@@ -153,25 +153,23 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
-		// Trích model từ request body (nếu có)
-		model := extractModelFromBody(bodyBytes)
+		// Trích model từ request body (nếu có) và nâng cấp loại bỏ triệt để 2.5
+		rawModel := extractModelFromBody(bodyBytes)
+		model := sanitizeAndUpgradeModel(rawModel)
 
-		// Chuẩn hóa model và xây dựng cascade fallback tiers - TUYỆT ĐỐI CHỈ DÙNG CÁC MODEL CAO CẤP
+		// Chuẩn hóa model và xây dựng cascade fallback tiers - LOẠI BỎ HOÀN TOÀN TẤT CẢ MODEL 2.5
 		var modelTiers []string
-		if model == "gemini-pro-agent" || model == "gemini-3.1-pro-high" || model == "gemini-3.1-pro" || model == "gemini-3.1-pro-low" {
-			// Model cao cấp của Google Cloud Code PA hỗ trợ reasoning: ưu tiên 3.8-flash-high và 2.5-pro
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-2.5-pro", "gemini-3-flash-agent"}
+		if model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" {
+			// Model cao cấp hỗ trợ reasoning: ưu tiên 3.1-pro-high và 3.8-flash-high
+			modelTiers = []string{"gemini-3.1-pro-high", "gemini-3.8-flash-high", "gemini-3-flash-agent"}
 		} else if strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6") {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-2.5-pro"}
-		} else if model == "gemini-2.5-pro" {
-			modelTiers = []string{"gemini-2.5-pro", "gemini-3.8-flash-high"}
+			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
 		} else if model == "gemini-3.8-flash-high" {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-2.5-pro"}
+			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
 		} else if model != "" && model != "gemini-native" && model != "functionCall" {
-			// Thử model người dùng chọn, nếu upstream lỗi thì fallback sang các model cao cấp
-			modelTiers = []string{model, "gemini-3.8-flash-high", "gemini-2.5-pro"}
+			modelTiers = []string{model, "gemini-3.8-flash-high", "gemini-3.1-pro-high"}
 		} else {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-2.5-pro"}
+			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
 		}
 
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Antigravity IDE: %s %s (Host: %s, Model: %s, Tiers: %v)", r.Method, r.URL.Path, r.Host, model, modelTiers)
@@ -237,17 +235,29 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					var rawJSON map[string]interface{}
 					if jErr := json.Unmarshal(finalBodyBytes, &rawJSON); jErr == nil && rawJSON != nil {
 						rawJSON["project"] = targetProject
-						if tierModel != "" && rawJSON["model"] != nil {
+						if tierModel != "" {
 							rawJSON["model"] = tierModel
 						}
 						if patched, pErr := json.Marshal(rawJSON); pErr == nil {
 							finalBodyBytes = patched
 						}
 					}
-				} else if model != "" && tierModel != model && model != "gemini-native" && tierModel != "gemini-native" {
-					if bytes.Contains(bodyBytes, []byte(`"`+model+`"`)) {
-						finalBodyBytes = bytes.Replace(bodyBytes, []byte(`"`+model+`"`), []byte(`"`+tierModel+`"`), 1)
-					}
+				}
+				// Loại bỏ triệt để và thay thế toàn bộ model 2.5 thấp sang model cao cấp
+				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash-lite")) {
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash-lite"), []byte("gemini-3.8-flash-high"))
+				}
+				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash")) {
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash"), []byte("gemini-3.8-flash-high"))
+				}
+				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-pro")) {
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-3.1-pro-high"))
+				}
+				if bytes.Contains(finalBodyBytes, []byte("tab_flash_lite_preview")) {
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("tab_flash_lite_preview"), []byte("gemini-3.8-flash-high"))
+				}
+				if bytes.Contains(finalBodyBytes, []byte("tab_jump_flash_lite_preview")) {
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("tab_jump_flash_lite_preview"), []byte("gemini-3.8-flash-high"))
 				}
 
 				// Xây dựng URL upstream thật
@@ -267,6 +277,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if r.URL.RawQuery != "" {
 					upstreamURL += "?" + r.URL.RawQuery
 				}
+				// Loại bỏ 2.5 trên URL upstream
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash-lite", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-pro", "gemini-3.1-pro-high")
 
 				// Tạo request mới với finalBodyBytes
 				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
@@ -458,6 +472,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			if effectiveModel == "" {
 				effectiveModel = model
 			}
+			effectiveModel = sanitizeAndUpgradeModel(effectiveModel)
 			promptTokens := int64(len(bodyBytes) / 4)
 			if promptTokens < 120 {
 				promptTokens = 120
@@ -492,7 +507,26 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// extractModelFromBody trích model name từ JSON body
+// sanitizeAndUpgradeModel loại bỏ hoàn toàn các model 2.5 thấp hoặc flash-lite theo yêu cầu, nâng cấp tự động lên Gemini 3.8 / 3.1 Pro
+func sanitizeAndUpgradeModel(model string) string {
+	mLower := strings.ToLower(strings.TrimSpace(model))
+	if mLower == "" || mLower == "gemini-native" || mLower == "functioncall" || mLower == "auto" || mLower == "none" {
+		return "gemini-3.8-flash-high"
+	}
+	// Loại bỏ hoàn toàn model 2.5 (gemini-2.5-flash-lite, gemini-2.5-flash, gemini-2.5-pro) và flash-lite
+	if strings.Contains(mLower, "2.5") || strings.Contains(mLower, "flash-lite") || strings.Contains(mLower, "tab_flash") {
+		if strings.Contains(mLower, "pro") {
+			return "gemini-3.1-pro-high"
+		}
+		return "gemini-3.8-flash-high"
+	}
+	if mLower == "gemini-pro-agent" || mLower == "gemini-3.1-pro" || mLower == "gemini-3.1-pro-low" {
+		return "gemini-3.1-pro-high"
+	}
+	return model
+}
+
+// extractModelFromBody trích model name từ JSON body và tự động nâng cấp loại bỏ 2.5
 func extractModelFromBody(body []byte) string {
 	if len(body) == 0 {
 		return "gemini-3.8-flash-high"
@@ -503,7 +537,7 @@ func extractModelFromBody(body []byte) string {
 	if err := json.Unmarshal(body, &req); err == nil && req.Model != "" {
 		m := strings.TrimSpace(req.Model)
 		if m != "functionCall" && m != "auto" && m != "none" && m != "" {
-			return m
+			return sanitizeAndUpgradeModel(m)
 		}
 	}
 	s := string(body)
@@ -520,7 +554,7 @@ func extractModelFromBody(body []byte) string {
 				if quoteEnd != -1 {
 					m := sub[:quoteEnd]
 					if m != "functionCall" && m != "auto" && m != "none" && m != "" {
-						return m
+						return sanitizeAndUpgradeModel(m)
 					}
 				}
 			}
