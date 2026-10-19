@@ -368,7 +368,15 @@ func startMitmServer(handler http.Handler, baseDir string) error {
 		TLSConfig: tlsConfig,
 	}
 
-	ln, err := net.Listen("tcp", server.Addr)
+	var ln net.Listener
+	var err error
+	for attempt := 0; attempt < 4; attempt++ {
+		ln, err = net.Listen("tcp", server.Addr)
+		if err == nil {
+			break
+		}
+		time.Sleep(600 * time.Millisecond)
+	}
 	if err != nil {
 		return fmt.Errorf("cổng 443 đang bị chiếm dụng hoặc thiếu quyền Administrator: %w", err)
 	}
@@ -413,13 +421,14 @@ func stopMitmServer() error {
 	return err
 }
 
-// AutoStartMitm tự động khởi động MITM server cổng 443 nếu đã có root CA
+// AutoStartMitm tự động khởi động MITM server cổng 443 nếu đã có root CA và kích hoạt DNS hosts
 func AutoStartMitm(baseDir string) error {
 	mitmServerLock.Lock()
 	running := mitmServerRunning
 	mitmServerLock.Unlock()
 
 	if running {
+		_ = setToolDns("antigravity", true)
 		return nil
 	}
 
@@ -427,7 +436,15 @@ func AutoStartMitm(baseDir string) error {
 		return fmt.Errorf("GlobalMitmDispatcher chưa được khởi tạo")
 	}
 
-	return startMitmServer(GlobalMitmDispatcher, baseDir)
+	err := startMitmServer(GlobalMitmDispatcher, baseDir)
+	if err == nil {
+		if dnsErr := setToolDns("antigravity", true); dnsErr != nil {
+			log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo cấu hình DNS Antigravity: %v", dnsErr)
+		} else {
+			log.Printf("[ENGINE] [MITM] ✔ Đã tự động kích hoạt chuyển hướng Antigravity IDE qua OmniRouter an toàn")
+		}
+	}
+	return err
 }
 
 // HandleMitmAliases xử lý GET/POST cho model aliases (/api/cli-tools/antigravity-mitm/alias)

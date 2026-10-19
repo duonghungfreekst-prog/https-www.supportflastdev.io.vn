@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -12,6 +13,7 @@ import (
 type RouterLogEntry struct {
 	ID               int64  `json:"id"`
 	Timestamp        string `json:"timestamp"`
+	TimestampISO     string `json:"timestamp_iso,omitempty"`
 	ClientDevice     string `json:"client_device"`
 	APIKeyName       string `json:"api_key_name"`
 	Endpoint         string `json:"endpoint"`
@@ -50,8 +52,12 @@ func (h *LogHub) RecordLog(entry RouterLogEntry) {
 	h.mu.Lock()
 	h.counter++
 	entry.ID = h.counter
+	now := time.Now().UTC()
 	if entry.Timestamp == "" {
-		entry.Timestamp = time.Now().Format("15:04:05.000")
+		entry.Timestamp = now.Format("15:04:05.000")
+	}
+	if entry.TimestampISO == "" {
+		entry.TimestampISO = now.Format(time.RFC3339Nano)
 	}
 
 	h.entries = append(h.entries, entry)
@@ -65,7 +71,9 @@ func (h *LogHub) RecordLog(entry RouterLogEntry) {
 	for ch := range h.clients {
 		select {
 		case ch <- entry:
+			// Đẩy thành công
 		default:
+			// Kênh đầy, bỏ qua tránh nghẽn luồng xử lý
 		}
 	}
 	h.clientsMu.Unlock()
@@ -89,8 +97,9 @@ func (h *LogHub) GetRecentLogs(limit int) []RouterLogEntry {
 // HandleLogStream xử lý kết nối Server-Sent Events (SSE) tại /api/router/logs/stream
 func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	flusher, ok := w.(http.Flusher)
@@ -98,6 +107,10 @@ func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "SSE không được hỗ trợ trên trình duyệt này", http.StatusInternalServerError)
 		return
 	}
+
+	// Gửi padding ban đầu để ép Cloudflare / Reverse Proxy flush buffer ngay lập tức
+	fmt.Fprintf(w, ": %s\n\n", strings.Repeat(" ", 2048))
+	flusher.Flush()
 
 	ch := make(chan RouterLogEntry, 100)
 	GlobalLogHub.clientsMu.Lock()
@@ -137,11 +150,18 @@ func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	}
 	flusher.Flush()
 
+	// Heartbeat ticker định kỳ 15 giây giữ kết nối Cloudflare / Render không bị ngắt timeout
+	heartbeatTicker := time.NewTicker(15 * time.Second)
+	defer heartbeatTicker.Stop()
+
 	// Vòng lặp lắng nghe và đẩy log mới
 	for {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-heartbeatTicker.C:
+			fmt.Fprintf(w, ": keep-alive %d\n\n", time.Now().Unix())
+			flusher.Flush()
 		case entry, ok := <-ch:
 			if !ok {
 				return

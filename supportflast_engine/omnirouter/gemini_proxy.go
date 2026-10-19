@@ -169,11 +169,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		// Duyệt tuần tự qua các model tiers (Cascade Fallback)
 		for tierIdx, tierModel := range modelTiers {
-			activeBodyBytes := bodyBytes
-			if tierModel != model && model != "gemini-native" && tierModel != "gemini-native" {
-				activeBodyBytes = bytes.Replace(bodyBytes, []byte(`"`+model+`"`), []byte(`"`+tierModel+`"`), 1)
-			}
-
 			maxAttempts := 5
 			if maxAttempts > numAccounts {
 				maxAttempts = numAccounts
@@ -190,6 +185,31 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 
+				// Xác định Project ID chuẩn mực của tài khoản pool
+				targetProject := strings.TrimSpace(creds.ProjectId)
+				if targetProject == "" {
+					targetProject = "aicode-consumers"
+				}
+
+				// Chuẩn hóa JSON body an toàn tuyệt đối
+				finalBodyBytes := bodyBytes
+				if len(finalBodyBytes) > 0 && finalBodyBytes[0] == '{' {
+					var rawJSON map[string]interface{}
+					if jErr := json.Unmarshal(finalBodyBytes, &rawJSON); jErr == nil && rawJSON != nil {
+						rawJSON["project"] = targetProject
+						if tierModel != "" && rawJSON["model"] != nil {
+							rawJSON["model"] = tierModel
+						}
+						if patched, pErr := json.Marshal(rawJSON); pErr == nil {
+							finalBodyBytes = patched
+						}
+					}
+				} else if model != "" && tierModel != model && model != "gemini-native" && tierModel != "gemini-native" {
+					if bytes.Contains(bodyBytes, []byte(`"`+model+`"`)) {
+						finalBodyBytes = bytes.Replace(bodyBytes, []byte(`"`+model+`"`), []byte(`"`+tierModel+`"`), 1)
+					}
+				}
+
 				// Xây dựng URL upstream thật
 				targetHost := "daily-cloudcode-pa.googleapis.com"
 				if r.Host != "" && strings.Contains(r.Host, "cloudcode-pa.googleapis.com") && !strings.Contains(r.Host, "daily-") {
@@ -200,17 +220,17 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					upstreamURL += "?" + r.URL.RawQuery
 				}
 
-				// Tạo request mới với activeBodyBytes
-				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(activeBodyBytes))
+				// Tạo request mới với finalBodyBytes
+				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
 				if reqErr != nil {
 					lastErr = reqErr
 					continue
 				}
 
-				// Copy headers gốc từ IDE (trừ Authorization và Host)
+				// Copy headers gốc từ IDE (loại bỏ Authorization, Host, Connection và User-Project cũ)
 				for key, values := range r.Header {
 					keyLower := strings.ToLower(key)
-					if keyLower == "authorization" || keyLower == "host" || keyLower == "connection" {
+					if keyLower == "authorization" || keyLower == "host" || keyLower == "connection" || keyLower == "x-goog-user-project" {
 						continue
 					}
 					for _, v := range values {
@@ -218,9 +238,11 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					}
 				}
 
-				// Thay Authorization bằng token fresh từ tài khoản AI pool
+				// Thiết lập Authorization và User-Project chuẩn xác theo tài khoản Pool
 				fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
+				fReq.Header.Set("X-Goog-User-Project", targetProject)
 				fReq.Header.Set("Content-Type", "application/json")
+				fReq.Header.Set("X-Client-Name", "antigravity")
 				if fReq.Header.Get("User-Agent") == "" {
 					fReq.Header.Set("User-Agent", "antigravity/ide/2.24.0 windows/amd64")
 				}
@@ -229,6 +251,38 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if doErr != nil {
 					lastErr = doErr
 					continue
+				}
+
+				// Tự động Refresh Token nếu gặp 401 Unauthorized
+				if rResp.StatusCode == http.StatusUnauthorized && creds.RefreshToken != "" {
+					rResp.Body.Close()
+					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Token hết hạn (401) trên %s, tự động làm mới token...", acc.Name)
+					newTok, newExpiry, newRefresh, refErr := RefreshGoogleToken(creds.RefreshToken)
+					if refErr == nil {
+						creds.AccessToken = newTok
+						creds.ExpiresAt = newExpiry
+						var dataMap map[string]interface{}
+						_ = json.Unmarshal(acc.Data, &dataMap)
+						if dataMap == nil {
+							dataMap = make(map[string]interface{})
+						}
+						dataMap["accessToken"] = newTok
+						dataMap["expiresAt"] = newExpiry.Format(time.RFC3339)
+						dataMap["lastRefreshAt"] = NowISO()
+						if newRefresh != "" {
+							dataMap["refreshToken"] = newRefresh
+							creds.RefreshToken = newRefresh
+						}
+						_ = UpdateProviderData(db, acc.ID, dataMap)
+
+						// Thử lại ngay với token mới
+						fReqRetry, _ := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
+						fReqRetry.Header = fReq.Header.Clone()
+						fReqRetry.Header.Set("Authorization", "Bearer "+newTok)
+						if rRespRetry, retryErr := geminiProxyClient.Do(fReqRetry); retryErr == nil {
+							rResp = rRespRetry
+						}
+					}
 				}
 
 				if rResp.StatusCode == http.StatusTooManyRequests {
@@ -273,6 +327,20 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		if resp == nil {
 			errMsg := fmt.Sprintf(`{"error":{"message":"Toàn bộ tài khoản và fallback tiers đều bận hoặc lỗi: %v","code":"gateway_error"}}`, lastErr)
 			log.Printf("[ENGINE] [GEMINI-PROXY] ✗ Tất cả tài khoản và tiers đều thất bại: %v", lastErr)
+			now := time.Now().UTC()
+			GlobalLogHub.RecordLog(RouterLogEntry{
+				Timestamp:    now.Format("15:04:05.000"),
+				TimestampISO: now.Format(time.RFC3339Nano),
+				ClientDevice: r.RemoteAddr,
+				APIKeyName:   "Antigravity IDE (Native Gemini Proxy)",
+				Endpoint:     r.URL.Path,
+				Method:       r.Method,
+				Provider:     "FAILOVER",
+				Model:        model,
+				LatencyMs:    time.Since(startTime).Milliseconds(),
+				StatusCode:   http.StatusBadGateway,
+				ErrorMessage: fmt.Sprintf("%v", lastErr),
+			})
 			http.Error(w, errMsg, http.StatusBadGateway)
 			return
 		}
@@ -293,11 +361,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// Nếu là request Quota (retrieveUserQuotaSummary hoặc fetchAvailableModels), hứng lại body để sync số liệu thật
 		isQuotaReq := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
 		var quotaRespBuf bytes.Buffer
+		var totalRespBytes int64
 
 		buf := make([]byte, 4096)
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
+				totalRespBytes += int64(n)
 				if isQuotaReq {
 					quotaRespBuf.Write(buf[:n])
 				}
@@ -324,23 +394,36 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			if effectiveModel == "" {
 				effectiveModel = model
 			}
-			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua %s (%s) - %dms - Path: %s", usedAccount.Name, effectiveModel, latencyMs, r.URL.Path)
+			promptTokens := int64(len(bodyBytes) / 4)
+			if promptTokens < 120 {
+				promptTokens = 120
+			}
+			completionTokens := totalRespBytes / 4
+			if completionTokens < 250 {
+				completionTokens = 250
+			}
+			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua %s (%s) - %dms - Tokens: %d - Path: %s", usedAccount.Name, effectiveModel, latencyMs, promptTokens+completionTokens, r.URL.Path)
+			now := time.Now().UTC()
 			GlobalLogHub.RecordLog(RouterLogEntry{
-				ClientDevice: r.RemoteAddr,
-				APIKeyName:   "Antigravity IDE (Native Gemini Proxy)",
-				Endpoint:     r.URL.Path,
-				Method:       r.Method,
-				Provider:     usedAccount.Provider,
-				AccountID:    usedAccount.ID,
-				AccountName:  usedAccount.Email,
-				Model:        effectiveModel,
-				LatencyMs:    latencyMs,
-				StatusCode:   http.StatusOK,
-				IsStream:     strings.Contains(r.URL.RawQuery, "alt=sse"),
+				Timestamp:        now.Format("15:04:05.000"),
+				TimestampISO:     now.Format(time.RFC3339Nano),
+				ClientDevice:     r.RemoteAddr,
+				APIKeyName:       "Antigravity IDE (Native Gemini Proxy)",
+				Endpoint:         r.URL.Path,
+				Method:           r.Method,
+				Provider:         usedAccount.Provider,
+				AccountID:        usedAccount.ID,
+				AccountName:      usedAccount.Email,
+				Model:            effectiveModel,
+				LatencyMs:        latencyMs,
+				StatusCode:       http.StatusOK,
+				PromptTokens:     promptTokens,
+				CompletionTokens: completionTokens,
+				IsStream:         strings.Contains(r.URL.RawQuery, "alt=sse"),
 			})
 
 			// Ghi nhận trừ Quota trực tiếp vào TiDB Cloud và gửi Live Telemetry lên Web
-			ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK)
+			ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
 		}
 	}
 }
@@ -488,17 +571,22 @@ func GetWebServerURL() string {
 }
 
 // ReportProxyUsageAsync ghi nhận Quota trên TiDB Cloud và gửi báo cáo telemetry thời gian thực lên Web Server
-func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int) {
+func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
 	go func() {
 		activeKey := GetActiveClientKey(db)
-		if activeKey == "" {
-			return
+		totTokens := promptTokens + completionTokens
+		if totTokens <= 0 {
+			totTokens = 520
 		}
 
-		// 1. Ghi nhận trừ Quota trực tiếp trên CSDL TiDB Cloud Serverless
-		if db != nil {
-			RecordKeyUsageAsync(db, activeKey, 1, 0)
-			log.Printf("[ENGINE] [QUOTA] ✔ Đã ghi nhận +1 request vào Quota của Key: %s trên TiDB Cloud", maskAPIKey(activeKey))
+		// 1. Ghi nhận trừ Quota trực tiếp trên CSDL TiDB Cloud Serverless (nếu có key thật)
+		if db != nil && activeKey != "" {
+			RecordKeyUsageAsync(db, activeKey, 1, totTokens)
+			log.Printf("[ENGINE] [QUOTA] ✔ Đã ghi nhận +1 request, %d tokens vào Quota của Key: %s trên TiDB Cloud", totTokens, maskAPIKey(activeKey))
+		}
+
+		if activeKey == "" {
+			activeKey = "sk-desktop-native-proxy"
 		}
 
 		// 2. Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực
@@ -508,14 +596,14 @@ func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName
 		payload := ClientReportPayload{
 			ApiKey:          activeKey,
 			UsedRequests:    1,
-			TotalTokens:     0,
+			TotalTokens:     totTokens,
 			Model:           effectiveModel,
 			Endpoint:        reqPath,
 			AccountName:     accountEmail,
 			ClientDevice:    "Antigravity IDE (Desktop)",
 			LatencyMs:       latencyMs,
 			StatusCode:      statusCode,
-			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua %s (%dms)", effectiveModel, accountName, latencyMs),
+			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua %s (%dms - %d tokens)", effectiveModel, accountName, latencyMs, totTokens),
 			SkipDBIncrement: (db != nil), // Nếu đã ghi trực tiếp TiDB Cloud thì Web server chỉ việc nhận log, không tăng Quota lần 2
 		}
 
