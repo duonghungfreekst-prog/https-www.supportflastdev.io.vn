@@ -286,7 +286,7 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		if report.ApiKey != "" {
+		if !report.SkipDBIncrement && report.ApiKey != "" {
 			RecordKeyUsageAsync(db, report.ApiKey, report.UsedRequests, report.TotalTokens)
 		}
 
@@ -295,6 +295,44 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			if u.IsRateLimited {
 				accountCooldownMap.Store(u.ID, time.Now().Add(60*time.Second))
 			}
+		}
+
+		// Đẩy log telemetry vào GlobalLogHub để hiển thị thời gian thực trên Console Web
+		if report.LogMessage != "" || report.Model != "" {
+			nowStr := time.Now().Format("15:04:05")
+			status := report.StatusCode
+			if status == 0 {
+				status = http.StatusOK
+			}
+			endpoint := report.Endpoint
+			if endpoint == "" {
+				endpoint = "/v1internal:streamGenerateContent"
+			}
+			model := report.Model
+			if model == "" {
+				model = "gemini-3.8-flash-high"
+			}
+			msg := report.LogMessage
+			if msg == "" {
+				msg = fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua %s (%dms)", model, report.AccountName, report.LatencyMs)
+			}
+			clientDev := report.ClientDevice
+			if clientDev == "" {
+				clientDev = r.RemoteAddr
+			}
+			GlobalLogHub.RecordLog(RouterLogEntry{
+				Timestamp:    nowStr,
+				ClientDevice: clientDev,
+				APIKeyName:   maskAPIKey(report.ApiKey),
+				Endpoint:     endpoint,
+				Method:       "POST",
+				Provider:     "Antigravity",
+				Model:        model,
+				AccountName:  report.AccountName,
+				StatusCode:   status,
+				LatencyMs:    report.LatencyMs,
+				ErrorMessage: msg,
+			})
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -580,6 +618,56 @@ func formatK(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
+// HandleSetActiveKey cho phép client UI / WebView2 cập nhật trực tiếp key đang dùng vào RAM engine
+func HandleSetActiveKey(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		var keyToSet string
+		if r.Method == http.MethodPost {
+			var body struct {
+				Key    string `json:"key"`
+				APIKey string `json:"api_key"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			keyToSet = strings.TrimSpace(body.Key)
+			if keyToSet == "" {
+				keyToSet = strings.TrimSpace(body.APIKey)
+			}
+		} else {
+			keyToSet = strings.TrimSpace(r.URL.Query().Get("key"))
+			if keyToSet == "" {
+				keyToSet = strings.TrimSpace(r.URL.Query().Get("api_key"))
+			}
+		}
+
+		if keyToSet != "" {
+			SetActiveClientKey(keyToSet)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"message": "Đã cập nhật Active Key thành công",
+				"key":     maskAPIKey(keyToSet),
+			})
+			return
+		}
+
+		currentKey := GetActiveClientKey(db)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"key":     currentKey,
+			"masked":  maskAPIKey(currentKey),
+		})
+	}
+}
+
 // maskAPIKey helper ẩn bớt ký tự API key an toàn
 func maskAPIKey(k string) string {
 	if len(k) <= 12 {
@@ -591,6 +679,11 @@ func maskAPIKey(k string) string {
 	}
 	lastPart := k[len(k)-4:]
 	return firstPart + "..." + lastPart
+}
+
+// MaskAPIKey xuất khẩu hàm che giấu API key cho các gói bên ngoài
+func MaskAPIKey(k string) string {
+	return maskAPIKey(k)
 }
 
 // HandleClientQuotaCLI trả về Ping DNS, hạn mức Quota đã dùng của API Key và danh sách các API Keys đã tạo cho Terminal / CMD / cURL
@@ -950,7 +1043,7 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 					"provider":    p.Provider,
 					"authType":    p.AuthType,
 					"priority":    p.Priority,
-					"isActive":    p.IsActive,
+					"isActive":    p.IsActive == 1,
 					"expiresAt":   expStr,
 					"proxyLabel":  proxyLabel,
 					"proxyPoolId": proxyPoolID,
@@ -992,6 +1085,8 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 			priVal := 1
 			if body.Priority != nil {
 				priVal = *body.Priority
+			} else if db != nil {
+				_ = db.QueryRow("SELECT priority FROM omni_providers WHERE id = ?", id).Scan(&priVal)
 			}
 
 			if err := UpdateProviderStatus(db, id, actVal, priVal); err != nil {
@@ -999,27 +1094,27 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			if body.Proxy != nil || body.ProxyPoolID != nil {
-				providers, _ := GetAllProviders(db)
-				for _, p := range providers {
-					if p.ID == id {
-						var dataMap map[string]interface{}
-						if err := json.Unmarshal(p.Data, &dataMap); err == nil {
-							if dataMap == nil {
-								dataMap = make(map[string]interface{})
-							}
-							if body.Proxy != nil {
-								dataMap["proxy"] = *body.Proxy
-								dataMap["proxyUrl"] = *body.Proxy
-								dataMap["connectionProxyUrl"] = *body.Proxy
-							}
-							if body.ProxyPoolID != nil {
-								dataMap["proxyPoolId"] = *body.ProxyPoolID
-							}
-							_ = UpdateProviderData(db, id, dataMap)
+			// Cập nhật cả trường isActive và proxy trong JSON data để đồng bộ 100% giữa cột và JSON
+			providers, _ := GetAllProviders(db)
+			for _, p := range providers {
+				if p.ID == id {
+					var dataMap map[string]interface{}
+					if err := json.Unmarshal(p.Data, &dataMap); err == nil {
+						if dataMap == nil {
+							dataMap = make(map[string]interface{})
 						}
-						break
+						dataMap["isActive"] = (actVal == 1)
+						if body.Proxy != nil {
+							dataMap["proxy"] = *body.Proxy
+							dataMap["proxyUrl"] = *body.Proxy
+							dataMap["connectionProxyUrl"] = *body.Proxy
+						}
+						if body.ProxyPoolID != nil {
+							dataMap["proxyPoolId"] = *body.ProxyPoolID
+						}
+						_ = UpdateProviderData(db, id, dataMap)
 					}
+					break
 				}
 			}
 

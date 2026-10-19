@@ -70,10 +70,18 @@ type ClientAccountPayload struct {
 
 // ClientReportPayload gói dữ liệu báo cáo ngầm từ Client gửi lên Web Master
 type ClientReportPayload struct {
-	ApiKey         string                `json:"api_key"`
-	UsedRequests   int64                 `json:"used_requests"`
-	TotalTokens    int64                 `json:"total_tokens"`
-	AccountUpdates []ClientAccountUpdate `json:"account_updates"`
+	ApiKey          string                `json:"api_key"`
+	UsedRequests    int64                 `json:"used_requests"`
+	TotalTokens     int64                 `json:"total_tokens"`
+	AccountUpdates  []ClientAccountUpdate `json:"account_updates"`
+	LogMessage      string                `json:"log_message,omitempty"`
+	Model           string                `json:"model,omitempty"`
+	Endpoint        string                `json:"endpoint,omitempty"`
+	AccountName     string                `json:"account_name,omitempty"`
+	ClientDevice    string                `json:"client_device,omitempty"`
+	LatencyMs       int64                 `json:"latency_ms,omitempty"`
+	StatusCode      int                   `json:"status_code,omitempty"`
+	SkipDBIncrement bool                  `json:"skip_db_increment,omitempty"`
 }
 
 // ClientAccountUpdate cập nhật trạng thái quota và lỗi của tài khoản

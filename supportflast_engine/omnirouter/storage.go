@@ -430,15 +430,20 @@ func DeleteClientKey(db *sql.DB, id string) error {
 
 // RecordKeyUsageAsync cập nhật số lượt và số token tiêu thụ ngầm
 func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount int64) {
+	if apiKey == "" {
+		return
+	}
 	go func() {
 		now := NowISO()
-		_, _ = db.Exec(`
-			UPDATE omni_client_keys 
-			SET used_requests = used_requests + ?, 
-			    total_tokens = total_tokens + ?,
-			    last_used_at = ?
-			WHERE api_key = ?
-		`, reqCount, tokenCount, now, apiKey)
+		if db != nil {
+			_, _ = db.Exec(`
+				UPDATE omni_client_keys 
+				SET used_requests = used_requests + ?, 
+				    total_tokens = total_tokens + ?,
+				    last_used_at = ?
+				WHERE api_key = ?
+			`, reqCount, tokenCount, now, apiKey)
+		}
 
 		keyCacheMu.Lock()
 		if item, ok := keyCache[apiKey]; ok {

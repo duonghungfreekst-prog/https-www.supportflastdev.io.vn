@@ -163,10 +163,39 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/skills/scan", HandleScanSkillsEndpoint)
 	safeRegister(mux, "/api/skills/toggle", HandleToggleSkillEndpoint)
 
-	// 6.3 API CLI Tools & Model Aliases (/api/cli-tools/antigravity-mitm/alias...)
+	// 6.3 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua cổng 443 & hosts file)
+	geminiProxyHandler := HandleGeminiNativeProxy(db)
+	safeRegister(mux, "/v1internal:streamGenerateContent", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:generateContent", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:fetchAvailableModels", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:retrieveUserQuotaSummary", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:loadCodebaseContext", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:generateCompletion", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:chat", geminiProxyHandler)
+	safeRegister(mux, "/v1internal/", geminiProxyHandler)
+	safeRegister(mux, "/v1internal:", geminiProxyHandler)
+	safeRegister(mux, "/v1beta/", geminiProxyHandler)
+	log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã đăng ký Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
+
+	// MITM Dispatcher cho Cổng 443: Bắt trọn vẹn request từ Antigravity/CloudCode IDE
+	mitmDispatcher := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		host := strings.ToLower(r.Host)
+		if strings.HasPrefix(path, "/v1internal") || 
+		   strings.HasPrefix(path, "/v1beta") || 
+		   strings.Contains(host, "cloudcode") || 
+		   strings.Contains(host, "googleapis.com") {
+			geminiProxyHandler(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+	GlobalMitmDispatcher = mitmDispatcher
+
 	mitmAliasesHandler := HandleMitmAliases(db)
-	mitmStatusHandler := HandleMitmStatus(db)
+	mitmStatusHandler := HandleMitmStatus(db, mitmDispatcher, uiDir)
 	safeRegister(mux, "/api/cli-tools/antigravity-mitm/alias", mitmAliasesHandler)
+	safeRegister(mux, "/api/cli-tools/antigravity-mitm/ca.crt", HandleMitmCACert(uiDir))
 	safeRegister(mux, "/api/cli-tools/antigravity-mitm", mitmStatusHandler)
 	safeRegister(mux, "/api/cli-tools/all-statuses", mitmStatusHandler)
 	safeRegister(mux, "/api/cli-tools", mitmStatusHandler)
@@ -225,6 +254,11 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/client/heartbeat", clientHeartbeatHandler)
 	safeRegister(mux, "/api/client/heartbeat", clientHeartbeatHandler)
 
+	// 9.3 API Cập nhật & Tra cứu Active Key trong RAM cho App Desktop / WebView2
+	activeKeyHandler := HandleSetActiveKey(db)
+	safeRegister(mux, "/api/v1/client/set_active_key", activeKeyHandler)
+	safeRegister(mux, "/api/v1/client/active_key", activeKeyHandler)
+
 	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)
 	safeRegister(mux, "/v1/chat/completions", chatHandler)
@@ -248,16 +282,6 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/audio/transcriptions", sttHandler)
 	safeRegister(mux, "/v1/models/stt", HandleSTTModels)
 
-	// 10.2 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua hosts file)
-	// IDE gửi request thẳng đến daily-cloudcode-pa.googleapis.com/v1internal:...
-	// Hosts file redirect về 127.0.0.1 → request đến OmniRouter port 443
-	// Handler này thay OAuth token của user bằng token tài khoản AI pool,
-	// forward qua IP thật, pipe SSE response nguyên bản về IDE
-	geminiProxyHandler := HandleGeminiNativeProxy(db)
-	safeRegister(mux, "/v1internal:", geminiProxyHandler) // Catch: /v1internal:streamGenerateContent, /v1internal:generateContent, ...
-	safeRegister(mux, "/v1internal/", geminiProxyHandler) // Catch: /v1internal/models/xxx
-	safeRegister(mux, "/v1beta/", geminiProxyHandler)     // Catch: /v1beta/models/xxx:generateContent
-	log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã đăng ký Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
 
 	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp (/providers/ và /router/providers/)
 	providersCandidates := []string{

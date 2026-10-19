@@ -7806,11 +7806,15 @@
   <!-- ==================== JAVASCRIPT ĐIỀU KHIỂN TƯƠNG TÁC TOÀN BỘ APP ==================== -->
 
   <script>
+    // Helper kiểm tra trạng thái hoạt động chính xác 100%, chống lỗi type coercion (0 !== false là true)
+    function isConnActive(item) {
+      if (!item) return false;
+      if (item.isActive === false || item.isActive === 0 || item.isActive === '0') return false;
+      return Boolean(item.isActive);
+    }
 
     // =========================================================================
-
     // NEXUS STORE - BỘ LƯU TRỮ TRẠNG THÁI ĐA TẦNG AN TOÀN TUYỆT ĐỐI (MEMORY + SESSION + LOCAL)
-
     // =========================================================================
 
     const NexusStore = (() => {
@@ -10036,7 +10040,7 @@
 
             const created = k.createdAt ? new Date(k.createdAt).toLocaleDateString('vi-VN') : 'Mới tạo';
 
-            const isAct = k.isActive !== false && k.isActive !== 0;
+            const isAct = isConnActive(k);
 
             const qLimit = (typeof k.quotaLimit === 'number') ? k.quotaLimit : ((typeof k.quota_limit === 'number') ? k.quota_limit : 0);
             const uReq = (typeof k.usedRequests === 'number') ? k.usedRequests : ((typeof k.used_requests === 'number') ? k.used_requests : 0);
@@ -12045,7 +12049,7 @@
 
           } else {
 
-            const hasActive = matched.some(c => c.isActive !== false);
+            const hasActive = matched.some(c => isConnActive(c));
 
             if (hasActive) {
 
@@ -12247,7 +12251,7 @@
 
           matched.forEach(c => {
 
-            const isAct = c.isActive !== false;
+            const isAct = isConnActive(c);
 
             const pUrl = c.connectionProxyUrl || c.proxyUrl || c.proxy || c.providerSpecificData?.connectionProxyUrl || '';
 
@@ -29034,7 +29038,7 @@
 
         if (filterProv !== 'all' && item.provider !== filterProv) return false;
 
-        const isAct = item.isActive !== false;
+        const isAct = isConnActive(item);
 
         if (filterStatus === 'active' && !isAct) return false;
 
@@ -29158,7 +29162,7 @@
 
       grid.innerHTML = list.map(item => {
 
-        const isAct = item.isActive !== false;
+        const isAct = isConnActive(item);
 
         const allQuotas = extractQuotasList(item);
 
@@ -29730,7 +29734,7 @@
 
       const availConns = _quotaAccountsList.filter(item => {
 
-        if (item.isActive !== false) return false;
+        if (isConnActive(item)) return false;
 
         const qList = extractQuotasList(item);
 
@@ -29928,7 +29932,7 @@
 
       document.getElementById('edit-conn-priority').value = it.priority || 1;
 
-      document.getElementById('edit-conn-active').checked = it.isActive !== false;
+      document.getElementById('edit-conn-active').checked = isConnActive(it);
 
 
 
@@ -30528,7 +30532,7 @@
 
 
 
-        const activePools = pools.filter(p => p.isActive !== false && (p.proxyUrl || p.proxy));
+        const activePools = pools.filter(p => isConnActive(p) && (p.proxyUrl || p.proxy));
 
 
 

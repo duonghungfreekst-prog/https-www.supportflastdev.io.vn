@@ -69,6 +69,24 @@ func main() {
 	mux := http.NewServeMux()
 	omnirouter.RegisterOmniRouterRoutes(mux, db, isTiDB, baseDir)
 
+	// Tự động khởi chạy Máy chủ MITM trên cổng 443 nếu chứng chỉ root CA có sẵn
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		if err := omnirouter.AutoStartMitm(baseDir); err != nil {
+			log.Printf("[ENGINE] [MITM] ⚠ Khởi động MITM nền: %v", err)
+		}
+	}()
+
+	// Nạp trước Active Client Key vào RAM và kích hoạt luồng Live Telemetry Heartbeat
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		activeKey := omnirouter.GetActiveClientKey(db)
+		if activeKey != "" {
+			log.Printf("[ENGINE] [KEY] ✔ Active Client Key đã nạp sẵn sàng: %s", omnirouter.MaskAPIKey(activeKey))
+		}
+		omnirouter.StartClientTelemetryHeartbeat(db)
+	}()
+
 	// Thêm cổng phục vụ file giao diện HTML trực tiếp cho Desktop App WebView2
 	htmlCandidate := filepath.Join(baseDir, "nexusroute_ai_next_gen_gateway.html")
 	if _, err := os.Stat(htmlCandidate); err != nil {

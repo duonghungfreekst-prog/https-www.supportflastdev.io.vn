@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -531,6 +532,74 @@ func TestUpgradedRouterEndpoints(t *testing.T) {
 				t.Errorf("[%s %s] status = %d, want %d (body: %s)", tc.method, tc.path, rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
+	}
+}
+
+func TestClientTelemetryAndQuotaReport(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Tạo một key thử nghiệm với Quota = 100
+	testKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Device-v12", "supportflastdev.io.vn", 100, 24)
+	if err != nil {
+		t.Fatalf("Không thể tạo test key: %v", err)
+	}
+
+	// 2. SetActiveClientKey
+	SetActiveClientKey(testKey.Key)
+	retrievedKey := GetActiveClientKey(db)
+	if retrievedKey != testKey.Key {
+		t.Fatalf("Kỳ vọng retrievedKey = %s, nhận được: %s", testKey.Key, retrievedKey)
+	}
+
+	// 3. Test API /api/v1/client/set_active_key
+	mux := http.NewServeMux()
+	RegisterOmniRouterRoutes(mux, db, false, ".")
+
+	bodyStr := fmt.Sprintf(`{"key":"%s"}`, testKey.Key)
+	req := httptest.NewRequest("POST", "/api/v1/client/set_active_key", strings.NewReader(bodyStr))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /api/v1/client/set_active_key thất bại: %d", rec.Code)
+	}
+
+	// 4. Test API /api/v1/client/report với telemetry log và tăng Quota
+	reportPayload := fmt.Sprintf(`{
+		"api_key": "%s",
+		"used_requests": 3,
+		"total_tokens": 150,
+		"model": "gemini-3.8-flash-high",
+		"endpoint": "/v1internal:streamGenerateContent",
+		"account_name": "ai-master@google.com",
+		"client_device": "Antigravity IDE (Desktop)",
+		"latency_ms": 1150,
+		"status_code": 200,
+		"log_message": "Antigravity IDE test telemetry",
+		"skip_db_increment": false
+	}`, testKey.Key)
+
+	reqReport := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(reportPayload))
+	reqReport.Header.Set("Content-Type", "application/json")
+	recReport := httptest.NewRecorder()
+	mux.ServeHTTP(recReport, reqReport)
+
+	if recReport.Code != http.StatusOK {
+		t.Fatalf("POST /api/v1/client/report thất bại: %d - %s", recReport.Code, recReport.Body.String())
+	}
+
+	time.Sleep(50 * time.Millisecond) // chờ async ghi nhận vào SQLite/TiDB
+
+	// 5. Kiểm tra Quota đã tăng lên 3 trong DB
+	var usedReqs int64
+	err = db.QueryRow("SELECT used_requests FROM omni_client_keys WHERE api_key = ?", testKey.Key).Scan(&usedReqs)
+	if err != nil {
+		t.Fatalf("Lỗi truy vấn used_requests: %v", err)
+	}
+	if usedReqs != 3 {
+		t.Fatalf("Kỳ vọng used_requests = 3, nhận được: %d", usedReqs)
 	}
 }
 
