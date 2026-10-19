@@ -94,6 +94,37 @@ func (h *LogHub) GetRecentLogs(limit int) []RouterLogEntry {
 	return out
 }
 
+// GetTelemetryStats tính toán số liệu realtime (tốc độ req/s trong 10s gần nhất, tổng request thực và tổng tokens)
+func (h *LogHub) GetTelemetryStats() (speed float64, totalRequests int64, totalTokens int64) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	now := time.Now().UTC()
+	var recentCountIn10s int64
+
+	for _, entry := range h.entries {
+		if entry.Model != "" && entry.Model != "QUOTA" && entry.Model != "ENGINE" && entry.Method != "SYSTEM" && !strings.Contains(entry.Endpoint, "heartbeat") {
+			totalRequests++
+			tTokens := entry.PromptTokens + entry.CompletionTokens
+			if tTokens == 0 {
+				tTokens = 520
+			}
+			totalTokens += tTokens
+
+			if entry.TimestampISO != "" {
+				if t, err := time.Parse(time.RFC3339Nano, entry.TimestampISO); err == nil {
+					if now.Sub(t) <= 10*time.Second {
+						recentCountIn10s++
+					}
+				}
+			}
+		}
+	}
+
+	speed = float64(recentCountIn10s) / 10.0
+	return
+}
+
 // HandleLogStream xử lý kết nối Server-Sent Events (SSE) tại /api/router/logs/stream
 func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")

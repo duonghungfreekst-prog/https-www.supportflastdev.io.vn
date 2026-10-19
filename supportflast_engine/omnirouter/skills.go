@@ -41,12 +41,12 @@ func BroadcastLog(source, msg string) {
 	nowStr := time.Now().Format("15:04:05")
 	GlobalLogHub.RecordLog(RouterLogEntry{
 		Timestamp:    nowStr,
-		ClientDevice: "127.0.0.1",
+		ClientDevice: "OmniRouter Engine",
 		APIKeyName:   "SYSTEM",
-		Endpoint:     "/api/skills",
-		Method:       "EVENT",
+		Endpoint:     "/api/system/event",
+		Method:       "SYSTEM",
 		Provider:     source,
-		Model:        "SKILL-HUB",
+		Model:        source,
 		StatusCode:   http.StatusOK,
 		ErrorMessage: msg,
 	})

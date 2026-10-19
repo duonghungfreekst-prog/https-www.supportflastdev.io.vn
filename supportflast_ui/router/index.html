@@ -16743,7 +16743,10 @@
 
                 stream.innerHTML = '';
 
-                data.logs.forEach(line => appendConsoleLog(line));
+                data.logs.forEach(line => {
+                  if (typeof line === 'string') { appendConsoleLog(line); }
+                  else if (line && typeof line === 'object') { appendConsoleLog(line.message || line.error_message || line.line || JSON.stringify(line)); }
+                });
 
                 _lastConsoleLineCount = data.logs.length;
 
@@ -26450,35 +26453,35 @@
 
     const CLIENT_ALIAS_TO_OFFICIAL_MODEL = {
 
-      'gemini-pro-agent': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro (High)', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
+      'gemini-pro-agent': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro (High)', provider: 'Google AI', badge: 'GEM', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'ag/gemini-pro-agent': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro (High)', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
+      'ag/gemini-pro-agent': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro (High)', provider: 'Google AI', badge: 'GEM', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.8-flash-high': { officialId: 'gemini-3.8-flash-high', officialName: 'Gemini 3.8 Flash (High)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'gemini-3.8-flash-high': { officialId: 'gemini-3.8-flash-high', officialName: 'Gemini 3.8 Flash (High)', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'ag/gemini-3.8-flash-high': { officialId: 'gemini-3.8-flash-high', officialName: 'Gemini 3.8 Flash (High)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'ag/gemini-3.8-flash-high': { officialId: 'gemini-3.8-flash-high', officialName: 'Gemini 3.8 Flash (High)', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.8-flash-tiered': { officialId: 'gemini-3.8-flash-tiered', officialName: 'Gemini 3.8 Flash Tiered', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'deepseek', client: 'Antigravity IDE' },
+      'gemini-3.8-flash-tiered': { officialId: 'gemini-3.8-flash-tiered', officialName: 'Gemini 3.8 Flash Tiered', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.8-flash-medium': { officialId: 'gemini-3.8-flash-medium', officialName: 'Gemini 3.8 Flash (Med)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'gemini-3.8-flash-medium': { officialId: 'gemini-3.8-flash-medium', officialName: 'Gemini 3.8 Flash (Med)', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.8-flash-low': { officialId: 'gemini-3.8-flash-low', officialName: 'Gemini 3.8 Flash (Low)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'gemini-3.8-flash-low': { officialId: 'gemini-3.8-flash-low', officialName: 'Gemini 3.8 Flash (Low)', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.7-flash-high': { officialId: 'gemini-3.7-flash-high', officialName: 'Gemini 3.7 Flash', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'gemini-3.7-flash-high': { officialId: 'gemini-3.7-flash-high', officialName: 'Gemini 3.7 Flash', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.7-flash-medium': { officialId: 'gemini-3.7-flash-medium', officialName: 'Gemini 3.7 Flash', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'claude', client: 'Antigravity IDE' },
+      'gemini-3.7-flash-medium': { officialId: 'gemini-3.7-flash-medium', officialName: 'Gemini 3.7 Flash', provider: 'Google AI', badge: 'GEM', color: '#00F0FF', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'gemini-3.1-pro-high': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro High', provider: 'Antigravity', badge: 'AG', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
+      'gemini-3.1-pro-high': { officialId: 'gemini-3.1-pro-high', officialName: 'Gemini 3.1 Pro High', provider: 'Google AI', badge: 'GEM', color: '#38BDF8', slotKey: 'gemini', client: 'Antigravity IDE' },
 
-      'claude-sonnet-4-6': { officialId: 'claude-sonnet-4-6', officialName: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'openai', client: 'Antigravity IDE' },
+      'claude-sonnet-4-6': { officialId: 'claude-sonnet-4-6', officialName: 'Claude Sonnet 4.6 (Thinking)', provider: 'Anthropic', badge: 'CL', color: '#F59E0B', slotKey: 'claude', client: 'Antigravity IDE' },
 
-      'ag/claude-sonnet-4-6': { officialId: 'claude-sonnet-4-6', officialName: 'Claude Sonnet 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'openai', client: 'Antigravity IDE' },
+      'ag/claude-sonnet-4-6': { officialId: 'claude-sonnet-4-6', officialName: 'Claude Sonnet 4.6 (Thinking)', provider: 'Anthropic', badge: 'CL', color: '#F59E0B', slotKey: 'claude', client: 'Antigravity IDE' },
 
-      'claude-opus-4-6-thinking': { officialId: 'claude-opus-4-6-thinking', officialName: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'groq', client: 'Antigravity IDE' },
+      'claude-opus-4-6-thinking': { officialId: 'claude-opus-4-6-thinking', officialName: 'Claude Opus 4.6 (Thinking)', provider: 'Anthropic', badge: 'CL', color: '#F59E0B', slotKey: 'claude', client: 'Antigravity IDE' },
 
-      'ag/claude-opus-4-6-thinking': { officialId: 'claude-opus-4-6-thinking', officialName: 'Claude Opus 4.6 (Thinking)', provider: 'Antigravity', badge: 'CL', color: '#F59E0B', slotKey: 'groq', client: 'Antigravity IDE' },
+      'ag/claude-opus-4-6-thinking': { officialId: 'claude-opus-4-6-thinking', officialName: 'Claude Opus 4.6 (Thinking)', provider: 'Anthropic', badge: 'CL', color: '#F59E0B', slotKey: 'claude', client: 'Antigravity IDE' },
 
-      'gpt-oss-120b-medium': { officialId: 'gpt-oss-120b-medium', officialName: 'GPT-OSS 120B (Medium)', provider: 'Antigravity', badge: 'AG', color: '#00F0FF', slotKey: 'groq', client: 'Antigravity IDE' }
+      'gpt-oss-120b-medium': { officialId: 'gpt-oss-120b-medium', officialName: 'GPT-OSS 120B (Medium)', provider: 'OpenAI', badge: 'OA', color: '#10A37F', slotKey: 'openai', client: 'Antigravity IDE' }
 
     };
 
@@ -26588,7 +26591,7 @@
 
         }
 
-        return { slotKey: 'gemini', officialId: offId, officialName: offName, provider: 'Google Antigravity', badge: 'AG', color: '#00F0FF', clientIndex: 1, clientName: 'Antigravity IDE' };
+        return { slotKey: 'gemini', officialId: offId, officialName: offName, provider: 'Google AI', badge: 'GEM', color: '#00F0FF', clientIndex: 1, clientName: 'Antigravity IDE' };
 
       }
 
@@ -27650,10 +27653,13 @@
       const rawProvider = req.provider || '';
 
       // Chỉ hiển thị các request AI Model thực tế, bỏ qua system quota event và heartbeat
-      if (!rawModel || rawModel === 'Unknown Model' || rawModel === 'SKILL-HUB' || rawModel === 'ai-model' || rawProvider === 'QUOTA') {
+      if (!rawModel || rawModel === 'Unknown Model' || rawModel === 'SKILL-HUB' || rawModel === 'QUOTA' || rawModel === 'ENGINE' || rawModel === 'ai-model' || rawProvider === 'QUOTA' || rawProvider === 'ENGINE') {
         return;
       }
-      if (req.endpoint && (req.endpoint.includes('heartbeat') || req.endpoint.includes('/api/skills'))) {
+      if (req.method === 'SYSTEM' || req.method === 'EVENT') {
+        return;
+      }
+      if (req.endpoint && (req.endpoint.includes('heartbeat') || req.endpoint.includes('/api/skills') || req.endpoint.includes('/api/system'))) {
         return;
       }
 
