@@ -324,9 +324,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				rResp, doErr := targetClient.Do(fReq)
 				if doErr != nil && targetClient != geminiProxyClient {
 					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Proxy %s gặp sự cố (%v), tự động fallback chuyển sang kết nối trực tiếp (Direct)...", creds.ProxyUrl, doErr)
-					fReqDirect, _ := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
+					creds.ConnectionProxyEnabled = false
+					ctxDirect, cancelDirect := context.WithTimeout(context.Background(), 90*time.Second)
+					fReqDirect, _ := http.NewRequestWithContext(ctxDirect, r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
 					fReqDirect.Header = fReq.Header.Clone()
 					rResp, doErr = geminiProxyClient.Do(fReqDirect)
+					cancelDirect()
 				}
 				if doErr != nil {
 					lastErr = doErr
