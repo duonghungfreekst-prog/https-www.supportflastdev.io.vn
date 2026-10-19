@@ -603,4 +603,82 @@ func TestClientTelemetryAndQuotaReport(t *testing.T) {
 	}
 }
 
+func TestProxyConfigurationAndBinding(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Tạo 2 tài khoản antigravity mẫu
+	accData := `{"accessToken":"ya29.test","connectionProxyEnabled":false,"proxyUrl":""}`
+	_, _ = db.Exec(`INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+		VALUES ('acc_test_1', 'antigravity', 'oauth', 'Acc 1', 'acc1@gmail.com', 1, 1, ?, '2026-10-19', '2026-10-19'),
+		       ('acc_test_2', 'antigravity', 'oauth', 'Acc 2', 'acc2@gmail.com', 2, 1, ?, '2026-10-19', '2026-10-19')`,
+		accData, accData)
+
+	// 2. Test GET /api/proxy-pools
+	reqPools := httptest.NewRequest("GET", "/api/proxy-pools", nil)
+	recPools := httptest.NewRecorder()
+	HandleProxyPools(db)(recPools, reqPools)
+	if recPools.Code != http.StatusOK {
+		t.Fatalf("GET /api/proxy-pools thất bại: %d", recPools.Code)
+	}
+	var poolsResp map[string]interface{}
+	_ = json.Unmarshal(recPools.Body.Bytes(), &poolsResp)
+	pList, _ := poolsResp["proxyPools"].([]interface{})
+	if len(pList) == 0 {
+		t.Fatalf("Kỳ vọng proxyPools có danh sách")
+	}
+
+	// 3. Test POST /api/proxy-pools/bind (Gán proxy pool)
+	bindPayload := `{"proxyPoolId":"42db42b6-7136-4c0c-8feb-20759c8e0946","provider":"antigravity","action":"bind"}`
+	reqBind := httptest.NewRequest("POST", "/api/proxy-pools/bind", strings.NewReader(bindPayload))
+	reqBind.Header.Set("Content-Type", "application/json")
+	recBind := httptest.NewRecorder()
+	HandleBindProxyPool(db)(recBind, reqBind)
+	if recBind.Code != http.StatusOK {
+		t.Fatalf("POST /api/proxy-pools/bind thất bại: %d", recBind.Code)
+	}
+	var bindResp map[string]interface{}
+	_ = json.Unmarshal(recBind.Body.Bytes(), &bindResp)
+	if count, ok := bindResp["count"].(float64); !ok || count != 2 {
+		t.Fatalf("Kỳ vọng bind thành công cho 2 tài khoản, nhận được: %v", bindResp["count"])
+	}
+
+	// 4. Test GET /api/providers để kiểm tra badge proxy đã cập nhật
+	reqProviders := httptest.NewRequest("GET", "/api/providers", nil)
+	recProviders := httptest.NewRecorder()
+	HandleListProviders(db)(recProviders, reqProviders)
+	if recProviders.Code != http.StatusOK {
+		t.Fatalf("GET /api/providers thất bại: %d", recProviders.Code)
+	}
+	var provResp map[string]interface{}
+	_ = json.Unmarshal(recProviders.Body.Bytes(), &provResp)
+	pArr, _ := provResp["providers"].([]interface{})
+	if len(pArr) != 2 {
+		t.Fatalf("Kỳ vọng 2 providers, nhận được: %d", len(pArr))
+	}
+	p0 := pArr[0].(map[string]interface{})
+	if en, ok := p0["connectionProxyEnabled"].(bool); !ok || !en {
+		t.Fatalf("Kỳ vọng connectionProxyEnabled = true sau khi bind, nhận được: %v", p0["connectionProxyEnabled"])
+	}
+	if pUrl, ok := p0["proxyUrl"].(string); !ok || !strings.Contains(pUrl, "58.186.63.192") {
+		t.Fatalf("Kỳ vọng proxyUrl chứa 58.186.63.192, nhận được: %v", p0["proxyUrl"])
+	}
+
+	// 5. Test POST /api/proxy-pools/bind với action=unbind (chuyển về Direct)
+	unbindPayload := `{"provider":"antigravity","action":"unbind"}`
+	reqUnbind := httptest.NewRequest("POST", "/api/proxy-pools/bind", strings.NewReader(unbindPayload))
+	reqUnbind.Header.Set("Content-Type", "application/json")
+	recUnbind := httptest.NewRecorder()
+	HandleBindProxyPool(db)(recUnbind, reqUnbind)
+	if recUnbind.Code != http.StatusOK {
+		t.Fatalf("POST /api/proxy-pools/bind unbind thất bại: %d", recUnbind.Code)
+	}
+	var unbindResp map[string]interface{}
+	_ = json.Unmarshal(recUnbind.Body.Bytes(), &unbindResp)
+	if count, ok := unbindResp["count"].(float64); !ok || count != 2 {
+		t.Fatalf("Kỳ vọng unbind thành công cho 2 tài khoản, nhận được: %v", unbindResp["count"])
+	}
+}
+
+
 

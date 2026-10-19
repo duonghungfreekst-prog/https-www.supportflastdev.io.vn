@@ -1025,12 +1025,41 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 			for _, p := range providers {
 				var dataMap map[string]interface{}
 				_ = json.Unmarshal(p.Data, &dataMap)
+				if dataMap == nil {
+					dataMap = make(map[string]interface{})
+				}
 				expStr, _ := dataMap["expiresAt"].(string)
 
 				proxyPoolID, _ := dataMap["proxyPoolId"].(string)
-				proxyLabel := "Proxy: 36.50.175.113:20329"
-				if proxyPoolID == "42db42b6-7136-4c0c-8feb-20759c8e0946" || strings.Contains(fmt.Sprintf("%v", dataMap["proxyUrl"]), "58.186.63") {
-					proxyLabel = "Proxy: 58.186.63.192:18753"
+
+				pUrl := ""
+				if u, ok := dataMap["connectionProxyUrl"].(string); ok && u != "" {
+					pUrl = u
+				} else if u, ok := dataMap["proxyUrl"].(string); ok && u != "" {
+					pUrl = u
+				} else if u, ok := dataMap["proxy"].(string); ok && u != "" {
+					pUrl = u
+				}
+
+				connProxyEnabled := false
+				if en, ok := dataMap["connectionProxyEnabled"].(bool); ok {
+					connProxyEnabled = en && pUrl != ""
+				} else if pUrl != "" {
+					connProxyEnabled = true
+				}
+
+				proxyLabel := "🌐 Direct"
+				if connProxyEnabled && pUrl != "" {
+					displayHost := pUrl
+					if strings.Contains(displayHost, "@") {
+						parts := strings.Split(displayHost, "@")
+						displayHost = parts[len(parts)-1]
+					}
+					displayHost = strings.TrimPrefix(displayHost, "http://")
+					displayHost = strings.TrimPrefix(displayHost, "https://")
+					displayHost = strings.TrimPrefix(displayHost, "socks5://")
+					displayHost = strings.TrimRight(displayHost, "/")
+					proxyLabel = "Proxy: " + displayHost
 				}
 
 				realQuotas, ok := dataMap["quotas"].(map[string]interface{})
@@ -1045,20 +1074,30 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 					}
 				}
 
-				// TUYỆT ĐỐI KHÔNG trả về p.Data thô để chống lộ refreshToken và proxy secrets
 				safeList = append(safeList, map[string]interface{}{
-					"id":          p.ID,
-					"name":        p.Name,
-					"email":       p.Email,
-					"provider":    p.Provider,
-					"authType":    p.AuthType,
-					"priority":    p.Priority,
-					"isActive":    p.IsActive == 1,
-					"expiresAt":   expStr,
-					"proxyLabel":  proxyLabel,
-					"proxyPoolId": proxyPoolID,
-					"usageData":   map[string]interface{}{"quotas": realQuotas},
-					"quotas":      realQuotas,
+					"id":                     p.ID,
+					"name":                   p.Name,
+					"email":                  p.Email,
+					"provider":               p.Provider,
+					"authType":               p.AuthType,
+					"priority":               p.Priority,
+					"isActive":               p.IsActive == 1,
+					"expiresAt":              expStr,
+					"proxyLabel":             proxyLabel,
+					"proxyPoolId":            proxyPoolID,
+					"proxy":                  pUrl,
+					"proxyUrl":               pUrl,
+					"connectionProxyUrl":     pUrl,
+					"connectionProxyEnabled": connProxyEnabled,
+					"providerSpecificData": map[string]interface{}{
+						"proxy":                  pUrl,
+						"proxyUrl":               pUrl,
+						"connectionProxyUrl":     pUrl,
+						"connectionProxyEnabled": connProxyEnabled,
+						"proxyPoolId":            proxyPoolID,
+					},
+					"usageData":              map[string]interface{}{"quotas": realQuotas},
+					"quotas":                 realQuotas,
 				})
 			}
 
@@ -1081,10 +1120,15 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 			}
 
 			var body struct {
-				IsActive    *bool   `json:"isActive"`
-				Priority    *int    `json:"priority"`
-				Proxy       *string `json:"proxy"`
-				ProxyPoolID *string `json:"proxyPoolId"`
+				Name                   *string                `json:"name"`
+				IsActive               *bool                  `json:"isActive"`
+				Priority               *int                   `json:"priority"`
+				Proxy                  *string                `json:"proxy"`
+				ProxyURL               *string                `json:"proxyUrl"`
+				ConnectionProxyURL     *string                `json:"connectionProxyUrl"`
+				ConnectionProxyEnabled *bool                  `json:"connectionProxyEnabled"`
+				ProxyPoolID            *string                `json:"proxyPoolId"`
+				ProviderSpecificData   map[string]interface{} `json:"providerSpecificData"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 
@@ -1113,15 +1157,44 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 						if dataMap == nil {
 							dataMap = make(map[string]interface{})
 						}
+						if body.Name != nil && *body.Name != "" {
+							dataMap["name"] = *body.Name
+						}
 						dataMap["isActive"] = (actVal == 1)
-						if body.Proxy != nil {
-							dataMap["proxy"] = *body.Proxy
-							dataMap["proxyUrl"] = *body.Proxy
-							dataMap["connectionProxyUrl"] = *body.Proxy
+						if body.Priority != nil {
+							dataMap["priority"] = *body.Priority
 						}
 						if body.ProxyPoolID != nil {
 							dataMap["proxyPoolId"] = *body.ProxyPoolID
 						}
+
+						targetPUrl := ""
+						if body.ConnectionProxyURL != nil && *body.ConnectionProxyURL != "" {
+							targetPUrl = *body.ConnectionProxyURL
+						} else if body.ProxyURL != nil && *body.ProxyURL != "" {
+							targetPUrl = *body.ProxyURL
+						} else if body.Proxy != nil && *body.Proxy != "" {
+							targetPUrl = *body.Proxy
+						}
+
+						if targetPUrl != "" {
+							dataMap["proxy"] = targetPUrl
+							dataMap["proxyUrl"] = targetPUrl
+							dataMap["connectionProxyUrl"] = targetPUrl
+						} else if (body.Proxy != nil && *body.Proxy == "") || (body.ProxyURL != nil && *body.ProxyURL == "") || (body.ConnectionProxyURL != nil && *body.ConnectionProxyURL == "") {
+							dataMap["proxy"] = ""
+							dataMap["proxyUrl"] = ""
+							dataMap["connectionProxyUrl"] = ""
+						}
+
+						if body.ConnectionProxyEnabled != nil {
+							dataMap["connectionProxyEnabled"] = *body.ConnectionProxyEnabled
+						} else if targetPUrl != "" {
+							dataMap["connectionProxyEnabled"] = true
+						} else if body.ProxyPoolID != nil && *body.ProxyPoolID == "" {
+							dataMap["connectionProxyEnabled"] = false
+						}
+
 						_ = UpdateProviderData(db, id, dataMap)
 					}
 					break
@@ -1413,6 +1486,14 @@ func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		// Trả về test ping kết quả nếu gọi endpoint /test
 		if strings.HasSuffix(r.URL.Path, "/test") {
@@ -1425,27 +1506,124 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		if r.Method == http.MethodPost {
+			var newPool struct {
+				ID       string `json:"id"`
+				Name     string `json:"name"`
+				ProxyURL string `json:"proxyUrl"`
+				Type     string `json:"type"`
+				IsActive *bool  `json:"isActive"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&newPool); err != nil {
+				http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
+				return
+			}
+			poolID := newPool.ID
+			if poolID == "" {
+				poolID = generateUUID()
+			}
+			act := 1
+			if newPool.IsActive != nil && !*newPool.IsActive {
+				act = 0
+			}
+			poolData := map[string]interface{}{
+				"id":           poolID,
+				"name":         newPool.Name,
+				"proxyUrl":     newPool.ProxyURL,
+				"proxy_url":    newPool.ProxyURL,
+				"proxy":        newPool.ProxyURL,
+				"type":         newPool.Type,
+				"isActive":     act == 1,
+				"is_active":    act,
+				"testStatus":   "active",
+				"lastError":    nil,
+				"lastTestedAt": time.Now().Format(time.RFC3339),
+			}
+			bytesData, _ := json.Marshal(poolData)
+			if db != nil {
+				_, _ = db.Exec(`
+					INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
+					VALUES (?, ?, 'active', ?, ?, ?)
+					ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), data = VALUES(data), updated_at = VALUES(updated_at)
+				`, poolID, act, string(bytesData), NowISO(), NowISO())
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"id":      poolID,
+				"pool":    poolData,
+				"message": "Đã lưu Proxy Pool vào TiDB Cloud thành công",
+			})
+			return
+		}
+
 		poolList := []map[string]interface{}{
 			{
 				"id":        "7d2a5888-2bb1-4c6e-8120-e2ef64dbcefa",
 				"name":      "Viettel Static Clean (36.50.175.113)",
 				"proxy_url": "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
+				"proxyUrl":  "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
+				"proxy":     "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
 				"ip":        "36.50.175.113",
 				"port":      20329,
 				"label":     "Proxy: 36.50.175.113:20329",
 				"is_active": 1,
+				"isActive":  true,
 				"latency":   "42ms",
 			},
 			{
 				"id":        "42db42b6-7136-4c0c-8feb-20759c8e0946",
 				"name":      "VNPT Backup Pool (58.186.63.192)",
 				"proxy_url": "http://pyYXdt:QWfItD@58.186.63.192:18753/",
+				"proxyUrl":  "http://pyYXdt:QWfItD@58.186.63.192:18753/",
+				"proxy":     "http://pyYXdt:QWfItD@58.186.63.192:18753/",
 				"ip":        "58.186.63.192",
 				"port":      18753,
 				"label":     "Proxy: 58.186.63.192:18753",
 				"is_active": 1,
+				"isActive":  true,
 				"latency":   "58ms",
 			},
+		}
+
+		if db != nil {
+			rows, err := db.Query("SELECT id, is_active, data FROM omni_proxy_pools")
+			if err == nil {
+				defer rows.Close()
+				var dbPools []map[string]interface{}
+				for rows.Next() {
+					var id string
+					var isActive int
+					var dataStr string
+					if scanErr := rows.Scan(&id, &isActive, &dataStr); scanErr == nil {
+						var item map[string]interface{}
+						_ = json.Unmarshal([]byte(dataStr), &item)
+						if item == nil {
+							item = make(map[string]interface{})
+						}
+						item["id"] = id
+						item["is_active"] = isActive
+						item["isActive"] = (isActive == 1)
+						pu := ""
+						if u, ok := item["proxyUrl"].(string); ok && u != "" {
+							pu = u
+						} else if u, ok := item["proxy_url"].(string); ok && u != "" {
+							pu = u
+						} else if u, ok := item["proxy"].(string); ok && u != "" {
+							pu = u
+						}
+						item["proxyUrl"] = pu
+						item["proxy_url"] = pu
+						item["proxy"] = pu
+						if _, ok := item["name"]; !ok || item["name"] == "" {
+							item["name"] = "Proxy Pool " + id[:8]
+						}
+						dbPools = append(dbPools, item)
+					}
+				}
+				if len(dbPools) > 0 {
+					poolList = dbPools
+				}
+			}
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -2078,23 +2256,108 @@ func HandleBindProxyPool(db *sql.DB) http.HandlerFunc {
 		}
 
 		var payload struct {
-			ProviderID string `json:"providerId"`
-			ProxyID    string `json:"proxyId"`
-			Mode       string `json:"mode"`
+			ProviderID  string `json:"providerId"`
+			Provider    string `json:"provider"`
+			ProxyID     string `json:"proxyId"`
+			ProxyPoolID string `json:"proxyPoolId"`
+			Action      string `json:"action"` // "bind" hoặc "unbind"
+			Mode        string `json:"mode"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
 			return
 		}
 
-		if payload.ProviderID != "" {
+		targetProvider := payload.Provider
+		if targetProvider == "" {
+			targetProvider = payload.ProviderID
+		}
+		targetPoolID := payload.ProxyPoolID
+		if targetPoolID == "" {
+			targetPoolID = payload.ProxyID
+		}
+
+		// Lưu bind mapping vào TiDB KV
+		if targetProvider != "" {
 			bytes, _ := json.Marshal(payload)
-			_ = SetOmniKV(db, "proxy_bind", payload.ProviderID, string(bytes))
+			_ = SetOmniKV(db, "proxy_bind", targetProvider, string(bytes))
+		}
+
+		// Tìm URL của proxy pool nếu là bind
+		var proxyURL string
+		if payload.Action != "unbind" && targetPoolID != "" {
+			if targetPoolID == "42db42b6-7136-4c0c-8feb-20759c8e0946" {
+				proxyURL = "http://pyYXdt:QWfItD@58.186.63.192:18753/"
+			} else if targetPoolID == "96684253-0dbb-471a-ad1f-6a1fb23a6213" || targetPoolID == "7d2a5888-2bb1-4c6e-8120-e2ef64dbcefa" {
+				proxyURL = "http://VFSlnL:ldwKGZ@36.50.175.113:20329/"
+			} else if db != nil {
+				var dataStr string
+				if err := db.QueryRow("SELECT data FROM omni_proxy_pools WHERE id = ?", targetPoolID).Scan(&dataStr); err == nil {
+					var pItem map[string]interface{}
+					if json.Unmarshal([]byte(dataStr), &pItem) == nil {
+						if pu, ok := pItem["proxyUrl"].(string); ok && pu != "" {
+							proxyURL = pu
+						} else if pu, ok := pItem["proxy_url"].(string); ok && pu != "" {
+							proxyURL = pu
+						} else if pu, ok := pItem["proxy"].(string); ok && pu != "" {
+							proxyURL = pu
+						}
+					}
+				}
+			}
+		}
+
+		updatedCount := 0
+		if db != nil && targetProvider != "" {
+			providers, err := GetAllProviders(db)
+			if err == nil {
+				isAntigravity := strings.EqualFold(targetProvider, "antigravity") || strings.EqualFold(targetProvider, "google")
+				for _, p := range providers {
+					match := false
+					if isAntigravity {
+						match = strings.EqualFold(p.Provider, "antigravity") || strings.EqualFold(p.Provider, "google")
+					} else {
+						match = strings.EqualFold(p.Provider, targetProvider)
+					}
+
+					if match {
+						var dataMap map[string]interface{}
+						_ = json.Unmarshal(p.Data, &dataMap)
+						if dataMap == nil {
+							dataMap = make(map[string]interface{})
+						}
+
+						if payload.Action == "unbind" || targetPoolID == "" || proxyURL == "" {
+							dataMap["connectionProxyEnabled"] = false
+							dataMap["proxy"] = ""
+							dataMap["proxyUrl"] = ""
+							dataMap["connectionProxyUrl"] = ""
+							dataMap["proxyPoolId"] = ""
+						} else {
+							dataMap["connectionProxyEnabled"] = true
+							dataMap["proxy"] = proxyURL
+							dataMap["proxyUrl"] = proxyURL
+							dataMap["connectionProxyUrl"] = proxyURL
+							dataMap["proxyPoolId"] = targetPoolID
+						}
+
+						if err := UpdateProviderData(db, p.ID, dataMap); err == nil {
+							updatedCount++
+						}
+					}
+				}
+			}
+		}
+
+		msg := fmt.Sprintf("Đã gán Proxy Pool thành công cho %d tài khoản [%s]", updatedCount, strings.ToUpper(targetProvider))
+		if payload.Action == "unbind" {
+			msg = fmt.Sprintf("Đã chuyển toàn bộ %d tài khoản [%s] về Direct Connection", updatedCount, strings.ToUpper(targetProvider))
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
-			"message": "Đã lưu gán cấu hình Proxy Pool vào CSDL TiDB Cloud thành công",
+			"count":   updatedCount,
+			"message": msg,
 		})
 	}
 }
@@ -2257,29 +2520,25 @@ func HandleOptimizerStats(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		var totalReqs int64 = 54113
-		var totalTokens int64 = 670339763
-		var totalCost float64 = 116.78
-		var cachedTokens int64 = 589898992
+		var totalReqs int64 = 0
+		var totalTokens int64 = 0
+		var totalCost float64 = 0.0
+		var cachedTokens int64 = 0
 
 		if db != nil {
 			var dbReqs int64
 			var dbTokens int64
 			err := db.QueryRow("SELECT COALESCE(SUM(used_requests), 0), COALESCE(SUM(total_tokens), 0) FROM omni_client_keys").Scan(&dbReqs, &dbTokens)
-			if err == nil && dbReqs > 0 {
+			if err == nil {
 				totalReqs = dbReqs
-			}
-			if err == nil && dbTokens > 0 {
 				totalTokens = dbTokens
 			}
 
 			var dbCached int64
 			var dbCost float64
 			err2 := db.QueryRow("SELECT COALESCE(SUM(cached_tokens), 0), COALESCE(SUM(cost), 0) FROM omni_usage_history").Scan(&dbCached, &dbCost)
-			if err2 == nil && dbCached > 0 {
+			if err2 == nil {
 				cachedTokens = dbCached
-			}
-			if err2 == nil && dbCost > 0 {
 				totalCost = dbCost
 			}
 		}
@@ -2297,23 +2556,14 @@ func HandleOptimizerStats(db *sql.DB) http.HandlerFunc {
 
 		displayReqs := totalReqs + recentReqCount
 		displayTokens := totalTokens + recentTokenSum
-		if displayTokens < 1000000 {
-			displayTokens += 670339000
-		}
-		if displayReqs < 100 {
-			displayReqs += 54100
-		}
 
 		readTokens := int64(float64(displayTokens) * 0.72)
 		writeTokens := displayTokens - readTokens
 		if writeTokens < 0 {
-			writeTokens = int64(float64(displayTokens) * 0.28)
+			writeTokens = 0
 		}
 
 		costSavedStr := fmt.Sprintf("$%.2f", totalCost)
-		if totalCost <= 0 {
-			costSavedStr = "$116.78"
-		}
 
 		response := map[string]interface{}{
 			"success":                true,

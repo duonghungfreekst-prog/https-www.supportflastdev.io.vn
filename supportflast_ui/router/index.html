@@ -1259,11 +1259,11 @@
 
             <!-- Trạng thái chuyển hướng App tự động khi đang BẬT -->
 
-            <div id="status-sidebar-intercept-active" class="hidden flex items-center justify-between px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[10px] font-mono text-emerald-300">
+            <div id="status-sidebar-intercept-active" class="hidden flex items-center justify-between px-2 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-[10px] font-mono text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
 
-              <span class="flex items-center gap-1.5 font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Mọi App đang qua OmniRouter</span>
+              <span class="flex items-center gap-1.5 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> ĐANG BẬT ĐIỀU HƯỚNG</span>
 
-              <button onclick="stopInterceptAllAppsDirectly()" class="text-rose-400 hover:text-rose-300 hover:underline cursor-pointer font-bold text-[9px]">TẮT</button>
+              <button onclick="stopInterceptAllAppsDirectly()" class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 cursor-pointer font-bold text-[9px]" title="Bấm để dừng chặn và đưa mọi app về bình thường">Dừng</button>
 
             </div>
 
@@ -5300,7 +5300,7 @@
 
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
 
-                  🟢 Đã Tích Hợp (<span id="skills-active-count-btn">0</span>)
+                  🟢 Đang Kích Hoạt (<span id="skills-active-count-btn">0</span>)
 
                 </button>
 
@@ -23161,7 +23161,7 @@
 
           : `<span class="px-2 py-0.5 rounded text-[10px] font-mono shrink-0 border ${c.badge}">
 
-               ${item.status}
+               ${item.status === 'Lõi Tích Hợp' ? '⚡ Tích Hợp Sẵn' : item.status}
 
              </span>`;
 
@@ -23423,7 +23423,7 @@
 
       document.getElementById('detail-skill-name').innerText = item.name;
 
-      document.getElementById('detail-skill-status').innerText = item.status;
+      document.getElementById('detail-skill-status').innerText = item.status === 'Lõi Tích Hợp' ? '⚡ Tích Hợp Sẵn' : item.status;
 
       document.getElementById('detail-skill-cat').innerText = `Nhóm: ${item.catName} (${item.category.toUpperCase()})`;
 

@@ -34,11 +34,13 @@ func getAccountMutex(connId string) *sync.Mutex {
 
 // Credentials chứa token và project ID của account
 type Credentials struct {
-	AccessToken  string    `json:"accessToken"`
-	RefreshToken string    `json:"refreshToken"`
-	ProjectId    string    `json:"projectId"`
-	ExpiresAt    time.Time `json:"-"`
-	RawExpiresAt string    `json:"expiresAt"`
+	AccessToken            string    `json:"accessToken"`
+	RefreshToken           string    `json:"refreshToken"`
+	ProjectId              string    `json:"projectId"`
+	ExpiresAt              time.Time `json:"-"`
+	RawExpiresAt           string    `json:"expiresAt"`
+	ProxyUrl               string    `json:"proxyUrl,omitempty"`
+	ConnectionProxyEnabled bool      `json:"connectionProxyEnabled,omitempty"`
 }
 
 // ParseCredentialsFromMap trích xuất thông tin xác thực từ map data
@@ -58,6 +60,18 @@ func ParseCredentialsFromMap(dataMap map[string]interface{}) *Credentials {
 		if t, err := time.Parse(time.RFC3339, expStr); err == nil {
 			creds.ExpiresAt = t
 		}
+	}
+	if pUrl, ok := dataMap["connectionProxyUrl"].(string); ok && pUrl != "" {
+		creds.ProxyUrl = pUrl
+	} else if pUrl, ok := dataMap["proxyUrl"].(string); ok && pUrl != "" {
+		creds.ProxyUrl = pUrl
+	} else if pUrl, ok := dataMap["proxy"].(string); ok && pUrl != "" {
+		creds.ProxyUrl = pUrl
+	}
+	if en, ok := dataMap["connectionProxyEnabled"].(bool); ok {
+		creds.ConnectionProxyEnabled = en && creds.ProxyUrl != ""
+	} else if creds.ProxyUrl != "" {
+		creds.ConnectionProxyEnabled = true
 	}
 	return creds
 }

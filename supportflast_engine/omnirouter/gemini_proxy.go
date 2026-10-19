@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -61,6 +62,37 @@ func init() {
 			IdleConnTimeout:     120 * time.Second,
 		},
 	}
+}
+
+var proxyClientCache sync.Map // proxyURL -> *http.Client
+
+// getClientForAccount trả về HTTP client được định tuyến qua proxy riêng của tài khoản hoặc geminiProxyClient nếu kết nối trực tiếp
+func getClientForAccount(proxyURL string) *http.Client {
+	if proxyURL == "" {
+		return geminiProxyClient
+	}
+	if clientVal, ok := proxyClientCache.Load(proxyURL); ok {
+		return clientVal.(*http.Client)
+	}
+	pParsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return geminiProxyClient
+	}
+	tr := &http.Transport{
+		Proxy: http.ProxyURL(pParsed),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: false,
+		},
+		MaxIdleConns:        50,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     120 * time.Second,
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   300 * time.Second,
+	}
+	proxyClientCache.Store(proxyURL, client)
+	return client
 }
 
 // resolveRealIP dùng DNS 8.8.8.8 để lấy IP thật (bypass hosts file)
@@ -258,7 +290,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					fReq.Header.Set("User-Agent", "antigravity/ide/2.24.0 windows/amd64")
 				}
 
-				rResp, doErr := geminiProxyClient.Do(fReq)
+				// Chọn HTTP client phù hợp (qua Proxy của tài khoản nếu có cấu hình, hoặc Direct)
+				targetClient := geminiProxyClient
+				if creds.ConnectionProxyEnabled && creds.ProxyUrl != "" {
+					targetClient = getClientForAccount(creds.ProxyUrl)
+				}
+
+				rResp, doErr := targetClient.Do(fReq)
 				if doErr != nil {
 					lastErr = doErr
 					continue
@@ -290,7 +328,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 						fReqRetry, _ := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
 						fReqRetry.Header = fReq.Header.Clone()
 						fReqRetry.Header.Set("Authorization", "Bearer "+newTok)
-						if rRespRetry, retryErr := geminiProxyClient.Do(fReqRetry); retryErr == nil {
+						if rRespRetry, retryErr := targetClient.Do(fReqRetry); retryErr == nil {
 							rResp = rRespRetry
 						}
 					}
