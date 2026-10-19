@@ -23,6 +23,8 @@ data/oauth/
 data/service_accounts/
 tools/*_token.txt
 tools/cloudflare_token.txt
+config.json
+**/config.json
 
 # 2. Cơ sở dữ liệu & Runtime Data (Rule PHAN 1.4)
 *.db

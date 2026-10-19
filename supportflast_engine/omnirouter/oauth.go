@@ -61,17 +61,24 @@ func ParseCredentialsFromMap(dataMap map[string]interface{}) *Credentials {
 			creds.ExpiresAt = t
 		}
 	}
-	if pUrl, ok := dataMap["connectionProxyUrl"].(string); ok && pUrl != "" {
-		creds.ProxyUrl = pUrl
-	} else if pUrl, ok := dataMap["proxyUrl"].(string); ok && pUrl != "" {
-		creds.ProxyUrl = pUrl
-	} else if pUrl, ok := dataMap["proxy"].(string); ok && pUrl != "" {
-		creds.ProxyUrl = pUrl
-	}
-	if en, ok := dataMap["connectionProxyEnabled"].(bool); ok {
-		creds.ConnectionProxyEnabled = en && creds.ProxyUrl != ""
-	} else if creds.ProxyUrl != "" {
-		creds.ConnectionProxyEnabled = true
+	if en, ok := dataMap["connectionProxyEnabled"].(bool); ok && en {
+		if pUrl, ok := dataMap["connectionProxyUrl"].(string); ok && pUrl != "" {
+			creds.ProxyUrl = pUrl
+		} else if pUrl, ok := dataMap["proxyUrl"].(string); ok && pUrl != "" {
+			creds.ProxyUrl = pUrl
+		} else if pUrl, ok := dataMap["proxy"].(string); ok && pUrl != "" {
+			creds.ProxyUrl = pUrl
+		}
+		// Loại bỏ triệt để proxy chết cũ
+		if strings.Contains(creds.ProxyUrl, "36.50.175.113") || strings.Contains(creds.ProxyUrl, "58.186.63.192") {
+			creds.ProxyUrl = ""
+			creds.ConnectionProxyEnabled = false
+		} else if creds.ProxyUrl != "" {
+			creds.ConnectionProxyEnabled = true
+		}
+	} else {
+		creds.ConnectionProxyEnabled = false
+		creds.ProxyUrl = ""
 	}
 	return creds
 }

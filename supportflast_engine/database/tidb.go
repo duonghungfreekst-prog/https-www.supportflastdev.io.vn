@@ -117,7 +117,6 @@ func RegisterTiDBTLSConfig(name string, minVersion uint16, caPath string, insecu
 	}
 
 	tidbTLSRegistered[name] = true
-	log.Printf("[ENGINE] [TIDB] Đã đăng ký thành công TLS Config '%s' (MinVersion=0x%04x, InsecureSkipVerify=%v)", name, minVersion, insecureSkipVerify)
 	return nil
 }
 

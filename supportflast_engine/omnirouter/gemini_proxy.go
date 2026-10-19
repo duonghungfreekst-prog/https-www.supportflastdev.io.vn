@@ -38,29 +38,42 @@ func init() {
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ DNS resolve trả về loopback hoặc trống, dùng IP fallback: %s", upstreamRealHost)
 	}
 
+	dialer := &net.Dialer{
+		Timeout:   8 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
 	geminiProxyClient = &http.Client{
 		Timeout: 300 * time.Second,
 		Transport: &http.Transport{
+			Proxy: nil, // Luôn kết nối trực tiếp tốc độ cao tới Google Edge
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				// Khi request đi đến daily-cloudcode-pa.googleapis.com:443 hoặc cloudcode-pa.googleapis.com:443,
-				// thay bằng IP thật để bypass hosts file redirect 127.0.0.1
 				host, port, _ := net.SplitHostPort(addr)
 				hostLower := strings.ToLower(host)
+				targetHost := upstreamRealHost
+				if targetHost == "" {
+					targetHost = "172.217.115.4"
+				}
 				if hostLower == "daily-cloudcode-pa.googleapis.com" || 
 				   hostLower == "cloudcode-pa.googleapis.com" || 
 				   hostLower == "generativelanguage.googleapis.com" || 
 				   strings.HasSuffix(hostLower, ".googleapis.com") {
-					realAddr := net.JoinHostPort(upstreamRealHost, port)
-					return net.DialTimeout(network, realAddr, 15*time.Second)
+					realAddr := net.JoinHostPort(targetHost, port)
+					return dialer.DialContext(ctx, network, realAddr)
 				}
-				return net.DialTimeout(network, addr, 15*time.Second)
+				return dialer.DialContext(ctx, network, addr)
 			},
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: false,
 			},
-			MaxIdleConns:        50,
-			MaxIdleConnsPerHost: 20,
-			IdleConnTimeout:     120 * time.Second,
+			ForceAttemptHTTP2:     true,
+			DisableKeepAlives:     false,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   30,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}
 }
@@ -133,6 +146,7 @@ func resolveRealIP(hostname string) string {
 // forward lên daily-cloudcode-pa.googleapis.com IP thật, pipe response nguyên bản
 func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 	StartClientTelemetryHeartbeat(db)
+	StartBackgroundTokenRefreshWorker(db)
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 
@@ -663,9 +677,24 @@ func GetActiveClientKey(db *sql.DB) string {
 		}
 	}
 
-	// 2. TUYỆT ĐỐI KHÔNG query TiDB Cloud lấy key ORDER BY created_at DESC!
-	// CSDL TiDB Cloud dùng chung cho nhiều người dùng. Client Desktop chỉ dùng đúng API Key 
-	// được cấu hình trong config.json hoặc được gán qua RAM UI/API.
+	// 2. Tra cứu từ CSDL Aiven PostgreSQL: lấy API Key người dùng đang hoạt động (loại bỏ Master ngầm)
+	if db != nil {
+		var dbKey string
+		err := db.QueryRow(`
+			SELECT api_key FROM omni_client_keys 
+			WHERE is_active = 1 
+			  AND id NOT LIKE '%master%' 
+			  AND api_key NOT LIKE '%master-live%' 
+			ORDER BY updated_at DESC, created_at DESC 
+			LIMIT 1
+		`).Scan(&dbKey)
+		if err == nil && strings.TrimSpace(dbKey) != "" {
+			currentActiveClientKey = strings.TrimSpace(dbKey)
+			log.Printf("[ENGINE] [KEY] ✔ Tự động nhận diện Active Client Key từ Aiven PostgreSQL: %s", maskAPIKey(currentActiveClientKey))
+			return currentActiveClientKey
+		}
+	}
+
 	return ""
 }
 
@@ -734,6 +763,23 @@ func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName
 
 		// Lấy Active Client Key hiện hành của người dùng
 		activeKey := GetActiveClientKey(db)
+		if activeKey == "" || strings.Contains(activeKey, "master") {
+			if db != nil {
+				var uKey string
+				_ = db.QueryRow(`
+					SELECT api_key FROM omni_client_keys 
+					WHERE is_active = 1 
+					  AND id NOT LIKE '%master%' 
+					  AND api_key NOT LIKE '%master-live%' 
+					ORDER BY updated_at DESC, created_at DESC 
+					LIMIT 1
+				`).Scan(&uKey)
+				if uKey != "" {
+					activeKey = strings.TrimSpace(uKey)
+					SetActiveClientKey(activeKey)
+				}
+			}
+		}
 		if activeKey == "" {
 			activeKey = "sk-supportflastdev.io.vn-master-live"
 		}
@@ -1039,3 +1085,60 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 		}
 	}
 }
+
+var tokenRefreshWorkerOnce sync.Once
+
+// StartBackgroundTokenRefreshWorker chạy ngầm định kỳ 3 phút tự động quét và làm mới token trước khi hết hạn
+func StartBackgroundTokenRefreshWorker(db *sql.DB) {
+	tokenRefreshWorkerOnce.Do(func() {
+		go func() {
+			time.Sleep(3 * time.Second)
+			ticker := time.NewTicker(3 * time.Minute)
+			defer ticker.Stop()
+
+			checkAndRefresh := func() {
+				if db == nil {
+					return
+				}
+				providers, err := GetAllProviders(db)
+				if err != nil || len(providers) == 0 {
+					return
+				}
+				for _, p := range providers {
+					if (p.Provider == "antigravity" || p.Provider == "google") && p.IsActive == 1 {
+						creds, err := GetValidCredentials(db, &p)
+						if err != nil || creds.RefreshToken == "" {
+							continue
+						}
+						// Nếu token còn dưới 15 phút hoặc đã hết hạn -> tự động làm mới ngầm ngay
+						if time.Until(creds.ExpiresAt) < 15*time.Minute {
+							newTok, newExpiry, newRefresh, refErr := RefreshGoogleToken(creds.RefreshToken)
+							if refErr == nil {
+								var dataMap map[string]interface{}
+								_ = json.Unmarshal(p.Data, &dataMap)
+								if dataMap == nil {
+									dataMap = make(map[string]interface{})
+								}
+								dataMap["accessToken"] = newTok
+								dataMap["expiresAt"] = newExpiry.Format(time.RFC3339)
+								dataMap["lastRefreshAt"] = NowISO()
+								if newRefresh != "" {
+									dataMap["refreshToken"] = newRefresh
+								}
+								_ = UpdateProviderData(db, p.ID, dataMap)
+								log.Printf("[ENGINE] [TOKEN-REFRESH] ✔ Đã tự động làm mới token ngầm cho %s (hạn mới: %s)", p.Email, newExpiry.Format("15:04:05"))
+							}
+						}
+					}
+				}
+			}
+
+			checkAndRefresh()
+
+			for range ticker.C {
+				checkAndRefresh()
+			}
+		}()
+	})
+}
+

@@ -52,7 +52,7 @@ var EmbeddedProxyPools = []CoreProxyPoolSeed{
 		ID: "96684253-0dbb-471a-ad1f-6a1fb23a6213",
 		IsActive: 1,
 		TestStatus: "active",
-		DataJSON: `{"lastError":null,"lastTestedAt":"2026-10-14T11:06:55.423Z","name":"Imported 36.50.175.113:20329","noProxy":"","proxyUrl":"","strictProxy":false,"type":"http"}`,
+		DataJSON: `{"lastError":null,"lastTestedAt":"2026-10-14T11:06:55.423Z","name":"Direct Anycast High-Speed","noProxy":"","proxyUrl":"","strictProxy":false,"type":"direct"}`,
 		CreatedAt: "2026-07-30T01:50:59.930Z",
 		UpdatedAt: "2026-10-15T11:56:40Z",
 	},
