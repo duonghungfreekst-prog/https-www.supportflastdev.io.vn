@@ -2,6 +2,7 @@ package omnirouter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"database/sql"
@@ -254,16 +255,22 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if len(finalBodyBytes) > 0 && finalBodyBytes[0] == '{' {
 					var rawJSON map[string]interface{}
 					if jErr := json.Unmarshal(finalBodyBytes, &rawJSON); jErr == nil && rawJSON != nil {
-						rawJSON["project"] = targetProject
+						// Chỉ cập nhật project nếu request gốc có project hoặc là endpoint sinh mã/predict
+						if _, hasProj := rawJSON["project"]; hasProj || strings.Contains(r.URL.Path, "generate") || strings.Contains(r.URL.Path, "predict") {
+							rawJSON["project"] = targetProject
+						}
+						// TUYỆT ĐỐI CHỈ thay đổi model khi request gốc ĐÃ CÓ trường model
 						if tierModel != "" {
-							rawJSON["model"] = tierModel
+							if _, hasModel := rawJSON["model"]; hasModel {
+								rawJSON["model"] = tierModel
+							}
 						}
 						if patched, pErr := json.Marshal(rawJSON); pErr == nil {
 							finalBodyBytes = patched
 						}
 					}
 				}
-				// Loại bỏ triệt để và thay thế toàn bộ model 2.5 thấp sang model cao cấp
+				// Loại bỏ triệt để và thay thế toàn bộ model 2.5 thấp sang model cao cấp (KHÔNG sửa tab autocomplete)
 				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash-lite")) {
 					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash-lite"), []byte("gemini-3.8-flash-high"))
 				}
@@ -272,12 +279,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				}
 				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-pro")) {
 					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-3.1-pro-high"))
-				}
-				if bytes.Contains(finalBodyBytes, []byte("tab_flash_lite_preview")) {
-					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("tab_flash_lite_preview"), []byte("gemini-3.8-flash-high"))
-				}
-				if bytes.Contains(finalBodyBytes, []byte("tab_jump_flash_lite_preview")) {
-					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("tab_jump_flash_lite_preview"), []byte("gemini-3.8-flash-high"))
 				}
 
 				// Xây dựng URL upstream thật
@@ -309,10 +310,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 
-				// Copy headers gốc từ IDE (loại bỏ Authorization, Host, Connection và User-Project cũ)
+				// Copy headers gốc từ IDE (loại bỏ Authorization, Host, Connection, User-Project, Content-Length và Accept-Encoding)
 				for key, values := range r.Header {
 					keyLower := strings.ToLower(key)
-					if keyLower == "authorization" || keyLower == "host" || keyLower == "connection" || keyLower == "x-goog-user-project" {
+					if keyLower == "authorization" || keyLower == "host" || keyLower == "connection" || keyLower == "x-goog-user-project" || keyLower == "content-length" || keyLower == "accept-encoding" {
 						continue
 					}
 					for _, v := range values {
@@ -387,21 +388,40 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				}
 
 				if rResp.StatusCode != http.StatusOK {
-					// Đọc body lỗi để log
-					errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 512))
+					// Đọc body lỗi để log, hỗ trợ giải nén gzip nếu upstream trả về gzip
+					var errReader io.Reader = rResp.Body
+					if strings.Contains(strings.ToLower(rResp.Header.Get("Content-Encoding")), "gzip") {
+						if gzReader, gzErr := gzip.NewReader(rResp.Body); gzErr == nil {
+							defer gzReader.Close()
+							errReader = gzReader
+						}
+					}
+					errBody, _ := io.ReadAll(io.LimitReader(errReader, 1024))
 					rResp.Body.Close()
-					errStr := string(errBody)
-					lastErr = fmt.Errorf("upstream error %d on %s for %s: %s", rResp.StatusCode, acc.Name, tierModel, errStr)
-					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên %s cho model %s: %s", rResp.StatusCode, acc.Name, tierModel, errStr)
 
-					if strings.Contains(errStr, "SUBSCRIPTION_REQUIRED") || strings.Contains(errStr, "#3501") {
+					// Lọc sạch 100% ký tự nhị phân rác, giữ lại UTF-8 hợp lệ
+					cleanErrStr := strings.Map(func(r rune) rune {
+						if r == '\n' || r == '\r' || r == '\t' || (r >= 32 && r <= 126) || r >= 160 {
+							return r
+						}
+						return -1
+					}, string(errBody))
+					cleanErrStr = strings.TrimSpace(cleanErrStr)
+					if cleanErrStr == "" {
+						cleanErrStr = fmt.Sprintf("HTTP %d (%s)", rResp.StatusCode, http.StatusText(rResp.StatusCode))
+					}
+
+					lastErr = fmt.Errorf("upstream error %d on %s for %s: %s", rResp.StatusCode, acc.Name, tierModel, cleanErrStr)
+					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên [Tài khoản ẩn] cho model %s: %s", rResp.StatusCode, tierModel, cleanErrStr)
+
+					if strings.Contains(cleanErrStr, "SUBSCRIPTION_REQUIRED") || strings.Contains(cleanErrStr, "#3501") {
 						accountCooldownMap.Store(acc.ID, time.Now().Add(1*time.Hour))
-						log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Tài khoản %s thiếu subscription (#3501), tạm thời cooldown 1h", acc.Name)
+						log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Tài khoản thiếu subscription (#3501), tạm thời cooldown 1h")
 					}
 
 					// Nếu lỗi là do hết capacity (503 MODEL_CAPACITY_EXHAUSTED) hoặc model không hỗ trợ,
 					// ngắt vòng lặp tài khoản ngay để kích hoạt fallback sang Tier tiếp theo
-					if strings.Contains(errStr, "MODEL_CAPACITY_EXHAUSTED") || rResp.StatusCode == http.StatusServiceUnavailable {
+					if strings.Contains(cleanErrStr, "MODEL_CAPACITY_EXHAUSTED") || rResp.StatusCode == http.StatusServiceUnavailable {
 						log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Model %s bị cạn capacity (503). Chuyển mạch tầng dự phòng...", tierModel)
 						break
 					}
@@ -501,7 +521,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			if completionTokens < 250 {
 				completionTokens = 250
 			}
-			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua %s (%s) - %dms - Tokens: %d - Path: %s", usedAccount.Name, effectiveModel, latencyMs, promptTokens+completionTokens, r.URL.Path)
+			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Proxy hoàn thành qua [Tài khoản ẩn] (%s) - %dms - Tokens: %d - Path: %s", effectiveModel, latencyMs, promptTokens+completionTokens, r.URL.Path)
 			now := time.Now().UTC()
 			GlobalLogHub.RecordLog(RouterLogEntry{
 				Timestamp:        now.Format("15:04:05.000"),
@@ -703,7 +723,7 @@ func GetWebServerURL() string {
 	return cachedWebServerURL
 }
 
-// ReportProxyUsageAsync ghi nhận Quota trên TiDB Cloud và gửi báo cáo telemetry thời gian thực lên Web Server
+// ReportProxyUsageAsync ghi nhận telemetry thời gian thực lên Web Server mà KHÔNG trừ Quota của Client API Key
 func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
 	go func() {
 		activeKey := GetActiveClientKey(db)
@@ -712,32 +732,28 @@ func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName
 			totTokens = 520
 		}
 
-		// 1. Ghi nhận trừ Quota trực tiếp trên CSDL TiDB Cloud Serverless (nếu có key thật)
-		if db != nil && activeKey != "" {
-			RecordKeyUsageAsync(db, activeKey, 1, totTokens)
-			log.Printf("[ENGINE] [QUOTA] ✔ Đã ghi nhận +1 request, %d tokens vào Quota của Key: %s trên TiDB Cloud", totTokens, maskAPIKey(activeKey))
-		}
-
+		// TUYỆT ĐỐI KHÔNG trừ Quota của Client API Key (omni_client_keys) đối với transparent proxy nội bộ của IDE
+		// Quota của Client API Key chỉ được trừ khi client bên ngoài (Cursor, Claude Code...) gửi kèm header Authorization: Bearer sk-... tới cổng :20128/v1
 		if activeKey == "" {
 			activeKey = "sk-desktop-native-proxy"
 		}
 
-		// 2. Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực
+		// Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực (UsedRequests: 0, SkipDBIncrement: true)
 		webURL := GetWebServerURL()
 		reportURL := webURL + "/api/v1/client/report"
 
 		payload := ClientReportPayload{
 			ApiKey:          activeKey,
-			UsedRequests:    1,
+			UsedRequests:    0, // Không tăng quota của key
 			TotalTokens:     totTokens,
 			Model:           effectiveModel,
 			Endpoint:        reqPath,
-			AccountName:     accountEmail,
+			AccountName:     "[Tài khoản ẩn]",
 			ClientDevice:    "Antigravity IDE (Desktop)",
 			LatencyMs:       latencyMs,
 			StatusCode:      statusCode,
-			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua %s (%dms - %d tokens)", effectiveModel, accountName, latencyMs, totTokens),
-			SkipDBIncrement: (db != nil), // Nếu đã ghi trực tiếp TiDB Cloud thì Web server chỉ việc nhận log, không tăng Quota lần 2
+			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s qua [Tài khoản ẩn] (%dms - %d tokens)", effectiveModel, latencyMs, totTokens),
+			SkipDBIncrement: true, // Tuyệt đối không tăng Quota của Client API Key trên CSDL
 		}
 
 		bodyBytes, err := json.Marshal(payload)

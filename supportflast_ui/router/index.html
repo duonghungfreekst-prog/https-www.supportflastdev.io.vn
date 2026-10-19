@@ -8048,10 +8048,26 @@
           } catch (_) {}
         }
 
+        const isDesktopEnvActive = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) || 
+                                   (typeof window !== 'undefined' && window.chrome && window.chrome.webview) || 
+                                   (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
+
         if (title) title.innerHTML = `✔ Kết nối thành công tới Web TiDB Cloud (${data.latencyMs || 0}ms)`;
-        if (desc) desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
+        if (desc) {
+          if (isDesktopEnvActive) {
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless (Đã đồng bộ trực tuyến)`;
+          } else {
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: TiDB Cloud Serverless${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
+          }
+        }
         if (icon) icon.textContent = '🟢';
-        if (!silent) showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web TiDB Cloud!`, 'success');
+        if (!silent) {
+          if (isDesktopEnvActive) {
+            showToast('Đã kết nối và đồng bộ thành công từ Web TiDB Cloud!', 'success');
+          } else {
+            showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web TiDB Cloud!`, 'success');
+          }
+        }
         return true;
       } else {
         const isAuthErr = data && (data.statusCode === 401 || data.statusCode === 403);
@@ -8716,6 +8732,9 @@
       res = res.replace(/(trên\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s+cho\s+)/g, '$1[Tài khoản ẩn]');
       // 4. Ẩn pattern "cho <tên_tài_khoản>:" nếu tên không chứa @
       res = res.replace(/(cho\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s*:)/g, '$1[Tài khoản ẩn]');
+      // 5. Ẩn số lượng tài khoản nội bộ (ví dụ: "18/18 tài khoản AI", "19 tài khoản nhà cung cấp")
+      res = res.replace(/\b\d+\/\d+\s+tài khoản AI\b/gi, 'hệ thống tài khoản AI');
+      res = res.replace(/\b\d+\s+tài khoản nhà cung cấp\b/gi, 'hệ thống nhà cung cấp');
       return res;
     }
 
@@ -9969,10 +9988,12 @@
 
               }
 
-              if (data && (data.type === 'mitmStatus' || data.type === 'interceptStatus') && data.running === false) {
-
-                if (typeof resetMitmUiToStopped === 'function') resetMitmUiToStopped();
-
+              if (data && (data.type === 'mitmStatus' || data.type === 'interceptStatus')) {
+                if (data.running === true) {
+                  if (typeof loadMitmStatusLive === 'function') loadMitmStatusLive();
+                } else {
+                  if (typeof resetMitmUiToStopped === 'function') resetMitmUiToStopped();
+                }
               }
 
             } catch (_) {}
@@ -14591,17 +14612,7 @@
     // Tải trạng thái Máy chủ MITM từ endpoint GET /api/cli-tools/antigravity-mitm
 
     async function loadMitmStatusLive() {
-
-      if (!isGatewayConnected) {
-
-        resetMitmUiToStopped();
-
-        return;
-
-      }
-
       try {
-
         const res = await apiRequest('/api/cli-tools/antigravity-mitm');
 
         if (!res.ok) {
@@ -15303,11 +15314,10 @@
           btn.disabled = false;
 
           btn.classList.remove('opacity-70');
-
         }
-
-        setTimeout(loadMitmStatusLive, 400);
-
+        setTimeout(loadMitmStatusLive, 100);
+        setTimeout(loadMitmStatusLive, 600);
+        setTimeout(loadMitmStatusLive, 1500);
       }
 
     }
@@ -16505,45 +16515,31 @@
     // =========================================================================
 
     async function loadConsoleLogsImmediately(forceToast = false) {
-
       const stream = document.getElementById('console-log-stream');
-
       try {
-
-        const res = await fetch(`${activeApiBase}/api/translator/console-logs`, { cache: 'no-store' });
-
-        if (res && res.ok) {
-
-          const data = await res.json();
-
-          if (data && Array.isArray(data.logs)) {
-
-            if (stream) stream.innerHTML = '';
-
-            if (data.logs.length === 0) {
-
-              if (stream) stream.innerHTML = '<div class="text-slate-500 italic">[SYSTEM] Chưa có bản ghi nhật ký mới. Hệ thống đang lắng nghe...</div>';
-
-            } else {
-
-              data.logs.forEach(line => appendConsoleLog(line));
-
-              _lastConsoleLineCount = data.logs.length;
-
-            }
-
-            if (forceToast) showToastNotification(`✅ Đã nạp ${data.logs.length} dòng nhật ký mới nhất!`);
-
-            return;
-
-          }
-
+        let res = null;
+        try {
+          res = await apiRequest('/api/translator/console-logs');
+        } catch (_) {
+          res = await fetch(`${activeApiBase || ''}/api/translator/console-logs`, { cache: 'no-store' });
         }
-
+        if (res && res.ok) {
+          const data = await res.json();
+          const logsList = Array.isArray(data.logs) ? data.logs : (Array.isArray(data.raw_logs) ? data.raw_logs : (Array.isArray(data.entries) ? data.entries : (Array.isArray(data) ? data : [])));
+          if (logsList) {
+            if (stream) stream.innerHTML = '';
+            if (logsList.length === 0) {
+              if (stream) stream.innerHTML = '<div class="text-slate-500 italic">[SYSTEM] Chưa có bản ghi nhật ký mới. Hệ thống đang lắng nghe...</div>';
+            } else {
+              logsList.forEach(line => appendConsoleLog(line));
+              _lastConsoleLineCount = logsList.length;
+            }
+            if (forceToast) showToastNotification(`✅ Đã nạp ${logsList.length} dòng nhật ký mới nhất!`);
+            return;
+          }
+        }
       } catch (err) {
-
         console.warn("Lỗi nạp console logs tức thời:", err);
-
       }
 
       if (forceToast) {
@@ -16756,8 +16752,11 @@
 
 
     function appendConsoleLog(rawLine) {
-
-      if (!rawLine || typeof rawLine !== 'string') return;
+      if (!rawLine) return;
+      if (typeof rawLine === 'object' && rawLine !== null) {
+        rawLine = rawLine.message || rawLine.line || rawLine.error_message || rawLine.errorMessage || rawLine.log || rawLine.text || JSON.stringify(rawLine);
+      }
+      if (typeof rawLine !== 'string') return;
 
       // Loại bỏ ký tự nhị phân / rác font / Unicode Replacement () gây lỗi hiển thị
       if (rawLine.includes('\uFFFD') || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(rawLine)) {
@@ -16960,10 +16959,12 @@
 
           }
 
-          if (data && (data.type === 'mitmStatus' || data.type === 'interceptStatus') && data.running === false) {
-
-            if (typeof resetMitmUiToStopped === 'function') resetMitmUiToStopped();
-
+          if (data && (data.type === 'mitmStatus' || data.type === 'interceptStatus')) {
+            if (data.running === true) {
+              if (typeof loadMitmStatusLive === 'function') loadMitmStatusLive();
+            } else {
+              if (typeof resetMitmUiToStopped === 'function') resetMitmUiToStopped();
+            }
           }
 
         } catch (_) {}
