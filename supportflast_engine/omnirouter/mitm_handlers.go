@@ -41,6 +41,7 @@ var (
 		"antigravity": {
 			"daily-cloudcode-pa.googleapis.com",
 			"cloudcode-pa.googleapis.com",
+			"generativelanguage.googleapis.com",
 		},
 		"kiro": {
 			"runtime.us-east-1.kiro.dev",

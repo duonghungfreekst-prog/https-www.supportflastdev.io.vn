@@ -43,7 +43,11 @@ func init() {
 				// Khi request đi đến daily-cloudcode-pa.googleapis.com:443 hoặc cloudcode-pa.googleapis.com:443,
 				// thay bằng IP thật để bypass hosts file redirect 127.0.0.1
 				host, port, _ := net.SplitHostPort(addr)
-				if host == "daily-cloudcode-pa.googleapis.com" || host == "cloudcode-pa.googleapis.com" {
+				hostLower := strings.ToLower(host)
+				if hostLower == "daily-cloudcode-pa.googleapis.com" || 
+				   hostLower == "cloudcode-pa.googleapis.com" || 
+				   hostLower == "generativelanguage.googleapis.com" || 
+				   strings.HasSuffix(hostLower, ".googleapis.com") {
 					realAddr := net.JoinHostPort(upstreamRealHost, port)
 					return net.DialTimeout(network, realAddr, 15*time.Second)
 				}
@@ -212,8 +216,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				// Xây dựng URL upstream thật
 				targetHost := "daily-cloudcode-pa.googleapis.com"
-				if r.Host != "" && strings.Contains(r.Host, "cloudcode-pa.googleapis.com") && !strings.Contains(r.Host, "daily-") {
+				reqHostLower := strings.ToLower(r.Host)
+				if strings.Contains(reqHostLower, "generativelanguage.googleapis.com") {
+					targetHost = "generativelanguage.googleapis.com"
+				} else if strings.Contains(reqHostLower, "cloudcode-pa.googleapis.com") && !strings.Contains(reqHostLower, "daily-") {
 					targetHost = "cloudcode-pa.googleapis.com"
+				} else if r.Host != "" && !strings.Contains(reqHostLower, "127.0.0.1") && !strings.Contains(reqHostLower, "localhost") {
+					targetHost = r.Host
 				}
 				upstreamURL := "https://" + targetHost + r.URL.Path
 				if r.URL.RawQuery != "" {

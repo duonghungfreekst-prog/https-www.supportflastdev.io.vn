@@ -181,9 +181,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	mitmDispatcher := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		host := strings.ToLower(r.Host)
-		if strings.HasPrefix(path, "/v1internal") || 
-		   strings.HasPrefix(path, "/v1beta") || 
+		if strings.HasPrefix(path, "/v1") || 
 		   strings.Contains(host, "cloudcode") || 
+		   strings.Contains(host, "generativelanguage") || 
 		   strings.Contains(host, "googleapis.com") {
 			geminiProxyHandler(w, r)
 			return
