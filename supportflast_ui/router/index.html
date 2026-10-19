@@ -27646,9 +27646,16 @@
 
       }
 
-      const rawModel = req.model || 'Unknown Model';
-
+      const rawModel = req.model || '';
       const rawProvider = req.provider || '';
+
+      // Chỉ hiển thị các request AI Model thực tế, bỏ qua system quota event và heartbeat
+      if (!rawModel || rawModel === 'Unknown Model' || rawModel === 'SKILL-HUB' || rawModel === 'ai-model' || rawProvider === 'QUOTA') {
+        return;
+      }
+      if (req.endpoint && (req.endpoint.includes('heartbeat') || req.endpoint.includes('/api/skills'))) {
+        return;
+      }
 
       const reqId = req.id || (req.timestamp + '_' + rawModel + '_' + Math.random());
 
@@ -28289,203 +28296,31 @@
 
 
     let _simulationIdx = 0;
-
     let _simulationTimer = null;
-
     let _isSimulationActive = false;
-
     let _lastRealRequestTimestamp = 0;
-
-    let _simulationEnabled = true;
-
-
-
-    // Bộ tạo số ngẫu nhiên theo phân phối chuẩn Gaussian (Box-Muller Transform)
+    let _simulationEnabled = false; // VÔ HIỆU HÓA HOÀN TOÀN CHẾ ĐỘ GIẢ LẬP / DEMO (TUÂN THỦ RULE 9)
 
     function randomGaussian(mean, stdev) {
-
-      let u = 1 - Math.random();
-
-      let v = Math.random();
-
-      let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-
-      return Math.round(mean + z * stdev);
-
+      return Math.round(mean);
     }
 
-
-
+    // Vô hiệu hóa triệt để giả lập: CHỈ ĐO LƯỜNG VÀ HIỂN THỊ KHI CÓ REQUEST THẬT TỪ IDE / CLI
     function triggerSimulationHeartbeat() {
-
-      if (!_simulationEnabled || !isGatewayConnected) return;
-
-      const timeSinceReal = Date.now() - _lastRealRequestTimestamp;
-
-      if (_lastRealRequestTimestamp > 0 && timeSinceReal < 4000) {
-
-        return;
-
-      }
-
-
-
-      _isSimulationActive = true;
-
-      const item = SIMULATION_9ROUTER_MODELS[_simulationIdx % SIMULATION_9ROUTER_MODELS.length];
-
-      _simulationIdx++;
-
-
-
-      const latency = Math.max(38, randomGaussian(item.meanLatency, item.stdDevLatency));
-
-      const tokens = Math.max(250, item.baseTokens + Math.floor((Math.random() - 0.5) * 180));
-
-
-
-      const ambientGroup = document.getElementById('topo-ambient-particles');
-
-      if (ambientGroup) ambientGroup.style.display = '';
-
-      const radarGroup = document.getElementById('topo-radar-pings');
-
-      if (radarGroup) radarGroup.style.display = '';
-
-
-
-      switchActiveTopologyRoute(item.clientIdx, item.slotKey, item.rawModel, item.provider, latency, tokens, item.color);
-
-
-
-      const modelInfo = {
-
-        slotKey: item.slotKey,
-
-        officialId: item.officialId,
-
-        officialName: item.officialName,
-
-        provider: item.provider,
-
-        badge: item.badge,
-
-        color: item.color,
-
-        clientIndex: item.clientIdx,
-
-        clientName: item.clientName
-
-      };
-
-      spawnRealEnergyPulse(modelInfo, item.rawModel, latency, tokens);
-
-
-
-      const hudBadgeEl = document.getElementById('hud-status-badge');
-
-      if (hudBadgeEl) {
-
-        hudBadgeEl.textContent = '⚡ LIVE SIMULATION • 9ROUTER HEARTBEAT';
-
-        hudBadgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(34,211,238,0.3)] animate-pulse';
-
-      }
-
-      updateLiveActiveModelHUD(item.rawModel, item.provider, item.clientName, latency, tokens, false);
-
-
-
-      // Thêm bản ghi Live Stream vào bảng Luồng Yêu Cầu (Live Stream) - Giới hạn 15 dòng
-
-      const tbody = document.getElementById('live-requests-tbody');
-
-      if (tbody) {
-
-        const tr = document.createElement('tr');
-
-        tr.className = 'hover:bg-white/5 transition-all bg-cyan-500/10 cursor-pointer';
-
-        const timeStr = new Date().toLocaleTimeString('vi-VN');
-
-        const statusBadge = '<span class="px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] font-mono">200 OK</span>';
-
-        tr.innerHTML = `
-
-          <td class="py-1 px-1.5 text-slate-400 font-mono text-[10px]">${timeStr}</td>
-
-          <td class="py-1 px-1.5 text-cyan-300 font-bold font-mono text-[11px] truncate max-w-[135px]" title="Client: ${item.clientName} &rarr; ${item.officialName}">
-
-            <div>${item.officialName}</div>
-
-            <div class="text-[9px] text-slate-400 font-normal leading-none truncate">${item.clientName}</div>
-
-          </td>
-
-          <td class="py-1 px-1.5 font-mono text-[10px]">${statusBadge}</td>
-
-          <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]">${latency}ms</td>
-
-        `;
-
-        tbody.insertBefore(tr, tbody.firstChild);
-
-        setTimeout(() => { tr.classList.remove('bg-cyan-500/10'); }, 1200);
-
-        while (tbody.children.length > 15) {
-
-          tbody.removeChild(tbody.lastChild);
-
-        }
-
-      }
-
-
-
-      const speedEl = document.getElementById('topo-speed-text');
-
-      if (speedEl) {
-
-        const simRps = (1.4 + Math.random() * 0.9).toFixed(1);
-
-        speedEl.textContent = simRps + ' req/s (sim)';
-
-      }
-
-
-
-      scheduleNextSimulationHeartbeat();
-
+      return;
     }
-
-
 
     function scheduleNextSimulationHeartbeat(delayMs) {
-
       if (_simulationTimer) clearTimeout(_simulationTimer);
-
-      const nextDelay = delayMs || (2600 + Math.floor(Math.random() * 1500));
-
-      _simulationTimer = setTimeout(() => {
-
-        triggerSimulationHeartbeat();
-
-      }, nextDelay);
-
+      _simulationTimer = null;
+      return;
     }
 
-
-
     // Poller thời gian thực đọc log trực tiếp từ backend qua /api/realtime/stream-logs
-
     async function pollRealtimeRequestDiff() {
-
       try {
-
         const res = await apiRequest('/api/realtime/stream-logs');
-
         const data = await res.json();
-
         if (data && data.success && Array.isArray(data.logs)) {
           const isLocalEngine = activeApiBase.includes('127.0.0.1:20128') || 
                                 activeApiBase.includes('localhost:20128') || 
@@ -28495,91 +28330,36 @@
           }
 
           for (let i = data.logs.length - 1; i >= 0; i--) {
-
             handleActualIncomingRequest(data.logs[i]);
-
           }
 
           if (typeof data.speed === 'number') {
-
             const speedEl = document.getElementById('topo-speed-text');
-
             if (speedEl) speedEl.textContent = data.speed.toFixed(1) + ' req/s';
-
           }
-
           if (data.todayRequests) {
-
             const kpiReq = document.getElementById('kpi-total-requests');
-
             if (kpiReq) kpiReq.textContent = Number(data.todayRequests).toLocaleString();
-
           }
-
           if (data.todayTokens) {
-
             const kpiTok = document.getElementById('kpi-total-tokens');
-
             if (kpiTok) kpiTok.textContent = (Number(data.todayTokens) / 1000000).toFixed(1) + 'M';
-
           }
-
         }
-
       } catch (err) {
-
         checkGatewayHealthImmediate();
-
       }
-
-
 
       const now = Date.now();
-
       const cutoff = now - 5000;
-
       while (realRequestTimestamps.length > 0 && realRequestTimestamps[0] < cutoff) {
-
         realRequestTimestamps.shift();
-
       }
-
       const rps = (realRequestTimestamps.length / 5.0).toFixed(1);
-
       const speedEl = document.getElementById('topo-speed-text');
-
-      if (speedEl && (!speedEl.textContent || speedEl.textContent === '0.0 req/s' || realRequestTimestamps.length === 0)) {
-
-        if (_isSimulationActive) {
-
-          const simRps = (1.4 + Math.random() * 0.9).toFixed(1);
-
-          speedEl.textContent = simRps + ' req/s (sim)';
-
-        } else {
-
-          speedEl.textContent = rps + ' req/s';
-
-        }
-
+      if (speedEl) {
+        speedEl.textContent = rps + ' req/s';
       }
-
-
-
-      // NẾU TRONG 4 GIÂY KHÔNG CÓ REQUEST THẬT TỪ IDE/CLI: TỰ ĐỘNG CHUYỂN SANG CHẾ ĐỘ MÔ PHỎNG THÔNG MINH
-
-      const timeSinceLastReal = Date.now() - _lastRealRequestTimestamp;
-
-      if (realRequestTimestamps.length === 0 && timeSinceLastReal >= 4000) {
-
-        if (!_isSimulationActive && _simulationEnabled && isGatewayConnected) {
-
-          scheduleNextSimulationHeartbeat(400);
-
-        }
-
-      }
-
     }
 
 
