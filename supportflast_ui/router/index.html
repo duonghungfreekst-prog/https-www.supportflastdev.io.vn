@@ -8166,7 +8166,20 @@
       // Nếu đang chạy trong Desktop App (WebView2), ưu tiên gọi qua C# Native HttpClient để chống 100% lỗi CORS & 301
       if (window.chrome && window.chrome.webview) {
         return new Promise((resolve) => {
-          _webConnectionCallback = { resolve, silent };
+          let hasSettled = false;
+          const finish = (result) => {
+            if (!hasSettled) {
+              hasSettled = true;
+              _webConnectionCallback = null;
+              resolve(result);
+            }
+          };
+
+          _webConnectionCallback = { 
+            resolve: finish, 
+            silent 
+          };
+
           try {
             window.chrome.webview.postMessage(JSON.stringify({
               action: 'testWebConnection',
@@ -8176,22 +8189,21 @@
           } catch (e) {
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
-          // Timeout dự phòng 45 giây nếu C# hoặc server Render đang Cold Start
+
+          // Timeout dự phòng 6 giây: nếu C# chưa phản hồi, tự động fallback sang direct fetch
           setTimeout(() => {
-            if (_webConnectionCallback && _webConnectionCallback.resolve === resolve) {
-              _webConnectionCallback = null;
-              applyWebConnectionResult({
-                success: false,
-                statusCode: 0,
-                errorMessage: 'Hết thời gian chờ phản hồi từ Máy chủ Web (Render Cold-Start). Vui lòng thử lại sau giây lát.'
-              }, silent);
-              resolve(false);
+            if (!hasSettled) {
+              doDirectWebFetchTest(serverUrl, apiKey, silent).then(finish);
             }
-          }, 45000);
+          }, 6000);
         });
       }
 
-      // Chế độ Web Browser chuẩn: Dùng fetch trực tiếp
+      return doDirectWebFetchTest(serverUrl, apiKey, silent);
+    }
+
+    // Chế độ Web Browser chuẩn: Dùng fetch trực tiếp
+    async function doDirectWebFetchTest(serverUrl, apiKey, silent = false) {
       try {
         const startTime = Date.now();
         const res = await fetch(`${serverUrl}/api/usage/stats`, {
