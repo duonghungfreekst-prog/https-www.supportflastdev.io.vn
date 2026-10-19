@@ -46,9 +46,20 @@ func main() {
 	tidbCfg := database.DefaultTiDBConfig()
 	tidbCfg.AutoMigrate = true
 
+	isTiDB := true
 	db, err := database.OpenTiDBConnection(tidbCfg)
 	if err != nil {
-		log.Printf("[ENGINE] [TIDB] [CẢNH BÁO] Không thể kết nối trực tiếp TiDB Cloud: %v. Đang kích hoạt chế độ thử lại ngầm...", err)
+		log.Printf("[ENGINE] [TIDB] [CẢNH BÁO] Không thể kết nối trực tiếp TiDB Cloud: %v. Tự động chuyển sang CSDL SQLite cục bộ...", err)
+		sqlitePath := filepath.Join(baseDir, "data", "supportflast.db")
+		sqliteDB, _, sqliteErr := database.OpenSQLiteConnection(sqlitePath)
+		if sqliteErr != nil {
+			log.Printf("[ENGINE] [SQLITE] [CẢNH BÁO] Khởi tạo SQLite fallback thất bại (%v). Chạy chế độ In-Memory cache.", sqliteErr)
+			db = nil
+		} else {
+			db = sqliteDB
+			isTiDB = false
+			log.Printf("[ENGINE] [SQLITE] ✔ Đã kích hoạt CSDL SQLite cục bộ tại '%s'", sqlitePath)
+		}
 	} else {
 		log.Printf("[ENGINE] [TIDB] ✔ Đã kết nối thành công tới TiDB Cloud Serverless (Host: %s:%d, DB: %s)",
 			tidbCfg.Host, tidbCfg.Port, tidbCfg.Database)
@@ -56,7 +67,7 @@ func main() {
 
 	// 2. Khởi tạo ServeMux và đăng ký toàn bộ 15+ cổng định tuyến OmniRouter
 	mux := http.NewServeMux()
-	omnirouter.RegisterOmniRouterRoutes(mux, db, true, baseDir)
+	omnirouter.RegisterOmniRouterRoutes(mux, db, isTiDB, baseDir)
 
 	// Thêm cổng phục vụ file giao diện HTML trực tiếp cho Desktop App WebView2
 	htmlCandidate := filepath.Join(baseDir, "nexusroute_ai_next_gen_gateway.html")

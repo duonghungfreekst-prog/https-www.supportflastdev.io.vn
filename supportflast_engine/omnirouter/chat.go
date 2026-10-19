@@ -261,6 +261,9 @@ func ParseGeminiChunk(chunkJSON string) (string, int64, int64, int64) {
 // HandleChatCompletions xử lý request /v1/chat/completions chuẩn OpenAI
 func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return

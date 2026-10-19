@@ -482,7 +482,7 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 			cleanOrigin := strings.TrimRight(strings.TrimSpace(origin), "/")
 			secWriter.Header().Set("Access-Control-Allow-Origin", cleanOrigin)
 			secWriter.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
-			secWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-API-Key, Accept, Origin")
+			secWriter.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-API-Key, x-api-key, x-9r-cli-token, Accept, Origin")
 			secWriter.Header().Set("Access-Control-Allow-Credentials", "true")
 			secWriter.Header().Set("Access-Control-Max-Age", "86400")
 			secWriter.Header().Set("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")

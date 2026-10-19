@@ -24,6 +24,10 @@ var (
 
 // InitStorage khởi tạo các bảng CSDL cho OmniRouter trên TiDB hoặc SQLite
 func InitStorage(db *sql.DB, isTiDB bool) error {
+	if db == nil {
+		log.Printf("[ENGINE] [STORAGE] [WARN] db là nil, bỏ qua InitStorage (chế độ in-memory cache)")
+		return nil
+	}
 	var queries []string
 
 	if isTiDB {
@@ -268,6 +272,9 @@ func HashString(s string) string {
 
 // RefreshKeyCache nạp toàn bộ API key hợp lệ lên RAM để kiểm tra 0ms
 func RefreshKeyCache(db *sql.DB) {
+	if db == nil {
+		return
+	}
 	rows, err := db.Query("SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at FROM omni_client_keys WHERE is_active = 1")
 	if err != nil {
 		return
@@ -445,6 +452,9 @@ func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount i
 
 // RefreshProviderCache đọc các tài khoản AI từ DB nạp vào RAM
 func RefreshProviderCache(db *sql.DB) {
+	if db == nil {
+		return
+	}
 	rows, err := db.Query("SELECT id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at FROM omni_providers WHERE is_active = 1 ORDER BY priority ASC")
 	if err != nil {
 		return

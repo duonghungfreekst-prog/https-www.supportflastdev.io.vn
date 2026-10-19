@@ -8176,18 +8176,18 @@
           } catch (e) {
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
-          // Timeout dự phòng 12 giây nếu C# không phản hồi
+          // Timeout dự phòng 45 giây nếu C# hoặc server Render đang Cold Start
           setTimeout(() => {
             if (_webConnectionCallback && _webConnectionCallback.resolve === resolve) {
               _webConnectionCallback = null;
               applyWebConnectionResult({
                 success: false,
                 statusCode: 0,
-                errorMessage: 'Hết thời gian chờ phản hồi từ C# Gateway Bridge.'
+                errorMessage: 'Hết thời gian chờ phản hồi từ Máy chủ Web (Render Cold-Start). Vui lòng thử lại sau giây lát.'
               }, silent);
               resolve(false);
             }
-          }, 12000);
+          }, 45000);
         });
       }
 
