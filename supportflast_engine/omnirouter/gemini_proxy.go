@@ -153,6 +153,26 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
+		// Kiểm tra hạn mức Quota của Client API Key trước khi forward lên upstream
+		activeKey := GetActiveClientKey(db)
+		if activeKey != "" {
+			_, status, errMsg := CheckClientKeyStatus(activeKey)
+			if status == "QUOTA_EXCEEDED" || status == "EXPIRED" || status == "INACTIVE" {
+				log.Printf("[ENGINE] [GEMINI-PROXY] ⛔ Từ chối request do API Key (%s) trạng thái: %s - %s", maskAPIKey(activeKey), status, errMsg)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"message": errMsg,
+						"type":    "quota_error",
+						"code":    "quota_exceeded",
+						"status":  status,
+					},
+				})
+				return
+			}
+		}
+
 		// Trích model từ request body (nếu có) và nâng cấp loại bỏ triệt để 2.5
 		rawModel := extractModelFromBody(bodyBytes)
 		model := sanitizeAndUpgradeModel(rawModel)
@@ -621,25 +641,9 @@ func GetActiveClientKey(db *sql.DB) string {
 		}
 	}
 
-	// 2. Nếu chưa có trong config.json, truy vấn TiDB Cloud lấy khóa người dùng gần nhất
-	if db != nil {
-		var dbKey string
-		err := db.QueryRow("SELECT api_key FROM omni_client_keys WHERE is_active = 1 AND api_key LIKE 'sk-%' AND name != 'Master Web Domain Key' ORDER BY created_at DESC LIMIT 1").Scan(&dbKey)
-		if err == nil && dbKey != "" {
-			currentActiveClientKey = dbKey
-			log.Printf("[ENGINE] [KEY] ✔ Nạp Active Key từ TiDB Cloud: %s", maskAPIKey(currentActiveClientKey))
-			return currentActiveClientKey
-		}
-
-		// Fallback sang bất kỳ active key nào
-		err = db.QueryRow("SELECT api_key FROM omni_client_keys WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1").Scan(&dbKey)
-		if err == nil && dbKey != "" {
-			currentActiveClientKey = dbKey
-			log.Printf("[ENGINE] [KEY] ✔ Nạp Active Fallback Key từ TiDB Cloud: %s", maskAPIKey(currentActiveClientKey))
-			return currentActiveClientKey
-		}
-	}
-
+	// 2. TUYỆT ĐỐI KHÔNG query TiDB Cloud lấy key ORDER BY created_at DESC!
+	// CSDL TiDB Cloud dùng chung cho nhiều người dùng. Client Desktop chỉ dùng đúng API Key 
+	// được cấu hình trong config.json hoặc được gán qua RAM UI/API.
 	return ""
 }
 

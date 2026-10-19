@@ -990,7 +990,7 @@
             
 
             <!-- Mục 1: MITM Proxy & CLI -->
-            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1016,7 +1016,7 @@
             </button>
 
             <!-- Mục 3: Nhà cung cấp -->
-            <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -1052,7 +1052,7 @@
             </button>
 
             <!-- Mục 6: Theo dõi hạn mức -->
-            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -7924,80 +7924,55 @@
     // Tab Router Switcher - Lưu trạng thái hiện tại đa tầng bền vững
 
     function getSavedActiveTab() {
+      const isDesktop = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
+                        (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
 
-      if (window._currentActiveTabId && document.getElementById('tab-' + window._currentActiveTabId)) {
+      const isValidTab = (t) => {
+        if (!t || !document.getElementById('tab-' + t)) return false;
+        if (isDesktop) {
+          const btn = document.getElementById('btn-tab-' + t);
+          if (btn && btn.classList.contains('desktop-hide-tab')) return false;
+        }
+        return true;
+      };
 
+      if (window._currentActiveTabId && isValidTab(window._currentActiveTabId)) {
         return window._currentActiveTabId;
-
       }
 
       try {
-
         const hashTab = window.location.hash ? window.location.hash.replace('#', '').trim() : '';
-
-        if (hashTab && document.getElementById('tab-' + hashTab)) {
-
-          return hashTab;
-
-        }
-
+        if (hashTab && isValidTab(hashTab)) return hashTab;
       } catch (_) {}
 
       try {
-
         const storedTab = NexusStore.getItem('nexusroute_active_tab');
-
-        if (storedTab && document.getElementById('tab-' + storedTab)) {
-
-          return storedTab;
-
-        }
-
+        if (storedTab && isValidTab(storedTab)) return storedTab;
       } catch (_) {}
 
       try {
-
         if (typeof localStorage !== 'undefined') {
-
           const loc = localStorage.getItem('nexusroute_active_tab');
-
-          if (loc && document.getElementById('tab-' + loc)) return loc;
-
+          if (loc && isValidTab(loc)) return loc;
         }
-
       } catch (_) {}
 
       try {
-
         if (typeof sessionStorage !== 'undefined') {
-
           const ses = sessionStorage.getItem('nexusroute_active_tab');
-
-          if (ses && document.getElementById('tab-' + ses)) return ses;
-
+          if (ses && isValidTab(ses)) return ses;
         }
-
       } catch (_) {}
 
       try {
-
         const match = document.cookie.match(/nexusroute_active_tab=([^;]+)/);
-
         if (match && match[1]) {
-
           const cookieTab = decodeURIComponent(match[1]);
-
-          if (cookieTab && document.getElementById('tab-' + cookieTab)) {
-
-            return cookieTab;
-
-          }
-
+          if (cookieTab && isValidTab(cookieTab)) return cookieTab;
         }
-
       } catch (_) {}
 
-      return 'endpoints';
+      return isDesktop ? 'mitm' : 'stats';
     }
 
     // =========================================================================
@@ -8737,7 +8712,9 @@
       let res = str.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[Tài khoản ẩn]');
       // 2. Ẩn pattern "qua <tên_tài_khoản> (" trong console logs nếu tên không chứa @
       res = res.replace(/(qua\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s*\()/g, '$1[Tài khoản ẩn]');
-      // 3. Ẩn pattern "cho <tên_tài_khoản>:" nếu tên không chứa @
+      // 3. Ẩn pattern "trên <tên_tài_khoản> cho model" nếu tên không chứa @
+      res = res.replace(/(trên\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s+cho\s+)/g, '$1[Tài khoản ẩn]');
+      // 4. Ẩn pattern "cho <tên_tài_khoản>:" nếu tên không chứa @
       res = res.replace(/(cho\s+)(?!\[Tài khoản ẩn\])[a-zA-Z0-9._-]+(?=\s*:)/g, '$1[Tài khoản ẩn]');
       return res;
     }
@@ -16781,6 +16758,12 @@
     function appendConsoleLog(rawLine) {
 
       if (!rawLine || typeof rawLine !== 'string') return;
+
+      // Loại bỏ ký tự nhị phân / rác font / Unicode Replacement () gây lỗi hiển thị
+      if (rawLine.includes('\uFFFD') || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(rawLine)) {
+        rawLine = rawLine.replace(/[\uFFFD\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+        if (!rawLine.trim() || rawLine.trim().length < 4) return;
+      }
 
       const stream = document.getElementById('console-log-stream');
 
