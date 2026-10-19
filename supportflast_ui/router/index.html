@@ -6430,11 +6430,11 @@
         </div>
 
         <div class="space-y-1">
-
-          <label class="text-xs font-mono text-slate-400">Hạn Mức Chi Tiêu (USD/Tháng):</label>
-
-          <input type="number" id="new-key-quota" value="50" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500/50">
-
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-mono text-slate-400">Số Quota (Lượt request):</label>
+            <span class="text-[10px] text-slate-500 font-mono">0 = Không giới hạn</span>
+          </div>
+          <input type="number" id="new-key-quota" value="1000" min="0" placeholder="VD: 1000 (0 = Không giới hạn)" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-cyan-500/50">
         </div>
 
       </div>
@@ -10026,100 +10026,68 @@
 
             const isAct = k.isActive !== false && k.isActive !== 0;
 
+            const qLimit = (typeof k.quotaLimit === 'number') ? k.quotaLimit : ((typeof k.quota_limit === 'number') ? k.quota_limit : 0);
+            const uReq = (typeof k.usedRequests === 'number') ? k.usedRequests : ((typeof k.used_requests === 'number') ? k.used_requests : 0);
+            const quotaDisplay = qLimit > 0 
+              ? `${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req`
+              : 'Không giới hạn';
+
             tr.innerHTML = `
-
               <td class="py-3.5 px-3 font-sans font-semibold text-white">${k.name || 'API Key'}</td>
-
               <td class="py-3.5 px-3 text-cyan-400 font-mono font-bold">${shortKey}</td>
-
-              <td class="py-3.5 px-3 text-slate-300 font-mono">Không giới hạn</td>
-
+              <td class="py-3.5 px-3 ${qLimit > 0 ? 'text-cyan-300' : 'text-slate-300'} font-mono">${quotaDisplay}</td>
               <td class="py-3.5 px-3 text-slate-400 font-mono">${created}</td>
-
               <td class="py-3.5 px-3">
-
                 <div class="flex items-center gap-2">
-
                   <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="nexus-switch nexus-switch-sm ${isAct ? 'active' : ''}" title="${isAct ? 'Đang hoạt động (Nhấn để tạm khóa)' : 'Đang tạm khóa (Nhấn để kích hoạt)'}">
-
                     <div class="nexus-switch-knob"></div>
-
                   </button>
-
                   <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isAct ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'}">
-
                     ${isAct ? 'HOẠT ĐỘNG' : 'TẠM KHÓA'}
-
                   </span>
-
                 </div>
-
               </td>
-
               <td class="py-3.5 px-3 text-right space-x-2 font-mono">
-
                 <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="${isAct ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'} hover:underline font-bold text-xs">${isAct ? 'Tắt' : 'Bật'}</button>
-
                 <button onclick="copyToClipboard('${k.key || shortKey}')" class="text-cyan-400 hover:underline">Sao chép</button>
-
                 <button onclick="revokeKeyLive('${k.id}')" class="text-red-400 hover:underline">Xóa</button>
-
               </td>
-
             `;
-
             tbody.appendChild(tr);
-
           });
-
         }
-
       } catch (e) {
-
         console.warn("Chưa tải được keys từ backend:", e);
-
       }
-
     }
 
-
-
     async function generateNewApiKey() {
-
       const label = document.getElementById('new-key-label').value.trim() || 'Key ' + new Date().toLocaleTimeString('vi-VN');
+      const quotaInput = document.getElementById('new-key-quota');
+      const rawQuota = quotaInput ? parseInt(quotaInput.value, 10) : 0;
+      const quotaLimit = isNaN(rawQuota) || rawQuota < 0 ? 0 : rawQuota;
 
       closeModal('modal-create-key');
-
       try {
-
         const res = await apiRequest('/api/keys', {
-
           method: 'POST',
-
-          body: JSON.stringify({ name: label })
-
+          body: JSON.stringify({ 
+            name: label,
+            quotaLimit: quotaLimit,
+            quota: quotaLimit
+          })
         });
-
         const data = await res.json();
-
         if (data.key) {
-
-          alert(`Đã tạo thành công khóa API mới trên OmniRouter:\nNhãn: ${data.name}\nKhóa: ${data.key}`);
-
+          const quotaText = quotaLimit > 0 ? `${quotaLimit.toLocaleString('vi-VN')} requests` : 'Không giới hạn';
+          alert(`Đã tạo thành công khóa API mới trên OmniRouter:\nNhãn: ${data.name}\nKhóa: ${data.key}\nSố Quota: ${quotaText}`);
           loadApiKeysLive();
-
         } else if (data.error) {
-
           alert('Lỗi tạo khóa: ' + data.error);
-
         }
-
       } catch (err) {
-
         alert('Lỗi kết nối khi tạo khóa: ' + err.message);
-
       }
-
     }
 
 
