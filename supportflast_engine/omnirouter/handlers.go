@@ -227,7 +227,7 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		keyItem, valid := ValidateClientKey(clientKey)
+		_, valid := ValidateClientKey(clientKey)
 		if !valid {
 			http.Error(w, `{"error":"API Key 9Router không hợp lệ hoặc đã bị khóa"}`, http.StatusUnauthorized)
 			return
@@ -270,7 +270,6 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 			Accounts: accounts,
 		}
 
-		RecordKeyUsageAsync(db, keyItem.Key, 1, 0)
 		json.NewEncoder(w).Encode(resp)
 	}
 }
@@ -286,7 +285,8 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		if !report.SkipDBIncrement && report.ApiKey != "" {
+		if !report.SkipDBIncrement && report.ApiKey != "" && report.UsedRequests > 0 &&
+			!strings.Contains(report.ApiKey, "native-proxy") && !strings.Contains(report.ApiKey, "antigravity") {
 			RecordKeyUsageAsync(db, report.ApiKey, report.UsedRequests, report.TotalTokens)
 		}
 
@@ -522,7 +522,6 @@ echo Ban co the bat dau chay Antigravity, Cursor, Cline, Claude Code, Roo Code n
 pause
 `, gatewayURL, keyItem.Key, baseURL, keyItem.Key, baseURL, keyItem.Key)
 			_, _ = w.Write([]byte(batScript))
-			RecordKeyUsageAsync(db, keyItem.Key, 1, 0)
 			return
 		}
 
@@ -545,7 +544,6 @@ echo "✔ Da thiet lap API Key : $OPENAI_API_KEY"
 echo "He thong da san sang su dung voi cac cong cu AI Terminal!"
 `, baseURL, keyItem.Key, baseURL, keyItem.Key)
 			_, _ = w.Write([]byte(shScript))
-			RecordKeyUsageAsync(db, keyItem.Key, 1, 0)
 			return
 		}
 
@@ -616,7 +614,6 @@ echo "He thong da san sang su dung voi cac cong cu AI Terminal!"
 			},
 		}
 
-		RecordKeyUsageAsync(db, keyItem.Key, 1, 0)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

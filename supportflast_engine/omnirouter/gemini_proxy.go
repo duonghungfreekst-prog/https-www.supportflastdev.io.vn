@@ -154,43 +154,30 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
-		// Kiểm tra hạn mức Quota của Client API Key trước khi forward lên upstream
-		activeKey := GetActiveClientKey(db)
-		if activeKey != "" {
-			_, status, errMsg := CheckClientKeyStatus(activeKey)
-			if status == "QUOTA_EXCEEDED" || status == "EXPIRED" || status == "INACTIVE" {
-				log.Printf("[ENGINE] [GEMINI-PROXY] ⛔ Từ chối request do API Key (%s) trạng thái: %s - %s", maskAPIKey(activeKey), status, errMsg)
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusTooManyRequests)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": map[string]interface{}{
-						"message": errMsg,
-						"type":    "quota_error",
-						"code":    "quota_exceeded",
-						"status":  status,
-					},
-				})
-				return
-			}
-		}
-
-		// Trích model từ request body (nếu có) và nâng cấp loại bỏ triệt để 2.5
+		// Trích model từ request body (nếu có)
 		rawModel := extractModelFromBody(bodyBytes)
 		model := sanitizeAndUpgradeModel(rawModel)
 
-		// Chuẩn hóa model và xây dựng cascade fallback tiers - LOẠI BỎ HOÀN TOÀN TẤT CẢ MODEL 2.5
+		// Chuẩn hóa model và xây dựng cascade fallback tiers - ƯU TIÊN 100% MODEL NGƯỜI DÙNG YÊU CẦU
 		var modelTiers []string
-		if model == "gemini-3.1-pro-high" || model == "gemini-pro-agent" {
-			// Model cao cấp hỗ trợ reasoning: ưu tiên 3.1-pro-high và 3.8-flash-high
-			modelTiers = []string{"gemini-3.1-pro-high", "gemini-3.8-flash-high", "gemini-3-flash-agent"}
-		} else if strings.HasPrefix(model, "gemini-3.7") || strings.HasPrefix(model, "gemini-3.6") {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
-		} else if model == "gemini-3.8-flash-high" {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
-		} else if model != "" && model != "gemini-native" && model != "functionCall" {
+		if model == "" {
+			// Request không chỉ định model (quota, metadata, autocompletion...) -> giữ nguyên 100% bản gốc
+			modelTiers = []string{""}
+		} else if strings.Contains(model, "3.1-pro") || strings.Contains(model, "pro-agent") {
+			// Dòng Pro: Tier 1 là đúng model yêu cầu, Fallback sang các model cao cấp khác khi cạn quota
+			modelTiers = []string{model, "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
+		} else if strings.Contains(model, "2.5-pro") {
+			// Dòng 2.5 Pro: Chạy gemini-3.1-pro-high
+			modelTiers = []string{"gemini-3.1-pro-high", "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
+		} else if strings.Contains(model, "3.8-flash") {
+			// Dòng 3.8 Flash: Chạy đúng model được request
 			modelTiers = []string{model, "gemini-3.8-flash-high", "gemini-3.1-pro-high"}
+		} else if strings.Contains(model, "2.5-flash") {
+			// Dòng 2.5 Flash: Chạy gemini-3.8-flash-high
+			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.8-flash-high", "gemini-3.1-pro-high"}
 		} else {
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-3.1-pro-high"}
+			// Mọi model khác (Claude, GPT, v.v.): Tier 1 là chính model đó
+			modelTiers = []string{model, "gemini-3.1-pro-high", "gemini-3.8-flash-high"}
 		}
 
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Antigravity IDE: %s %s (Host: %s, Model: %s, Tiers: %v)", r.Method, r.URL.Path, r.Host, model, modelTiers)
@@ -270,17 +257,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 						}
 					}
 				}
-				// Loại bỏ triệt để và thay thế toàn bộ model 2.5 thấp sang model cao cấp (KHÔNG sửa tab autocomplete)
+				// Chỉ loại bỏ duy nhất model flash-lite theo yêu cầu của người dùng, giữ nguyên 100% mọi model khác
 				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash-lite")) {
 					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash-lite"), []byte("gemini-3.8-flash-high"))
 				}
-				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-flash")) {
-					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash"), []byte("gemini-3.8-flash-high"))
-				}
-				if bytes.Contains(finalBodyBytes, []byte("gemini-2.5-pro")) {
-					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-3.1-pro-high"))
-				}
-
 				// Xây dựng URL upstream thật
 				targetHost := "daily-cloudcode-pa.googleapis.com"
 				reqHostLower := strings.ToLower(r.Host)
@@ -298,10 +278,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				if r.URL.RawQuery != "" {
 					upstreamURL += "?" + r.URL.RawQuery
 				}
-				// Loại bỏ 2.5 trên URL upstream
-				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash-lite", "gemini-3.8-flash-high")
-				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash", "gemini-3.8-flash-high")
-				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-pro", "gemini-3.1-pro-high")
+				// Chỉ loại bỏ flash-lite trên URL upstream nếu có
+				if strings.Contains(upstreamURL, "gemini-2.5-flash-lite") {
+					upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash-lite", "gemini-3.8-flash-high")
+				}
 
 				// Tạo request mới với finalBodyBytes
 				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
@@ -547,29 +527,25 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// sanitizeAndUpgradeModel loại bỏ hoàn toàn các model 2.5 thấp hoặc flash-lite theo yêu cầu, nâng cấp tự động lên Gemini 3.8 / 3.1 Pro
+// sanitizeAndUpgradeModel chỉ loại bỏ duy nhất model flash-lite cấp thấp theo đúng yêu cầu người dùng
+// Tuyệt đối giữ nguyên 100% tất cả các model chuẩn khác (gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-pro-high, gemini-3.8-flash-high, claude...)
 func sanitizeAndUpgradeModel(model string) string {
 	mLower := strings.ToLower(strings.TrimSpace(model))
 	if mLower == "" || mLower == "gemini-native" || mLower == "functioncall" || mLower == "auto" || mLower == "none" {
+		return ""
+	}
+	// CHỈ loại bỏ duy nhất flash-lite theo yêu cầu người dùng -> nâng lên 3.8-flash-high
+	if strings.Contains(mLower, "flash-lite") {
 		return "gemini-3.8-flash-high"
 	}
-	// Loại bỏ hoàn toàn model 2.5 (gemini-2.5-flash-lite, gemini-2.5-flash, gemini-2.5-pro) và flash-lite
-	if strings.Contains(mLower, "2.5") || strings.Contains(mLower, "flash-lite") || strings.Contains(mLower, "tab_flash") {
-		if strings.Contains(mLower, "pro") {
-			return "gemini-3.1-pro-high"
-		}
-		return "gemini-3.8-flash-high"
-	}
-	if mLower == "gemini-pro-agent" || mLower == "gemini-3.1-pro" || mLower == "gemini-3.1-pro-low" {
-		return "gemini-3.1-pro-high"
-	}
+	// Giữ nguyên 100% model người dùng yêu cầu
 	return model
 }
 
-// extractModelFromBody trích model name từ JSON body và tự động nâng cấp loại bỏ 2.5
+// extractModelFromBody trích model name từ JSON body
 func extractModelFromBody(body []byte) string {
 	if len(body) == 0 {
-		return "gemini-3.8-flash-high"
+		return ""
 	}
 	var req struct {
 		Model string `json:"model"`
@@ -592,7 +568,7 @@ func extractModelFromBody(body []byte) string {
 				sub = sub[quoteStart+1:]
 				quoteEnd := strings.Index(sub, `"`)
 				if quoteEnd != -1 {
-					m := sub[:quoteEnd]
+					m := strings.TrimSpace(sub[:quoteEnd])
 					if m != "functionCall" && m != "auto" && m != "none" && m != "" {
 						return sanitizeAndUpgradeModel(m)
 					}
@@ -600,7 +576,7 @@ func extractModelFromBody(body []byte) string {
 			}
 		}
 	}
-	return "gemini-3.8-flash-high"
+	return ""
 }
 
 var (
@@ -726,16 +702,11 @@ func GetWebServerURL() string {
 // ReportProxyUsageAsync ghi nhận telemetry thời gian thực lên Web Server mà KHÔNG trừ Quota của Client API Key
 func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
 	go func() {
-		activeKey := GetActiveClientKey(db)
+		// Gán cứng ApiKey định danh riêng cho Native Proxy của IDE, tuyệt đối không lấy client key của người dùng
+		activeKey := "sk-antigravity-native-proxy"
 		totTokens := promptTokens + completionTokens
 		if totTokens <= 0 {
 			totTokens = 520
-		}
-
-		// TUYỆT ĐỐI KHÔNG trừ Quota của Client API Key (omni_client_keys) đối với transparent proxy nội bộ của IDE
-		// Quota của Client API Key chỉ được trừ khi client bên ngoài (Cursor, Claude Code...) gửi kèm header Authorization: Bearer sk-... tới cổng :20128/v1
-		if activeKey == "" {
-			activeKey = "sk-desktop-native-proxy"
 		}
 
 		// Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực (UsedRequests: 0, SkipDBIncrement: true)
