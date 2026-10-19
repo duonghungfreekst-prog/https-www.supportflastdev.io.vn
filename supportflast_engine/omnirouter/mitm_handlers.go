@@ -625,10 +625,16 @@ func HandleMitmStatus(db *sql.DB, handler http.Handler, baseDir string) http.Han
 				})
 				return
 			}
+			// Tự động kích hoạt DNS cho Antigravity vào file hosts để bảo vệ Quota ngay lập tức
+			if dnsErr := setToolDns("antigravity", true); dnsErr != nil {
+				log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo kích hoạt DNS Antigravity: %v", dnsErr)
+			} else {
+				log.Printf("[ENGINE] [MITM] ✔ Đã tự động kích hoạt DNS Antigravity vào file hosts")
+			}
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"running": true,
-				"message": "Đã khởi động Máy chủ MITM thành công trên cổng 443",
+				"message": "Đã khởi động Máy chủ MITM thành công trên cổng 443 và kích hoạt DNS Antigravity",
 			})
 
 		case http.MethodDelete:

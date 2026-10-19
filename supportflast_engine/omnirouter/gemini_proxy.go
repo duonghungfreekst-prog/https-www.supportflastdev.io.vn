@@ -173,9 +173,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		// Duyệt tuần tự qua các model tiers (Cascade Fallback)
 		for tierIdx, tierModel := range modelTiers {
-			maxAttempts := 5
-			if maxAttempts > numAccounts {
-				maxAttempts = numAccounts
+			maxAttempts := numAccounts
+			if maxAttempts > 19 {
+				maxAttempts = 19
 			}
 
 			// Xoay vòng tài khoản (Load balancing & Failover)
@@ -189,10 +189,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 
-				// Xác định Project ID chuẩn mực của tài khoản pool
-				targetProject := strings.TrimSpace(creds.ProjectId)
-				if targetProject == "" {
-					targetProject = "aicode-consumers"
+				// Xác định Project ID chuẩn mực: Antigravity IDE mặc định sử dụng "aicode-consumers"
+				targetProject := "aicode-consumers"
+				if strings.TrimSpace(creds.ProjectId) != "" && strings.Contains(strings.TrimSpace(creds.ProjectId), "aicode") {
+					targetProject = strings.TrimSpace(creds.ProjectId)
 				}
 
 				// Chuẩn hóa JSON body an toàn tuyệt đối
@@ -217,7 +217,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				// Xây dựng URL upstream thật
 				targetHost := "daily-cloudcode-pa.googleapis.com"
 				reqHostLower := strings.ToLower(r.Host)
-				if strings.Contains(reqHostLower, "generativelanguage.googleapis.com") {
+				if strings.HasPrefix(r.URL.Path, "/v1internal") {
+					// Tất cả PredictionService nội bộ của Antigravity đều nằm trên daily-cloudcode-pa
+					targetHost = "daily-cloudcode-pa.googleapis.com"
+				} else if strings.Contains(reqHostLower, "generativelanguage.googleapis.com") {
 					targetHost = "generativelanguage.googleapis.com"
 				} else if strings.Contains(reqHostLower, "cloudcode-pa.googleapis.com") && !strings.Contains(reqHostLower, "daily-") {
 					targetHost = "cloudcode-pa.googleapis.com"
@@ -247,9 +250,8 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					}
 				}
 
-				// Thiết lập Authorization và User-Project chuẩn xác theo tài khoản Pool
+				// Thiết lập Authorization chuẩn xác theo tài khoản Pool (KHÔNG thêm X-Goog-User-Project để tránh xung đột quota project cá nhân)
 				fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
-				fReq.Header.Set("X-Goog-User-Project", targetProject)
 				fReq.Header.Set("Content-Type", "application/json")
 				fReq.Header.Set("X-Client-Name", "antigravity")
 				if fReq.Header.Get("User-Agent") == "" {
@@ -309,6 +311,11 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					errStr := string(errBody)
 					lastErr = fmt.Errorf("upstream error %d on %s for %s: %s", rResp.StatusCode, acc.Name, tierModel, errStr)
 					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên %s cho model %s: %s", rResp.StatusCode, acc.Name, tierModel, errStr)
+
+					if strings.Contains(errStr, "SUBSCRIPTION_REQUIRED") || strings.Contains(errStr, "#3501") {
+						accountCooldownMap.Store(acc.ID, time.Now().Add(1*time.Hour))
+						log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Tài khoản %s thiếu subscription (#3501), tạm thời cooldown 1h", acc.Name)
+					}
 
 					// Nếu lỗi là do hết capacity (503 MODEL_CAPACITY_EXHAUSTED) hoặc model không hỗ trợ,
 					// ngắt vòng lặp tài khoản ngay để kích hoạt fallback sang Tier tiếp theo
@@ -554,29 +561,60 @@ func GetActiveClientKey(db *sql.DB) string {
 	return ""
 }
 
-// GetWebServerURL lấy URL máy chủ Web Render để gửi báo cáo telemetry
+var (
+	cachedWebServerURL   string
+	cachedWebServerURLMu sync.RWMutex
+)
+
+// SetCachedWebServerURL cho phép cập nhật URL máy chủ web Render
+func SetCachedWebServerURL(u string) {
+	cachedWebServerURLMu.Lock()
+	defer cachedWebServerURLMu.Unlock()
+	cachedWebServerURL = strings.TrimRight(u, "/")
+}
+
+// GetWebServerURL lấy URL máy chủ Web Render để gửi báo cáo telemetry (có cache RAM an toàn)
 func GetWebServerURL() string {
+	cachedWebServerURLMu.RLock()
+	if cachedWebServerURL != "" {
+		u := cachedWebServerURL
+		cachedWebServerURLMu.RUnlock()
+		return u
+	}
+	cachedWebServerURLMu.RUnlock()
+
+	cachedWebServerURLMu.Lock()
+	defer cachedWebServerURLMu.Unlock()
+	if cachedWebServerURL != "" {
+		return cachedWebServerURL
+	}
+
 	candidatePaths := []string{
 		"config.json",
 		filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0", "config.json"),
 	}
 	if exePath, err := os.Executable(); err == nil {
-		candidatePaths = append(candidatePaths, filepath.Join(filepath.Dir(exePath), "config.json"))
+		exeDir := filepath.Dir(exePath)
+		candidatePaths = append(candidatePaths, filepath.Join(exeDir, "config.json"))
+		candidatePaths = append(candidatePaths, filepath.Join(filepath.Dir(exeDir), "config.json"))
 	}
 	for _, p := range candidatePaths {
-		if data, err := os.ReadFile(p); err == nil {
+		if data, err := os.ReadFile(p); err == nil && len(data) > 0 {
 			var cfg map[string]interface{}
 			if err := json.Unmarshal(data, &cfg); err == nil {
 				if u, ok := cfg["web_server_url"].(string); ok && u != "" {
-					return strings.TrimRight(u, "/")
+					cachedWebServerURL = strings.TrimRight(u, "/")
+					return cachedWebServerURL
 				}
 				if u, ok := cfg["render_url"].(string); ok && u != "" {
-					return strings.TrimRight(u, "/")
+					cachedWebServerURL = strings.TrimRight(u, "/")
+					return cachedWebServerURL
 				}
 			}
 		}
 	}
-	return "https://www.supportflastdev.io.vn"
+	cachedWebServerURL = "https://www.supportflastdev.io.vn"
+	return cachedWebServerURL
 }
 
 // ReportProxyUsageAsync ghi nhận Quota trên TiDB Cloud và gửi báo cáo telemetry thời gian thực lên Web Server
