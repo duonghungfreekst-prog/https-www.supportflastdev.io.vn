@@ -118,6 +118,12 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/router/models/provider", providerModelsHandler)
 	safeRegister(mux, "/api/router/models/provider/", providerModelsHandler)
 
+	// 6.0 API Thống kê công khai siêu nhẹ cho trang chủ Web (/api/stats/public, /api/v1/public/stats)
+	publicStatsHandler := HandlePublicStats(db)
+	safeRegister(mux, "/api/stats/public", publicStatsHandler)
+	safeRegister(mux, "/api/v1/public/stats", publicStatsHandler)
+	safeRegister(mux, "/api/v1/public/quota", publicStatsHandler)
+
 	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
 	usageHandler := HandleAccountUsage(db)
 	usageStatsHandler := HandleUsageStats(db)

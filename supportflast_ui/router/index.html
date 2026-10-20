@@ -16670,7 +16670,7 @@
 
           if (!_consoleFallbackTimer) {
 
-            _consoleFallbackTimer = setInterval(pollConsoleLogsFallback, 3500);
+            _consoleFallbackTimer = setInterval(pollConsoleLogsFallback, 10000);
 
           }
 
@@ -16682,7 +16682,7 @@
 
         if (!_consoleFallbackTimer) {
 
-          _consoleFallbackTimer = setInterval(pollConsoleLogsFallback, 3500);
+          _consoleFallbackTimer = setInterval(pollConsoleLogsFallback, 10000);
 
         }
 
@@ -31310,9 +31310,13 @@
 
       }, 8000);
 
+      // Giãn chu kỳ polling từ 4s sang 12s và bỏ qua nếu SSE đang hoạt động để chống lag và quá tải mạng
       setInterval(() => {
 
         if (document.hidden) return;
+
+        // Nếu SSE đang kết nối ổn định, không cần poll thêm
+        if (typeof topoEventSource !== 'undefined' && topoEventSource && topoEventSource.readyState === 1) return;
 
         if (window._currentActiveTabId === 'stats') {
 
@@ -31320,7 +31324,7 @@
 
         }
 
-      }, 4000);
+      }, 12000);
 
       if (typeof resetTopologyToIdleState === 'function') {
 
