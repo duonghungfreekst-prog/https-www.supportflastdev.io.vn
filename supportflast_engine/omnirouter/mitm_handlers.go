@@ -433,7 +433,7 @@ func AutoStartMitm(baseDir string) error {
 	mitmServerLock.Unlock()
 
 	if running {
-		_ = setToolDns("antigravity", true)
+		_ = setToolDns("antigravity", false)
 		return nil
 	}
 
@@ -443,10 +443,10 @@ func AutoStartMitm(baseDir string) error {
 
 	err := startMitmServer(GlobalMitmDispatcher, baseDir)
 	if err == nil {
-		if dnsErr := setToolDns("antigravity", true); dnsErr != nil {
+		if dnsErr := setToolDns("antigravity", false); dnsErr != nil {
 			log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo cấu hình DNS Antigravity: %v", dnsErr)
 		} else {
-			log.Printf("[ENGINE] [MITM] ✔ Đã tự động kích hoạt chuyển hướng Antigravity IDE qua OmniRouter an toàn")
+			log.Printf("[ENGINE] [MITM] ✔ Đã tắt chuyển hướng Antigravity IDE qua OmniRouter mặc định")
 		}
 	}
 	return err
@@ -629,16 +629,16 @@ func HandleMitmStatus(db *sql.DB, handler http.Handler, baseDir string) http.Han
 				})
 				return
 			}
-			// Tự động kích hoạt DNS cho Antigravity vào file hosts để bảo vệ Quota ngay lập tức
-			if dnsErr := setToolDns("antigravity", true); dnsErr != nil {
-				log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo kích hoạt DNS Antigravity: %v", dnsErr)
+			// Tắt DNS mặc định cho Antigravity; chỉ bật khi người dùng chủ động yêu cầu.
+			if dnsErr := setToolDns("antigravity", false); dnsErr != nil {
+				log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo tắt DNS Antigravity: %v", dnsErr)
 			} else {
-				log.Printf("[ENGINE] [MITM] ✔ Đã tự động kích hoạt DNS Antigravity vào file hosts")
+				log.Printf("[ENGINE] [MITM] ✔ Đã tắt DNS Antigravity mặc định trong file hosts")
 			}
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"success": true,
 				"running": true,
-				"message": "Đã khởi động Máy chủ MITM thành công trên cổng 443 và kích hoạt DNS Antigravity",
+				"message": "Đã khởi động Máy chủ MITM thành công trên cổng 443 và tắt DNS mặc định cho Antigravity",
 			})
 
 		case http.MethodDelete:

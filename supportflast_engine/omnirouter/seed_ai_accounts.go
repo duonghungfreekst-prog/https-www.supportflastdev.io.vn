@@ -67,7 +67,7 @@ var EmbeddedProxyPools = []CoreProxyPoolSeed{
 }
 
 // EmbeddedSettingsJSON cấu hình router cố định
-const EmbeddedSettingsJSON = `{"mitmRouterBaseUrl":"http://localhost:20128","mitmCertInstalled":true,"mitmEnabled":true,"dnsToolEnabled":{"antigravity":true},"quotaVisibility":{"antigravity":{"hidden":[]}},"providerStrategies":{"antigravity":{"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20},"opencode":{"proxyPoolId":"96684253-0dbb-471a-ad1f-6a1fb23a6213","rotateStrategy":"random"}},"password":null,"rtkEnabled":false,"capacityAdapter":{"vision":{"enabled":false,"roundRobin":true,"models":[]},"audioInput":{"enabled":false,"roundRobin":true,"models":[]}},"requireApiKey":false,"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20,"enableObservability":true,"comboStrategies":{},"requireLogin":false}`
+const EmbeddedSettingsJSON = `{"mitmRouterBaseUrl":"http://localhost:20128","mitmCertInstalled":true,"mitmEnabled":true,"dnsToolEnabled":{"antigravity":false},"quotaVisibility":{"antigravity":{"hidden":[]}},"providerStrategies":{"antigravity":{"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20},"opencode":{"proxyPoolId":"96684253-0dbb-471a-ad1f-6a1fb23a6213","rotateStrategy":"random"}},"password":null,"rtkEnabled":false,"capacityAdapter":{"vision":{"enabled":false,"roundRobin":true,"models":[]},"audioInput":{"enabled":false,"roundRobin":true,"models":[]}},"requireApiKey":false,"fallbackStrategy":"round-robin","stickyRoundRobinLimit":20,"enableObservability":true,"comboStrategies":{},"requireLogin":false}`
 
 // EmbeddedKVList danh sách KV cố định
 var EmbeddedKVList = []CoreKVSeed{

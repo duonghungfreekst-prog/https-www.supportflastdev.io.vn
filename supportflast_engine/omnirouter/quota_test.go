@@ -151,3 +151,104 @@ func TestIDEQuotaCacheRAM(t *testing.T) {
 		t.Errorf("Cache thời gian không hợp lệ")
 	}
 }
+
+// TestVirtualAggregatedQuotaPooling kiểm tra ảo hóa hạn mức chuẩn 9Router (chống 0% Claude & Notice cam)
+func TestVirtualAggregatedQuotaPooling(t *testing.T) {
+	rawInput := []byte(`{
+		"groups": [
+			{
+				"displayName": "Gemini Models",
+				"buckets": [
+					{
+						"bucketId": "gemini_weekly",
+						"displayName": "Weekly Limit",
+						"window": "WEEKLY",
+						"remainingFraction": 0.93,
+						"disabled": false
+					}
+				]
+			},
+			{
+				"displayName": "Claude and GPT models",
+				"buckets": [
+					{
+						"bucketId": "claude_weekly",
+						"displayName": "Weekly Limit",
+						"window": "WEEKLY",
+						"remainingFraction": 0.0,
+						"disabled": true
+					}
+				]
+			}
+		]
+	}`)
+
+	patched := buildVirtualAggregatedQuota(rawInput)
+
+	var res struct {
+		Groups []struct {
+			DisplayName string `json:"displayName"`
+			Buckets     []struct {
+				RemainingFraction float64 `json:"remainingFraction"`
+				Disabled          bool    `json:"disabled"`
+			} `json:"buckets"`
+		} `json:"groups"`
+	}
+
+	if err := json.Unmarshal(patched, &res); err != nil {
+		t.Fatalf("Không thể parse JSON sau ảo hóa: %v", err)
+	}
+
+	if len(res.Groups) != 2 {
+		t.Fatalf("Mong đợi 2 nhóm, nhận được %d", len(res.Groups))
+	}
+
+	// Kiểm tra Claude group
+	claudeGroup := res.Groups[1]
+	if claudeGroup.Buckets[0].RemainingFraction != 1.0 {
+		t.Errorf("Mong đợi Claude remainingFraction = 1.0, nhận %f", claudeGroup.Buckets[0].RemainingFraction)
+	}
+	if claudeGroup.Buckets[0].Disabled != false {
+		t.Errorf("Mong đợi Claude disabled = false, nhận %v", claudeGroup.Buckets[0].Disabled)
+	}
+
+	// Kiểm tra Gemini group
+	geminiGroup := res.Groups[0]
+	if geminiGroup.Buckets[0].RemainingFraction != 1.0 {
+		t.Errorf("Mong đợi Gemini remainingFraction = 1.0, nhận %f", geminiGroup.Buckets[0].RemainingFraction)
+	}
+	if geminiGroup.Buckets[0].Disabled != false {
+		t.Errorf("Mong đợi Gemini disabled = false, nhận %v", geminiGroup.Buckets[0].Disabled)
+	}
+}
+
+// TestModelAwareAccountOrdering kiểm tra định tuyến bám dính và ưu tiên tài khoản còn quota Claude
+func TestModelAwareAccountOrdering(t *testing.T) {
+	accExhausted := ProviderConnection{ID: "acc_cld_exhausted", Name: "Hết Claude"}
+	accReady := ProviderConnection{ID: "acc_cld_ready", Name: "Còn Claude"}
+
+	// Thiết lập cache Quota: Acc1 hết Claude (0%), Acc2 còn Claude (95%)
+	SetCachedQuotas("acc_cld_exhausted", map[string]QuotaItem{
+		"claude_gpt_weekly": {RemainingPercentage: 0.0},
+	})
+	SetCachedQuotas("acc_cld_ready", map[string]QuotaItem{
+		"claude_gpt_weekly": {RemainingPercentage: 95.0},
+	})
+
+	accounts := []ProviderConnection{accExhausted, accReady}
+
+	// Khi gọi Claude: Router phải ưu tiên đưa accReady lên đầu
+	ordered := orderAccountsForModel(accounts, "claude-sonnet-4-6", 0)
+	if len(ordered) != 2 {
+		t.Fatalf("Mong đợi 2 accounts, nhận %d", len(ordered))
+	}
+	if ordered[0].ID != "acc_cld_ready" {
+		t.Errorf("Mong đợi acc_cld_ready đứng đầu danh sách, nhận được: %s", ordered[0].ID)
+	}
+
+	// Khi gọi request không chỉ định model: giữ nguyên Session Affinity bắt đầu từ startIdx=0
+	orderedGeneral := orderAccountsForModel(accounts, "", 0)
+	if orderedGeneral[0].ID != "acc_cld_exhausted" {
+		t.Errorf("Mong đợi Session Affinity giữ nguyên startIdx=0, nhận được: %s", orderedGeneral[0].ID)
+	}
+}

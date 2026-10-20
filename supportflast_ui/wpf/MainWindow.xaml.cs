@@ -774,7 +774,14 @@ public partial class MainWindow : Window
             // 3. Khởi động Backend
             await StartBackendInternalAsync(forceRestart: false);
             SendLogToWebView($"[UI {DateTime.Now:HH:mm:ss}] [CLEAN-UPDATE] Hệ thống đã sẵn sàng, các app đã được điều hướng tự động!");
-        }
+
+
+            // Tự động kích hoạt Intercept bảo vệ Quota Antigravity IDE ngay lập tức (Zero-Delay Intercept)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1500);
+                await EnableMitmInterceptAsync();
+            });        }
         catch (Exception ex)
         {
             SendLogToWebView($"[UI {DateTime.Now:HH:mm:ss}] [CLEAN-UPDATE LỖI] Cảnh báo auto-update: {ex.Message}");

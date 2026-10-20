@@ -34,6 +34,8 @@ import (
 
 	"path/filepath"
 
+	"strconv"
+
 	"strings"
 
 	"sync"
@@ -338,17 +340,42 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		}
 		defer r.Body.Close()
 
-		// KIẾN TRÚC CHUẨN 100% 9ROUTER.COM:
-		// Antigravity IDE CHỈ chuyển hướng sinh nội dung (:generateContent & :streamGenerateContent) qua Pool tài khoản.
-		// Tất cả các request Quota (retrieveUserQuotaSummary), Model list (fetchAvailableModels), LoadCodeAssist,
-		// Metrics, v.v... được PASSTHROUGH trực tiếp nguyên bản 100% lên Google với Token thật của IDE!
-		// => Giúp Quota không bao giờ bị nhảy số giữa các tài khoản và loại bỏ hoàn toàn độ trễ (delay) / spinner Refreshing!
-		isGenerateReq := strings.Contains(r.URL.Path, ":generateContent") || strings.Contains(r.URL.Path, ":streamGenerateContent")
-		isMetadataOrQuota := strings.HasPrefix(r.URL.Path, "/v1internal") ||
-			strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") ||
-			strings.Contains(r.URL.Path, "fetchAvailableModels") ||
-			strings.Contains(r.URL.Path, "loadCodeAssist")
-		if !isGenerateReq && isMetadataOrQuota {
+		// NẾU LÀ REQUEST QUOTA: Kiểm tra Virtual Aggregated RAM Cache (chuẩn 9Router)
+		// Trả về ngay lập tức nếu cache còn hiệu lực (< 30s) -> Độ trễ < 1ms, chống spam và bảo vệ tuyệt đối quota
+		isQuotaReq := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
+		if isQuotaReq {
+			ideQuotaCacheLock.RLock()
+			cached, hasCache := ideQuotaCache[r.URL.Path]
+			ideQuotaCacheLock.RUnlock()
+			if hasCache && cached != nil && time.Since(cached.CachedAt) < 30*time.Second {
+				for k, v := range cached.Header {
+					kLower := strings.ToLower(k)
+					if kLower == "content-length" || kLower == "transfer-encoding" || kLower == "content-encoding" {
+						continue
+					}
+					for _, val := range v {
+						w.Header().Add(k, val)
+					}
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Length", strconv.Itoa(len(cached.Body)))
+				w.Header().Set("X-ModelRouter9-Cache", "HIT-AGGREGATED-QUOTA")
+				w.WriteHeader(cached.StatusCode)
+				_, _ = w.Write(cached.Body)
+				log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Phục vụ Quota từ Aggregated RAM Cache (<1ms): %s", r.URL.Path)
+				return
+			}
+		}
+
+		// BẢO VỆ TUYỆT ĐỐI QUOTA & TÀI KHOẢN CỦA NGƯỜI DÙNG:
+		// Chỉ passthrough các request hoàn toàn là cấu hình plugin tĩnh (không tính phí, không tiêu tốn token):
+		// ví dụ: loadCodeAssist (cấu hình extension), cclog (telemetry).
+		// TUYỆT ĐỐI KHÔNG passthrough các request sinh mã (completeCode, predict, generateContent...)
+		// hoặc Quota (retrieveUserQuotaSummary, fetchAvailableModels).
+		// TẤT CẢ các request đó PHẢI CHẠY QUA POOL TÀI KHOẢN HỆ THỐNG để bảo vệ 100% tài khoản cá nhân,
+		// bảo đảm tài khoản cá nhân của người dùng KHÔNG BAO GIỜ bị trừ token hay quota!
+		isPureStaticMeta := strings.Contains(r.URL.Path, "loadCodeAssist") || strings.Contains(r.URL.Path, "cclog")
+		if isPureStaticMeta {
 			targetHost := "daily-cloudcode-pa.googleapis.com"
 			if strings.Contains(strings.ToLower(r.Host), "cloudcode-pa.googleapis.com") && !strings.Contains(strings.ToLower(r.Host), "daily-") {
 				targetHost = "cloudcode-pa.googleapis.com"
@@ -382,10 +409,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					}
 					w.WriteHeader(passResp.StatusCode)
 					_, _ = io.Copy(w, passResp.Body)
-					log.Printf("[ENGINE] [GEMINI-PROXY] [9router-Passthrough] %s %s -> %s (Status: %d)", r.Method, r.URL.Path, targetHost, passResp.StatusCode)
+					log.Printf("[ENGINE] [GEMINI-PROXY] [Static-Meta] %s %s -> %s (Status: %d)", r.Method, r.URL.Path, targetHost, passResp.StatusCode)
 					return
 				}
-				log.Printf("[ENGINE] [GEMINI-PROXY] [9router-Passthrough] Failed (%v), fallback pool", doErr)
+				log.Printf("[ENGINE] [GEMINI-PROXY] [Static-Meta] Failed (%v), fallback pool", doErr)
 			}
 		}
 
@@ -581,7 +608,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		for tierIdx, tierModel := range modelTiers {
 
-			maxAttempts := numAccounts
+			// Sắp xếp tài khoản thông minh theo model (Model-Aware Account Routing chuẩn 9Router)
+			// Nếu model là Claude -> ưu tiên tuyệt đối các tài khoản CÒN QUOTA CLAUDE lên đầu
+			// Nếu model là Gemini -> ưu tiên các tài khoản CÒN QUOTA GEMINI lên đầu
+			// Bám dính Session Affinity từ startIdx, loại bỏ gián đoạn nhảy tài khoản thất thường
+			orderedAccounts := orderAccountsForModel(readyAccounts, tierModel, startIdx)
+			maxAttempts := len(orderedAccounts)
 
 			if maxAttempts > 19 {
 
@@ -595,9 +627,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 			for attempt := 0; attempt < maxAttempts; attempt++ {
 
-				idx := (startIdx + attempt) % numAccounts
-
-				acc := readyAccounts[idx]
+				acc := orderedAccounts[attempt]
 
 
 
@@ -1065,101 +1095,75 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-		// Pipe response headers nguyên bản từ upstream về IDE
+		// Nếu là request Quota (retrieveUserQuotaSummary hoặc fetchAvailableModels), xử lý Virtual Aggregated Quota chuẩn 9Router
+		if isQuotaReq && resp.StatusCode == http.StatusOK {
+			var quotaRespBuf bytes.Buffer
+			_, _ = io.Copy(&quotaRespBuf, resp.Body)
+			rawBytes := quotaRespBuf.Bytes()
 
-		for key, values := range resp.Header {
-
-			for _, v := range values {
-
-				w.Header().Add(key, v)
-
+			if usedAccount != nil {
+				go syncLiveQuotaFromUpstreamResponse(db, usedAccount, r.URL.Path, rawBytes)
 			}
 
-		}
+			// Tạo Virtual Aggregated Quota chuẩn 9Router: đảm bảo cả Claude và Gemini đều hiển thị 100% dồi dào trên IDE
+			aggregatedBytes := buildVirtualAggregatedQuota(rawBytes)
 
-		w.WriteHeader(resp.StatusCode)
-
-
-
-		// Pipe response body nguyên bản (SSE stream hoặc JSON)
-
-		// Đây là transparent proxy nên IDE nhận đúng format Gemini native
-
-		flusher, isFlusher := w.(http.Flusher)
-
-
-
-		// Nếu là request Quota (retrieveUserQuotaSummary hoặc fetchAvailableModels), hứng lại body để sync số liệu thật
-
-		isQuotaReq := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
-
-		var quotaRespBuf bytes.Buffer
-
-		var totalRespBytes int64
-
-
-
-		buf := make([]byte, 4096)
-
-		for {
-
-			n, readErr := resp.Body.Read(buf)
-
-			if n > 0 {
-
-				totalRespBytes += int64(n)
-
-				if isQuotaReq {
-
-					quotaRespBuf.Write(buf[:n])
-
-				}
-
-				_, writeErr := w.Write(buf[:n])
-
-				if writeErr != nil {
-
-					break
-
-				}
-
-				if isFlusher {
-
-					flusher.Flush()
-
-				}
-
-			}
-
-			if readErr != nil {
-
-				break
-
-			}
-
-		}
-
-
-
-		if isQuotaReq && quotaRespBuf.Len() > 0 && resp.StatusCode == http.StatusOK {
+			// Lưu vào RAM Cache (TTL 30s)
 			ideQuotaCacheLock.Lock()
 			ideQuotaCache[r.URL.Path] = &CachedIDEQuotaResponse{
 				StatusCode: resp.StatusCode,
 				Header:     resp.Header.Clone(),
-				Body:       quotaRespBuf.Bytes(),
+				Body:       aggregatedBytes,
 				CachedAt:   time.Now(),
 			}
 			ideQuotaCacheLock.Unlock()
-			if usedAccount != nil {
-				go syncLiveQuotaFromUpstreamResponse(db, usedAccount, r.URL.Path, quotaRespBuf.Bytes())
+
+			// Pipe headers về cho IDE (bỏ qua Content-Length cũ và các header nén)
+			for key, values := range resp.Header {
+				kLower := strings.ToLower(key)
+				if kLower == "content-length" || kLower == "transfer-encoding" || kLower == "content-encoding" {
+					continue
+				}
+				for _, v := range values {
+					w.Header().Add(key, v)
+				}
 			}
-		} else if !isQuotaReq && resp != nil && resp.StatusCode == http.StatusOK {
-			reqs := atomic.AddUint64(&accountRequestCounter, 1)
-			if reqs%40 == 0 {
-				atomic.AddUint64(&activeAccountIdx, 1)
-				ideQuotaCacheLock.Lock()
-				ideQuotaCache = make(map[string]*CachedIDEQuotaResponse)
-				ideQuotaCacheLock.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Length", strconv.Itoa(len(aggregatedBytes)))
+			w.Header().Set("X-ModelRouter9-Aggregated", "true")
+			w.WriteHeader(resp.StatusCode)
+			_, _ = w.Write(aggregatedBytes)
+			log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã ảo hóa Quota Aggregated (100%% Claude & Gemini) gửi về cho Antigravity IDE (URL: %s)", r.URL.Path)
+			return
+		}
+
+		// Pipe response headers nguyên bản từ upstream về IDE (SSE stream hoặc request thông thường)
+		for key, values := range resp.Header {
+			for _, v := range values {
+				w.Header().Add(key, v)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+
+		// Pipe response body nguyên bản (SSE stream hoặc JSON)
+		// Đây là transparent proxy nên IDE nhận đúng format Gemini native
+		flusher, isFlusher := w.(http.Flusher)
+		var totalRespBytes int64
+		buf := make([]byte, 4096)
+		for {
+			n, readErr := resp.Body.Read(buf)
+			if n > 0 {
+				totalRespBytes += int64(n)
+				_, writeErr := w.Write(buf[:n])
+				if writeErr != nil {
+					break
+				}
+				if isFlusher {
+					flusher.Flush()
+				}
+			}
+			if readErr != nil {
+				break
 			}
 		}
 
@@ -1243,9 +1247,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-			// Ghi nhận trừ Quota trực tiếp vào TiDB Cloud và gửi Live Telemetry lên Web
-
-			ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
+			// Ghi nhận trừ Quota trực tiếp vào TiDB Cloud và gửi Live Telemetry lên Web (chỉ khi là request AI, không trừ quota cho request xem quota)
+			if !isQuotaReq {
+				ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
+			}
 
 		}
 
@@ -2465,6 +2470,205 @@ func StartBackgroundTokenRefreshWorker(db *sql.DB) {
 
 	})
 
+}
+
+// isClaudeModel kiểm tra xem model có thuộc dòng Claude/GPT hay không
+func isClaudeModel(m string) bool {
+	low := strings.ToLower(m)
+	return strings.Contains(low, "claude") || strings.Contains(low, "sonnet") || strings.Contains(low, "opus") || strings.Contains(low, "haiku") || strings.Contains(low, "gpt")
+}
+
+// isGeminiModel kiểm tra xem model có thuộc dòng Gemini hay không
+func isGeminiModel(m string) bool {
+	low := strings.ToLower(m)
+	return strings.Contains(low, "gemini")
+}
+
+// isAccountClaudeReady kiểm tra xem tài khoản có còn hạn mức Claude hay không
+func isAccountClaudeReady(acc *ProviderConnection) bool {
+	if acc == nil {
+		return false
+	}
+	if cached, ok := GetCachedQuotas(acc.ID); ok && len(cached) > 0 {
+		if q, has := cached["claude_gpt_weekly"]; has && q.RemainingPercentage <= 0.0 {
+			return false
+		}
+		if q, has := cached["claude_gpt_session"]; has && q.RemainingPercentage <= 0.0 {
+			return false
+		}
+		return true
+	}
+	if len(acc.Data) > 0 {
+		var dataMap map[string]interface{}
+		if err := json.Unmarshal(acc.Data, &dataMap); err == nil && dataMap != nil {
+			if qMap, ok := dataMap["quotas"].(map[string]interface{}); ok && qMap != nil {
+				if cWeekly, ok := qMap["claude_gpt_weekly"].(map[string]interface{}); ok && cWeekly != nil {
+					if rem, ok := cWeekly["remainingPercentage"].(float64); ok && rem <= 0.0 {
+						return false
+					}
+				}
+				if cSession, ok := qMap["claude_gpt_session"].(map[string]interface{}); ok && cSession != nil {
+					if rem, ok := cSession["remainingPercentage"].(float64); ok && rem <= 0.0 {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
+}
+
+// isAccountGeminiReady kiểm tra xem tài khoản có còn hạn mức Gemini hay không
+func isAccountGeminiReady(acc *ProviderConnection) bool {
+	if acc == nil {
+		return false
+	}
+	if cached, ok := GetCachedQuotas(acc.ID); ok && len(cached) > 0 {
+		if q, has := cached["gemini_weekly"]; has && q.RemainingPercentage <= 0.0 {
+			return false
+		}
+		if q, has := cached["gemini_session"]; has && q.RemainingPercentage <= 0.0 {
+			return false
+		}
+		return true
+	}
+	if len(acc.Data) > 0 {
+		var dataMap map[string]interface{}
+		if err := json.Unmarshal(acc.Data, &dataMap); err == nil && dataMap != nil {
+			if qMap, ok := dataMap["quotas"].(map[string]interface{}); ok && qMap != nil {
+				if gWeekly, ok := qMap["gemini_weekly"].(map[string]interface{}); ok && gWeekly != nil {
+					if rem, ok := gWeekly["remainingPercentage"].(float64); ok && rem <= 0.0 {
+						return false
+					}
+				}
+				if gSession, ok := qMap["gemini_session"].(map[string]interface{}); ok && gSession != nil {
+					if rem, ok := gSession["remainingPercentage"].(float64); ok && rem <= 0.0 {
+						return false
+					}
+				}
+			}
+		}
+	}
+	return true
+}
+
+// orderAccountsForModel sắp xếp danh sách tài khoản theo model cần gọi (Model-Aware Routing chuẩn 9Router)
+func orderAccountsForModel(accounts []ProviderConnection, model string, startIdx int) []ProviderConnection {
+	n := len(accounts)
+	if n <= 1 {
+		return accounts
+	}
+
+	// 1. Tạo danh sách xoay vòng từ startIdx để đảm bảo Session Affinity
+	base := make([]ProviderConnection, n)
+	for i := 0; i < n; i++ {
+		base[i] = accounts[(startIdx+i)%n]
+	}
+
+	// 2. Nếu model là Claude -> ưu tiên tài khoản còn Quota Claude lên trước
+	if isClaudeModel(model) {
+		var readyCld []ProviderConnection
+		var exhaustedCld []ProviderConnection
+		for _, acc := range base {
+			if isAccountClaudeReady(&acc) {
+				readyCld = append(readyCld, acc)
+			} else {
+				exhaustedCld = append(exhaustedCld, acc)
+			}
+		}
+		if len(readyCld) > 0 {
+			return append(readyCld, exhaustedCld...)
+		}
+	} else if isGeminiModel(model) {
+		// Nếu model là Gemini -> ưu tiên tài khoản còn Quota Gemini lên trước
+		var readyGem []ProviderConnection
+		var exhaustedGem []ProviderConnection
+		for _, acc := range base {
+			if isAccountGeminiReady(&acc) {
+				readyGem = append(readyGem, acc)
+			} else {
+				exhaustedGem = append(exhaustedGem, acc)
+			}
+		}
+		if len(readyGem) > 0 {
+			return append(readyGem, exhaustedGem...)
+		}
+	}
+
+	return base
+}
+
+// buildVirtualAggregatedQuota biến đổi response quota của Google thành Virtual Aggregated Quota chuẩn 9Router
+// Giúp Antigravity IDE luôn hiển thị 100% hạn mức dồi dào, không bị Notice hay khóa model
+func buildVirtualAggregatedQuota(raw []byte) []byte {
+	if len(raw) == 0 {
+		return raw
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal(raw, &data); err != nil || data == nil {
+		return raw
+	}
+
+	patchGroupList := func(groupsRaw interface{}) {
+		groups, ok := groupsRaw.([]interface{})
+		if !ok {
+			return
+		}
+		for _, gItem := range groups {
+			gMap, ok := gItem.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			bucketsRaw, hasBuckets := gMap["buckets"]
+			if !hasBuckets {
+				continue
+			}
+			buckets, ok := bucketsRaw.([]interface{})
+			if !ok {
+				continue
+			}
+			for _, bItem := range buckets {
+				bMap, ok := bItem.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				// Ảo hóa hạn mức: đảm bảo tài khoản người dùng hiển thị 100% trên IDE
+				bMap["remainingFraction"] = 1.0
+				bMap["disabled"] = false
+			}
+		}
+	}
+
+	if groups, has := data["groups"]; has {
+		patchGroupList(groups)
+	}
+
+	if qs, has := data["quotaSummary"]; has {
+		if qsMap, ok := qs.(map[string]interface{}); ok {
+			if groups, hasG := qsMap["groups"]; hasG {
+				patchGroupList(groups)
+			}
+		}
+	}
+
+	if modelsRaw, has := data["models"]; has {
+		if modelsMap, ok := modelsRaw.(map[string]interface{}); ok {
+			for _, mVal := range modelsMap {
+				if mInfo, ok := mVal.(map[string]interface{}); ok {
+					if qInfo, ok := mInfo["quotaInfo"].(map[string]interface{}); ok {
+						qInfo["remainingFraction"] = 1.0
+						qInfo["disabled"] = false
+					}
+				}
+			}
+		}
+	}
+
+	patched, err := json.Marshal(data)
+	if err != nil {
+		return raw
+	}
+	return patched
 }
 
 
