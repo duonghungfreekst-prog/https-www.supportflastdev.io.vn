@@ -2779,8 +2779,9 @@ func HandleRealtimeLogsJSON(w http.ResponseWriter, r *http.Request) {
 
 
 	if len(recent) > 0 {
-
-		for _, entry := range recent {
+		// Sắp xếp thứ tự giảm dần: Mốc thời gian mới nhất (đang dùng) luôn nằm ở đầu danh sách (index 0)
+		for i := len(recent) - 1; i >= 0; i-- {
+			entry := recent[i]
 
 			msg := entry.ErrorMessage
 

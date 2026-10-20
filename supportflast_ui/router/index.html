@@ -13609,7 +13609,11 @@
 
                 tokens: Number(tokVal).toLocaleString(),
 
-                id: (d && d.id) ? d.id : (idx + 1)
+                id: (d && d.id) ? d.id : (idx + 1),
+
+                rawTimestamp: (d && (d.timestamp_iso || d.timestamp)) || tStr,
+
+                rawId: (d && d.id) ? Number(d.id) : (idx + 1)
 
               };
 
@@ -13647,7 +13651,11 @@
 
                 tokens: (d.totalTokens || ((d.promptTokens || 0) + (d.completionTokens || 0)) || 520).toLocaleString(),
 
-                id: d.id || (idx + 1)
+                id: d.id || (idx + 1),
+
+                rawTimestamp: (d && (d.timestamp_iso || d.timestamp)) || '',
+
+                rawId: (d && d.id) ? Number(d.id) : (idx + 1)
 
               }));
 
@@ -13659,6 +13667,20 @@
 
 
 
+        // BAT BUOC: Sap xep moc thoi gian MOI NHAT (DANG DUNG) LUON O DAU BANG (hang 1)
+        // Khong bao gio de moc thoi gian moi nhat bi tut ve phia sau
+        if (rows.length > 1) {
+          rows.sort((a, b) => {
+            const timeA = a.rawTimestamp || a.time || '';
+            const timeB = b.rawTimestamp || b.time || '';
+            if (timeA && timeB && timeA !== timeB) {
+              return String(timeB).localeCompare(String(timeA));
+            }
+            return (b.rawId || 0) - (a.rawId || 0);
+          });
+        }
+        rows = rows.slice(0, 15);
+
         const tbody = document.getElementById('live-requests-tbody');
 
         if (!tbody || rows.length === 0) return;
@@ -13667,11 +13689,14 @@
 
         tbody.innerHTML = '';
 
-        rows.forEach(r => {
+        rows.forEach((r, rIdx) => {
 
           const tr = document.createElement('tr');
 
-          tr.className = 'hover:bg-white/5 transition-colors cursor-pointer';
+          // Hang dau tien (moc thoi gian moi nhat dang dung) highlight noi bat de de quan sat
+          tr.className = rIdx === 0 
+            ? 'hover:bg-white/5 bg-cyan-500/10 border-l-2 border-cyan-400 transition-colors cursor-pointer'
+            : 'hover:bg-white/5 transition-colors cursor-pointer';
 
           tr.onclick = () => inspectPayload(r.id);
 
