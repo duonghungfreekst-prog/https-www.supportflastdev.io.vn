@@ -10068,31 +10068,60 @@
 
             const created = k.createdAt ? new Date(k.createdAt).toLocaleDateString('vi-VN') : 'Mới tạo';
 
-            const isAct = isConnActive(k);
-
             const qLimit = (typeof k.quotaLimit === 'number') ? k.quotaLimit : ((typeof k.quota_limit === 'number') ? k.quota_limit : 0);
             const uReq = (typeof k.usedRequests === 'number') ? k.usedRequests : ((typeof k.used_requests === 'number') ? k.used_requests : 0);
-            const quotaDisplay = qLimit > 0 
-              ? `${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req`
-              : 'Không giới hạn';
+            const isQuotaExceeded = qLimit > 0 && uReq >= qLimit;
+            const isExpired = k.expiresAt && new Date(k.expiresAt) < new Date();
+            const rawActive = isConnActive(k);
+            const isAct = rawActive && !isQuotaExceeded && !isExpired;
+
+            let quotaDisplay = 'Không giới hạn';
+            if (qLimit > 0) {
+              if (isQuotaExceeded) {
+                const over = uReq - qLimit;
+                quotaDisplay = `<span class="text-rose-400 font-bold">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold ml-1">VƯỢT ${over.toLocaleString('vi-VN')}</span>`;
+              } else {
+                const rem = qLimit - uReq;
+                quotaDisplay = `<span class="text-cyan-300">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="text-slate-500 text-[10px] font-sans ml-1">(còn ${rem.toLocaleString('vi-VN')})</span>`;
+              }
+            }
+
+            let statusBadge = '';
+            let switchTitle = '';
+            let actionBtn = '';
+            if (isQuotaExceeded) {
+              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">QUÁ HẠN MỨC (ĐÃ KHÓA)</span>`;
+              switchTitle = `Khóa này đã sử dụng hết hạn mức (${uReq.toLocaleString('vi-VN')}/${qLimit.toLocaleString('vi-VN')} req). Bấm 'Đặt lại Quota' để mở khóa.`;
+              actionBtn = `<button onclick="resetApiKeyQuota('${k.id}')" class="text-cyan-400 hover:text-cyan-300 hover:underline font-bold text-xs">Đặt lại Quota</button>`;
+            } else if (isExpired) {
+              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">HẾT HẠN</span>`;
+              switchTitle = 'API Key đã hết hạn thời gian sử dụng.';
+              actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', ${rawActive})" class="${rawActive ? 'text-amber-400' : 'text-emerald-400'} hover:underline font-bold text-xs">${rawActive ? 'Tắt' : 'Bật'}</button>`;
+            } else if (rawActive) {
+              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">HOẠT ĐỘNG</span>`;
+              switchTitle = 'Đang hoạt động (Nhấn để tạm khóa)';
+              actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', true)" class="text-amber-400 hover:text-amber-300 hover:underline font-bold text-xs">Tắt</button>`;
+            } else {
+              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-500/20 text-slate-300 border border-slate-500/40">TẠM KHÓA</span>`;
+              switchTitle = 'Đang tạm khóa (Nhấn để kích hoạt)';
+              actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', false)" class="text-emerald-400 hover:text-emerald-300 hover:underline font-bold text-xs">Bật</button>`;
+            }
 
             tr.innerHTML = `
               <td class="py-3.5 px-3 font-sans font-semibold text-white">${k.name || 'API Key'}</td>
               <td class="py-3.5 px-3 text-cyan-400 font-mono font-bold">${shortKey}</td>
-              <td class="py-3.5 px-3 ${qLimit > 0 ? 'text-cyan-300' : 'text-slate-300'} font-mono">${quotaDisplay}</td>
+              <td class="py-3.5 px-3 font-mono">${quotaDisplay}</td>
               <td class="py-3.5 px-3 text-slate-400 font-mono">${created}</td>
               <td class="py-3.5 px-3">
                 <div class="flex items-center gap-2">
-                  <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="nexus-switch nexus-switch-sm ${isAct ? 'active' : ''}" title="${isAct ? 'Đang hoạt động (Nhấn để tạm khóa)' : 'Đang tạm khóa (Nhấn để kích hoạt)'}">
+                  <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="nexus-switch nexus-switch-sm ${isAct ? 'active' : ''}" title="${switchTitle}">
                     <div class="nexus-switch-knob"></div>
                   </button>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono ${isAct ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'}">
-                    ${isAct ? 'HOẠT ĐỘNG' : 'TẠM KHÓA'}
-                  </span>
+                  ${statusBadge}
                 </div>
               </td>
               <td class="py-3.5 px-3 text-right space-x-2 font-mono">
-                <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="${isAct ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'} hover:underline font-bold text-xs">${isAct ? 'Tắt' : 'Bật'}</button>
+                ${actionBtn}
                 <button onclick="copyToClipboard('${k.key || shortKey}')" class="text-cyan-400 hover:underline">Sao chép</button>
                 <button onclick="revokeKeyLive('${k.id}')" class="text-red-400 hover:underline">Xóa</button>
               </td>
@@ -31461,6 +31490,27 @@
       }
 
     }
+
+    // Đặt lại Quota về 0 và mở khóa cho API Key khi đã dùng hết hạn mức
+    async function resetApiKeyQuota(id) {
+      if (!confirm('Bạn có chắc chắn muốn ĐẶT LẠI số lượt sử dụng về 0 để mở khóa cho API Key này không?')) return;
+      try {
+        const res = await apiRequest('/api/keys/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resetQuota: true, isActive: true })
+        });
+        if (res.ok) {
+          showToastNotification('✔ Đã đặt lại Quota về 0 và mở khóa thành công!');
+          await loadApiKeysLive();
+        } else {
+          showToastNotification('Không thể đặt lại Quota: HTTP ' + res.status, true);
+        }
+      } catch (err) {
+        showToastNotification('Lỗi: ' + (err.message || err), true);
+      }
+    }
+
 
     // =========================================================================
 

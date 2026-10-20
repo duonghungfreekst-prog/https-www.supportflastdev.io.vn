@@ -443,6 +443,90 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
+		// KIEM TRA HAN MUC QUOTA CUA CLIENT API KEY TRUOC KHI GOI POOL AI:
+		clientKeyToCheck := ""
+		authH := r.Header.Get("Authorization")
+		if strings.HasPrefix(authH, "Bearer ") {
+			tok := strings.TrimSpace(strings.TrimPrefix(authH, "Bearer "))
+			if strings.HasPrefix(tok, "sk-") {
+				clientKeyToCheck = tok
+			}
+		}
+		if clientKeyToCheck == "" {
+			xk := strings.TrimSpace(r.Header.Get("x-api-key"))
+			if strings.HasPrefix(xk, "sk-") {
+				clientKeyToCheck = xk
+			}
+		}
+		if clientKeyToCheck == "" {
+			clientKeyToCheck = GetActiveClientKey(db)
+		}
+		if clientKeyToCheck == "" || strings.Contains(clientKeyToCheck, "master") {
+			if db != nil {
+				var uKey string
+				_ = db.QueryRow(`
+					SELECT api_key FROM omni_client_keys 
+					WHERE is_active = 1 
+					  AND id NOT LIKE '%master%' 
+					  AND api_key NOT LIKE '%master-live%' 
+					ORDER BY created_at DESC 
+					LIMIT 1
+				`).Scan(&uKey)
+				if uKey != "" {
+					clientKeyToCheck = strings.TrimSpace(uKey)
+				}
+			}
+		}
+
+		if clientKeyToCheck != "" {
+			keyItem, status, errMsg := CheckClientKeyStatus(clientKeyToCheck)
+			if status == "QUOTA_EXCEEDED" {
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han muc Quota (%s)", clientKeyToCheck, errMsg)
+				if db != nil && keyItem != nil {
+					_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID)
+					RefreshKeyCache(db)
+				}
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    429,
+						"message": fmt.Sprintf("Khoa API da su dung het han muc Quota (%d/%d req). Vui long dat lai hoac nang han muc tren Dashboard.", keyItem.UsedRequests, keyItem.QuotaLimit),
+						"status":  "RESOURCE_EXHAUSTED",
+					},
+				})
+				return
+			} else if status == "EXPIRED" {
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han su dung (%s)", clientKeyToCheck, errMsg)
+				if db != nil && keyItem != nil {
+					_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID)
+					RefreshKeyCache(db)
+				}
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    403,
+						"message": errMsg,
+						"status":  "PERMISSION_DENIED",
+					},
+				})
+				return
+			} else if status == "INACTIVE" {
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s dang bi TAM KHOA", clientKeyToCheck)
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    403,
+						"message": "Khoa API nay dang o trang thai TAM KHOA. Vui long kich hoat lai tren Dashboard.",
+						"status":  "PERMISSION_DENIED",
+					},
+				})
+				return
+			}
+		}
+
 		// Lấy danh sách tài khoản AI khả dụng
 
 		accounts := GetCachedActiveProviders()

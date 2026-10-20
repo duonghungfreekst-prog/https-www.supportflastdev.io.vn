@@ -335,43 +335,37 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 			}
 
 			var body struct {
-
-				IsActive *bool `json:"isActive"`
-
+				IsActive   *bool  `json:"isActive"`
+				ResetQuota *bool  `json:"resetQuota"`
+				QuotaLimit *int64 `json:"quotaLimit"`
 			}
-
 			_ = json.NewDecoder(r.Body).Decode(&body)
 
-
-
 			var err error
-
-			if body.IsActive != nil {
-
+			if body.ResetQuota != nil && *body.ResetQuota {
+				_, err = db.Exec("UPDATE omni_client_keys SET used_requests = 0, is_active = 1 WHERE id = ?", id)
+			} else if body.QuotaLimit != nil {
+				_, err = db.Exec("UPDATE omni_client_keys SET quota_limit = ?, is_active = 1 WHERE id = ?", *body.QuotaLimit, id)
+			} else if body.IsActive != nil {
 				actVal := 0
-
 				if *body.IsActive {
-
 					actVal = 1
-
 				}
-
 				_, err = db.Exec("UPDATE omni_client_keys SET is_active = ? WHERE id = ?", actVal, id)
-
 			} else {
-
-				_, err = db.Exec("UPDATE omni_client_keys SET is_active = 1 - is_active WHERE id = ?", id)
-
+				// Nếu key đang bị quá hạn mức mà người dùng bấm bật lại: tự động reset used_requests về 0
+				var uReq, qLim int64
+				_ = db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE id = ?", id).Scan(&uReq, &qLim)
+				if qLim > 0 && uReq >= qLim {
+					_, err = db.Exec("UPDATE omni_client_keys SET used_requests = 0, is_active = 1 WHERE id = ?", id)
+				} else {
+					_, err = db.Exec("UPDATE omni_client_keys SET is_active = 1 - is_active WHERE id = ?", id)
+				}
 			}
-
 			if err != nil {
-
 				http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
-
 				return
-
 			}
-
 			RefreshKeyCache(db)
 
 			json.NewEncoder(w).Encode(map[string]interface{}{

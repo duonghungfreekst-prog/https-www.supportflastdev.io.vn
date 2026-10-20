@@ -282,7 +282,10 @@ func RefreshKeyCache(db *sql.DB) {
 	if db == nil {
 		return
 	}
-	rows, err := db.Query("SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at FROM omni_client_keys WHERE is_active = 1")
+	// Tự động chuyển các key đã vượt quá hạn mức Quota sang TẠM KHÓA (is_active = 0)
+	_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE quota_limit > 0 AND used_requests >= quota_limit AND is_active = 1")
+
+	rows, err := db.Query("SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at FROM omni_client_keys")
 	if err != nil {
 		return
 	}
@@ -308,20 +311,23 @@ func CheckClientKeyStatus(rawKey string) (item *ClientKey, status string, errMsg
 	rawBytes := []byte(rawKey)
 	for cachedK, k := range keyCache {
 		if subtle.ConstantTimeCompare([]byte(cachedK), rawBytes) == 1 {
-			if k.IsActive != 1 {
-				return k, "INACTIVE", "API Key đã bị tạm khóa"
+			// 1. Kiểm tra hạn mức Quota requests nếu có cấu hình QuotaLimit > 0 (ưu tiên phát hiện lý do vượt Quota)
+			if k.QuotaLimit > 0 && k.UsedRequests >= k.QuotaLimit {
+				k.IsActive = 0
+				return k, "QUOTA_EXCEEDED", fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", k.UsedRequests, k.QuotaLimit)
 			}
-			// Kiểm tra thời hạn hiệu lực theo giờ nếu có ExpiresAt
+			// 2. Kiểm tra thời hạn hiệu lực theo giờ nếu có ExpiresAt
 			if k.ExpiresAt != "" {
 				if t, err := time.Parse(time.RFC3339, k.ExpiresAt); err == nil {
 					if time.Now().After(t) {
+						k.IsActive = 0
 						return k, "EXPIRED", fmt.Sprintf("API Key đã hết thời hạn sử dụng (Hết hạn lúc: %s)", t.Format("15:04:05 02/01/2006"))
 					}
 				}
 			}
-			// Kiểm tra hạn mức Quota requests nếu có cấu hình QuotaLimit > 0
-			if k.QuotaLimit > 0 && k.UsedRequests >= k.QuotaLimit {
-				return k, "QUOTA_EXCEEDED", fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", k.UsedRequests, k.QuotaLimit)
+			// 3. Kiểm tra trạng thái kích hoạt thủ công
+			if k.IsActive != 1 {
+				return k, "INACTIVE", "API Key đã bị tạm khóa"
 			}
 			return k, "OK", ""
 		}
@@ -458,6 +464,15 @@ func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount i
 				    last_used_at = ?
 				WHERE api_key = ?
 			`, reqCount, tokenCount, now, apiKey)
+
+			// Tự động KHÓA key ngay lập tức nếu đã chạm hoặc vượt hạn mức Quota
+			var usedReqs, quotaLim int64
+			if err := db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE api_key = ?", apiKey).Scan(&usedReqs, &quotaLim); err == nil {
+				if quotaLim > 0 && usedReqs >= quotaLim {
+					_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE api_key = ?", apiKey)
+					log.Printf("[ENGINE] [QUOTA] 🛑 API Key %s đã chạm/vượt hạn mức Quota (%d/%d req). Đã tự động KHÓA key!", apiKey, usedReqs, quotaLim)
+				}
+			}
 		}
 
 		keyCacheMu.Lock()
@@ -465,6 +480,9 @@ func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount i
 			item.UsedRequests += reqCount
 			item.TotalTokens += tokenCount
 			item.LastUsedAt = now
+			if item.QuotaLimit > 0 && item.UsedRequests >= item.QuotaLimit {
+				item.IsActive = 0
+			}
 		}
 		keyCacheMu.Unlock()
 	}()
