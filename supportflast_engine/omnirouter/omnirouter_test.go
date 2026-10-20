@@ -680,5 +680,34 @@ func TestProxyConfigurationAndBinding(t *testing.T) {
 	}
 }
 
+func TestResolveCascadeModelTiers_NoAutomaticFallback(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Kiểm tra khi client gọi gemini-pro-agent (hoặc 3.1-pro)
+	tiersPro := resolveCascadeModelTiers(db, "gemini-pro-agent")
+	if len(tiersPro) != 1 || tiersPro[0] != "gemini-pro-agent" {
+		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier gemini-pro-agent, nhận được: %v", tiersPro)
+	}
+
+	tiers31 := resolveCascadeModelTiers(db, "gemini-3.1-pro")
+	if len(tiers31) != 1 || tiers31[0] != "gemini-pro-agent" {
+		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier gemini-pro-agent cho gemini-3.1-pro, nhận được: %v", tiers31)
+	}
+
+	// 2. Kiểm tra khi client gọi flash
+	tiersFlash := resolveCascadeModelTiers(db, "gemini-3.8-flash-high")
+	if len(tiersFlash) != 1 || tiersFlash[0] != "gemini-3.8-flash-high" {
+		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier gemini-3.8-flash-high, nhận được: %v", tiersFlash)
+	}
+
+	// 3. Kiểm tra khi client gọi claude sonnet
+	tiersSonnet := resolveCascadeModelTiers(db, "claude-sonnet-4-6")
+	if len(tiersSonnet) != 1 || tiersSonnet[0] != "claude-sonnet-4-6" {
+		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier claude-sonnet-4-6, nhận được: %v", tiersSonnet)
+	}
+}
+
+
 
 

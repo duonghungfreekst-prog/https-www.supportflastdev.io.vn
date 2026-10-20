@@ -399,42 +399,20 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-		// Chuẩn hóa model và xây dựng cascade fallback tiers chuẩn 100% Antigravity IDE
-
+		// Chuẩn hóa model theo yêu cầu của client
+		// NGUYÊN TẮC: TUYỆT ĐỐI KHÔNG tự ý chèn model dự phòng (Claude Sonnet / Gemini Flash...)
+		// khi người dùng không cấu hình nguồn dự phòng.
+		// Chỉ xoay vòng tài khoản (Load Balancing / Account Failover) cho ĐÚNG model mà Client yêu cầu.
 		var modelTiers []string
-
 		if model == "" {
-
 			// Request không chỉ định model (quota, metadata, autocompletion...) -> giữ nguyên 100% bản gốc
-
 			modelTiers = []string{""}
-
-		} else if strings.Contains(model, "opus") {
-
-			modelTiers = []string{"claude-opus-4-6-thinking", "claude-sonnet-4-6", "gemini-3.8-flash-high"}
-
-		} else if strings.Contains(model, "sonnet") {
-
-			modelTiers = []string{"claude-sonnet-4-6", "claude-opus-4-6-thinking", "gemini-3.8-flash-high"}
-
-		} else if strings.Contains(model, "gpt-oss") || strings.Contains(model, "120b") {
-
-			modelTiers = []string{"gpt-oss-120b-medium", "gemini-3.8-flash-high", "claude-sonnet-4-6"}
-
-		} else if strings.Contains(model, "3.1-pro") || strings.Contains(model, "pro-agent") {
-
-			modelTiers = []string{"gemini-pro-agent", "gemini-3.8-flash-high", "claude-sonnet-4-6"}
-
-		} else if strings.Contains(model, "argon") {
-
-			modelTiers = []string{"4-argon", "gemini-3.8-flash-high"}
-
 		} else {
-
-			// Mặc định hoặc dòng Flash (gemini-3.8-flash-high):
-
-			modelTiers = []string{"gemini-3.8-flash-high", "gemini-pro-agent", "claude-sonnet-4-6"}
-
+			// Lấy danh sách tier từ resolveCascadeModelTiers (chỉ có nhiều hơn 1 model nếu client yêu cầu rõ Combo)
+			modelTiers = resolveCascadeModelTiers(db, model)
+			if len(modelTiers) == 0 {
+				modelTiers = []string{model}
+			}
 		}
 
 
@@ -999,16 +977,14 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-					// Nếu lỗi là do hết capacity (503 MODEL_CAPACITY_EXHAUSTED) hoặc model không hỗ trợ,
-
-					// ngắt vòng lặp tài khoản ngay để kích hoạt fallback sang Tier tiếp theo
-
+					// Nếu lỗi là do hết capacity (503 MODEL_CAPACITY_EXHAUSTED) hoặc 503 Service Unavailable:
+					// Cooldown tài khoản hiện tại 30s và TIẾP TỤC thử các tài khoản khác trong pool cho CHÍNH MODEL ĐÓ.
+					// TUYỆT ĐỐI KHÔNG break để tránh tự ý đổi sang model khác khi người dùng không cấu hình nguồn dự phòng.
 					if strings.Contains(cleanErrStr, "MODEL_CAPACITY_EXHAUSTED") || rResp.StatusCode == http.StatusServiceUnavailable {
-
-						log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Model %s bị cạn capacity (503). Chuyển mạch tầng dự phòng...", tierModel)
-
-						break
-
+						accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
+						atomic.AddUint64(&activeAccountIdx, 1)
+						log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Model %s bị cạn capacity (503) trên tài khoản %s. Tạm cooldown 30s và thử tài khoản tiếp theo trong pool...", tierModel, acc.Name)
+						continue
 					}
 
 					continue

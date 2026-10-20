@@ -116,41 +116,8 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 
 	tiers := []string{normPrimary}
 
-	// 3. Nếu trong TiDB Cloud có cấu hình fallback mặc định, bổ sung các model dự phòng tiếp theo
-	if db != nil {
-		rows, err := db.Query("SELECT val_data FROM omni_kv WHERE scope = 'combos'")
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var val string
-				if err := rows.Scan(&val); err == nil && val != "" {
-					var combo struct {
-						Kind   string   `json:"kind"`
-						Models []string `json:"models"`
-					}
-					if err := json.Unmarshal([]byte(val), &combo); err == nil && combo.Kind == "fallback" {
-						for _, m := range combo.Models {
-							mTrim := strings.TrimSpace(m)
-							if mTrim != "" && mTrim != normPrimary {
-								exists := false
-								for _, ex := range tiers {
-									if ex == mTrim {
-										exists = true
-										break
-									}
-								}
-								if !exists {
-									tiers = append(tiers, mTrim)
-								}
-							}
-						}
-						break
-					}
-				}
-			}
-		}
-	}
-
+	// TUYỆT ĐỐI KHÔNG tự ý nhồi thêm fallback model của hãng khác vào request khi người dùng không chọn combo!
+	// Chỉ chạy ĐÚNG DUY NHẤT model do client yêu cầu.
 	return tiers
 }
 
