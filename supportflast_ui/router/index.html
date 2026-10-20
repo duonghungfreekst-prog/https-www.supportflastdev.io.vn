@@ -2310,15 +2310,15 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">KẾT NỐI ĐIỀU HƯỚNG SQL CLOUD</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">ĐIỀU HƯỚNG MÁY CHỦ WEB (HTTPS)</span>
                   <span id="web-sql-status-badge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">CHỜ NHẬP API KEY</span>
                 </div>
                 <h3 class="text-base font-bold text-white mt-1.5 flex items-center gap-2">
                   <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
-                  <span>Đồng Bộ Dữ Liệu SQL Từ Máy Chủ Web (Thay Thế LibSQL Cục Bộ)</span>
+                  <span>Đồng Bộ Dữ Liệu & Hạn Mức Quota Qua Máy Chủ Web</span>
                 </h3>
                 <p class="text-xs text-slate-300 mt-1">
-                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://www.supportflastdev.io.vn</strong>) sinh ra. App Desktop sẽ trỏ thẳng về máy chủ để lấy danh sách Nhà Cung Cấp, Models và Hạn Mức từ CSDL Aiven PostgreSQL, thay vì sử dụng database LibSQL nhúng cục bộ.
+                  Nhập API Key cá nhân do Web (<strong class="text-cyan-400">https://www.supportflastdev.io.vn</strong>) cấp. Mọi yêu cầu và tính toán hạn mức Quota từ App Desktop sẽ được chuyển tiếp qua Máy Chủ Web để ghi nhận tập trung thời gian thực.
                 </p>
               </div>
             </div>
@@ -2334,7 +2334,7 @@
                   <input type="password" id="web-api-key-input" class="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-cyan-500/40 text-cyan-300 font-mono text-xs focus:border-cyan-300 focus:outline-none placeholder-slate-600" placeholder="sk-..." />
                   <button type="button" onclick="toggleWebKeyVisibility()" class="px-2.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 text-xs cursor-pointer" title="Ẩn/hiện khóa">👁</button>
                   <button type="button" onclick="saveAndSyncWebSQL()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs flex-shrink-0 cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)] flex items-center gap-1.5">
-                    <span>⚡ LƯU & ĐỒNG BỘ SQL</span>
+                    <span>⚡ LƯU & ĐỒNG BỘ WEB</span>
                   </button>
                 </div>
               </div>
@@ -2346,7 +2346,7 @@
                 <span id="web-sync-icon" class="text-base">📡</span>
                 <div>
                   <div id="web-sync-title" class="font-bold text-white">Chưa kết nối Máy chủ Web</div>
-                  <div id="web-sync-desc" class="text-slate-400 text-[11px] mt-0.5">Dán mã API Key sinh ra từ trang quản trị Web vào ô trên rồi bấm "LƯU & ĐỒNG BỘ SQL".</div>
+                  <div id="web-sync-desc" class="text-slate-400 text-[11px] mt-0.5">Dán mã API Key sinh ra từ trang quản trị Web vào ô trên rồi bấm "LƯU & ĐỒNG BỘ WEB".</div>
                 </div>
               </div>
               <div class="flex items-center gap-2 flex-shrink-0">
@@ -8008,7 +8008,7 @@
       if (data && data.success) {
         if (badge) {
           badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30';
-          badge.textContent = 'ĐÃ KẾT NỐI SQL (POSTGRESQL)';
+          badge.textContent = 'ĐÃ KẾT NỐI MÁY CHỦ WEB (HTTPS)';
         }
         let provList = [];
         try {
@@ -8064,20 +8064,20 @@
                                    (typeof window !== 'undefined' && window.chrome && window.chrome.webview) || 
                                    (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
 
-        if (title) title.innerHTML = `✔ Kết nối thành công tới Web Aiven PostgreSQL (${data.latencyMs || 0}ms)`;
+        if (title) title.innerHTML = `✔ Kết nối thành công tới Máy Chủ Web (${data.latencyMs || 0}ms)`;
         if (desc) {
           if (isDesktopEnvActive) {
-            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: Aiven PostgreSQL Cloud (Đã đồng bộ trực tuyến)`;
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | Tính toán Quota: <span class="text-cyan-300 font-semibold">Đồng bộ qua Web Server (Đã kết nối)</span>`;
           } else {
-            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | CSDL: Aiven PostgreSQL Cloud${provCount > 0 ? ` (Đã đồng bộ <strong class="text-cyan-300">${provCount} tài khoản nhà cung cấp</strong>)` : ''}`;
+            desc.innerHTML = `Máy chủ: <code class="text-cyan-400 font-mono">${data.serverUrl || 'https://www.supportflastdev.io.vn'}</code> | Trạng thái: <span class="text-emerald-400 font-semibold">Trực tuyến</span> | Hạn mức: <span class="text-cyan-300 font-semibold">Quản lý qua Máy Chủ Web</span>${provCount > 0 ? ` (Đồng bộ <strong class="text-cyan-300">${provCount} tài khoản</strong>)` : ''}`;
           }
         }
         if (icon) icon.textContent = '🟢';
         if (!silent) {
           if (isDesktopEnvActive) {
-            showToast('Đã kết nối và đồng bộ thành công từ Web Aiven PostgreSQL!', 'success');
+            showToast('Đã kết nối và đồng bộ thành công qua Máy Chủ Web!', 'success');
           } else {
-            showToast(`Đã đồng bộ thành công ${provCount} tài khoản từ Web Aiven PostgreSQL!`, 'success');
+            showToast(`Đã đồng bộ thành công ${provCount} tài khoản qua Máy Chủ Web!`, 'success');
           }
         }
         return true;
@@ -15111,39 +15111,36 @@
 
 
 
-        let patchRes;
-        try {
-          patchRes = await apiRequest('/api/cli-tools/antigravity-mitm', {
-            method: 'PATCH',
-            body: JSON.stringify({ tool: tool, action: targetState ? 'enable' : 'disable' })
-          });
-        } catch (fetchErr) {
-          // Fallback sang C# Native WebView2 Host nếu Go engine chưa kịp phản hồi
-          if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(targetState ? 'startintercept' : 'stopintercept');
-            showToastNotification(`Đã gửi yêu cầu ${targetState ? 'BẬT' : 'TẮT'} DNS Intercept tới hệ thống!`);
-            return;
-          }
-          throw fetchErr;
-        }
+        const patchRes = await apiRequest('/api/cli-tools/antigravity-mitm', {
 
-        if (!patchRes || !patchRes.ok) {
-          if (window.chrome && window.chrome.webview) {
-            window.chrome.webview.postMessage(targetState ? 'startintercept' : 'stopintercept');
-            showToastNotification(`Đã chuyển đổi DNS qua C# Host thành công!`);
-            return;
-          }
+          method: 'PATCH',
+
+          body: JSON.stringify({ tool: tool, action: targetState ? 'enable' : 'disable' })
+
+        });
+
+        if (!patchRes.ok) {
+
           const pErr = await patchRes.json().catch(() => ({}));
+
           throw new Error(pErr.error || 'Lỗi cập nhật DNS');
+
         }
 
         showToastNotification(`Đã ${targetState ? 'BẬT' : 'TẮT'} DNS Intercept cho ${tool.toUpperCase()} thành công!`);
+
       } catch (err) {
+
         console.error('Lỗi đổi DNS:', err);
+
         showToastNotification('Lỗi đổi DNS: ' + (err.message || err), true);
+
         updateToolDnsUi(tool, currentActive);
+
       } finally {
+
         setTimeout(loadMitmStatusLive, 300);
+
       }
 
     }

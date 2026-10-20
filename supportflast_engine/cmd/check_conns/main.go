@@ -15,29 +15,12 @@ func main() {
 		log.Fatalf("Lỗi mở kết nối: %v", err)
 	}
 	defer db.Close()
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
 
-	var count int
-	err = db.QueryRow("SELECT count(1) FROM pg_stat_activity").Scan(&count)
+	var usedReq, quotaLimit int64
+	var lastUsedAt string
+	err = db.QueryRow("SELECT used_requests, quota_limit, last_used_at FROM omni_client_keys WHERE id = 'key_1792372553409283328_b9b08b62'").Scan(&usedReq, &quotaLimit, &lastUsedAt)
 	if err != nil {
-		log.Fatalf("Lỗi truy vấn: %v", err)
+		log.Fatalf("Lỗi query: %v", err)
 	}
-	fmt.Printf("[AIVEN] Tổng số active connections hiện tại: %d\n", count)
-
-	rows, err := db.Query("SELECT pid, usename, client_addr, state, left(query, 60) FROM pg_stat_activity ORDER BY pid")
-	if err != nil {
-		log.Fatalf("Lỗi xem danh sách: %v", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var pid int
-		var usename, state, query sql.NullString
-		var clientAddr sql.NullString
-		if err := rows.Scan(&pid, &usename, &clientAddr, &state, &query); err == nil {
-			fmt.Printf("PID: %d | User: %s | ClientIP: %s | State: %s | Query: %s\n",
-				pid, usename.String, clientAddr.String, state.String, query.String)
-		}
-	}
+	fmt.Printf("\n>>> KẾT QUẢ CẬP NHẬT TRÊN AIVEN POSTGRESQL <<<\nKhóa v12 hiện tại: Used = %d / %d req | LastUsedAt = %s\n", usedReq, quotaLimit, lastUsedAt)
 }

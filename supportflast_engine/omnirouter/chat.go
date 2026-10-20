@@ -327,6 +327,18 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				return
 			case "OK":
 				clientKeyItem = item
+				SetActiveClientKey(item.Key)
+			}
+		}
+
+		// N?u khng c API Key trong header ho?c key ngoi h? th?ng, t? d?ng fallback v? Active Client Key c?a ngu?i dng
+		if clientKeyItem == nil {
+			activeKey := GetActiveClientKey(db)
+			if activeKey != "" {
+				if item, status, _ := CheckClientKeyStatus(activeKey); status == "OK" && item != nil {
+					clientKeyItem = item
+					SetActiveClientKey(item.Key)
+				}
 			}
 		}
 
@@ -568,16 +580,17 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				flusher.Flush()
 			}
 
-			if clientKeyItem != nil {
-				RecordKeyUsageAsync(db, clientKeyItem.Key, 1, promptTokens+completionTokens)
-				accEmail := ""
-				provName := "Antigravity"
-				if usedAccount != nil {
-					accEmail = usedAccount.Email
-					provName = usedAccount.Provider
-				}
-				RecordUsageHistoryAsync(db, provName, usedModel, accEmail, clientKeyItem.Key, r.URL.Path, promptTokens, completionTokens, promptTokens+completionTokens, 0.0, "success", time.Since(startTime).Milliseconds())
+			accEmail := ""
+			accName := "Ti kho?n Antigravity"
+			if usedAccount != nil {
+				accEmail = usedAccount.Email
+				accName = usedAccount.Name
 			}
+			reqKey := ""
+			if clientKeyItem != nil {
+				reqKey = clientKeyItem.Key
+			}
+			ReportProxyUsageWithKeyAsync(db, reqKey, usedModel, accEmail, accName, r.URL.Path, time.Since(startTime).Milliseconds(), http.StatusOK, promptTokens, completionTokens)
 		} else {
 			// Non-streaming: Gom toàn bộ phản hồi trả về JSON chuẩn OpenAI
 			reader := bufio.NewReader(resp.Body)
@@ -631,16 +644,17 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				},
 			})
 
-			if clientKeyItem != nil {
-				RecordKeyUsageAsync(db, clientKeyItem.Key, 1, promptTokens+completionTokens)
-				accEmail := ""
-				provName := "Antigravity"
-				if usedAccount != nil {
-					accEmail = usedAccount.Email
-					provName = usedAccount.Provider
-				}
-				RecordUsageHistoryAsync(db, provName, usedModel, accEmail, clientKeyItem.Key, r.URL.Path, promptTokens, completionTokens, promptTokens+completionTokens, 0.0, "success", time.Since(startTime).Milliseconds())
+			accEmail := ""
+			accName := "Ti kho?n Antigravity"
+			if usedAccount != nil {
+				accEmail = usedAccount.Email
+				accName = usedAccount.Name
 			}
+			reqKey := ""
+			if clientKeyItem != nil {
+				reqKey = clientKeyItem.Key
+			}
+			ReportProxyUsageWithKeyAsync(db, reqKey, usedModel, accEmail, accName, r.URL.Path, time.Since(startTime).Milliseconds(), http.StatusOK, promptTokens, completionTokens)
 		}
 
 		if usedAccount != nil {

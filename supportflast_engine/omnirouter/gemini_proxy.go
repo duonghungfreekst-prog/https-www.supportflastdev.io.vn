@@ -756,13 +756,21 @@ func GetWebServerURL() string {
 
 // ReportProxyUsageAsync ghi nhận telemetry thời gian thực và cập nhật hạn mức quota của Active Key
 func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
+	ReportProxyUsageWithKeyAsync(db, "", effectiveModel, accountEmail, accountName, reqPath, latencyMs, statusCode, promptTokens, completionTokens)
+}
+
+// ReportProxyUsageWithKeyAsync ghi nhận telemetry thời gian thực và cập nhật hạn mức quota của Client Key cụ thể hoặc Active Key
+func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
 	go func() {
 		defer func() {
 			_ = recover()
 		}()
 
-		// Lấy Active Client Key hiện hành của người dùng
-		activeKey := GetActiveClientKey(db)
+		// Ưu tiên key được truyền tường minh từ request, nếu không có thì lấy Active Client Key
+		activeKey := strings.TrimSpace(explicitKey)
+		if activeKey == "" {
+			activeKey = GetActiveClientKey(db)
+		}
 		if activeKey == "" || strings.Contains(activeKey, "master") {
 			if db != nil {
 				var uKey string
@@ -776,12 +784,13 @@ func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName
 				`).Scan(&uKey)
 				if uKey != "" {
 					activeKey = strings.TrimSpace(uKey)
-					SetActiveClientKey(activeKey)
 				}
 			}
 		}
 		if activeKey == "" {
 			activeKey = "sk-supportflastdev.io.vn-master-live"
+		} else {
+			SetActiveClientKey(activeKey)
 		}
 		totTokens := promptTokens + completionTokens
 		if totTokens <= 0 {
