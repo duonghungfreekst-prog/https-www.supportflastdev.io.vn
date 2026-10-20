@@ -812,27 +812,8 @@ func HandleClientHeartbeat(db *sql.DB) http.HandlerFunc {
 
 
 
-		GlobalLogHub.RecordLog(RouterLogEntry{
-
-			Timestamp:    nowStr,
-
-			ClientDevice: r.RemoteAddr,
-
-			APIKeyName:   maskedKey,
-
-			Endpoint:     "/api/v1/client/heartbeat",
-
-			Method:       r.Method,
-
-			Provider:     "CLIENT",
-
-			Model:        payload.Client,
-
-			StatusCode:   http.StatusOK,
-
-			ErrorMessage: logMsg,
-
-		})
+		// Heartbeat định kỳ chỉ xác nhận kết nối, không ghi vào bảng Luồng Yêu Cầu AI (Live Stream)
+		// Heartbeat chỉ phản hồi trạng thái kết nối cho máy khách, không spam Live Stream AI
 
 
 
