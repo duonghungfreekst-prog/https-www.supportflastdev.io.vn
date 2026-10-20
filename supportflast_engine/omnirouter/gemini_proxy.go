@@ -278,6 +278,21 @@ func resolveRealIP(hostname string) string {
 
 
 
+// CachedIDEQuotaResponse luu giu phan hoi Quota tu upstream cho Antigravity IDE
+type CachedIDEQuotaResponse struct {
+	StatusCode int
+	Header     http.Header
+	Body       []byte
+	CachedAt   time.Time
+}
+
+var (
+	ideQuotaCacheLock     sync.RWMutex
+	ideQuotaCache         = make(map[string]*CachedIDEQuotaResponse)
+	activeAccountIdx      uint64
+	accountRequestCounter uint64
+)
+
 // HandleGeminiNativeProxy xử lý transparent proxy cho Antigravity IDE
 
 // IDE gửi request Gemini native (v1internal:streamGenerateContent) đến localhost:443
@@ -312,6 +327,24 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 			return
 
+		}
+
+		// Kiem tra RAM Cache tuc thi cho cac request Quota cua Antigravity IDE (chong quay spinner va delay)
+		isQuotaReqEarly := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
+		if isQuotaReqEarly && (r.Method == http.MethodGet || r.Method == http.MethodPost) {
+			ideQuotaCacheLock.RLock()
+			cached, ok := ideQuotaCache[r.URL.Path]
+			ideQuotaCacheLock.RUnlock()
+			if ok && cached != nil && time.Since(cached.CachedAt) < 30*time.Second {
+				for k, v := range cached.Header {
+					for _, val := range v {
+						w.Header().Add(k, val)
+					}
+				}
+				w.WriteHeader(cached.StatusCode)
+				_, _ = w.Write(cached.Body)
+				return
+			}
 		}
 
 
@@ -434,7 +467,8 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		numAccounts := len(readyAccounts)
 
-		startIdx := int(atomic.AddUint64(&rrCounter, 1) % uint64(numAccounts))
+		// Session Affinity: Bam dinh tai khoan hien tai, loai bo viec nhay tai khoan lien tuc gay delay va giat lag
+		startIdx := int(atomic.LoadUint64(&activeAccountIdx) % uint64(numAccounts))
 
 
 
@@ -768,6 +802,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 					accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
 
+					// Chuyen session sang tai khoan tiep theo khi bi rate limit (429) va xoa cache quota
+					atomic.AddUint64(&activeAccountIdx, 1)
+					ideQuotaCacheLock.Lock()
+					ideQuotaCache = make(map[string]*CachedIDEQuotaResponse)
+					ideQuotaCacheLock.Unlock()
+
 					lastErr = fmt.Errorf("rate limited (429) on %s for model %s", acc.Name, tierModel)
 
 					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Rate limited (429) trên %s cho model %s, chuyển tài khoản tiếp...", acc.Name, tierModel)
@@ -1008,10 +1048,26 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-		if isQuotaReq && quotaRespBuf.Len() > 0 && usedAccount != nil {
-
-			go syncLiveQuotaFromUpstreamResponse(db, usedAccount, r.URL.Path, quotaRespBuf.Bytes())
-
+		if isQuotaReq && quotaRespBuf.Len() > 0 && resp.StatusCode == http.StatusOK {
+			ideQuotaCacheLock.Lock()
+			ideQuotaCache[r.URL.Path] = &CachedIDEQuotaResponse{
+				StatusCode: resp.StatusCode,
+				Header:     resp.Header.Clone(),
+				Body:       quotaRespBuf.Bytes(),
+				CachedAt:   time.Now(),
+			}
+			ideQuotaCacheLock.Unlock()
+			if usedAccount != nil {
+				go syncLiveQuotaFromUpstreamResponse(db, usedAccount, r.URL.Path, quotaRespBuf.Bytes())
+			}
+		} else if !isQuotaReq && resp != nil && resp.StatusCode == http.StatusOK {
+			reqs := atomic.AddUint64(&accountRequestCounter, 1)
+			if reqs%40 == 0 {
+				atomic.AddUint64(&activeAccountIdx, 1)
+				ideQuotaCacheLock.Lock()
+				ideQuotaCache = make(map[string]*CachedIDEQuotaResponse)
+				ideQuotaCacheLock.Unlock()
+			}
 		}
 
 

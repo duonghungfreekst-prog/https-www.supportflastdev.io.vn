@@ -122,3 +122,32 @@ func TestQuotaHandlersIntegration(t *testing.T) {
 		t.Errorf("Mã trả về mong đợi 200, nhận %d", rr2.Code)
 	}
 }
+
+// TestIDEQuotaCacheRAM kiểm tra cơ chế RAM cache cho request Quota từ Antigravity IDE (chống quay spinner và delay)
+func TestIDEQuotaCacheRAM(t *testing.T) {
+	path := "/v1internal:retrieveUserQuotaSummary"
+	mockBody := []byte(`{"groups":[{"displayName":"Gemini Models"}]}`)
+
+	ideQuotaCacheLock.Lock()
+	ideQuotaCache[path] = &CachedIDEQuotaResponse{
+		StatusCode: 200,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       mockBody,
+		CachedAt:   time.Now(),
+	}
+	ideQuotaCacheLock.Unlock()
+
+	ideQuotaCacheLock.RLock()
+	cached, ok := ideQuotaCache[path]
+	ideQuotaCacheLock.RUnlock()
+
+	if !ok || cached == nil {
+		t.Fatalf("Mong đợi cache tồn tại trong ideQuotaCache")
+	}
+	if string(cached.Body) != string(mockBody) {
+		t.Errorf("Dữ liệu cache không khớp")
+	}
+	if time.Since(cached.CachedAt) > 5*time.Second {
+		t.Errorf("Cache thời gian không hợp lệ")
+	}
+}
