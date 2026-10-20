@@ -329,41 +329,65 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		}
 
-		// Kiem tra RAM Cache tuc thi cho cac request Quota cua Antigravity IDE (chong quay spinner va delay)
-		isQuotaReqEarly := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
-		if isQuotaReqEarly && (r.Method == http.MethodGet || r.Method == http.MethodPost) {
-			ideQuotaCacheLock.RLock()
-			cached, ok := ideQuotaCache[r.URL.Path]
-			ideQuotaCacheLock.RUnlock()
-			if ok && cached != nil && time.Since(cached.CachedAt) < 30*time.Second {
-				for k, v := range cached.Header {
+		// Đọc body request gốc từ IDE
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("[ENGINE] [GEMINI-PROXY] ✗ Lỗi đọc body: %v", err)
+			http.Error(w, `{"error":"Cannot read request body"}`, http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		// KIẾN TRÚC CHUẨN 100% 9ROUTER.COM:
+		// Antigravity IDE CHỈ chuyển hướng sinh nội dung (:generateContent & :streamGenerateContent) qua Pool tài khoản.
+		// Tất cả các request Quota (retrieveUserQuotaSummary), Model list (fetchAvailableModels), LoadCodeAssist,
+		// Metrics, v.v... được PASSTHROUGH trực tiếp nguyên bản 100% lên Google với Token thật của IDE!
+		// => Giúp Quota không bao giờ bị nhảy số giữa các tài khoản và loại bỏ hoàn toàn độ trễ (delay) / spinner Refreshing!
+		isGenerateReq := strings.Contains(r.URL.Path, ":generateContent") || strings.Contains(r.URL.Path, ":streamGenerateContent")
+		isMetadataOrQuota := strings.HasPrefix(r.URL.Path, "/v1internal") ||
+			strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") ||
+			strings.Contains(r.URL.Path, "fetchAvailableModels") ||
+			strings.Contains(r.URL.Path, "loadCodeAssist")
+		if !isGenerateReq && isMetadataOrQuota {
+			targetHost := "daily-cloudcode-pa.googleapis.com"
+			if strings.Contains(strings.ToLower(r.Host), "cloudcode-pa.googleapis.com") && !strings.Contains(strings.ToLower(r.Host), "daily-") {
+				targetHost = "cloudcode-pa.googleapis.com"
+			}
+			upstreamURL := "https://" + targetHost + r.URL.RequestURI()
+
+			passReq, pErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(bodyBytes))
+			if pErr == nil {
+				passReq.ContentLength = int64(len(bodyBytes))
+				for k, v := range r.Header {
+					kLower := strings.ToLower(k)
+					if kLower == "host" || kLower == "connection" || kLower == "accept-encoding" || kLower == "content-length" {
+						continue
+					}
 					for _, val := range v {
-						w.Header().Add(k, val)
+						passReq.Header.Add(k, val)
 					}
 				}
-				w.WriteHeader(cached.StatusCode)
-				_, _ = w.Write(cached.Body)
-				return
+				passReq.Host = targetHost
+
+				passResp, doErr := geminiProxyClient.Do(passReq)
+				if doErr == nil {
+					defer passResp.Body.Close()
+					for k, v := range passResp.Header {
+						if strings.EqualFold(k, "Transfer-Encoding") {
+							continue
+						}
+						for _, val := range v {
+							w.Header().Add(k, val)
+						}
+					}
+					w.WriteHeader(passResp.StatusCode)
+					_, _ = io.Copy(w, passResp.Body)
+					log.Printf("[ENGINE] [GEMINI-PROXY] [9router-Passthrough] %s %s -> %s (Status: %d)", r.Method, r.URL.Path, targetHost, passResp.StatusCode)
+					return
+				}
+				log.Printf("[ENGINE] [GEMINI-PROXY] [9router-Passthrough] Failed (%v), fallback pool", doErr)
 			}
 		}
-
-
-
-		// Đọc body request gốc từ IDE
-
-		bodyBytes, err := io.ReadAll(r.Body)
-
-		if err != nil {
-
-			log.Printf("[ENGINE] [GEMINI-PROXY] ✗ Lỗi đọc body: %v", err)
-
-			http.Error(w, `{"error":"Cannot read request body"}`, http.StatusBadRequest)
-
-			return
-
-		}
-
-		defer r.Body.Close()
 
 
 
