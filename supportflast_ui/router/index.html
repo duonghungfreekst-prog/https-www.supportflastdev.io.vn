@@ -3295,7 +3295,7 @@
 
                   <div>
 
-                    <span class="text-slate-400 text-[10px] block">ĐỘ TRỄ</span>
+                    <span class="text-slate-400 text-[10px] block" title="Thời gian AI sinh câu trả lời (Ping mạng thực tế chỉ ~115ms)">THỜI LƯỢNG</span>
 
                     <span id="hud-latency-value" class="text-emerald-400 font-bold">-- ms</span>
 
@@ -3995,7 +3995,7 @@
 
                       <th class="py-1 px-1.5">STATUS</th>
 
-                      <th class="py-1 px-1.5 text-right">MS</th>
+                      <th class="py-1 px-1.5 text-right font-mono" title="Thời gian AI sinh câu trả lời cho toàn bộ prompt (Ping mạng thực tế chỉ ~115ms)">THỜI GIAN</th>
 
                     </tr>
 
@@ -7810,7 +7810,15 @@
   <!-- ==================== JAVASCRIPT ĐIỀU KHIỂN TƯƠNG TÁC TOÀN BỘ APP ==================== -->
 
   <script>
-    // Helper kiểm tra trạng thái hoạt động chính xác 100%, chống lỗi type coercion (0 !== false là true)
+    // Helper dinh dang thoi gian xu ly AI va Ping mang truc quan
+    function formatLatencyDuration(ms) {
+      const n = parseInt(ms, 10);
+      if (isNaN(n) || n <= 0) return '0ms';
+      if (n < 1000) return n + 'ms';
+      return (n / 1000).toFixed(1) + 's';
+    }
+
+    // Helper kiem tra trang thai hoat dong chinh xac 100%, chống lỗi type coercion (0 !== false là true)
     function isConnActive(item) {
       if (!item) return false;
       if (item.isActive === false || item.isActive === 0 || item.isActive === '0') return false;
@@ -13718,7 +13726,7 @@
 
             <td class="py-1 px-1.5 font-mono text-[10px]">${statusBadge}</td>
 
-            <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]">${r.latency}ms</td>
+            <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]" title="Tổng thời gian AI xử lý: ${r.latency}ms">${formatLatencyDuration(r.latency)}</td>
 
           `;
 
@@ -26913,7 +26921,7 @@
 
       if (hudClientEl) hudClientEl.textContent = info.clientName || clientName || 'IDE Client';
 
-      if (hudLatencyEl) hudLatencyEl.textContent = latency ? `${latency} ms` : '-- ms';
+      if (hudLatencyEl) hudLatencyEl.textContent = latency ? (latency >= 1000 ? (latency/1000).toFixed(1) + 's' : latency + 'ms') : '-- ms';
 
       if (hudTokensEl) hudTokensEl.textContent = tokens ? Number(tokens).toLocaleString() : '--';
 
@@ -26989,7 +26997,7 @@
 
       if (subEl) {
 
-        subEl.textContent = `${info.provider || provider} • LIVE ${latency ? latency + 'ms' : ''}`;
+        subEl.textContent = `${info.provider || provider} • LIVE ${latency ? (latency >= 1000 ? (latency/1000).toFixed(1) + 's' : latency + 'ms') : ''}`;
 
         subEl.setAttribute('fill', color || info.color || '#38BDF8');
 
@@ -27905,7 +27913,7 @@
 
           <td class="py-1 px-1.5 font-mono text-[10px]">${statusBadge}</td>
 
-          <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]">${latency}ms</td>
+          <td class="py-1 px-1.5 text-emerald-400 font-bold font-mono text-right text-[10px]" title="Tổng thời gian AI xử lý: ${latency}ms">${formatLatencyDuration(latency)}</td>
 
         `;
 
