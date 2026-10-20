@@ -10,6 +10,8 @@ import (
 
 	"context"
 
+	"crypto/rand"
+
 	"crypto/tls"
 
 	"database/sql"
@@ -588,9 +590,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 		numAccounts := len(readyAccounts)
+		_ = numAccounts // dùng trong orderAccountsForModel
 
-		// Session Affinity: Bam dinh tai khoan hien tai, loai bo viec nhay tai khoan lien tuc gay delay va giat lag
-		startIdx := int(atomic.LoadUint64(&activeAccountIdx) % uint64(numAccounts))
+		// Proportional Quota-Weighted Selection (chuẩn Pool Distribution):
+		// Chọn tài khoản khởi đầu theo trọng số quota còn lại tương ứng với model.
+		// Tài khoản có nhiều quota hơn được chọn nhiều hơn -> phân tán đều hơn -> không bị cạn 1 tài khoản trước.
+		// Nếu không có thông tin quota -> fallback về Session Affinity round-robin thông thường.
+		startIdx := selectWeightedStartIndex(readyAccounts, model)
 
 
 
@@ -2472,7 +2478,125 @@ func StartBackgroundTokenRefreshWorker(db *sql.DB) {
 
 }
 
-// isClaudeModel kiểm tra xem model có thuộc dòng Claude/GPT hay không
+// getAccountQuotaWeight lấy trọng số quota còn lại của tài khoản theo model type (0.0 - 1.0)
+// Dùng cho Proportional Quota-Weighted Selection để phân tán đều quota qua toàn bộ Pool
+func getAccountQuotaWeight(acc *ProviderConnection, model string) float64 {
+	if acc == nil {
+		return 0.0
+	}
+
+	var sessionKey, weeklyKey string
+	if isClaudeModel(model) {
+		sessionKey, weeklyKey = "claude_gpt_session", "claude_gpt_weekly"
+	} else {
+		sessionKey, weeklyKey = "gemini_session", "gemini_weekly"
+	}
+
+	// Ưu tiên lấy từ RAM Cache (nhanh nhất, < 1ms)
+	if cached, ok := GetCachedQuotas(acc.ID); ok && len(cached) > 0 {
+		sessionFrac := 1.0
+		weeklyFrac := 1.0
+		if q, has := cached[sessionKey]; has {
+			sessionFrac = q.RemainingPercentage / 100.0
+		}
+		if q, has := cached[weeklyKey]; has {
+			weeklyFrac = q.RemainingPercentage / 100.0
+		}
+		// Trọng số = min(session, weekly) -> bị chặn bởi chiều hạn chế nhất
+		w := sessionFrac
+		if weeklyFrac < w {
+			w = weeklyFrac
+		}
+		if w < 0 {
+			return 0.0
+		}
+		return w
+	}
+
+	// Fallback: parse từ trường data JSON trong DB
+	if len(acc.Data) > 0 {
+		var dataMap map[string]interface{}
+		if err := json.Unmarshal(acc.Data, &dataMap); err == nil && dataMap != nil {
+			if qMap, ok := dataMap["quotas"].(map[string]interface{}); ok && qMap != nil {
+				sessionFrac := 1.0
+				weeklyFrac := 1.0
+				if qS, ok := qMap[sessionKey].(map[string]interface{}); ok && qS != nil {
+					if rem, ok := qS["remainingPercentage"].(float64); ok {
+						sessionFrac = rem / 100.0
+					}
+				}
+				if qW, ok := qMap[weeklyKey].(map[string]interface{}); ok && qW != nil {
+					if rem, ok := qW["remainingPercentage"].(float64); ok {
+						weeklyFrac = rem / 100.0
+					}
+				}
+				w := sessionFrac
+				if weeklyFrac < w {
+					w = weeklyFrac
+				}
+				if w < 0 {
+					return 0.0
+				}
+				return w
+			}
+		}
+	}
+
+	// Không có dữ liệu quota -> giả sử đầy 100% để tránh loại trừ tài khoản mới
+	return 1.0
+}
+
+// selectWeightedStartIndex chọn tài khoản khởi đầu theo phân phối xác suất tỷ lệ thuận với quota còn lại.
+// Thuật toán Weighted Random Sampling (WRS):
+//   - Tài khoản quota 91% được chọn gấp đôi so với tài khoản quota 46%.
+//   - Phân tán đồng đều: khi nhiều tài khoản có quota tương đương, xác suất bằng nhau.
+//   - Khi không có thông tin quota -> round-robin thuần bằng activeAccountIdx.
+func selectWeightedStartIndex(accounts []ProviderConnection, model string) int {
+	n := len(accounts)
+	if n == 0 {
+		return 0
+	}
+	if n == 1 {
+		return 0
+	}
+
+	// Tính tổng trọng số toàn pool
+	weights := make([]float64, n)
+	totalWeight := 0.0
+	hasAnyQuotaData := false
+	for i, acc := range accounts {
+		w := getAccountQuotaWeight(&acc, model)
+		weights[i] = w
+		totalWeight += w
+		if w < 1.0 { // Tức là có dữ liệu quota thực (< 100% default)
+			hasAnyQuotaData = true
+		}
+	}
+
+	// Nếu không có thông tin quota nào -> fallback round-robin bằng atomic counter
+	if !hasAnyQuotaData || totalWeight <= 0 {
+		return int(atomic.LoadUint64(&activeAccountIdx) % uint64(n))
+	}
+
+	// Weighted Random Sampling: chọn ngẫu nhiên an toàn theo trọng số
+	// Dùng crypto/rand để lấy byte ngẫu nhiên thực sự tránh bias
+	var rbuf [8]byte
+	_, _ = rand.Read(rbuf[:])
+	randUint := uint64(rbuf[0]) | uint64(rbuf[1])<<8 | uint64(rbuf[2])<<16 | uint64(rbuf[3])<<24 |
+		uint64(rbuf[4])<<32 | uint64(rbuf[5])<<40 | uint64(rbuf[6])<<48 | uint64(rbuf[7])<<56
+	pick := (float64(randUint) / float64(^uint64(0))) * totalWeight
+
+	cumulative := 0.0
+	for i, w := range weights {
+		cumulative += w
+		if pick <= cumulative {
+			return i
+		}
+	}
+	return n - 1
+}
+
+
 func isClaudeModel(m string) bool {
 	low := strings.ToLower(m)
 	return strings.Contains(low, "claude") || strings.Contains(low, "sonnet") || strings.Contains(low, "opus") || strings.Contains(low, "haiku") || strings.Contains(low, "gpt")

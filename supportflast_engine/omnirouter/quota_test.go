@@ -252,3 +252,78 @@ func TestModelAwareAccountOrdering(t *testing.T) {
 		t.Errorf("Mong đợi Session Affinity giữ nguyên startIdx=0, nhận được: %s", orderedGeneral[0].ID)
 	}
 }
+
+// TestWeightedStartIndexDistribution kiểm tra phân phối xác suất của Proportional Quota-Weighted Selection
+func TestWeightedStartIndexDistribution(t *testing.T) {
+	// 3 tài khoản: Quota lần lượt 90%, 60%, 30%
+	accs := []ProviderConnection{
+		{ID: "acc_90", Name: "Quota 90%"},
+		{ID: "acc_60", Name: "Quota 60%"},
+		{ID: "acc_30", Name: "Quota 30%"},
+	}
+	SetCachedQuotas("acc_90", map[string]QuotaItem{
+		"gemini_weekly":  {RemainingPercentage: 90.0},
+		"gemini_session": {RemainingPercentage: 90.0},
+	})
+	SetCachedQuotas("acc_60", map[string]QuotaItem{
+		"gemini_weekly":  {RemainingPercentage: 60.0},
+		"gemini_session": {RemainingPercentage: 60.0},
+	})
+	SetCachedQuotas("acc_30", map[string]QuotaItem{
+		"gemini_weekly":  {RemainingPercentage: 30.0},
+		"gemini_session": {RemainingPercentage: 30.0},
+	})
+
+	// Chạy 1200 lần và thống kê phân phối
+	counts := make(map[string]int)
+	trials := 1200
+	for i := 0; i < trials; i++ {
+		idx := selectWeightedStartIndex(accs, "gemini-2.5-pro")
+		counts[accs[idx].ID]++
+	}
+
+	// Tổng trọng số: 90+60+30 = 180
+	// Tỷ lệ kỳ vọng: acc_90 = 50%, acc_60 = 33.3%, acc_30 = 16.7%
+	// Cho phép sai số ±10% (±120 lần)
+	pct90 := float64(counts["acc_90"]) / float64(trials) * 100
+	pct60 := float64(counts["acc_60"]) / float64(trials) * 100
+	pct30 := float64(counts["acc_30"]) / float64(trials) * 100
+
+	t.Logf("Phân phối WRS sau %d lần: acc_90=%.1f%% (kỳ vọng~50%%), acc_60=%.1f%% (kỳ vọng~33%%), acc_30=%.1f%% (kỳ vọng~17%%)",
+		trials, pct90, pct60, pct30)
+
+	if pct90 < 35 || pct90 > 65 {
+		t.Errorf("acc_90 nằm ngoài khoảng kỳ vọng [35,65]%%: %.1f%%", pct90)
+	}
+	if pct60 < 22 || pct60 > 44 {
+		t.Errorf("acc_60 nằm ngoài khoảng kỳ vọng [22,44]%%: %.1f%%", pct60)
+	}
+	if pct30 < 8 || pct30 > 28 {
+		t.Errorf("acc_30 nằm ngoài khoảng kỳ vọng [8,28]%%: %.1f%%", pct30)
+	}
+}
+
+// TestWeightedSelectionQuotaEqualization kiểm tra rằng tài khoản cạn quota (0%) không bao giờ được chọn bởi WRS
+func TestWeightedSelectionQuotaEqualization(t *testing.T) {
+	accs := []ProviderConnection{
+		{ID: "acc_full", Name: "Đầy"},
+		{ID: "acc_empty", Name: "Hết"},
+	}
+	SetCachedQuotas("acc_full", map[string]QuotaItem{
+		"claude_gpt_weekly":  {RemainingPercentage: 80.0},
+		"claude_gpt_session": {RemainingPercentage: 80.0},
+	})
+	SetCachedQuotas("acc_empty", map[string]QuotaItem{
+		"claude_gpt_weekly":  {RemainingPercentage: 0.0},
+		"claude_gpt_session": {RemainingPercentage: 0.0},
+	})
+
+	// Chạy 200 lần: acc_empty (weight=0) không bao giờ nên được chọn
+	for i := 0; i < 200; i++ {
+		idx := selectWeightedStartIndex(accs, "claude-sonnet-4-6")
+		if accs[idx].ID == "acc_empty" {
+			t.Errorf("Lần thứ %d: WRS đã chọn tài khoản cạn quota (acc_empty), trọng số phải là 0!", i+1)
+			return
+		}
+	}
+}
