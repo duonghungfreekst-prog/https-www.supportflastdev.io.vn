@@ -685,7 +685,7 @@ func GetActiveClientKey(db *sql.DB) string {
 			WHERE is_active = 1 
 			  AND id NOT LIKE '%master%' 
 			  AND api_key NOT LIKE '%master-live%' 
-			ORDER BY updated_at DESC, created_at DESC 
+			ORDER BY created_at DESC 
 			LIMIT 1
 		`).Scan(&dbKey)
 		if err == nil && strings.TrimSpace(dbKey) != "" {
@@ -779,7 +779,7 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 					WHERE is_active = 1 
 					  AND id NOT LIKE '%master%' 
 					  AND api_key NOT LIKE '%master-live%' 
-					ORDER BY updated_at DESC, created_at DESC 
+					ORDER BY created_at DESC 
 					LIMIT 1
 				`).Scan(&uKey)
 				if uKey != "" {
