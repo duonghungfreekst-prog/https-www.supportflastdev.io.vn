@@ -63,13 +63,10 @@ func main() {
 	mux := http.NewServeMux()
 	omnirouter.RegisterOmniRouterRoutes(mux, db, false, baseDir)
 
-	// Tự động khởi chạy Máy chủ MITM trên cổng 443 nếu chứng chỉ root CA có sẵn
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		if err := omnirouter.AutoStartMitm(baseDir); err != nil {
-			log.Printf("[ENGINE] [MITM] ⚠ Khởi động MITM nền: %v", err)
-		}
-	}()
+	// Tuyệt đối KHÔNG tự động bật MITM / chiếm cổng 443 / sửa file hosts.
+	// Luôn dọn sạch DNS/hosts khi khởi động để bảo đảm kết nối web thông thường không bị chặn.
+	omnirouter.CleanAllMitmDns()
+	log.Printf("[ENGINE] [DNS] ✔ Đã kiểm tra và bảo toàn kết nối web thông thường (không can thiệp DNS/hosts)")
 
 	// Nạp trước Active Client Key vào RAM và kích hoạt luồng Live Telemetry Heartbeat
 	go func() {
@@ -172,6 +169,7 @@ func main() {
 	go func() {
 		<-sigCh
 		log.Println("[ENGINE] Nhận tín hiệu dừng... Đang dọn dẹp hệ thống...")
+		omnirouter.CleanAllMitmDns()
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = server.Shutdown(ctx)

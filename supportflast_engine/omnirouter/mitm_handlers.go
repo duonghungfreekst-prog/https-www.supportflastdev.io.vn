@@ -42,7 +42,6 @@ var (
 		"antigravity": {
 			"daily-cloudcode-pa.googleapis.com",
 			"cloudcode-pa.googleapis.com",
-			"generativelanguage.googleapis.com",
 		},
 		"kiro": {
 			"runtime.us-east-1.kiro.dev",
@@ -162,7 +161,8 @@ func setToolDns(tool string, enable bool) error {
 	return nil
 }
 
-func cleanAllMitmDns() {
+// CleanAllMitmDns khôi phục file hosts về trạng thái nguyên bản, xóa sạch mọi can thiệp DNS của OmniRouter
+func CleanAllMitmDns() {
 	hostsPath := getHostsFilePath()
 	content, err := os.ReadFile(hostsPath)
 	if err != nil {
@@ -174,12 +174,14 @@ func cleanAllMitmDns() {
 			allDomains[strings.ToLower(d)] = true
 		}
 	}
+	// Luôn dọn sạch cả domain cũ nếu còn sót
+	allDomains["generativelanguage.googleapis.com"] = true
 
 	lines := strings.Split(string(content), "\n")
 	var newLines []string
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, "OmniRouter MITM DNS") {
+		if strings.Contains(trimmed, "OmniRouter") {
 			continue
 		}
 		fields := strings.Fields(trimmed)
@@ -198,6 +200,7 @@ func cleanAllMitmDns() {
 	}
 	_ = os.WriteFile(hostsPath, []byte(strings.Join(newLines, "\n")), 0644)
 	flushDNS()
+	log.Println("[ENGINE] [DNS] ✔ Đã dọn sạch mọi can thiệp DNS/hosts, khôi phục mạng nguyên bản.")
 }
 
 func findCaFiles(baseDir string) (string, string) {
@@ -418,7 +421,7 @@ func stopMitmServer() error {
 	mitmServer = nil
 	mitmServerRunning = false
 
-	cleanAllMitmDns()
+	CleanAllMitmDns()
 	log.Printf("[ENGINE] [MITM] ✔ Đã dừng Máy chủ MITM và giải phóng cổng 443 an toàn")
 	return err
 }

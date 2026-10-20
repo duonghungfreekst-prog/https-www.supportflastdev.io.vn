@@ -112,11 +112,7 @@ func init() {
 
 				if hostLower == "daily-cloudcode-pa.googleapis.com" || 
 
-				   hostLower == "cloudcode-pa.googleapis.com" || 
-
-				   hostLower == "generativelanguage.googleapis.com" || 
-
-				   strings.HasSuffix(hostLower, ".googleapis.com") {
+				   hostLower == "cloudcode-pa.googleapis.com" {
 
 					realAddr := net.JoinHostPort(targetHost, port)
 

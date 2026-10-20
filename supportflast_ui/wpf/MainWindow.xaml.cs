@@ -186,6 +186,7 @@ public partial class MainWindow : Window
             }
             // Dọn dẹp toàn bộ tiến trình còn sót để đảm bảo Zero Hanging Tasks
             ProcessHelper.StopAllProcesses();
+            FlushDns();
             try { ProcessHelper.KillProcessByPort(20128); } catch { }
 
             // Giải phóng WebView2
