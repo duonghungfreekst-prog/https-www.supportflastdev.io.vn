@@ -29940,7 +29940,9 @@
 
         if (res.ok && data.status === 'active') {
 
-          if (feedback) feedback.innerHTML = `<span class="text-emerald-400 font-bold">🟢 Proxy hoạt động tốt! Độ trễ: ${data.latencyMs || 0}ms</span>`;
+          const lat = data.latencyMs || data.elapsedMs || 1;
+
+          if (feedback) feedback.innerHTML = `<span class="text-emerald-400 font-bold">🟢 Proxy hoạt động thật! Độ trễ: ${lat}ms</span>`;
 
         } else {
 
@@ -30390,7 +30392,9 @@
 
         if (res.ok && data.status === 'active') {
 
-          if (feedback) feedback.innerHTML = `<span class="text-emerald-400 font-bold">🟢 Proxy hoạt động tốt! Độ trễ: ${data.latencyMs || 0}ms</span>`;
+          const lat = data.latencyMs || data.elapsedMs || 1;
+
+          if (feedback) feedback.innerHTML = `<span class="text-emerald-400 font-bold">🟢 Proxy hoạt động thật! Độ trễ: ${lat}ms</span>`;
 
         } else {
 

@@ -3,31 +3,23 @@ package omnirouter
 
 
 import (
-
+	"context"
 	"crypto/subtle"
-
-	"math"
-
-	"sync"
-
+	"crypto/tls"
 	"database/sql"
-
 	"encoding/json"
-
 	"fmt"
-
 	"io"
-
+	"log"
+	"math"
+	"net"
 	"net/http"
-
+	"net/url"
 	"os"
-
 	"path/filepath"
-
 	"strings"
-
+	"sync"
 	"time"
-
 )
 
 
@@ -3215,24 +3207,52 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 
 
 
-		// Trả về test ping kết quả nếu gọi endpoint /test
-
+		// Kiểm tra kết nối mạng THẬT 100% tới Proxy URL (Tuân thủ triệt để PHẦN 9: CẤM DUMMY / MOCK)
 		if strings.HasSuffix(r.URL.Path, "/test") {
+			targetURL := strings.TrimSpace(r.URL.Query().Get("url"))
+			if targetURL == "" {
+				var bData struct {
+					URL      string `json:"url"`
+					ProxyURL string `json:"proxyUrl"`
+				}
+				_ = json.NewDecoder(r.Body).Decode(&bData)
+				if bData.URL != "" {
+					targetURL = bData.URL
+				} else if bData.ProxyURL != "" {
+					targetURL = bData.ProxyURL
+				}
+			}
 
+			if targetURL == "" {
+				http.Error(w, `{"ok":false,"status":"error","latencyMs":0,"elapsedMs":0,"error":"Vui lòng cung cấp URL proxy"}`, http.StatusBadRequest)
+				return
+			}
+
+			latencyMs, checkedTarget, err := TestRealProxyConnection(targetURL)
+			if err != nil {
+				log.Printf("[ENGINE] [PROXY-TEST] ❌ Proxy %s thất bại: %v", targetURL, err)
+				w.WriteHeader(http.StatusBadGateway)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"ok":        false,
+					"status":    "error",
+					"latencyMs": 0,
+					"elapsedMs": 0,
+					"error":     fmt.Sprintf("Không thể kết nối qua proxy: %v", err),
+					"message":   "Proxy không phản hồi hoặc thông tin xác thực không chính xác",
+				})
+				return
+			}
+
+			log.Printf("[ENGINE] [PROXY-TEST] ✔ Proxy %s hoạt động tốt qua %s (%dms)", targetURL, checkedTarget, latencyMs)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-
 				"ok":        true,
-
-				"elapsedMs": 42,
-
 				"status":    "active",
-
-				"message":   "Kết nối Proxy ổn định",
-
+				"latencyMs": latencyMs,
+				"elapsedMs": latencyMs,
+				"target":    checkedTarget,
+				"message":   fmt.Sprintf("Proxy hoạt động tốt (%dms)", latencyMs),
 			})
-
 			return
-
 		}
 
 
@@ -3478,17 +3498,83 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-
 			"status":      "ok",
-
 			"proxy_pools": poolList,
-
 			"proxyPools":  poolList,
-
 		})
+	}
+}
 
+// TestRealProxyConnection thực hiện kết nối mạng thật 100% qua Proxy URL để kiểm tra độ trễ RTT (Tuân thủ triệt để PHẦN 9)
+func TestRealProxyConnection(proxyURL string) (int64, string, error) {
+	proxyURL = strings.TrimSpace(proxyURL)
+	if proxyURL == "" {
+		return 0, "", fmt.Errorf("địa chỉ URL proxy trống")
 	}
 
+	if !strings.Contains(proxyURL, "://") {
+		proxyURL = "http://" + proxyURL
+	}
+
+	pParsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return 0, "", fmt.Errorf("URL proxy không hợp lệ: %w", err)
+	}
+
+	tr := &http.Transport{
+		Proxy: http.ProxyURL(pParsed),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 5 * time.Second,
+		}).DialContext,
+		DisableKeepAlives: true,
+	}
+
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   7 * time.Second,
+	}
+
+	targets := []string{
+		"http://connectivitycheck.gstatic.com/generate_204",
+		"http://www.google.com/generate_204",
+		"https://cloudflare.com/cdn-cgi/trace",
+	}
+
+	var lastErr error
+	for _, target := range targets {
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		req, reqErr := http.NewRequestWithContext(ctx, "GET", target, nil)
+		if reqErr != nil {
+			cancel()
+			lastErr = reqErr
+			continue
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ModelRouter9/3.0 RealProxyChecker")
+
+		startTime := time.Now()
+		resp, doErr := client.Do(req)
+		latency := time.Since(startTime).Milliseconds()
+		cancel()
+
+		if doErr == nil && resp != nil {
+			_ = resp.Body.Close()
+			if resp.StatusCode < 400 || resp.StatusCode == http.StatusNoContent {
+				if latency <= 0 {
+					latency = 1
+				}
+				return latency, target, nil
+			}
+			lastErr = fmt.Errorf("HTTP status %d từ %s", resp.StatusCode, target)
+		} else {
+			lastErr = doErr
+		}
+	}
+
+	return 0, "", lastErr
 }
 
 

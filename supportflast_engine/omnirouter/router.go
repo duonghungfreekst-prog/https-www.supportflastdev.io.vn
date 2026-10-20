@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ var (
 	routerETag      string
 )
 
-// initRouterCache nén sẵn file router HTML vào RAM để phục vụ 0ms
+// initRouterCache nÃ©n sáºµn file router HTML vÃ o RAM Ä‘á»ƒ phá»¥c vá»¥ 0ms
 func initRouterCache(filePath string) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -31,22 +31,22 @@ func initRouterCache(filePath string) {
 	}
 	routerRawBytes = data
 
-	// Băm ETag SHA-256
+	// BÄƒm ETag SHA-256
 	h := sha256.Sum256(data)
 	routerETag = fmt.Sprintf(`"%s"`, hex.EncodeToString(h[:16]))
 
-	// Nén Gzip Level 9
+	// NÃ©n Gzip Level 9
 	var buf bytes.Buffer
 	gz, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
 	if err == nil {
 		_, _ = gz.Write(data)
 		_ = gz.Close()
 		routerGzipBytes = buf.Bytes()
-		log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã nén sẵn router/index.html lên RAM: %d KB -> %d KB (ETag: %s)", len(routerRawBytes)/1024, len(routerGzipBytes)/1024, routerETag)
+		log.Printf("[ENGINE] [OMNIROUTER] âœ” ÄÃ£ nÃ©n sáºµn router/index.html lÃªn RAM: %d KB -> %d KB (ETag: %s)", len(routerRawBytes)/1024, len(routerGzipBytes)/1024, routerETag)
 	}
 }
 
-// safeRegister đăng ký route an toàn, tránh panic nếu pattern đã tồn tại trên ServeMux của Host Server
+// safeRegister Ä‘Äƒng kÃ½ route an toÃ n, trÃ¡nh panic náº¿u pattern Ä‘Ã£ tá»“n táº¡i trÃªn ServeMux cá»§a Host Server
 func safeRegister(mux *http.ServeMux, pattern string, handler http.HandlerFunc) {
 	defer func() {
 		_ = recover()
@@ -54,7 +54,7 @@ func safeRegister(mux *http.ServeMux, pattern string, handler http.HandlerFunc) 
 	mux.HandleFunc(pattern, handler)
 }
 
-// safeRegisterHandler đăng ký http.Handler an toàn, tránh panic nếu pattern đã tồn tại
+// safeRegisterHandler Ä‘Äƒng kÃ½ http.Handler an toÃ n, trÃ¡nh panic náº¿u pattern Ä‘Ã£ tá»“n táº¡i
 func safeRegisterHandler(mux *http.ServeMux, pattern string, handler http.Handler) {
 	defer func() {
 		_ = recover()
@@ -62,26 +62,26 @@ func safeRegisterHandler(mux *http.ServeMux, pattern string, handler http.Handle
 	mux.Handle(pattern, handler)
 }
 
-// RegisterOmniRouterRoutes đăng ký toàn bộ routes của 9Router vào ServeMux của hệ thống
+// RegisterOmniRouterRoutes Ä‘Äƒng kÃ½ toÃ n bá»™ routes cá»§a 9Router vÃ o ServeMux cá»§a há»‡ thá»‘ng
 func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir string) {
-	// 1. Khởi tạo cấu trúc lưu trữ bảng
+	// 1. Khá»Ÿi táº¡o cáº¥u trÃºc lÆ°u trá»¯ báº£ng
 	if err := InitStorage(db, isTiDB); err != nil {
-		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khởi tạo bảng OmniRouter: %v", err)
+		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khá»Ÿi táº¡o báº£ng OmniRouter: %v", err)
 	}
 	SetSkillsDB(db)
 
-	// 2. Tuân thủ Rule 9: Không tự ý nạp tài khoản mẫu/giả lập vào CSDL
+	// 2. TuÃ¢n thá»§ Rule 9: KhÃ´ng tá»± Ã½ náº¡p tÃ i khoáº£n máº«u/giáº£ láº­p vÃ o CSDL
 
-	// 3. Khởi chạy worker tự động làm mới token OAuth ngầm & nạp Quota định kỳ
+	// 3. Khá»Ÿi cháº¡y worker tá»± Ä‘á»™ng lÃ m má»›i token OAuth ngáº§m & náº¡p Quota Ä‘á»‹nh ká»³
 	StartAutoTokenRefreshWorker(context.Background(), db)
 	StartBackgroundQuotaPollingWorker(context.Background(), db)
 
-	// 4. API Ping siêu nhẹ & Health check
+	// 4. API Ping siÃªu nháº¹ & Health check
 	safeRegister(mux, "/ping", HandlePing)
 	safeRegister(mux, "/api/health", HandleHealth)
 	safeRegister(mux, "/api/router/health", HandleHealth)
 
-	// 4.1 Cài đặt hệ thống & CSDL TiDB Cloud
+	// 4.1 CÃ i Ä‘áº·t há»‡ thá»‘ng & CSDL TiDB Cloud
 	settingsHandler := HandleSettings(db)
 	safeRegister(mux, "/api/settings", settingsHandler)
 	safeRegister(mux, "/api/settings/", settingsHandler)
@@ -90,7 +90,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/settings/database", HandleSettingsDatabase(db))
 	safeRegister(mux, "/api/router/settings/database", HandleSettingsDatabase(db))
 
-	// 5. API Quản lý API Key cho Web UI & CLI Tools (Hỗ trợ cả /api/keys và /api/router/keys)
+	// 5. API Quáº£n lÃ½ API Key cho Web UI & CLI Tools (Há»— trá»£ cáº£ /api/keys vÃ  /api/router/keys)
 	keysHandler := HandleManageKeys(db)
 	safeRegister(mux, "/api/keys", keysHandler)
 	safeRegister(mux, "/api/keys/", keysHandler)
@@ -98,7 +98,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/router/keys/", keysHandler)
 	safeRegister(mux, "/api/router/keys/toggle", HandleToggleKey(db))
 
-	// 6. API Danh sách tài khoản AI & Tương tác (Hỗ trợ cả dạng /api/providers và /api/router/providers)
+	// 6. API Danh sÃ¡ch tÃ i khoáº£n AI & TÆ°Æ¡ng tÃ¡c (Há»— trá»£ cáº£ dáº¡ng /api/providers vÃ  /api/router/providers)
 	providersHandler := HandleListProviders(db)
 	safeRegister(mux, "/api/providers", providersHandler)
 	safeRegister(mux, "/api/providers/", providersHandler)
@@ -111,20 +111,20 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/quotas/refresh-all", HandleRefreshAllQuotas(db))
 	safeRegister(mux, "/api/router/quotas/refresh-all", HandleRefreshAllQuotas(db))
 
-	// 6.0 API Available Models của Provider (/api/models/provider)
+	// 6.0 API Available Models cá»§a Provider (/api/models/provider)
 	providerModelsHandler := HandleProviderModels(db)
 	safeRegister(mux, "/api/models/provider", providerModelsHandler)
 	safeRegister(mux, "/api/models/provider/", providerModelsHandler)
 	safeRegister(mux, "/api/router/models/provider", providerModelsHandler)
 	safeRegister(mux, "/api/router/models/provider/", providerModelsHandler)
 
-	// 6.0 API Thống kê công khai siêu nhẹ cho trang chủ Web (/api/stats/public, /api/v1/public/stats)
+	// 6.0 API Thá»‘ng kÃª cÃ´ng khai siÃªu nháº¹ cho trang chá»§ Web (/api/stats/public, /api/v1/public/stats)
 	publicStatsHandler := HandlePublicStats(db)
 	safeRegister(mux, "/api/stats/public", publicStatsHandler)
 	safeRegister(mux, "/api/v1/public/stats", publicStatsHandler)
 	safeRegister(mux, "/api/v1/public/quota", publicStatsHandler)
 
-	// 6.1 API Quota Hạn mức chi tiết (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
+	// 6.1 API Quota Háº¡n má»©c chi tiáº¿t (/api/usage/{id}, /api/usage/stats, /api/usage-stats)
 	usageHandler := HandleAccountUsage(db)
 	usageStatsHandler := HandleUsageStats(db)
 	safeRegister(mux, "/api/usage/stats", usageStatsHandler)
@@ -140,6 +140,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	proxyPoolsHandler := HandleProxyPools(db)
 	safeRegister(mux, "/api/proxy-pools", proxyPoolsHandler)
 	safeRegister(mux, "/api/proxy-pools/", proxyPoolsHandler)
+safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	safeRegister(mux, "/api/proxy-pools/bind", HandleBindProxyPool(db))
 	safeRegister(mux, "/api/router/proxy/switch", HandleSwitchProxy(db))
 	safeRegister(mux, "/api/proxy-pools/switch", HandleSwitchProxy(db))
@@ -169,7 +170,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/skills/scan", HandleScanSkillsEndpoint)
 	safeRegister(mux, "/api/skills/toggle", HandleToggleSkillEndpoint)
 
-	// 6.3 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua cổng 443 & hosts file)
+	// 6.3 Gemini Native Transparent Proxy cho Antigravity IDE (MITM qua cá»•ng 443 & hosts file)
 	geminiProxyHandler := HandleGeminiNativeProxy(db)
 	safeRegister(mux, "/v1internal:streamGenerateContent", geminiProxyHandler)
 	safeRegister(mux, "/v1internal:generateContent", geminiProxyHandler)
@@ -181,9 +182,9 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/v1internal/", geminiProxyHandler)
 	safeRegister(mux, "/v1internal:", geminiProxyHandler)
 	safeRegister(mux, "/v1beta/", geminiProxyHandler)
-	log.Printf("[ENGINE] [GEMINI-PROXY] ✔ Đã đăng ký Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
+	log.Printf("[ENGINE] [GEMINI-PROXY] âœ” ÄÃ£ Ä‘Äƒng kÃ½ Transparent Gemini Proxy cho Antigravity IDE (upstream IP: %s)", upstreamRealHost)
 
-	// MITM Dispatcher cho Cổng 443: Bắt trọn vẹn request từ Antigravity/CloudCode IDE
+	// MITM Dispatcher cho Cá»•ng 443: Báº¯t trá»n váº¹n request tá»« Antigravity/CloudCode IDE
 	mitmDispatcher := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		host := strings.ToLower(r.Host)
@@ -217,11 +218,11 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/translator/console-logs", unifiedLogHandler)
 	safeRegister(mux, "/api/translator/console-logs/stream", HandleLogStream)
 
-	// 8. API Kích hoạt đồng bộ thủ công từ data.libsql (nếu có file)
+	// 8. API KÃ­ch hoáº¡t Ä‘á»“ng bá»™ thá»§ cÃ´ng tá»« data.libsql (náº¿u cÃ³ file)
 	safeRegister(mux, "/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
 
-	// 9. API Đồng bộ, Cấu hình MITM & DNS và Báo cáo dành riêng cho App PC / Termux / CMD
+	// 9. API Äá»“ng bá»™, Cáº¥u hÃ¬nh MITM & DNS vÃ  BÃ¡o cÃ¡o dÃ nh riÃªng cho App PC / Termux / CMD
 	clientConfigHandler := HandleClientConfig(db)
 	safeRegister(mux, "/api/v1/client/config", clientConfigHandler)
 	safeRegister(mux, "/api/v1/client/config.json", clientConfigHandler)
@@ -238,7 +239,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/client/report", HandleClientReport(db))
 	safeRegister(mux, "/api/sync", HandleClientSync(db))
 
-	// 9.1 API Tra cứu Quota & Ping DNS trực tiếp qua CMD / Terminal / cURL
+	// 9.1 API Tra cá»©u Quota & Ping DNS trá»±c tiáº¿p qua CMD / Terminal / cURL
 	clientQuotaHandler := HandleClientQuotaCLI(db)
 	safeRegister(mux, "/api/v1/client/quota", clientQuotaHandler)
 	safeRegister(mux, "/api/v1/client/quota.bat", clientQuotaHandler)
@@ -252,17 +253,17 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/v1/quota", clientQuotaHandler)
 	safeRegister(mux, "/api/v1/ping", clientQuotaHandler)
 
-	// 9.2 API Heartbeat tín hiệu kết nối Live từ máy khách CMD / Antigravity IDE
+	// 9.2 API Heartbeat tÃ­n hiá»‡u káº¿t ná»‘i Live tá»« mÃ¡y khÃ¡ch CMD / Antigravity IDE
 	clientHeartbeatHandler := HandleClientHeartbeat(db)
 	safeRegister(mux, "/api/v1/client/heartbeat", clientHeartbeatHandler)
 	safeRegister(mux, "/api/client/heartbeat", clientHeartbeatHandler)
 
-	// 9.3 API Cập nhật & Tra cứu Active Key trong RAM cho App Desktop / WebView2
+	// 9.3 API Cáº­p nháº­t & Tra cá»©u Active Key trong RAM cho App Desktop / WebView2
 	activeKeyHandler := HandleSetActiveKey(db)
 	safeRegister(mux, "/api/v1/client/set_active_key", activeKeyHandler)
 	safeRegister(mux, "/api/v1/client/active_key", activeKeyHandler)
 
-	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
+	// 10. Cá»•ng Gateway Proxy trá»±c tiáº¿p chuáº©n OpenAI
 	chatHandler := HandleChatCompletions(db)
 	safeRegister(mux, "/v1/chat/completions", chatHandler)
 	safeRegister(mux, "/api/v1/chat/completions", chatHandler)
@@ -270,7 +271,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/v1/models", HandleModels)
 	safeRegister(mux, "/api/v1/models", HandleModels)
 
-	// 10.1 API Billing Subscription & Usage chuẩn OpenAI cho Antigravity IDE / Extension
+	// 10.1 API Billing Subscription & Usage chuáº©n OpenAI cho Antigravity IDE / Extension
 	billingSubHandler := HandleBillingSubscription(db)
 	billingUsageHandler := HandleBillingUsage(db)
 	safeRegister(mux, "/v1/dashboard/billing/subscription", billingSubHandler)
@@ -286,7 +287,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/v1/models/stt", HandleSTTModels)
 
 
-	// 11. Phục vụ tĩnh thư mục Logo nhà cung cấp (/providers/ và /router/providers/)
+	// 11. Phá»¥c vá»¥ tÄ©nh thÆ° má»¥c Logo nhÃ  cung cáº¥p (/providers/ vÃ  /router/providers/)
 	providersCandidates := []string{
 		filepath.Join(uiDir, "providers"),
 		filepath.Join(uiDir, "router", "providers"),
@@ -311,13 +312,13 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		fileServer := http.FileServer(http.Dir(resolvedProvidersDir))
 		safeRegisterHandler(mux, "/providers/", http.StripPrefix("/providers/", fileServer))
 		safeRegisterHandler(mux, "/router/providers/", http.StripPrefix("/router/providers/", fileServer))
-		log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã gắn cổng phục vụ tĩnh 160+ Logo nhà cung cấp từ: %s", resolvedProvidersDir)
+		log.Printf("[ENGINE] [OMNIROUTER] âœ” ÄÃ£ gáº¯n cá»•ng phá»¥c vá»¥ tÄ©nh 160+ Logo nhÃ  cung cáº¥p tá»«: %s", resolvedProvidersDir)
 	}
 
-	// 12. Giao diện Web Dashboard Quản lý 9Router với Pre-compressed Gzip & ETag HTTP 304
+	// 12. Giao diá»‡n Web Dashboard Quáº£n lÃ½ 9Router vá»›i Pre-compressed Gzip & ETag HTTP 304
 	routerUIFile := filepath.Join(uiDir, "router", "index.html")
 	routerHandler := func(w http.ResponseWriter, r *http.Request) {
-		// 1. Phục vụ tài nguyên tĩnh trong thư mục router/ (app.png, icons/, images/, i18n/, ...)
+		// 1. Phá»¥c vá»¥ tÃ i nguyÃªn tÄ©nh trong thÆ° má»¥c router/ (app.png, icons/, images/, i18n/, ...)
 		relPath := strings.TrimPrefix(r.URL.Path, "/router")
 		relPath = strings.TrimPrefix(relPath, "/")
 		if relPath != "" && relPath != "index.html" {
@@ -329,7 +330,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 			}
 		}
 
-		// Nạp cache nén sẵn một lần duy nhất
+		// Náº¡p cache nÃ©n sáºµn má»™t láº§n duy nháº¥t
 		routerGzipOnce.Do(func() {
 			initRouterCache(routerUIFile)
 		})
@@ -338,7 +339,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		w.Header().Set("Vary", "Accept-Encoding")
 		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://challenges.cloudflare.com data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
 
-		// Kiểm tra ETag HTTP 304 Not Modified
+		// Kiá»ƒm tra ETag HTTP 304 Not Modified
 		if routerETag != "" {
 			w.Header().Set("ETag", routerETag)
 			if r.Header.Get("If-None-Match") == routerETag {
@@ -351,7 +352,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 
-		// Phục vụ Gzip nén sẵn trực tiếp từ RAM nếu client hỗ trợ
+		// Phá»¥c vá»¥ Gzip nÃ©n sáºµn trá»±c tiáº¿p tá»« RAM náº¿u client há»— trá»£
 		if len(routerGzipBytes) > 0 && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			w.Header().Set("Content-Encoding", "gzip")
 			w.WriteHeader(http.StatusOK)
@@ -370,14 +371,14 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 			return
 		}
 
-		// Fallback nếu chưa copy file UI
+		// Fallback náº¿u chÆ°a copy file UI
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head><title>9Router Gateway Dashboard</title><meta charset="utf-8"/></head>
 <body style="background:#0f172a;color:#f8fafc;font-family:sans-serif;padding:40px;">
-	<h1>⚡ 9Router Master Gateway</h1>
-	<p>Web Dashboard đang khởi động...</p>
+	<h1>âš¡ 9Router Master Gateway</h1>
+	<p>Web Dashboard Ä‘ang khá»Ÿi Ä‘á»™ng...</p>
 </body>
 </html>`))
 	}
@@ -391,5 +392,6 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/share", routerHandler)
 	safeRegister(mux, "/share-app", routerHandler)
 
-	log.Println("[ENGINE] [OMNIROUTER] ✔ Đã kích hoạt toàn bộ cổng định tuyến Master Gateway")
+	log.Println("[ENGINE] [OMNIROUTER] âœ” ÄÃ£ kÃ­ch hoáº¡t toÃ n bá»™ cá»•ng Ä‘á»‹nh tuyáº¿n Master Gateway")
 }
+
