@@ -336,31 +336,44 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 
 			var body struct {
 				IsActive   *bool  `json:"isActive"`
-				ResetQuota *bool  `json:"resetQuota"`
 				QuotaLimit *int64 `json:"quotaLimit"`
+				ResetQuota *bool  `json:"resetQuota"`
 			}
 			_ = json.NewDecoder(r.Body).Decode(&body)
 
+			var uReq, qLim int64
+			_ = db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE id = ?", id).Scan(&uReq, &qLim)
+
 			var err error
-			if body.ResetQuota != nil && *body.ResetQuota {
+			// 1. Trường hợp nâng hạn mức QuotaLimit
+			if body.QuotaLimit != nil {
+				newLimit := *body.QuotaLimit
+				if newLimit > 0 && newLimit > uReq {
+					// Nâng hạn mức cao hơn số lượt đã dùng -> Tự động mở khóa cung cấp tiếp
+					_, err = db.Exec("UPDATE omni_client_keys SET quota_limit = ?, is_active = 1 WHERE id = ?", newLimit, id)
+				} else {
+					_, err = db.Exec("UPDATE omni_client_keys SET quota_limit = ? WHERE id = ?", newLimit, id)
+				}
+			} else if body.ResetQuota != nil && *body.ResetQuota {
 				_, err = db.Exec("UPDATE omni_client_keys SET used_requests = 0, is_active = 1 WHERE id = ?", id)
-			} else if body.QuotaLimit != nil {
-				_, err = db.Exec("UPDATE omni_client_keys SET quota_limit = ?, is_active = 1 WHERE id = ?", *body.QuotaLimit, id)
 			} else if body.IsActive != nil {
+				// Nếu cố tình bật lại (isActive = true) khi khóa đã đạt/vượt hạn mức -> CẤM BẬT!
+				if *body.IsActive && qLim > 0 && uReq >= qLim {
+					http.Error(w, `{"error":"Khóa API này đã đạt hạn mức tối đa và bị KHÓA HOÀN TOÀN. Không thể bật lại để cung cấp trừ khi nâng hạn mức (Quota Limit)!"}`, http.StatusBadRequest)
+					return
+				}
 				actVal := 0
 				if *body.IsActive {
 					actVal = 1
 				}
 				_, err = db.Exec("UPDATE omni_client_keys SET is_active = ? WHERE id = ?", actVal, id)
 			} else {
-				// Nếu key đang bị quá hạn mức mà người dùng bấm bật lại: tự động reset used_requests về 0
-				var uReq, qLim int64
-				_ = db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE id = ?", id).Scan(&uReq, &qLim)
+				// Toggle thông thường: nếu đã hết hạn mức thì KHÔNG CHO BẬT
 				if qLim > 0 && uReq >= qLim {
-					_, err = db.Exec("UPDATE omni_client_keys SET used_requests = 0, is_active = 1 WHERE id = ?", id)
-				} else {
-					_, err = db.Exec("UPDATE omni_client_keys SET is_active = 1 - is_active WHERE id = ?", id)
+					http.Error(w, `{"error":"Khóa API này đã đạt hạn mức tối đa và bị KHÓA HOÀN TOÀN. Không thể bật lại để cung cấp!"}`, http.StatusBadRequest)
+					return
 				}
+				_, err = db.Exec("UPDATE omni_client_keys SET is_active = 1 - is_active WHERE id = ?", id)
 			}
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)

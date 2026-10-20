@@ -10088,22 +10088,27 @@
 
             let statusBadge = '';
             let switchTitle = '';
+            let switchHtml = '';
             let actionBtn = '';
             if (isQuotaExceeded) {
-              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">QUÁ HẠN MỨC (ĐÃ KHÓA)</span>`;
-              switchTitle = `Khóa này đã sử dụng hết hạn mức (${uReq.toLocaleString('vi-VN')}/${qLimit.toLocaleString('vi-VN')} req). Bấm 'Đặt lại Quota' để mở khóa.`;
-              actionBtn = `<button onclick="resetApiKeyQuota('${k.id}')" class="text-cyan-400 hover:text-cyan-300 hover:underline font-bold text-xs">Đặt lại Quota</button>`;
+              statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-600/30 text-rose-300 border border-rose-500/50">ĐÃ KHÓA (HẾT HẠN MỨC)</span>`;
+              switchTitle = `Khóa này đã đạt hạn mức tối đa (${uReq.toLocaleString('vi-VN')}/${qLimit.toLocaleString('vi-VN')} req). Đã bị KHÓA HOÀN TOÀN và ngừng cung cấp!`;
+              switchHtml = `<div class="nexus-switch nexus-switch-sm opacity-40 cursor-not-allowed" title="${switchTitle}"><div class="nexus-switch-knob"></div></div>`;
+              actionBtn = `<button onclick="promptUpgradeQuota('${k.id}', ${qLimit}, ${uReq})" class="text-cyan-400 hover:text-cyan-300 hover:underline font-bold text-xs">Nâng hạn mức</button>`;
             } else if (isExpired) {
               statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">HẾT HẠN</span>`;
               switchTitle = 'API Key đã hết hạn thời gian sử dụng.';
+              switchHtml = `<button onclick="toggleApiKeyLive('${k.id}', ${rawActive})" class="nexus-switch nexus-switch-sm" title="${switchTitle}"><div class="nexus-switch-knob"></div></button>`;
               actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', ${rawActive})" class="${rawActive ? 'text-amber-400' : 'text-emerald-400'} hover:underline font-bold text-xs">${rawActive ? 'Tắt' : 'Bật'}</button>`;
             } else if (rawActive) {
               statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">HOẠT ĐỘNG</span>`;
               switchTitle = 'Đang hoạt động (Nhấn để tạm khóa)';
+              switchHtml = `<button onclick="toggleApiKeyLive('${k.id}', true)" class="nexus-switch nexus-switch-sm active" title="${switchTitle}"><div class="nexus-switch-knob"></div></button>`;
               actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', true)" class="text-amber-400 hover:text-amber-300 hover:underline font-bold text-xs">Tắt</button>`;
             } else {
               statusBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-500/20 text-slate-300 border border-slate-500/40">TẠM KHÓA</span>`;
               switchTitle = 'Đang tạm khóa (Nhấn để kích hoạt)';
+              switchHtml = `<button onclick="toggleApiKeyLive('${k.id}', false)" class="nexus-switch nexus-switch-sm" title="${switchTitle}"><div class="nexus-switch-knob"></div></button>`;
               actionBtn = `<button onclick="toggleApiKeyLive('${k.id}', false)" class="text-emerald-400 hover:text-emerald-300 hover:underline font-bold text-xs">Bật</button>`;
             }
 
@@ -10114,9 +10119,7 @@
               <td class="py-3.5 px-3 text-slate-400 font-mono">${created}</td>
               <td class="py-3.5 px-3">
                 <div class="flex items-center gap-2">
-                  <button onclick="toggleApiKeyLive('${k.id}', ${isAct})" class="nexus-switch nexus-switch-sm ${isAct ? 'active' : ''}" title="${switchTitle}">
-                    <div class="nexus-switch-knob"></div>
-                  </button>
+                  ${switchHtml}
                   ${statusBadge}
                 </div>
               </td>
@@ -31506,6 +31509,35 @@
         } else {
           showToastNotification('Không thể đặt lại Quota: HTTP ' + res.status, true);
         }
+
+
+    // Nâng hạn mức Quota cho API Key đã đạt hạn mức tối đa
+    async function promptUpgradeQuota(id, currentLimit, currentUsed) {
+      const suggest = Math.max(currentUsed + 1000, currentLimit * 2, 2000);
+      const val = prompt(`Khóa này đã đạt hạn mức tối đa (${currentUsed.toLocaleString('vi-VN')}/${currentLimit.toLocaleString('vi-VN')} req) và đã bị KHÓA HOÀN TOÀN.\n\nNhập hạn mức Quota mới (phải lớn hơn ${currentUsed.toLocaleString('vi-VN')} req) để mở khóa cung cấp tiếp:`, suggest);
+      if (!val) return;
+      const newQuota = parseInt(val, 10);
+      if (isNaN(newQuota) || newQuota <= currentUsed) {
+        alert(`Lỗi: Hạn mức mới phải là số nguyên lớn hơn số request đã dùng (${currentUsed.toLocaleString('vi-VN')} req)!`);
+        return;
+      }
+      try {
+        const res = await apiRequest('/api/keys/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quotaLimit: newQuota })
+        });
+        if (res.ok) {
+          showToastNotification(`✔ Đã nâng hạn mức lên ${newQuota.toLocaleString('vi-VN')} req và mở khóa cung cấp thành công!`);
+          await loadApiKeysLive();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          showToastNotification('Lỗi nâng hạn mức: ' + (errData.error || res.status), true);
+        }
+      } catch (err) {
+        showToastNotification('Lỗi: ' + (err.message || err), true);
+      }
+    }
       } catch (err) {
         showToastNotification('Lỗi: ' + (err.message || err), true);
       }

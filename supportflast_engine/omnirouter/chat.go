@@ -332,6 +332,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		}
 
 		// N?u khng c API Key trong header ho?c key ngoi h? th?ng, t? d?ng fallback v? Active Client Key c?a ngu?i dng
+				// Neu khong co API Key trong header hoac key ngoai he thong, tu dong fallback ve Active Client Key con hieu luc
 		if clientKeyItem == nil {
 			activeKey := GetActiveClientKey(db)
 			if activeKey != "" {
@@ -340,6 +341,21 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 					SetActiveClientKey(item.Key)
 				}
 			}
+		}
+
+		// CHAN TUYET DOI: Neu khong co API Key hop le hoac khoa da het han muc Quota -> Khong dung de cung cap duoc nua!
+		if clientKeyItem == nil {
+			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Tu choi request vi khong co API Key hop le hoac khoa da het han muc")
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Khoa API da dat han muc toi da va bi KHOA HOAN TOAN. Khong the tiep tuc cung cap yeu cau.",
+					"type":    "quota_exhausted_error",
+					"code":    "key_exhausted",
+				},
+			})
+			return
 		}
 
 		// Đọc payload

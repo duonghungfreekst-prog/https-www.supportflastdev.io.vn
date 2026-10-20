@@ -466,8 +466,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				var uKey string
 				_ = db.QueryRow(`
 					SELECT api_key FROM omni_client_keys 
-					WHERE is_active = 1 
-					  AND id NOT LIKE '%master%' 
+					WHERE id NOT LIKE '%master%' 
 					  AND api_key NOT LIKE '%master-live%' 
 					ORDER BY created_at DESC 
 					LIMIT 1
@@ -525,9 +524,19 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				})
 				return
 			}
-		}
-
-		// Lấy danh sách tài khoản AI khả dụng
+		} else {
+			log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khong co API Key nao trong he thong")
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusForbidden)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{
+					"code":    403,
+					"message": "Khong tim thay API Key nao duoc cap phep. Vui long tao API Key tren Dashboard de su dung.",
+					"status":  "PERMISSION_DENIED",
+				},
+			})
+			return
+		}		// Lấy danh sách tài khoản AI khả dụng
 
 		accounts := GetCachedActiveProviders()
 
