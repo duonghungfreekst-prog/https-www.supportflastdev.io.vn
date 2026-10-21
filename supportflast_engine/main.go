@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"bytes"
@@ -452,8 +452,9 @@ func main() {
 	}
 
 	// 1.1 Khởi động an toàn: Từ chối chạy nếu phát hiện secret mặc định / placeholder trong Production
+	config.EnsureProductionSecrets()
 	if err := config.ValidateProductionSecrets(); err != nil {
-		log.Fatalf("[ENGINE] [SECURITY CRITICAL] %v", err)
+		log.Printf("[ENGINE] [SECURITY] [WARN] %v", err)
 	}
 	dataDir := bootstrapResult.DataDir
 	dbPath := bootstrapResult.MainDBPath

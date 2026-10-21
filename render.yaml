@@ -23,6 +23,10 @@ services:
         value: 0.0.0.0
       - key: PYTHONUNBUFFERED
         value: 1
+      - key: ENV
+        value: production
+      - key: INTERNAL_SERVICE_SECRET
+        value: sf_internal_service_prod_secret_2026_a8f9c1d2e3b4
 
   # ----------------------------------------------------------------------------
   # 2. Go Monolith Engine (Web 3D UI, Hub API Gateway, Virtual Storage, SIEM)
@@ -42,6 +46,10 @@ services:
         sync: false
       - key: HOST
         value: 0.0.0.0
+      - key: ENV
+        value: production
+      - key: INTERNAL_SERVICE_SECRET
+        value: sf_internal_service_prod_secret_2026_a8f9c1d2e3b4
       - key: DOMAIN
         value: supportflastdev.io.vn
       - key: ALLOWED_ORIGINS

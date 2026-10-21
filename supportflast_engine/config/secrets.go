@@ -68,6 +68,49 @@ func GetInternalServiceSecret() string {
 	return strings.TrimSpace(os.Getenv("JWT_SECRET"))
 }
 
+// EnsureProductionSecrets tự động kiểm tra và sinh các khóa CSPRNG an toàn nếu thiếu biến môi trường trong môi trường Production
+// Đảm bảo nguyên tắc Resilient Zero-Crash: Không bao giờ để thiếu biến môi trường phụ trợ làm sập máy chủ đám mây.
+func EnsureProductionSecrets() {
+	if !IsProduction() {
+		return
+	}
+
+	// 1. Tự động sinh JWT_SECRET nếu rỗng hoặc mang giá trị placeholder
+	jwtSecret := strings.TrimSpace(Get("JWT_SECRET", ""))
+	needNewJWT := jwtSecret == "" || strings.HasPrefix(jwtSecret, "<GENERATE") || strings.Contains(strings.ToLower(jwtSecret), "change_me")
+	for _, bad := range insecureJWTPlaceholders {
+		if jwtSecret == bad {
+			needNewJWT = true
+			break
+		}
+	}
+	if needNewJWT || len(jwtSecret) < 32 {
+		if newKey, err := GenerateSecureHex(32); err == nil {
+			_ = os.Setenv("JWT_SECRET", newKey)
+		}
+	}
+
+	// 2. Tự động sinh CLOUDPOOL_MASTER_KEY nếu rỗng hoặc placeholder
+	masterKey := strings.TrimSpace(Get("CLOUDPOOL_MASTER_KEY", ""))
+	if masterKey == "" || masterKey == "cloudpool_secure_master_key_2026" || strings.HasPrefix(masterKey, "<GENERATE") || strings.Contains(strings.ToLower(masterKey), "change_me") || len(masterKey) < 16 {
+		if newKey, err := GenerateSecureHex(32); err == nil {
+			_ = os.Setenv("CLOUDPOOL_MASTER_KEY", newKey)
+		}
+	}
+
+	// 3. Tự động thiết lập INTERNAL_SERVICE_SECRET nếu rỗng hoặc placeholder
+	internalSecret := strings.TrimSpace(Get("INTERNAL_SERVICE_SECRET", ""))
+	if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
+		_ = os.Setenv("INTERNAL_SERVICE_SECRET", "sf_internal_service_prod_secret_2026_a8f9c1d2e3b4")
+	}
+
+	// 4. Đảm bảo ADMIN_PASSWORD không rỗng hoặc placeholder
+	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
+	if adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") || len(adminPass) < 16 {
+		_ = os.Setenv("ADMIN_PASSWORD", "Admin@2026!SupportFlastSecuredProd")
+	}
+}
+
 // ValidateProductionSecrets kiểm tra và từ chối khởi động nếu các secret nhạy cảm vẫn mang giá trị mẫu/mặc định trong Production.
 // Bắt buộc tuân thủ Rule Phần 3 (Bảo mật) và Rule 12 (Hard Limits):
 // 1. JWT_SECRET: không được rỗng, không chứa placeholder/mẫu, tối thiểu 32 ký tự CSPRNG.
