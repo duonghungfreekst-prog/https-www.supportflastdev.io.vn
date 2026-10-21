@@ -1,4 +1,4 @@
-﻿"""FastAPI Entrypoint cho Python Subagent System (supportflast_ai)
+"""FastAPI Entrypoint cho Python Subagent System (supportflast_ai)
 Cổng kết nối AI Engine cho 5 Subagents trên supportflast.dev.io.vn.
 """
 import os
@@ -17,6 +17,32 @@ from core.siem_engine import SIEMEngine
 
 INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "").strip()
 
+INSECURE_INTERNAL_SECRETS = {
+    "",
+    "CHANGE_ME_INTERNAL_SERVICE_SECRET",
+    "sf_mobile_token_2026",
+    "sf_mobile_engine_token_2026",
+    "default_secret",
+    "secret",
+    "123456",
+    "<GENERATE_SECURE_RANDOM_64_HEX_CHARACTERS>",
+    "<GENERATE_SECURE_INTERNAL_SERVICE_SECRET>",
+}
+
+def is_insecure_internal_secret(secret: str) -> bool:
+    """Kiểm tra xem secret có rỗng, mang giá trị mặc định yếu hoặc placeholder hay không."""
+    if not secret:
+        return True
+    s = secret.strip()
+    if s in INSECURE_INTERNAL_SECRETS:
+        return True
+    lower = s.lower()
+    if lower.startswith("<generate") or "change_me" in lower:
+        return True
+    if len(s) < 16:
+        return True
+    return False
+
 def verify_internal_auth(request: Request) -> bool:
     """Xác thực token nội bộ giữa Go Engine và Python AI (Rule 2.4 & Rule 3.2)."""
     client_host = request.client.host if request.client else ""
@@ -24,8 +50,10 @@ def verify_internal_auth(request: Request) -> bool:
         return True
 
     is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
-    if is_prod and not INTERNAL_SECRET:
-        logging.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET chưa được cấu hình trong Production! Từ chối toàn bộ request nội bộ.")
+    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+
+    if is_prod and is_insecure_internal_secret(current_secret):
+        logging.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET rỗng hoặc mang giá trị mặc định yếu trong Production! Từ chối toàn bộ request nội bộ.")
         return False
 
     token = request.headers.get("X-Internal-Token") or ""
@@ -34,7 +62,7 @@ def verify_internal_auth(request: Request) -> bool:
         if auth_hdr.lower().startswith("bearer "):
             token = auth_hdr[7:].strip()
 
-    if token and INTERNAL_SECRET and hmac.compare_digest(token, INTERNAL_SECRET):
+    if token and current_secret and hmac.compare_digest(token, current_secret):
         return True
 
     # Chỉ cho phép localhost trong môi trường dev khi KHÔNG phải production
@@ -277,8 +305,25 @@ async def siem_record_event(req: SIEMEventRequest, request: Request):
         "action_recommended": analysis.get("action_recommended")
     }
 
+@app.on_event("startup")
+async def startup_security_checks():
+    """Kiểm tra an ninh khi khởi động service: từ chối khởi động nếu thiếu secret trong Production (Rule Phần 3 & Task 10)."""
+    is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
+    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+    if is_prod:
+        if is_insecure_internal_secret(current_secret):
+            msg = "[AI] [SECURITY CRITICAL] Khởi động thất bại: INTERNAL_SERVICE_SECRET rỗng hoặc mang giá trị mặc định yếu trong môi trường Production! Bắt buộc cấu hình secret mạnh tối thiểu 16 ký tự."
+            logger.critical(msg)
+            raise RuntimeError(msg)
+        logger.info("[AI] [SECURITY] Đã xác thực INTERNAL_SERVICE_SECRET an toàn cho môi trường Production.")
+
 if __name__ == "__main__":
     import uvicorn
+    is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
+    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+    if is_prod and is_insecure_internal_secret(current_secret):
+        logger.critical("[AI] [SECURITY CRITICAL] Khởi động thất bại: INTERNAL_SERVICE_SECRET rỗng hoặc mang giá trị mặc định yếu trong môi trường Production!")
+        sys.exit(1)
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     logger.info(f"Starting supportflast_ai on {host}:{port}...")

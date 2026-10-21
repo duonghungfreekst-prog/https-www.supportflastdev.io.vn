@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # Docker Compose Production Stack - SupportFlast Production Platform
 # Domain: supportflastdev.io.vn | Port: 8080 / 80 / 443
 # Kiến trúc: Unified Monolith Engine + Nginx WAF Reverse Proxy + Certbot Auto-SSL
@@ -38,6 +38,7 @@ services:
       - JWT_KEYS_DIR=/app/data/keys
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - TZ=Asia/Ho_Chi_Minh
     ports:
       - "127.0.0.1:${PORT:-8080}:8080"
@@ -95,6 +96,9 @@ services:
       - TZ=Asia/Ho_Chi_Minh
     expose:
       - "8000"
+    ports:
+      # Cô lập cổng AI Subagent: chỉ cho phép truy cập từ localhost, không publish ra 0.0.0.0
+      - "127.0.0.1:${AI_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
       interval: 30s
@@ -117,7 +121,10 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - supportflast-net
+      supportflast-net:
+        aliases:
+          - supportflast-ai
+          - internal-net
     labels:
       com.supportflast.environment: "production"
       com.supportflast.service: "ai-subagents"

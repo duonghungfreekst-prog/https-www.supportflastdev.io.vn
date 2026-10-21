@@ -46,7 +46,13 @@ type Credentials struct {
 // ParseCredentialsFromMap trích xuất thông tin xác thực từ map data
 func ParseCredentialsFromMap(dataMap map[string]interface{}) *Credentials {
 	creds := &Credentials{}
-	if tok, ok := dataMap["accessToken"].(string); ok {
+	if tok, ok := dataMap["accessToken"].(string); ok && tok != "" {
+		creds.AccessToken = tok
+	} else if tok, ok := dataMap["apiKey"].(string); ok && tok != "" {
+		creds.AccessToken = tok
+	} else if tok, ok := dataMap["api_key"].(string); ok && tok != "" {
+		creds.AccessToken = tok
+	} else if tok, ok := dataMap["token"].(string); ok && tok != "" {
 		creds.AccessToken = tok
 	}
 	if ref, ok := dataMap["refreshToken"].(string); ok {

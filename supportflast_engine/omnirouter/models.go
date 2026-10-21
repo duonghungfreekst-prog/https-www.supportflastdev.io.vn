@@ -45,27 +45,52 @@ type ProxyPool struct {
 	UpdatedAt  string          `json:"updatedAt"`
 }
 
+// ClientKeyQuotaInfo thông tin hạn mức Quota thực tế của Client Key
+type ClientKeyQuotaInfo struct {
+	KeyID          string `json:"key_id"`
+	Name           string `json:"name"`
+	QuotaLimit     int64  `json:"quota_limit"`
+	UsedRequests   int64  `json:"used_requests"`
+	QuotaRemaining int64  `json:"quota_remaining"`
+	TotalTokens    int64  `json:"total_tokens"`
+	IsUnlimited    bool   `json:"is_unlimited"`
+	ExpiresAt      string `json:"expires_at,omitempty"`
+	LastQuotaAt    string `json:"last_quota_at"`
+	UpdatedAt      string `json:"updated_at"`
+}
+
 // ClientSyncResponse gói dữ liệu trả về cho App Go trên PC/Termux nạp vào RAM
 type ClientSyncResponse struct {
 	Status          string                 `json:"status"`
 	SyncIntervalSec int                    `json:"sync_interval_sec"`
 	RoutingDNS      map[string]string      `json:"routing_dns"`
 	Accounts        []ClientAccountPayload `json:"accounts"`
+
+	// Quota thực tế của Client Key (phân biệt rõ với Quota của Upstream Accounts)
+	ClientQuota     *ClientKeyQuotaInfo    `json:"client_quota,omitempty"`
+	QuotaRemaining  int64                  `json:"quota_remaining"`
+	QuotaLimit      int64                  `json:"quota_limit"`
+	UsedRequests    int64                  `json:"used_requests"`
+	TotalTokens     int64                  `json:"total_tokens"`
+	LastQuotaAt     string                 `json:"last_quota_at,omitempty"`
+	UpdatedAt       string                 `json:"updated_at,omitempty"`
 }
 
-// ClientAccountPayload thông tin tài khoản kèm token thật nạp thẳng vào RAM client
+// ClientAccountPayload thông tin tài khoản cho client (đã cô lập token upstream, mọi request AI qua Server Proxy)
 type ClientAccountPayload struct {
 	ID             string `json:"id"`
 	Provider       string `json:"provider"`
 	AuthType       string `json:"auth_type"`
 	Name           string `json:"name"`
 	Email          string `json:"email"`
-	AccessToken    string `json:"access_token"`
+	AccessToken    string `json:"access_token,omitempty"`
 	RefreshToken   string `json:"refresh_token,omitempty"`
 	ProjectID      string `json:"project_id"`
 	QuotaRemaining int64  `json:"quota_remaining"`
 	Priority       int    `json:"priority"`
 	Status         int    `json:"status"`
+	LastQuotaAt    string `json:"last_quota_at,omitempty"`
+	UpdatedAt      string `json:"updated_at,omitempty"`
 }
 
 // ClientReportPayload gói dữ liệu báo cáo ngầm từ Client gửi lên Web Master

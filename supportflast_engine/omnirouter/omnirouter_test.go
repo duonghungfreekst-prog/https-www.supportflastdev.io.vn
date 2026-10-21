@@ -1,7 +1,8 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"supportflast_engine/security"
 
 	_ "modernc.org/sqlite"
 )
@@ -146,6 +149,7 @@ func TestClientSyncAndReportEndpoints(t *testing.T) {
 	reportBytes, _ := json.Marshal(reportPayload)
 	reqRep := httptest.NewRequest("POST", "/api/v1/client/report", bytes.NewReader(reportBytes))
 	reqRep.Header.Set("Content-Type", "application/json")
+	reqRep.Header.Set("Authorization", "Bearer "+key.Key)
 	recRep := httptest.NewRecorder()
 	mux.ServeHTTP(recRep, reqRep)
 
@@ -227,6 +231,62 @@ func TestClientConfigEndpoint(t *testing.T) {
 	if !strings.Contains(batContent, "set OPENAI_BASE_URL=") || !strings.Contains(batContent, key.Key) {
 		t.Fatalf("Nội dung setup.bat thiếu OPENAI_BASE_URL hoặc key: %s", batContent)
 	}
+
+
+	// 4. Test từ chối khi không gửi API key -> BẮT BUỘC 401 {"error":"Yêu cầu API key hợp lệ"}
+	reqNoKey := httptest.NewRequest("GET", "/api/v1/client/config", nil)
+	recNoKey := httptest.NewRecorder()
+	mux.ServeHTTP(recNoKey, reqNoKey)
+	if recNoKey.Code != http.StatusUnauthorized {
+		t.Fatalf("Không gửi key kỳ vọng 401, nhận: %d", recNoKey.Code)
+	}
+	var errRespNoKey map[string]interface{}
+	if err := json.Unmarshal(recNoKey.Body.Bytes(), &errRespNoKey); err != nil {
+		t.Fatalf("Unmarshal error response thất bại: %v", err)
+	}
+	if errRespNoKey["error"] != "Yêu cầu API key hợp lệ" {
+		t.Fatalf("Kỳ vọng error 'Yêu cầu API key hợp lệ', nhận: %v", errRespNoKey["error"])
+	}
+
+	// 5. Test từ chối khi gửi API key không hợp lệ -> BẮT BUỘC 401 {"error":"Yêu cầu API key hợp lệ"}
+	reqBadKey := httptest.NewRequest("GET", "/api/v1/client/config?key=sk-invalid-random-key", nil)
+	recBadKey := httptest.NewRecorder()
+	mux.ServeHTTP(recBadKey, reqBadKey)
+	if recBadKey.Code != http.StatusUnauthorized {
+		t.Fatalf("Key không hợp lệ kỳ vọng 401, nhận: %d", recBadKey.Code)
+	}
+	var errRespBadKey map[string]interface{}
+	if err := json.Unmarshal(recBadKey.Body.Bytes(), &errRespBadKey); err != nil {
+		t.Fatalf("Unmarshal error response thất bại: %v", err)
+	}
+	if errRespBadKey["error"] != "Yêu cầu API key hợp lệ" {
+		t.Fatalf("Kỳ vọng error 'Yêu cầu API key hợp lệ', nhận: %v", errRespBadKey["error"])
+	}
+
+	// 6. Test từ chối khi gửi API key đã hết hạn -> BẮT BUỘC 401 {"error":"Yêu cầu API key hợp lệ"}
+	expKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Expired-Config-Key", "supportflastdev.io.vn", 0, 0)
+	if err != nil {
+		t.Fatalf("Tạo expired key lỗi: %v", err)
+	}
+	pastTime := time.Now().Add(-2 * time.Hour).Format(time.RFC3339)
+	_, _ = db.Exec("UPDATE omni_client_keys SET expires_at = ? WHERE id = ?", pastTime, expKey.ID)
+	RefreshKeyCache(db)
+
+	reqExp := httptest.NewRequest("GET", "/api/v1/client/config", nil)
+	reqExp.Header.Set("Authorization", "Bearer "+expKey.Key)
+	recExp := httptest.NewRecorder()
+	mux.ServeHTTP(recExp, reqExp)
+	if recExp.Code != http.StatusUnauthorized {
+		t.Fatalf("Key hết hạn kỳ vọng 401, nhận: %d", recExp.Code)
+	}
+	var errRespExp map[string]interface{}
+	if err := json.Unmarshal(recExp.Body.Bytes(), &errRespExp); err != nil {
+		t.Fatalf("Unmarshal error response thất bại: %v", err)
+	}
+	if errRespExp["error"] != "Yêu cầu API key hợp lệ" {
+		t.Fatalf("Kỳ vọng error 'Yêu cầu API key hợp lệ', nhận: %v", errRespExp["error"])
+	}
+
 }
 
 func TestClientQuotaCLIEndpoint(t *testing.T) {
@@ -587,6 +647,7 @@ func TestClientTelemetryAndQuotaReport(t *testing.T) {
 
 	reqReport := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(reportPayload))
 	reqReport.Header.Set("Content-Type", "application/json")
+	reqReport.Header.Set("Authorization", "Bearer "+testKey.Key)
 	recReport := httptest.NewRecorder()
 	mux.ServeHTTP(recReport, reqReport)
 
@@ -869,5 +930,900 @@ func TestAtomicQuotaReservationConcurrent(t *testing.T) {
 	}
 	if !strings.Contains(msg, "hết hạn mức Quota") && !strings.Contains(msg, "bị khóa") {
 		t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %s", msg)
+	}
+}
+
+
+func TestHandleClientSync_IsolateUpstreamAccessToken(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Seed tài khoản AI có upstream AccessToken và RefreshToken thật trong DB
+	secretUpstreamToken := "ya29.TOP_SECRET_UPSTREAM_ACCESS_TOKEN_ABC12345"
+	secretRefreshToken := "1//REFRESH_TOKEN_UPSTREAM_SECRET_67890"
+	futureExpiry := time.Now().Add(2 * time.Hour).Format(time.RFC3339)
+	accData := fmt.Sprintf(`{"accessToken":"%s","refreshToken":"%s","expiresAt":"%s","projectId":"proj-test-secure","quotas":{"gemini_weekly":{"total":1000,"used":50}}}`, secretUpstreamToken, secretRefreshToken, futureExpiry)
+
+	_, err := db.Exec(`INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`, "acc_secure_test_1", "antigravity", "oauth", "Secure Account", "secure@supportflastdev.io.vn", 1, accData, NowISO(), NowISO())
+	if err != nil {
+		t.Fatalf("Thêm provider test thất bại: %v", err)
+	}
+	RefreshProviderCache(db)
+
+	// 2. Tạo Client Key hợp lệ
+	clientKey, err := CreateNewClientKey(db, "Test-Desktop-Client")
+	if err != nil {
+		t.Fatalf("Tạo client key thất bại: %v", err)
+	}
+
+	handler := HandleClientSync(db)
+
+	// 3. Test Unauthorized: Không có Bearer token
+	reqNoAuth := httptest.NewRequest("GET", "/api/v1/client/sync", nil)
+	recNoAuth := httptest.NewRecorder()
+	handler.ServeHTTP(recNoAuth, reqNoAuth)
+	if recNoAuth.Code != http.StatusUnauthorized {
+		t.Fatalf("Kỳ vọng 401 khi thiếu auth, thực tế: %d", recNoAuth.Code)
+	}
+
+	// 4. Test Authorized Client Sync
+	req := httptest.NewRequest("GET", "/api/v1/client/sync", nil)
+	req.Header.Set("Authorization", "Bearer "+clientKey.Key)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("HandleClientSync thất bại: status=%d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	rawBody := rec.Body.String()
+
+	// P0 SECURITY VERIFICATION: TUYỆT ĐỐI KHÔNG chứa Access Token hoặc Refresh Token upstream trong raw response!
+	if strings.Contains(rawBody, secretUpstreamToken) {
+		t.Fatalf("LỖI BẢO MẬT NGHIÊM TRỌNG: Upstream AccessToken bị rò rỉ trong response gửi về client! body: %s", rawBody)
+	}
+	if strings.Contains(rawBody, secretRefreshToken) {
+		t.Fatalf("LỖI BẢO MẬT NGHIÊM TRỌNG: Upstream RefreshToken bị rò rỉ trong response gửi về client! body: %s", rawBody)
+	}
+
+	var syncResp ClientSyncResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &syncResp); err != nil {
+		t.Fatalf("Unmarshal ClientSyncResponse thất bại: %v", err)
+	}
+
+	if len(syncResp.Accounts) == 0 {
+		t.Fatalf("Kỳ vọng có ít nhất 1 tài khoản được đồng bộ, thực tế: 0")
+	}
+
+	foundTestAcc := false
+	for _, acc := range syncResp.Accounts {
+		if acc.ID == "acc_secure_test_1" {
+			foundTestAcc = true
+			if acc.AccessToken != "" {
+				t.Fatalf("LỖI BẢO MẬT: Account.AccessToken không rỗng: %q", acc.AccessToken)
+			}
+			if acc.RefreshToken != "" {
+				t.Fatalf("LỖI BẢO MẬT: Account.RefreshToken không rỗng: %q", acc.RefreshToken)
+			}
+			if acc.ProjectID != "proj-test-secure" {
+				t.Fatalf("Account.ProjectID không đúng: %s", acc.ProjectID)
+			}
+		}
+	}
+
+	if !foundTestAcc {
+		t.Fatalf("Không tìm thấy tài khoản acc_secure_test_1 trong syncResp.Accounts")
+	}
+}
+
+// TestRecordKeyUsageAsync_ErrorHandlingAndRetry kiểm chứng xử lý lỗi và tính bền vững của RecordKeyUsageAsync
+func TestRecordKeyUsageAsync_ErrorHandlingAndRetry(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	key, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Usage-Retry", "supportflastdev.io.vn", 10, 24)
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+
+	// 1. Ghi nhận bình thường
+	RecordKeyUsageAsync(db, key.Key, 2, 150)
+	time.Sleep(50 * time.Millisecond)
+
+	var usedReqs, totalTokens int64
+	err = db.QueryRow("SELECT used_requests, total_tokens FROM omni_client_keys WHERE api_key = ?", key.Key).Scan(&usedReqs, &totalTokens)
+	if err != nil {
+		t.Fatalf("Truy vấn used_requests thất bại: %v", err)
+	}
+	if usedReqs != 2 || totalTokens != 150 {
+		t.Fatalf("Kỳ vọng used_requests=2, tokens=150; thực tế: used=%d, tokens=%d", usedReqs, totalTokens)
+	}
+
+	// 2. Gọi với key rỗng -> không lỗi, không panic
+	RecordKeyUsageAsync(db, "", 5, 500)
+
+	// 3. Gọi với db = nil -> cập nhật RAM cache an toàn không panic
+	RecordKeyUsageAsync(nil, key.Key, 1, 50)
+	time.Sleep(20 * time.Millisecond)
+
+	keyCacheMu.RLock()
+	cachedItem := keyCache[key.Key]
+	keyCacheMu.RUnlock()
+	if cachedItem == nil || cachedItem.UsedRequests < 3 {
+		t.Fatalf("Kỳ vọng RAM cache được cập nhật ngay cả khi db = nil")
+	}
+
+	// 4. Test với database đã đóng -> kích hoạt cơ chế retry & log lỗi mà không panic
+	closedDB := setupTestDB(t)
+	closedKey, err := CreateNewClientKeyWithQuotaAndExpiry(closedDB, "Test-Closed-DB", "supportflastdev.io.vn", 5, 24)
+	if err != nil {
+		t.Fatalf("Tạo key cho closedDB thất bại: %v", err)
+	}
+	_ = closedDB.Close()
+
+	// Gọi RecordKeyUsageAsync trên DB đã đóng: phải retry nhẹ, log lỗi và không crash
+	RecordKeyUsageAsync(closedDB, closedKey.Key, 1, 100)
+	// Gọi RecordUsageHistoryAsync trên DB đã đóng: phải retry nhẹ, log lỗi và không crash
+	RecordUsageHistoryAsync(closedDB, "Antigravity", "gemini-pro-agent", "acc-1", closedKey.Key, "/test", 10, 20, 30, 0.0, "success", 120)
+	time.Sleep(80 * time.Millisecond)
+}
+
+// TestCheckClientKeyStatusConcurrency kiểm tra độ an toàn đa luồng (Thread-Safety),
+// chống Data Race khi nhiều goroutines đồng thời đọc, kiểm tra trạng thái và cập nhật key trong cache.
+func TestCheckClientKeyStatusConcurrency(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Tạo 3 keys: hợp lệ, chạm quota, hết hạn
+	validKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Valid-Concurrent", "supportflastdev.io.vn", 1000, 24)
+	if err != nil {
+		t.Fatalf("Tạo valid key lỗi: %v", err)
+	}
+
+	quotaKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Quota-Concurrent", "supportflastdev.io.vn", 5, 24)
+	if err != nil {
+		t.Fatalf("Tạo quota key lỗi: %v", err)
+	}
+	// Cập nhật used_requests = 5 để chạm quota
+	_, _ = db.Exec("UPDATE omni_client_keys SET used_requests = 5 WHERE id = ?", quotaKey.ID)
+
+	pastTime := time.Now().Add(-1 * time.Hour).Format(time.RFC3339)
+	expiredKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Expired-Concurrent", "supportflastdev.io.vn", 100, 0)
+	if err != nil {
+		t.Fatalf("Tạo expired key lỗi: %v", err)
+	}
+	_, _ = db.Exec("UPDATE omni_client_keys SET expires_at = ? WHERE id = ?", pastTime, expiredKey.ID)
+
+	RefreshKeyCache(db)
+
+	// 2. Chạy 120 goroutines đồng thời: kiểm tra, mutate cache qua Lock(), ghi nhận usage
+	const numGoroutines = 120
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		idx := i
+		go func() {
+			defer wg.Done()
+			switch idx % 4 {
+			case 0:
+				// Đọc key hợp lệ
+				item, status, _ := CheckClientKeyStatus(validKey.Key)
+				if status != "OK" || item == nil {
+					t.Errorf("Kỳ vọng key hợp lệ trả về OK, nhận: %s", status)
+				}
+				if _, ok := ValidateClientKey(validKey.Key); !ok {
+					t.Errorf("ValidateClientKey kỳ vọng true cho validKey")
+				}
+			case 1:
+				// Kiểm tra key chạm quota -> kích hoạt lock Write để cập nhật IsActive = 0
+				item, status, _ := CheckClientKeyStatus(quotaKey.Key)
+				if status != "QUOTA_EXCEEDED" {
+					t.Errorf("Kỳ vọng QUOTA_EXCEEDED, nhận: %s", status)
+				}
+				if item != nil && item.IsActive != 0 {
+					t.Errorf("Kỳ vọng IsActive = 0 sau khi chạm quota")
+				}
+			case 2:
+				// Kiểm tra key hết hạn -> kích hoạt lock Write để cập nhật IsActive = 0
+				item, status, _ := CheckClientKeyStatus(expiredKey.Key)
+				if status != "EXPIRED" {
+					t.Errorf("Kỳ vọng EXPIRED, nhận: %s", status)
+				}
+				if item != nil && item.IsActive != 0 {
+					t.Errorf("Kỳ vọng IsActive = 0 sau khi hết hạn")
+				}
+			case 3:
+				// Đồng thời ghi nhận usage ngầm (cũng dùng keyCacheMu.Lock)
+				RecordKeyUsageAsync(db, validKey.Key, 1, 10)
+			}
+		}()
+	}
+
+	wg.Wait()
+	time.Sleep(50 * time.Millisecond) // Đợi async DB flush
+
+	// 3. Xác minh trạng thái cuối cùng
+	_, qStatus, _ := CheckClientKeyStatus(quotaKey.Key)
+	if qStatus != "QUOTA_EXCEEDED" {
+		t.Errorf("Trạng thái cuối cùng của quotaKey kỳ vọng QUOTA_EXCEEDED, nhận: %s", qStatus)
+	}
+
+	_, expStatus, _ := CheckClientKeyStatus(expiredKey.Key)
+	if expStatus != "EXPIRED" {
+		t.Errorf("Trạng thái cuối cùng của expiredKey kỳ vọng EXPIRED, nhận: %s", expStatus)
+	}
+}
+
+
+
+func TestClientReportAuthAndSanitization(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	activeKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Report-Active", DefaultDomain, 100, 24)
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+
+	lockedKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Report-Locked", DefaultDomain, 100, 24)
+	if err != nil {
+		t.Fatalf("Tạo locked key thất bại: %v", err)
+	}
+	_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", lockedKey.ID)
+	keyCacheMu.Lock()
+	if it, ok := keyCache[lockedKey.Key]; ok {
+		it.IsActive = 0
+	}
+	keyCacheMu.Unlock()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/client/report", HandleClientReport(db))
+
+	// 1. Request thiếu Header Authorization -> Phải trả về 401 Unauthorized
+	{
+		payload := `{"api_key":"` + activeKey.Key + `","used_requests":1,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Kỳ vọng 401 khi thiếu Authorization header, nhận: %d", rec.Code)
+		}
+	}
+
+	// 2. Request có Header Authorization sai định dạng (không phải Bearer) -> Phải trả về 401 Unauthorized
+	{
+		payload := `{"used_requests":1,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Basic "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Kỳ vọng 401 khi Authorization không phải Bearer, nhận: %d", rec.Code)
+		}
+	}
+
+	// 3. Request với API Key không tồn tại -> Phải trả về 401 Unauthorized
+	{
+		payload := `{"used_requests":1,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer sk-supportflastdev.io.vn-nonexistent-key-12345")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Kỳ vọng 401 khi API key không tồn tại, nhận: %d", rec.Code)
+		}
+	}
+
+	// 4. Request với API Key đã bị khóa (is_active = 0) -> Phải trả về 401 Unauthorized
+	{
+		payload := `{"used_requests":1,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+lockedKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Kỳ vọng 401 khi API key đã bị khóa, nhận: %d", rec.Code)
+		}
+	}
+
+	// 5. Request với report.ApiKey KHÁC với Bearer Key đã xác thực (mạo danh key khác) -> Phải trả về 401 Unauthorized
+	{
+		payload := `{"api_key":"sk-supportflastdev.io.vn-different-key","used_requests":1,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("Kỳ vọng 401 khi report.api_key không khớp với Bearer token, nhận: %d", rec.Code)
+		}
+	}
+
+	// 6. Request với used_requests âm -> Phải trả về 400 Bad Request
+	{
+		payload := `{"used_requests":-5,"total_tokens":100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("Kỳ vọng 400 khi used_requests âm, nhận: %d", rec.Code)
+		}
+	}
+
+	// 7. Request với total_tokens âm -> Phải trả về 400 Bad Request
+	{
+		payload := `{"used_requests":1,"total_tokens":-100}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("Kỳ vọng 400 khi total_tokens âm, nhận: %d", rec.Code)
+		}
+	}
+
+	// 8. Request hợp lệ có report.ApiKey trùng khớp với Bearer key -> 200 OK và tăng usage
+	{
+		payload := `{"api_key":"` + activeKey.Key + `","used_requests":2,"total_tokens":500,"model":"gemini-3.8-flash-high"}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("Kỳ vọng 200 cho request hợp lệ, nhận: %d - %s", rec.Code, rec.Body.String())
+		}
+	}
+
+	// 9. Request hợp lệ không có report.ApiKey (bỏ trống trong JSON, chỉ có Bearer key) -> 200 OK và tăng usage
+	{
+		payload := `{"used_requests":3,"total_tokens":750,"model":"gemini-3.8-flash-high"}`
+		req := httptest.NewRequest("POST", "/api/v1/client/report", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+activeKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Errorf("Kỳ vọng 200 khi report.ApiKey bỏ trống nhưng có Bearer key hợp lệ, nhận: %d", rec.Code)
+		}
+	}
+
+	time.Sleep(50 * time.Millisecond) // Đợi async ghi DB
+
+	var usedRequests, totalTokens int64
+	err = db.QueryRow("SELECT used_requests, total_tokens FROM omni_client_keys WHERE api_key = ?", activeKey.Key).Scan(&usedRequests, &totalTokens)
+	if err != nil {
+		t.Fatalf("Lỗi truy vấn usage trong DB: %v", err)
+	}
+	if usedRequests != 5 { // 2 + 3
+		t.Errorf("Kỳ vọng used_requests = 5, nhận được: %d", usedRequests)
+	}
+	if totalTokens != 1250 { // 500 + 750
+		t.Errorf("Kỳ vọng total_tokens = 1250, nhận được: %d", totalTokens)
+	}
+}
+
+// TestManageKeys_AdminAuthentication kiểm tra toàn diện bước xác thực Admin cho các route quản lý key:
+// /api/keys, /api/router/keys, /v1/user/keys
+func TestManageKeys_AdminAuthentication(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	mux := http.NewServeMux()
+	RegisterOmniRouterRoutes(mux, db, false, ".")
+
+	testMasterKey := "test-master-admin-key-2026-secret"
+	os.Setenv("MASTER_ADMIN_KEY", testMasterKey)
+	defer os.Unsetenv("MASTER_ADMIN_KEY")
+
+	// Sinh Admin JWT Bearer Token hợp lệ (role: admin)
+	adminJWT, err := security.GenerateRS256Token(&security.UserClaims{
+		UserID:    "usr-admin-001",
+		Username:  "admin",
+		Role:      "admin",
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("Không thể sinh admin JWT: %v", err)
+	}
+
+	// Sinh User JWT Bearer Token thông thường (role: user)
+	userJWT, err := security.GenerateRS256Token(&security.UserClaims{
+		UserID:    "usr-regular-002",
+		Username:  "regular_user",
+		Role:      "user",
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatalf("Không thể sinh user JWT: %v", err)
+	}
+
+	remoteIP := "198.51.100.55:45678"
+
+	t.Run("GET /api/keys không có auth từ remote IP -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/keys", nil)
+		req.RemoteAddr = remoteIP
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng 401, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+		var res map[string]interface{}
+		if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+			t.Fatalf("Unmarshal thất bại: %v", err)
+		}
+		if res["error"] != "Yêu cầu quyền quản trị viên" {
+			t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", res["error"])
+		}
+	})
+
+	t.Run("POST /api/router/keys không có auth từ remote IP -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(`{"name":"HackerKey"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = remoteIP
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng 401, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["error"] != "Yêu cầu quyền quản trị viên" {
+			t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", res["error"])
+		}
+	})
+
+	t.Run("GET /v1/user/keys không có auth từ remote IP -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/v1/user/keys", nil)
+		req.RemoteAddr = remoteIP
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng 401, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["error"] != "Yêu cầu quyền quản trị viên" {
+			t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", res["error"])
+		}
+	})
+
+	t.Run("GET /api/keys với Bearer token sai -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/keys", nil)
+		req.RemoteAddr = remoteIP
+		req.Header.Set("Authorization", "Bearer invalid-wrong-token-abc")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng 401, nhận: %d", rec.Code)
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["error"] != "Yêu cầu quyền quản trị viên" {
+			t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", res["error"])
+		}
+	})
+
+	t.Run("GET /api/keys với User JWT (role user) -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/keys", nil)
+		req.RemoteAddr = remoteIP
+		req.Header.Set("Authorization", "Bearer "+userJWT)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng 401 với regular user, nhận: %d", rec.Code)
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["error"] != "Yêu cầu quyền quản trị viên" {
+			t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", res["error"])
+		}
+	})
+
+	t.Run("GET /api/keys với Admin JWT hợp lệ -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/keys", nil)
+		req.RemoteAddr = remoteIP
+		req.Header.Set("Authorization", "Bearer "+adminJWT)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200 với Admin JWT, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("GET /api/router/keys với Master Admin Key từ env -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/keys", nil)
+		req.RemoteAddr = remoteIP
+		req.Header.Set("Authorization", "Bearer "+testMasterKey)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200 với Master Admin Key, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("POST /api/router/keys với Master Domain Key mặc định -> 200", func(t *testing.T) {
+		body := `{"name":"Device-Admin-Test","quotaLimit":50}`
+		req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(body))
+		req.RemoteAddr = remoteIP
+		req.Header.Set("Authorization", "Bearer sk-supportflastdev.io.vn-master-live")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200 tạo key với Master Key, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("GET /api/router/keys với header X-Admin-Key hợp lệ -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/keys", nil)
+		req.RemoteAddr = remoteIP
+		req.Header.Set("X-Admin-Key", testMasterKey)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200 với X-Admin-Key, nhận: %d", rec.Code)
+		}
+	})
+}
+
+
+// ==============================================================================
+// TEST MULTI-PROVIDER ADAPTER (Task 8: OpenAI, Anthropic, Google, Antigravity)
+// ==============================================================================
+
+func TestDetermineProvider(t *testing.T) {
+	tests := []struct {
+		accProvider string
+		model       string
+		expected    string
+	}{
+		{"openai", "custom-model", "openai"},
+		{"azure", "custom-model", "openai"},
+		{"codex", "custom-model", "openai"},
+		{"anthropic", "custom-model", "anthropic"},
+		{"claude", "custom-model", "anthropic"},
+		{"google", "custom-model", "google"},
+		{"gemini", "custom-model", "google"},
+		{"antigravity", "custom-model", "antigravity"},
+		{"", "gpt-4o", "openai"},
+		{"", "openai/gpt-4o-mini", "openai"},
+		{"", "claude-3-5-sonnet", "anthropic"},
+		{"", "anthropic/claude-3-7-sonnet", "anthropic"},
+		{"", "gemini-3.8-flash-high", "google"},
+		{"", "google/gemini-2.5-pro", "google"},
+		{"", "unknown-model", "antigravity"},
+	}
+
+	for _, tt := range tests {
+		var acc *ProviderConnection
+		if tt.accProvider != "" {
+			acc = &ProviderConnection{Provider: tt.accProvider}
+		}
+		got := DetermineProvider(acc, tt.model)
+		if got != tt.expected {
+			t.Errorf("DetermineProvider(acc=%s, model=%s) = %s; kỳ vọng: %s", tt.accProvider, tt.model, got, tt.expected)
+		}
+	}
+}
+
+func TestTargetProviderForModel(t *testing.T) {
+	if got := TargetProviderForModel("gpt-4o"); got != "openai" {
+		t.Errorf("TargetProviderForModel(gpt-4o) = %s; kỳ vọng openai", got)
+	}
+	if got := TargetProviderForModel("claude-sonnet-4-6"); got != "anthropic" {
+		t.Errorf("TargetProviderForModel(claude-sonnet-4-6) = %s; kỳ vọng anthropic", got)
+	}
+	if got := TargetProviderForModel("gemini-3.8-flash-high"); got != "antigravity" {
+		t.Errorf("TargetProviderForModel(gemini-3.8-flash-high) = %s; kỳ vọng antigravity", got)
+	}
+}
+
+func TestOrderAccountsForChat(t *testing.T) {
+	accounts := []ProviderConnection{
+		{ID: "acc-anti", Provider: "antigravity", Name: "Antigravity 1"},
+		{ID: "acc-oai", Provider: "openai", Name: "OpenAI 1"},
+		{ID: "acc-anth", Provider: "anthropic", Name: "Anthropic 1"},
+	}
+
+	ordered := orderAccountsForChat(accounts, "gpt-4o", 0)
+	if len(ordered) != 3 || ordered[0].Provider != "openai" {
+		t.Errorf("Kỳ vọng account OpenAI lên đầu cho model gpt-4o, nhận: %s", ordered[0].Provider)
+	}
+
+	orderedClaude := orderAccountsForChat(accounts, "claude-3-5-sonnet", 0)
+	if len(orderedClaude) != 3 || (orderedClaude[0].Provider != "anthropic" && orderedClaude[0].Provider != "antigravity") {
+		t.Errorf("Kỳ vọng account Anthropic/Antigravity lên đầu cho Claude, nhận: %s", orderedClaude[0].Provider)
+	}
+}
+
+func TestConvertMessagesToAnthropic(t *testing.T) {
+	messages := []map[string]interface{}{
+		{"role": "system", "content": "You are a helpful assistant."},
+		{"role": "user", "content": "Hello world"},
+		{"role": "assistant", "content": "Hi there!"},
+		{"role": "developer", "content": "Always be concise."},
+		{"role": "user", "content": "How are you?"},
+	}
+
+	sysPrompt, converted := ConvertMessagesToAnthropic(messages)
+	if !strings.Contains(sysPrompt, "You are a helpful assistant.") || !strings.Contains(sysPrompt, "Always be concise.") {
+		t.Errorf("System prompt chưa trích xuất đủ: %s", sysPrompt)
+	}
+
+	if len(converted) != 3 {
+		t.Fatalf("Kỳ vọng 3 message sau khi tách system, nhận: %d", len(converted))
+	}
+	if converted[0]["role"] != "user" || converted[1]["role"] != "assistant" || converted[2]["role"] != "user" {
+		t.Errorf("Thứ tự role converted không đúng: %+v", converted)
+	}
+}
+
+func TestParseOpenAIChunk(t *testing.T) {
+	chunkJSON := `{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"content":"Hello Antigravity!"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":5}}`
+	text, pTok, cTok, finishReason := ParseOpenAIChunk(chunkJSON)
+	if text != "Hello Antigravity!" {
+		t.Errorf("ParseOpenAIChunk text = %s; kỳ vọng Hello Antigravity!", text)
+	}
+	if pTok != 12 || cTok != 5 {
+		t.Errorf("ParseOpenAIChunk tokens: prompt=%d, compl=%d; kỳ vọng 12 và 5", pTok, cTok)
+	}
+	if finishReason != "stop" {
+		t.Errorf("ParseOpenAIChunk finishReason = %s; kỳ vọng stop", finishReason)
+	}
+}
+
+func TestParseAnthropicChunk(t *testing.T) {
+	chunkDelta := `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Claude response"}}`
+	text, _, _, _ := ParseAnthropicChunk(chunkDelta)
+	if text != "Claude response" {
+		t.Errorf("ParseAnthropicChunk delta text = %s; kỳ vọng 'Claude response'", text)
+	}
+
+	chunkStart := `{"type":"message_start","message":{"id":"msg_1","usage":{"input_tokens":42}}}`
+	_, pTok, _, _ := ParseAnthropicChunk(chunkStart)
+	if pTok != 42 {
+		t.Errorf("ParseAnthropicChunk prompt tokens = %d; kỳ vọng 42", pTok)
+	}
+
+	chunkEnd := `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":88}}`
+	_, _, cTok, finishReason := ParseAnthropicChunk(chunkEnd)
+	if cTok != 88 || finishReason != "end_turn" {
+		t.Errorf("ParseAnthropicChunk compl tokens=%d, finishReason=%s; kỳ vọng 88 và end_turn", cTok, finishReason)
+	}
+}
+
+func TestParseNonStreamingResponse(t *testing.T) {
+	oaiJSON := `{"choices":[{"message":{"role":"assistant","content":"OpenAI Full Content"}}],"usage":{"prompt_tokens":10,"completion_tokens":20}}`
+	txtOai, pOai, cOai, err := ParseNonStreamingResponse("openai", []byte(oaiJSON))
+	if err != nil || txtOai != "OpenAI Full Content" || pOai != 10 || cOai != 20 {
+		t.Errorf("ParseNonStreamingResponse(openai) thất bại: txt=%s, p=%d, c=%d, err=%v", txtOai, pOai, cOai, err)
+	}
+
+	anthJSON := `{"content":[{"type":"text","text":"Anthropic Full Content"}],"usage":{"input_tokens":15,"output_tokens":35}}`
+	txtAnth, pAnth, cAnth, err := ParseNonStreamingResponse("anthropic", []byte(anthJSON))
+	if err != nil || txtAnth != "Anthropic Full Content" || pAnth != 15 || cAnth != 35 {
+		t.Errorf("ParseNonStreamingResponse(anthropic) thất bại: txt=%s, p=%d, c=%d, err=%v", txtAnth, pAnth, cAnth, err)
+	}
+
+	geminiSSE := "data: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Gemini \"}]}}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":3}}}\n\ndata: {\"response\":{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Stream\"}]}}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":6}}}\n\n"
+	txtGem, pGem, cGem, err := ParseNonStreamingResponse("antigravity", []byte(geminiSSE))
+	if err != nil || txtGem != "Gemini Stream" || pGem != 5 || cGem != 6 {
+		t.Errorf("ParseNonStreamingResponse(gemini SSE) thất bại: txt=%s, p=%d, c=%d, err=%v", txtGem, pGem, cGem, err)
+	}
+}
+
+func TestBuildOutboundRequestMultiProvider(t *testing.T) {
+	ctx := context.Background()
+	req := ChatCompletionRequest{
+		Model: "test-model",
+		Messages: []map[string]interface{}{
+			{"role": "user", "content": "Hello test"},
+		},
+	}
+
+	// 1. Test OpenAI
+	oaiCreds := &Credentials{AccessToken: "sk-openai-test-token"}
+	httpReqOai, err := BuildOutboundRequest(ctx, "openai", "gpt-4o", oaiCreds, req, true)
+	if err != nil {
+		t.Fatalf("BuildOutboundRequest(openai) lỗi: %v", err)
+	}
+	if httpReqOai.URL.String() != "https://api.openai.com/v1/chat/completions" {
+		t.Errorf("OpenAI URL sai: %s", httpReqOai.URL.String())
+	}
+	if httpReqOai.Header.Get("Authorization") != "Bearer sk-openai-test-token" {
+		t.Errorf("OpenAI Authorization header sai: %s", httpReqOai.Header.Get("Authorization"))
+	}
+
+	// 2. Test Anthropic
+	anthCreds := &Credentials{AccessToken: "sk-ant-test-token"}
+	httpReqAnth, err := BuildOutboundRequest(ctx, "anthropic", "claude-3-7-sonnet", anthCreds, req, true)
+	if err != nil {
+		t.Fatalf("BuildOutboundRequest(anthropic) lỗi: %v", err)
+	}
+	if httpReqAnth.URL.String() != "https://api.anthropic.com/v1/messages" {
+		t.Errorf("Anthropic URL sai: %s", httpReqAnth.URL.String())
+	}
+	if httpReqAnth.Header.Get("x-api-key") != "sk-ant-test-token" {
+		t.Errorf("Anthropic x-api-key sai: %s", httpReqAnth.Header.Get("x-api-key"))
+	}
+	if httpReqAnth.Header.Get("anthropic-version") != "2023-06-01" {
+		t.Errorf("Anthropic version header sai: %s", httpReqAnth.Header.Get("anthropic-version"))
+	}
+
+	// 3. Test Google AI Studio (API Key)
+	googleKeyCreds := &Credentials{AccessToken: "AIzaSyTestApiKeyGoogle123"}
+	httpReqGoogleKey, err := BuildOutboundRequest(ctx, "google", "gemini-2.5-flash", googleKeyCreds, req, true)
+	if err != nil {
+		t.Fatalf("BuildOutboundRequest(google key) lỗi: %v", err)
+	}
+	if !strings.Contains(httpReqGoogleKey.URL.String(), "generativelanguage.googleapis.com") || !strings.Contains(httpReqGoogleKey.URL.String(), "AIzaSyTestApiKeyGoogle123") {
+		t.Errorf("Google AI Studio URL sai: %s", httpReqGoogleKey.URL.String())
+	}
+
+	// 4. Test Antigravity / Google Cloud Code
+	antiCreds := &Credentials{AccessToken: "ya29.google-oauth-token", ProjectId: "test-proj-123"}
+	httpReqAnti, err := BuildOutboundRequest(ctx, "antigravity", "gemini-3.8-flash-high", antiCreds, req, true)
+	if err != nil {
+		t.Fatalf("BuildOutboundRequest(antigravity) lỗi: %v", err)
+	}
+	if httpReqAnti.URL.String() != "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse" {
+		t.Errorf("Antigravity URL sai: %s", httpReqAnti.URL.String())
+	}
+	if httpReqAnti.Header.Get("Authorization") != "Bearer ya29.google-oauth-token" {
+		t.Errorf("Antigravity Authorization header sai: %s", httpReqAnti.Header.Get("Authorization"))
+	}
+	if !strings.Contains(httpReqAnti.Header.Get("User-Agent"), "antigravity") {
+		t.Errorf("Antigravity User-Agent sai: %s", httpReqAnti.Header.Get("User-Agent"))
+	}
+}
+
+
+// TestHandleClientSync_RealQuotaCalculation_NoHardcodedFallback kiểm tra loại bỏ hoàn toàn hạn mức cố định 100000
+// và tính toán QuotaRemaining thực tế của Client Key từ omni_client_keys, đồng thời phân biệt rõ với Quota Upstream.
+func TestHandleClientSync_RealQuotaCalculation_NoHardcodedFallback(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	// 1. Thêm 1 Provider có hạn mức Quota cụ thể trong DB (gemini_weekly: total=5000, used=1200 -> remaining=3800)
+	futureExpiry := time.Now().Add(2 * time.Hour).Format(time.RFC3339)
+	accData := fmt.Sprintf(`{"accessToken":"ya29.test_token_upstream","refreshToken":"1//test_refresh","expiresAt":"%s","projectId":"proj-test-sync","quotas":{"gemini_weekly":{"total":5000,"used":1200}},"lastQuotaAt":"2026-10-21T07:00:00Z"}`, futureExpiry)
+	_, err := db.Exec(`INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`, "acc_prov_sync_test", "antigravity", "oauth", "Test Upstream Provider", "provider@supportflastdev.io.vn", 1, accData, NowISO(), NowISO())
+	if err != nil {
+		t.Fatalf("Thêm provider test thất bại: %v", err)
+	}
+	RefreshProviderCache(db)
+
+	// 2. Tạo Client Key có hạn mức Quota rõ ràng: QuotaLimit = 1000, UsedRequests = 250 -> Còn lại 750
+	clientKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Device-Specific-Quota", "supportflastdev.io.vn", 1000, 24)
+	if err != nil {
+		t.Fatalf("Tạo Client Key thất bại: %v", err)
+	}
+
+	// Cập nhật used_requests = 250 trong omni_client_keys
+	_, err = db.Exec("UPDATE omni_client_keys SET used_requests = 250, total_tokens = 5000 WHERE id = ?", clientKey.ID)
+	if err != nil {
+		t.Fatalf("Cập nhật used_requests thất bại: %v", err)
+	}
+	RefreshKeyCache(db)
+
+	handler := HandleClientSync(db)
+
+	// 3. Gửi request Client Sync
+	req := httptest.NewRequest("GET", "/api/v1/client/sync", nil)
+	req.Header.Set("Authorization", "Bearer "+clientKey.Key)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("HandleClientSync thất bại: status=%d, body=%s", rec.Code, rec.Body.String())
+	}
+
+	var syncResp ClientSyncResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &syncResp); err != nil {
+		t.Fatalf("Unmarshal ClientSyncResponse thất bại: %v", err)
+	}
+
+	// 4. KIỂM CHỨNG: Quota của Client Key PHẢI là 750 (1000 - 250), TUYỆT ĐỐI KHÔNG PHẢI 100000
+	if syncResp.QuotaRemaining == 100000 {
+		t.Fatalf("LỖI NGHIÊM TRỌNG: QuotaRemaining của Client Key vẫn bị gán cứng là 100000!")
+	}
+	if syncResp.QuotaRemaining != 750 {
+		t.Errorf("Kỳ vọng QuotaRemaining = 750 (1000 - 250), nhận được: %d", syncResp.QuotaRemaining)
+	}
+	if syncResp.QuotaLimit != 1000 {
+		t.Errorf("Kỳ vọng QuotaLimit = 1000, nhận được: %d", syncResp.QuotaLimit)
+	}
+	if syncResp.UsedRequests != 250 {
+		t.Errorf("Kỳ vọng UsedRequests = 250, nhận được: %d", syncResp.UsedRequests)
+	}
+	if syncResp.TotalTokens != 5000 {
+		t.Errorf("Kỳ vọng TotalTokens = 5000, nhận được: %d", syncResp.TotalTokens)
+	}
+	if syncResp.LastQuotaAt == "" {
+		t.Errorf("Kỳ vọng LastQuotaAt không rỗng cho Client Key")
+	}
+	if syncResp.UpdatedAt == "" {
+		t.Errorf("Kỳ vọng UpdatedAt không rỗng cho Client Key")
+	}
+
+	// Kiểm tra ClientQuota struct
+	if syncResp.ClientQuota == nil {
+		t.Fatalf("Kỳ vọng ClientQuota struct không nil")
+	}
+	if syncResp.ClientQuota.QuotaRemaining != 750 {
+		t.Errorf("Kỳ vọng ClientQuota.QuotaRemaining = 750, nhận được: %d", syncResp.ClientQuota.QuotaRemaining)
+	}
+	if syncResp.ClientQuota.QuotaLimit != 1000 {
+		t.Errorf("Kỳ vọng ClientQuota.QuotaLimit = 1000, nhận được: %d", syncResp.ClientQuota.QuotaLimit)
+	}
+	if syncResp.ClientQuota.IsUnlimited {
+		t.Errorf("Kỳ vọng ClientQuota.IsUnlimited = false khi QuotaLimit > 0")
+	}
+
+	// 5. KIỂM CHỨNG: Quota của Provider Upstream PHẢI phân biệt rõ ràng với Quota của Client Key
+	foundProv := false
+	for _, acc := range syncResp.Accounts {
+		if acc.ID == "acc_prov_sync_test" {
+			foundProv = true
+			if acc.QuotaRemaining == 100000 {
+				t.Fatalf("LỖI: Upstream Account QuotaRemaining bị gán cứng 100000!")
+			}
+			if acc.QuotaRemaining != 3800 {
+				t.Errorf("Kỳ vọng Account QuotaRemaining = 3800 (5000 - 1200), nhận được: %d", acc.QuotaRemaining)
+			}
+			if acc.LastQuotaAt == "" {
+				t.Errorf("Kỳ vọng Account LastQuotaAt không rỗng")
+			}
+			if acc.UpdatedAt == "" {
+				t.Errorf("Kỳ vọng Account UpdatedAt không rỗng")
+			}
+		}
+	}
+	if !foundProv {
+		t.Fatalf("Không tìm thấy account acc_prov_sync_test trong syncResp.Accounts")
+	}
+
+	// 6. KIỂM CHỨNG Key Vô Hạn (QuotaLimit = 0): QuotaRemaining trả về -1 (không phải 100000)
+	unlimitedKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Device-Unlimited", "supportflastdev.io.vn", 0, 0)
+	if err != nil {
+		t.Fatalf("Tạo unlimited key thất bại: %v", err)
+	}
+	reqUnlim := httptest.NewRequest("GET", "/api/v1/client/sync", nil)
+	reqUnlim.Header.Set("Authorization", "Bearer "+unlimitedKey.Key)
+	recUnlim := httptest.NewRecorder()
+	handler.ServeHTTP(recUnlim, reqUnlim)
+
+	var unlimResp ClientSyncResponse
+	if err := json.Unmarshal(recUnlim.Body.Bytes(), &unlimResp); err != nil {
+		t.Fatalf("Unmarshal unlimResp thất bại: %v", err)
+	}
+	if unlimResp.QuotaRemaining == 100000 {
+		t.Fatalf("LỖI: Unlimited key QuotaRemaining bị gán cứng là 100000!")
+	}
+	if unlimResp.QuotaRemaining != -1 {
+		t.Errorf("Kỳ vọng Unlimited key QuotaRemaining = -1, nhận được: %d", unlimResp.QuotaRemaining)
+	}
+	if unlimResp.ClientQuota == nil || !unlimResp.ClientQuota.IsUnlimited {
+		t.Errorf("Kỳ vọng ClientQuota.IsUnlimited = true cho key không giới hạn")
 	}
 }

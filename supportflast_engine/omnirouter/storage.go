@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"crypto/rand"
@@ -221,7 +221,9 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 	}
 
 	// Dọn dẹp key cũ thừa thãi sk-9router-master-live theo yêu cầu
-	_, _ = db.Exec("DELETE FROM omni_client_keys WHERE id = 'key_master_legacy' OR api_key = 'sk-9router-master-live'")
+	if _, errDel := db.Exec("DELETE FROM omni_client_keys WHERE id = 'key_master_legacy' OR api_key = 'sk-9router-master-live'"); errDel != nil {
+		log.Printf("[ENGINE] [STORAGE] ⚠️ Lỗi dọn dẹp key cũ: %v", errDel)
+	}
 
 	// Chỉ tạo Master Key mặc định nếu bảng omni_client_keys hoàn toàn RỖNG (khởi tạo lần đầu)
 	// Nếu người dùng đã chủ động xóa key, server TUYỆT ĐỐI không tự ý chèn lại
@@ -231,10 +233,12 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		now := NowISO()
 		masterDomainKey := "sk-" + DefaultDomain + "-master-live"
 		masterDomainHash := HashString(masterDomainKey)
-		_, _ = db.Exec(`
+		if _, errIns := db.Exec(`
 			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
 			VALUES ('key_master_domain_cloud', 'Master Web Domain Key (`+DefaultDomain+`)', ?, ?, 0, 0, 1, ?, ?)
-		`, masterDomainKey, masterDomainHash, now, now)
+		`, masterDomainKey, masterDomainHash, now, now); errIns != nil {
+			log.Printf("[ENGINE] [OMNIROUTER] ❌ Lỗi khởi tạo Master API Key ban đầu: %v", errIns)
+		}
 		log.Println("[ENGINE] [OMNIROUTER] ✔ Khởi tạo Master API Key ban đầu:", masterDomainKey)
 	}
 
@@ -283,7 +287,9 @@ func RefreshKeyCache(db *sql.DB) {
 		return
 	}
 	// Tự động chuyển các key đã vượt quá hạn mức Quota sang TẠM KHÓA (is_active = 0)
-	_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE quota_limit > 0 AND used_requests >= quota_limit AND is_active = 1")
+	if _, err := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE quota_limit > 0 AND used_requests >= quota_limit AND is_active = 1"); err != nil {
+		log.Printf("[ENGINE] [USAGE] ❌ Lỗi tự động khóa API key vượt quota trong RefreshKeyCache: %v", err)
+	}
 
 	rows, err := db.Query("SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at FROM omni_client_keys")
 	if err != nil {
@@ -306,31 +312,60 @@ func RefreshKeyCache(db *sql.DB) {
 // CheckClientKeyStatus kiểm tra chi tiết trạng thái của Client Key (RAM cache 0ms + constant-time comparison)
 func CheckClientKeyStatus(rawKey string) (item *ClientKey, status string, errMsg string) {
 	keyCacheMu.RLock()
-	defer keyCacheMu.RUnlock()
-
+	var matchedKey string
+	var kCopy ClientKey
+	var found bool
 	rawBytes := []byte(rawKey)
 	for cachedK, k := range keyCache {
 		if subtle.ConstantTimeCompare([]byte(cachedK), rawBytes) == 1 {
-			// 1. Kiểm tra hạn mức Quota requests nếu có cấu hình QuotaLimit > 0 (ưu tiên phát hiện lý do vượt Quota)
-			if k.QuotaLimit > 0 && k.UsedRequests >= k.QuotaLimit {
-				return k, "QUOTA_EXCEEDED", fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", k.UsedRequests, k.QuotaLimit)
+			matchedKey = cachedK
+			if k != nil {
+				kCopy = *k
+				found = true
 			}
-			// 2. Kiểm tra thời hạn hiệu lực theo giờ nếu có ExpiresAt
-			if k.ExpiresAt != "" {
-				if t, err := time.Parse(time.RFC3339, k.ExpiresAt); err == nil {
-					if time.Now().After(t) {
-						return k, "EXPIRED", fmt.Sprintf("API Key đã hết thời hạn sử dụng (Hết hạn lúc: %s)", t.Format("15:04:05 02/01/2006"))
-					}
-				}
-			}
-			// 3. Kiểm tra trạng thái kích hoạt thủ công
-			if k.IsActive != 1 {
-				return k, "INACTIVE", "API Key đã bị tạm khóa"
-			}
-			return k, "OK", ""
+			break
 		}
 	}
-	return nil, "NOT_FOUND", "API Key không tồn tại hoặc không hợp lệ"
+	keyCacheMu.RUnlock()
+
+	if !found {
+		return nil, "NOT_FOUND", "API Key không tồn tại hoặc không hợp lệ"
+	}
+
+	// 1. Kiểm tra hạn mức Quota requests nếu có cấu hình QuotaLimit > 0 (ưu tiên phát hiện lý do vượt Quota)
+	if kCopy.QuotaLimit > 0 && kCopy.UsedRequests >= kCopy.QuotaLimit {
+		// Mutate trạng thái IsActive = 0 trong cache: BẮT BUỘC dùng Write Lock (Lock), không sửa khi giữ RLock!
+		keyCacheMu.Lock()
+		if it, exists := keyCache[matchedKey]; exists && it != nil {
+			it.IsActive = 0
+		}
+		keyCacheMu.Unlock()
+		kCopy.IsActive = 0
+		return &kCopy, "QUOTA_EXCEEDED", fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", kCopy.UsedRequests, kCopy.QuotaLimit)
+	}
+
+	// 2. Kiểm tra thời hạn hiệu lực theo giờ nếu có ExpiresAt
+	if kCopy.ExpiresAt != "" {
+		if t, err := time.Parse(time.RFC3339, kCopy.ExpiresAt); err == nil {
+			if time.Now().After(t) {
+				// Mutate trạng thái IsActive = 0 trong cache: BẮT BUỘC dùng Write Lock (Lock), không sửa khi giữ RLock!
+				keyCacheMu.Lock()
+				if it, exists := keyCache[matchedKey]; exists && it != nil {
+					it.IsActive = 0
+				}
+				keyCacheMu.Unlock()
+				kCopy.IsActive = 0
+				return &kCopy, "EXPIRED", fmt.Sprintf("API Key đã hết thời hạn sử dụng (Hết hạn lúc: %s)", t.Format("15:04:05 02/01/2006"))
+			}
+		}
+	}
+
+	// 3. Kiểm tra trạng thái kích hoạt thủ công
+	if kCopy.IsActive != 1 {
+		return &kCopy, "INACTIVE", "API Key đã bị tạm khóa"
+	}
+
+	return &kCopy, "OK", ""
 }
 
 // ValidateClientKey kiểm tra xem client key có hợp lệ và còn hiệu lực không
@@ -453,27 +488,59 @@ func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount i
 		return
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [USAGE] ⚠️ Recovered từ panic trong RecordKeyUsageAsync cho key %s: %v", apiKey, r)
+			}
+		}()
+
 		now := NowISO()
 		if db != nil {
-			if _, errExec := db.Exec(`
+			var errExec error
+			// Cơ chế retry nhẹ (tối đa 3 lần) cho DB write nếu gặp lock hoặc lỗi tạm thời
+			for attempt := 1; attempt <= 3; attempt++ {
+				_, errExec = db.Exec(`
 				UPDATE omni_client_keys 
 				SET used_requests = used_requests + ?, 
 				    total_tokens = total_tokens + ?,
 				    last_used_at = ?
 				WHERE api_key = ?
-			`, reqCount, tokenCount, now, apiKey); errExec != nil {
-				log.Printf("[ENGINE] [ERROR] Lỗi cập nhật usage key vào database: %v", errExec)
+			`, reqCount, tokenCount, now, apiKey)
+				if errExec == nil {
+					break
+				}
+				if attempt < 3 {
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+
+			if errExec != nil {
+				log.Printf("[ENGINE] [USAGE] ❌ Lỗi ghi nhận usage cho key %s: %v", apiKey, errExec)
 			}
 
 			// Tự động KHÓA key ngay lập tức nếu đã chạm hoặc vượt hạn mức Quota
 			var usedReqs, quotaLim int64
-			if err := db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE api_key = ?", apiKey).Scan(&usedReqs, &quotaLim); err == nil {
+			errQuery := db.QueryRow("SELECT used_requests, quota_limit FROM omni_client_keys WHERE api_key = ?", apiKey).Scan(&usedReqs, &quotaLim)
+			if errQuery == nil {
 				if quotaLim > 0 && usedReqs >= quotaLim {
-					if _, errLock := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE api_key = ?", apiKey); errLock != nil {
-						log.Printf("[ENGINE] [ERROR] Lỗi khóa API key vượt quota trong DB: %v", errLock)
+					var errLock error
+					for attempt := 1; attempt <= 3; attempt++ {
+						_, errLock = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE api_key = ?", apiKey)
+						if errLock == nil {
+							break
+						}
+						if attempt < 3 {
+							time.Sleep(10 * time.Millisecond)
+						}
 					}
-					log.Printf("[ENGINE] [QUOTA] 🛑 API Key %s đã chạm/vượt hạn mức Quota (%d/%d req). Đã tự động KHÓA key!", apiKey, usedReqs, quotaLim)
+					if errLock != nil {
+						log.Printf("[ENGINE] [USAGE] ❌ Lỗi khóa API key vượt quota trong DB cho key %s: %v", apiKey, errLock)
+					} else {
+						log.Printf("[ENGINE] [QUOTA] 🛑 API Key %s đã chạm/vượt hạn mức Quota (%d/%d req). Đã tự động KHÓA key!", apiKey, usedReqs, quotaLim)
+					}
 				}
+			} else if errQuery != sql.ErrNoRows {
+				log.Printf("[ENGINE] [USAGE] ❌ Lỗi kiểm tra quota cho key %s: %v", apiKey, errQuery)
 			}
 		}
 
@@ -505,21 +572,20 @@ func ReserveClientKeyQuota(db *sql.DB, apiKey string) (bool, string) {
 		keyCacheMu.RUnlock()
 		return false, "API Key không tồn tại hoặc không hợp lệ"
 	}
-	if item.IsActive != 1 {
-		keyCacheMu.RUnlock()
+	itemCopy := *item
+	keyCacheMu.RUnlock()
+
+	if itemCopy.IsActive != 1 {
 		return false, "API Key đã bị khóa hoặc hết hạn"
 	}
-	if item.QuotaLimit > 0 && item.UsedRequests >= item.QuotaLimit {
-		keyCacheMu.RUnlock()
-		return false, fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", item.UsedRequests, item.QuotaLimit)
+	if itemCopy.QuotaLimit > 0 && itemCopy.UsedRequests >= itemCopy.QuotaLimit {
+		return false, fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", itemCopy.UsedRequests, itemCopy.QuotaLimit)
 	}
-	if item.ExpiresAt != "" {
-		if t, err := time.Parse(time.RFC3339, item.ExpiresAt); err == nil && time.Now().After(t) {
-			keyCacheMu.RUnlock()
+	if itemCopy.ExpiresAt != "" {
+		if t, err := time.Parse(time.RFC3339, itemCopy.ExpiresAt); err == nil && time.Now().After(t) {
 			return false, "API Key đã hết thời hạn sử dụng"
 		}
 	}
-	keyCacheMu.RUnlock()
 
 	// 2. Atomic Reservation trên Database (nếu có DB)
 	if db != nil {
@@ -589,6 +655,14 @@ func GetCachedActiveProviders() []ProviderConnection {
 	res := make([]ProviderConnection, len(providerCache))
 	copy(res, providerCache)
 	return res
+}
+
+// SetCachedActiveProviders thiết lập danh sách tài khoản AI trong RAM (phục vụ test và mock nội bộ)
+func SetCachedActiveProviders(list []ProviderConnection) {
+	providerCacheMu.Lock()
+	defer providerCacheMu.Unlock()
+	providerCache = make([]ProviderConnection, len(list))
+	copy(providerCache, list)
 }
 
 // UpdateProviderData cập nhật data (token, quota...) của một provider
@@ -720,14 +794,28 @@ func RecordUsageHistoryAsync(db *sql.DB, provider, model, connectionId, apiKey, 
 	}
 	go func() {
 		defer func() {
-			_ = recover()
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [USAGE] ⚠️ Recovered từ panic trong RecordUsageHistoryAsync: %v", r)
+			}
 		}()
 		ts := NowISO()
-		_, _ = db.Exec(`
+		var err error
+		for attempt := 1; attempt <= 3; attempt++ {
+			_, err = db.Exec(`
 			INSERT INTO omni_usage_history 
 			(timestamp, provider, model, connection_id, api_key, endpoint, prompt_tokens, completion_tokens, total_tokens, cost, status, latency_ms)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`, ts, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, totalTokens, cost, status, latencyMs)
+			if err == nil {
+				break
+			}
+			if attempt < 3 {
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		if err != nil {
+			log.Printf("[ENGINE] [USAGE] ❌ Lỗi ghi nhận usage cho key %s: %v", apiKey, err)
+		}
 	}()
 }
 

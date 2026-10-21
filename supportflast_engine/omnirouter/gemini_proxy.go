@@ -504,7 +504,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			if status == "QUOTA_EXCEEDED" {
 				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han muc Quota (%s)", clientKeyToCheck, errMsg)
 				if db != nil && keyItem != nil {
-					_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID)
+					if _, errLock := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID); errLock != nil {
+						log.Printf("[ENGINE] [USAGE] ❌ Lỗi khóa key vượt quota trong DB (%s): %v", keyItem.ID, errLock)
+					}
 					RefreshKeyCache(db)
 				}
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -520,7 +522,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			} else if status == "EXPIRED" {
 				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han su dung (%s)", clientKeyToCheck, errMsg)
 				if db != nil && keyItem != nil {
-					_, _ = db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID)
+					if _, errLock := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID); errLock != nil {
+						log.Printf("[ENGINE] [USAGE] ❌ Lỗi khóa key hết hạn trong DB (%s): %v", keyItem.ID, errLock)
+					}
 					RefreshKeyCache(db)
 				}
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")

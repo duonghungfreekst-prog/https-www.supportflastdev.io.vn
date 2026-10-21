@@ -114,5 +114,70 @@ class TestSIEMAPI(unittest.TestCase):
         self.assertEqual(res.headers.get("X-Frame-Options"), "DENY")
         self.assertIn("max-age=31536000", res.headers.get("Strict-Transport-Security", ""))
 
+    def test_is_insecure_internal_secret(self):
+        """Kiểm tra hàm phát hiện internal secret yếu hoặc placeholder"""
+        from app import is_insecure_internal_secret
+        self.assertTrue(is_insecure_internal_secret(""))
+        self.assertTrue(is_insecure_internal_secret("CHANGE_ME_INTERNAL_SERVICE_SECRET"))
+        self.assertTrue(is_insecure_internal_secret("sf_mobile_token_2026"))
+        self.assertTrue(is_insecure_internal_secret("sf_mobile_engine_token_2026"))
+        self.assertTrue(is_insecure_internal_secret("default_secret"))
+        self.assertTrue(is_insecure_internal_secret("secret"))
+        self.assertTrue(is_insecure_internal_secret("123456"))
+        self.assertTrue(is_insecure_internal_secret("<GENERATE_SECURE_INTERNAL_SERVICE_SECRET>"))
+        self.assertTrue(is_insecure_internal_secret("short"))
+        # Secret mạnh tối thiểu 16 ký tự
+        self.assertFalse(is_insecure_internal_secret("Super_Strong_Random_Internal_Secret_2026_Prod"))
+
+    def test_verify_internal_auth_production_enforcement(self):
+        """Kiểm tra cơ chế xác thực nội bộ trong môi trường Production"""
+        import os
+        from app import verify_internal_auth
+        from unittest.mock import Mock
+
+        # Giả lập request từ IP mạng (không phải testclient)
+        req = Mock()
+        req.client.host = "192.168.1.100"
+        req.headers = {}
+
+        orig_env = os.environ.get("ENV")
+        orig_secret = os.environ.get("INTERNAL_SERVICE_SECRET")
+        try:
+            os.environ["ENV"] = "production"
+
+            # 1. Secret rỗng trong production -> Từ chối
+            os.environ["INTERNAL_SERVICE_SECRET"] = ""
+            self.assertFalse(verify_internal_auth(req))
+
+            # 2. Secret yếu trong production -> Từ chối
+            os.environ["INTERNAL_SERVICE_SECRET"] = "sf_mobile_token_2026"
+            self.assertFalse(verify_internal_auth(req))
+
+            # 3. Secret mạnh, nhưng request không có header -> Từ chối
+            valid_secret = "Very_Secure_Production_Internal_Token_2026!"
+            os.environ["INTERNAL_SERVICE_SECRET"] = valid_secret
+            self.assertFalse(verify_internal_auth(req))
+
+            # 4. Token sai -> Từ chối
+            req.headers = {"X-Internal-Token": "wrong_token_12345678"}
+            self.assertFalse(verify_internal_auth(req))
+
+            # 5. Token đúng qua X-Internal-Token -> Cho phép
+            req.headers = {"X-Internal-Token": valid_secret}
+            self.assertTrue(verify_internal_auth(req))
+
+            # 6. Token đúng qua Authorization: Bearer -> Cho phép
+            req.headers = {"Authorization": f"Bearer {valid_secret}"}
+            self.assertTrue(verify_internal_auth(req))
+        finally:
+            if orig_env is not None:
+                os.environ["ENV"] = orig_env
+            else:
+                os.environ.pop("ENV", None)
+            if orig_secret is not None:
+                os.environ["INTERNAL_SERVICE_SECRET"] = orig_secret
+            else:
+                os.environ.pop("INTERNAL_SERVICE_SECRET", None)
+
 if __name__ == "__main__":
     unittest.main()

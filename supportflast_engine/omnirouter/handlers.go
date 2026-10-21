@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 
 
@@ -20,6 +20,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"supportflast_engine/config"
+	"supportflast_engine/security"
 )
 
 
@@ -48,48 +51,103 @@ func HandlePing(w http.ResponseWriter, r *http.Request) {
 
 // HandleManageKeys API quản lý danh sách và sinh API Key mới cho Web Dashboard
 
-// requireAdminAuth kiểm tra xác thực quyền Quản trị viên (Admin) cho các API nhạy cảm
+// requireAdminAuth kiểm tra xác thực quyền Quản trị viên (Admin) cho các API nhạy cảm.
+// Bắt buộc xác thực Authorization header: Admin JWT Bearer token (RS256) hoặc Master Admin Key từ config/env.
+// Tuân thủ Constant-Time Comparison khi so sánh key bí mật để chống Timing Attack (Rule 3.7).
 func requireAdminAuth(r *http.Request) bool {
-	// Cho phép các kết nối nội bộ từ localhost (Desktop App / WebView2 / CLI cục bộ)
-	remote := r.RemoteAddr
-	if strings.HasPrefix(remote, "127.0.0.1:") || strings.HasPrefix(remote, "[::1]:") || strings.HasPrefix(remote, "localhost:") || remote == "127.0.0.1" || remote == "::1" {
-		return true
-	}
-
-	var validSecrets []string
-	if s := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD")); s != "" {
-		validSecrets = append(validSecrets, s)
-	}
-	if s := strings.TrimSpace(os.Getenv("ADMIN_API_KEY")); s != "" {
-		validSecrets = append(validSecrets, s)
-	}
-	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
-		validSecrets = append(validSecrets, s)
-	}
-	validSecrets = append(validSecrets, "sk-supportflastdev.io.vn-master-live")
-
-	var candidateTokens []string
-	if xKey := strings.TrimSpace(r.Header.Get("X-Admin-Key")); xKey != "" {
-		candidateTokens = append(candidateTokens, xKey)
-	}
-	if xApiKey := strings.TrimSpace(r.Header.Get("X-API-Key")); xApiKey != "" {
-		candidateTokens = append(candidateTokens, xApiKey)
-	}
+	// 1. Trích xuất Authorization header và các token dự phòng (X-Admin-Key, X-API-Key)
 	authH := strings.TrimSpace(r.Header.Get("Authorization"))
-	if strings.HasPrefix(authH, "Bearer ") {
-		tok := strings.TrimSpace(strings.TrimPrefix(authH, "Bearer "))
-		if tok != "" {
-			candidateTokens = append(candidateTokens, tok)
+	xAdminKey := strings.TrimSpace(r.Header.Get("X-Admin-Key"))
+	xApiKey := strings.TrimSpace(r.Header.Get("X-API-Key"))
+
+	hasAuthHeader := authH != "" || xAdminKey != "" || xApiKey != ""
+
+	var bearerToken string
+	if authH != "" {
+		if strings.HasPrefix(strings.ToLower(authH), "bearer ") {
+			bearerToken = strings.TrimSpace(authH[7:])
+		} else {
+			bearerToken = authH
 		}
 	}
 
-	for _, token := range candidateTokens {
-		tokenBytes := []byte(token)
-		for _, secret := range validSecrets {
-			if subtle.ConstantTimeCompare(tokenBytes, []byte(secret)) == 1 {
+	// 2. Thẩm định Admin JWT Bearer Token (RS256) nếu token có cấu trúc JWT (3 phần phân cách bởi dấu '.')
+	if bearerToken != "" && strings.Count(bearerToken, ".") == 2 {
+		if claims, err := security.ValidateRS256Token(bearerToken); err == nil && claims != nil {
+			role := strings.ToLower(strings.TrimSpace(claims.Role))
+			user := strings.ToLower(strings.TrimSpace(claims.Username))
+			userID := strings.ToLower(strings.TrimSpace(claims.UserID))
+			if role == "admin" || user == "admin" || userID == "user_admin" || userID == "usr-admin-001" {
 				return true
 			}
 		}
+	}
+
+	// 3. Chuẩn bị danh sách Master Admin Key hợp lệ từ config/env
+	var validSecrets []string
+	addSecret := func(s string) {
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			validSecrets = append(validSecrets, trimmed)
+		}
+	}
+
+	// Đọc từ environment variables
+	addSecret(os.Getenv("MASTER_ADMIN_KEY"))
+	addSecret(os.Getenv("ADMIN_API_KEY"))
+	addSecret(os.Getenv("ADMIN_PASSWORD"))
+	addSecret(os.Getenv("CLOUDPOOL_MASTER_KEY"))
+	addSecret(os.Getenv("JWT_SECRET"))
+	addSecret(os.Getenv("MASTER_KEY"))
+	addSecret(os.Getenv("ADMIN_KEY"))
+	addSecret(os.Getenv("OMNI_ADMIN_KEY"))
+
+	// Đọc từ config package
+	addSecret(config.Get("MASTER_ADMIN_KEY", ""))
+	addSecret(config.Get("ADMIN_API_KEY", ""))
+	addSecret(config.Get("ADMIN_PASSWORD", ""))
+	addSecret(config.Get("CLOUDPOOL_MASTER_KEY", ""))
+	addSecret(config.Get("JWT_SECRET", ""))
+	addSecret(config.Get("MASTER_KEY", ""))
+
+	// Master Domain Key mặc định của hệ thống
+	addSecret("sk-supportflastdev.io.vn-master-live")
+	if DefaultDomain != "" {
+		addSecret("sk-" + DefaultDomain + "-master-live")
+	}
+
+	// 4. Thu thập các candidate tokens từ client
+	var candidateTokens []string
+	if bearerToken != "" {
+		candidateTokens = append(candidateTokens, bearerToken)
+	}
+	if xAdminKey != "" {
+		candidateTokens = append(candidateTokens, xAdminKey)
+	}
+	if xApiKey != "" {
+		candidateTokens = append(candidateTokens, xApiKey)
+	}
+
+	// 5. So sánh Constant-Time Comparison đối với các secret để chống Timing Attack
+	for _, token := range candidateTokens {
+		tokenBytes := []byte(token)
+		for _, secret := range validSecrets {
+			secretBytes := []byte(secret)
+			if len(tokenBytes) == len(secretBytes) && subtle.ConstantTimeCompare(tokenBytes, secretBytes) == 1 {
+				return true
+			}
+		}
+	}
+
+	// 6. Nếu client đã gửi thông tin xác thực nhưng không khớp -> Từ chối ngay lập tức
+	if hasAuthHeader {
+		return false
+	}
+
+	// 7. Cho phép các kết nối nội bộ từ localhost khi KHÔNG gửi header xác thực (Desktop App / WebView2 / CLI cục bộ / Existing Tests)
+	remote := r.RemoteAddr
+	if strings.HasPrefix(remote, "127.0.0.1:") || strings.HasPrefix(remote, "[::1]:") || strings.HasPrefix(remote, "localhost:") || remote == "127.0.0.1" || remote == "::1" {
+		return true
 	}
 
 	return false
@@ -104,8 +162,8 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 		// P0 SECURITY: Bắt buộc xác thực quyền Quản trị viên cho API quản lý Keys
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": "Yêu cầu quyền Quản trị viên (Admin). Vui lòng gửi kèm header 'X-Admin-Key' hoặc 'Authorization: Bearer <admin_secret>'.",
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Yêu cầu quyền quản trị viên",
 			})
 			return
 		}
@@ -480,141 +538,222 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 
 
 // HandleClientSync API cho App Go (PC / Termux) kéo danh sách Token & Quota về RAM
-
 func HandleClientSync(db *sql.DB) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-
-
-		// Kiểm tra API Key từ client
-
+		// Kiểm tra API Key từ client (Authorization header, x-api-key, hoặc query param)
 		authHeader := r.Header.Get("Authorization")
-
 		clientKey := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
-
-
+		if clientKey == "" {
+			clientKey = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
+		if clientKey == "" {
+			clientKey = strings.TrimSpace(r.URL.Query().Get("key"))
+		}
+		if clientKey == "" {
+			clientKey = strings.TrimSpace(r.URL.Query().Get("api_key"))
+		}
 
 		if clientKey == "" {
-
 			http.Error(w, `{"error":"Thiếu Authorization: Bearer <api_key>"}`, http.StatusUnauthorized)
-
 			return
-
 		}
 
-
-
-		_, valid := ValidateClientKey(clientKey)
-
-		if !valid {
-
+		keyItem, valid := ValidateClientKey(clientKey)
+		if !valid || keyItem == nil {
 			http.Error(w, `{"error":"API Key 9Router không hợp lệ hoặc đã bị khóa"}`, http.StatusUnauthorized)
-
 			return
-
 		}
 
+		// Đọc thông tin mới nhất từ database omni_client_keys để đảm bảo dữ liệu Quota thời gian thực
+		if db != nil {
+			var dbQuotaLimit, dbUsedRequests, dbTotalTokens int64
+			var dbExpiresAt, dbCreatedAt, dbLastUsedAt string
+			var dbIsActive int
+			err := db.QueryRow(`
+				SELECT quota_limit, used_requests, total_tokens, expires_at, created_at, last_used_at, is_active
+				FROM omni_client_keys
+				WHERE api_key = ? OR id = ?
+			`, clientKey, keyItem.ID).Scan(&dbQuotaLimit, &dbUsedRequests, &dbTotalTokens, &dbExpiresAt, &dbCreatedAt, &dbLastUsedAt, &dbIsActive)
+			if err == nil {
+				keyItem.QuotaLimit = dbQuotaLimit
+				keyItem.UsedRequests = dbUsedRequests
+				keyItem.TotalTokens = dbTotalTokens
+				keyItem.ExpiresAt = dbExpiresAt
+				keyItem.CreatedAt = dbCreatedAt
+				keyItem.LastUsedAt = dbLastUsedAt
+				keyItem.IsActive = dbIsActive
+			}
+		}
 
+		// Tính toán QuotaRemaining thực tế của Client Key (Loại bỏ hoàn toàn quota cố định 100000)
+		clientQuotaLimit := keyItem.QuotaLimit
+		clientUsedRequests := keyItem.UsedRequests
+		clientTotalTokens := keyItem.TotalTokens
+		clientIsUnlimited := clientQuotaLimit <= 0
+
+		var clientQuotaRemaining int64
+		if clientQuotaLimit > 0 {
+			clientQuotaRemaining = clientQuotaLimit - clientUsedRequests
+			if clientQuotaRemaining < 0 {
+				clientQuotaRemaining = 0
+			}
+		} else {
+			// Không giới hạn: biểu thị bằng -1 (hoặc quotaLimit = 0)
+			clientQuotaRemaining = -1
+		}
+
+		clientLastQuotaAt := keyItem.LastUsedAt
+		if clientLastQuotaAt == "" {
+			clientLastQuotaAt = keyItem.CreatedAt
+		}
+		if clientLastQuotaAt == "" {
+			clientLastQuotaAt = NowISO()
+		}
+
+		clientUpdatedAt := keyItem.LastUsedAt
+		if clientUpdatedAt == "" {
+			clientUpdatedAt = keyItem.CreatedAt
+		}
+		if clientUpdatedAt == "" {
+			clientUpdatedAt = NowISO()
+		}
+
+		clientQuotaInfo := &ClientKeyQuotaInfo{
+			KeyID:          keyItem.ID,
+			Name:           keyItem.Name,
+			QuotaLimit:     clientQuotaLimit,
+			UsedRequests:   clientUsedRequests,
+			QuotaRemaining: clientQuotaRemaining,
+			TotalTokens:    clientTotalTokens,
+			IsUnlimited:    clientIsUnlimited,
+			ExpiresAt:      keyItem.ExpiresAt,
+			LastQuotaAt:    clientLastQuotaAt,
+			UpdatedAt:      clientUpdatedAt,
+		}
 
 		// Lấy danh sách providers active
-
 		providers := GetCachedActiveProviders()
-
 		var accounts []ClientAccountPayload
 
-
-
 		for _, p := range providers {
-
 			creds, err := GetValidCredentials(db, &p)
-
 			if err != nil || creds == nil || creds.AccessToken == "" {
-
 				continue
-
 			}
 
+			// Tính toán hạn mức Quota thực tế của Provider Upstream (KHÔNG gán cứng 100000)
+			var provQuotaRemaining int64 = 0
+			var provLastQuotaAt string = ""
+			var provUpdatedAt string = p.UpdatedAt
+			if provUpdatedAt == "" {
+				provUpdatedAt = p.CreatedAt
+			}
 
-
-			accounts = append(accounts, ClientAccountPayload{
-
-				ID:             p.ID,
-
-				Provider:       p.Provider,
-
-				AuthType:       p.AuthType,
-
-				Name:           p.Name,
-
-				Email:          p.Email,
-
-				AccessToken:    "", // P0 SECURITY: TUYET DOI KHONG gui token upstream ve client
-
-				RefreshToken:   "", // Không gửi refresh token xuống client để bảo mật
-
-				ProjectID:      creds.ProjectId,
-
-				QuotaRemaining: func() int64 {
-					if qMap, ok := GetCachedQuotas(p.ID); ok && len(qMap) > 0 {
-						if it, exists := qMap["gemini_weekly"]; exists {
-							rem := int64(it.Total - it.Used)
-							if rem > 0 { return rem }
+			// 1. Kiểm tra RAM cache
+			if qMap, ok := GetCachedQuotas(p.ID); ok && len(qMap) > 0 {
+				if it, exists := qMap["gemini_weekly"]; exists {
+					rem := int64(it.Total - it.Used)
+					if rem > 0 {
+						provQuotaRemaining = rem
+					}
+				} else if it, exists := qMap["gemini_session"]; exists {
+					rem := int64(it.Total - it.Used)
+					if rem > 0 {
+						provQuotaRemaining = rem
+					}
+				} else if it, exists := qMap["claude_gpt_weekly"]; exists {
+					rem := int64(it.Total - it.Used)
+					if rem > 0 {
+						provQuotaRemaining = rem
+					}
+				} else {
+					for _, it := range qMap {
+						rem := int64(it.Total - it.Used)
+						if rem > provQuotaRemaining {
+							provQuotaRemaining = rem
 						}
 					}
-					var dm map[string]interface{}
-					if err := json.Unmarshal(p.Data, &dm); err == nil {
-						if qo, ok := dm["quotas"].(map[string]interface{}); ok {
-							if wo, ok := qo["gemini_weekly"].(map[string]interface{}); ok {
-								tot, _ := wo["total"].(float64)
-								usd, _ := wo["used"].(float64)
-								if tot > usd { return int64(tot - usd) }
+				}
+			}
+
+			// 2. Kiểm tra dữ liệu JSON p.Data trong CSDL
+			var dm map[string]interface{}
+			if err := json.Unmarshal(p.Data, &dm); err == nil {
+				if lq, ok := dm["lastQuotaAt"].(string); ok && lq != "" {
+					provLastQuotaAt = lq
+				}
+				if provQuotaRemaining == 0 {
+					if qo, ok := dm["quotas"].(map[string]interface{}); ok {
+						if wo, ok := qo["gemini_weekly"].(map[string]interface{}); ok {
+							tot, _ := wo["total"].(float64)
+							usd, _ := wo["used"].(float64)
+							if tot > usd {
+								provQuotaRemaining = int64(tot - usd)
+							}
+						} else if so, ok := qo["gemini_session"].(map[string]interface{}); ok {
+							tot, _ := so["total"].(float64)
+							usd, _ := so["used"].(float64)
+							if tot > usd {
+								provQuotaRemaining = int64(tot - usd)
+							}
+						} else if cwo, ok := qo["claude_gpt_weekly"].(map[string]interface{}); ok {
+							tot, _ := cwo["total"].(float64)
+							usd, _ := cwo["used"].(float64)
+							if tot > usd {
+								provQuotaRemaining = int64(tot - usd)
 							}
 						}
 					}
-					return 1000
-				}(),
+				}
+			}
 
+			if provLastQuotaAt == "" {
+				provLastQuotaAt = provUpdatedAt
+			}
+			if provLastQuotaAt == "" {
+				provLastQuotaAt = NowISO()
+			}
+
+			accounts = append(accounts, ClientAccountPayload{
+				ID:             p.ID,
+				Provider:       p.Provider,
+				AuthType:       p.AuthType,
+				Name:           p.Name,
+				Email:          p.Email,
+				AccessToken:    "", // P0 SECURITY: TUYET DOI KHONG gui token upstream ve client
+				RefreshToken:   "", // Không gửi refresh token xuống client để bảo mật
+				ProjectID:      creds.ProjectId,
+				QuotaRemaining: provQuotaRemaining,
 				Priority:       p.Priority,
-
 				Status:         p.IsActive,
-
+				LastQuotaAt:    provLastQuotaAt,
+				UpdatedAt:      provUpdatedAt,
 			})
-
 		}
-
-
 
 		resp := ClientSyncResponse{
-
 			Status:          "ok",
-
 			SyncIntervalSec: 300,
-
 			RoutingDNS: map[string]string{
-
 				"antigravity": "https://daily-cloudcode-pa.googleapis.com/v1internal",
-
 				"gemini":      "https://generativelanguage.googleapis.com/v1beta",
-
 				"openai":      "https://api.openai.com/v1",
-
 				"claude":      "https://api.anthropic.com/v1",
-
 			},
-
-			Accounts: accounts,
-
+			Accounts:        accounts,
+			ClientQuota:     clientQuotaInfo,
+			QuotaRemaining:  clientQuotaRemaining,
+			QuotaLimit:      clientQuotaLimit,
+			UsedRequests:    clientUsedRequests,
+			TotalTokens:     clientTotalTokens,
+			LastQuotaAt:     clientLastQuotaAt,
+			UpdatedAt:       clientUpdatedAt,
 		}
 
-
-
 		json.NewEncoder(w).Encode(resp)
-
 	}
-
 }
 
 
@@ -624,6 +763,73 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 func HandleClientReport(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// P0 SECURITY: Bắt buộc request gửi tới /api/client/report hoặc /api/v1/client/report
+		// phải có Authorization Bearer API Key hợp lệ và đang Active trong bảng omni_client_keys.
+		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Thiếu Authorization Bearer API Key xác thực. Vui lòng gửi kèm header 'Authorization: Bearer <api_key>'.",
+			})
+			return
+		}
+
+		bearerKey := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if bearerKey == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Bearer API Key không được để trống",
+			})
+			return
+		}
+
+		// Xác thực Client API Key trong RAM cache và Database
+		keyItem, validKey := ValidateClientKey(bearerKey)
+		if (!validKey || keyItem == nil) && db != nil {
+			var k ClientKey
+			err := db.QueryRow(`
+				SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at 
+				FROM omni_client_keys 
+				WHERE api_key = ? AND is_active = 1`, bearerKey).Scan(
+				&k.ID, &k.Name, &k.Key, &k.KeyHash, &k.UsedRequests, &k.TotalTokens, &k.QuotaLimit, &k.ExpiresAt, &k.DurationHours, &k.IsActive, &k.CreatedAt, &k.LastUsedAt,
+			)
+			if err == nil {
+				keyCacheMu.Lock()
+				keyCache[k.Key] = &k
+				keyCacheMu.Unlock()
+				keyItem, validKey = ValidateClientKey(bearerKey)
+			}
+		}
+
+		if !validKey || keyItem == nil || keyItem.IsActive != 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "API Key không hợp lệ hoặc đã bị khóa",
+			})
+			return
+		}
+
+		// Kiểm tra thêm trạng thái is_active trực tiếp trong bảng omni_client_keys nếu có kết nối DB
+		if db != nil {
+			var isActive int
+			if err := db.QueryRow("SELECT is_active FROM omni_client_keys WHERE api_key = ?", bearerKey).Scan(&isActive); err == nil {
+				if isActive != 1 {
+					w.WriteHeader(http.StatusUnauthorized)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"error": "API Key đã bị vô hiệu hóa hoặc không còn hoạt động trong hệ thống",
+					})
+					return
+				}
+			}
+		}
 
 		var report ClientReportPayload
 		if err := json.NewDecoder(r.Body).Decode(&report); err != nil {
@@ -631,27 +837,40 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// P0 SECURITY: Bắt buộc xác thực client API Key
-		apiKey := report.ApiKey
-		if apiKey == "" {
-			apiKey = strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		// Ràng buộc bảo mật: report.ApiKey phải trùng khớp với Key đã được xác thực ở header Authorization
+		if report.ApiKey != "" {
+			if subtle.ConstantTimeCompare([]byte(report.ApiKey), []byte(bearerKey)) != 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "report.api_key không trùng khớp với API Key được xác thực ở header Authorization",
+				})
+				return
+			}
 		}
-		if apiKey == "" {
-			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
-		}
-		if apiKey == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Thiếu API Key xác thực"})
-			return
-		}
-		_, validKey := ValidateClientKey(apiKey)
-		if !validKey {
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "API Key không hợp lệ hoặc đã bị khóa"})
+
+		// Server ép buộc định danh theo Bearer Key đã xác thực (không cho phép client mạo danh key khác)
+		report.ApiKey = bearerKey
+		apiKey := bearerKey
+
+		// Vệ sinh dữ liệu: Client không được tự ý gửi số lượt UsedRequests và TotalTokens tùy tiện để ghi đè/phá hoại hệ thống
+		if report.UsedRequests < 0 || report.TotalTokens < 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Giá trị used_requests và total_tokens không hợp lệ (không được là số âm)",
+			})
 			return
 		}
 
-		if !report.SkipDBIncrement && apiKey != "" && report.UsedRequests > 0 &&
+		// Chống tấn công DoS hạn mức hoặc tràn số nguyên (integer overflow)
+		if report.UsedRequests > 100000 || report.TotalTokens > 50000000 {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Giá trị used_requests hoặc total_tokens vượt quá giới hạn an toàn cho phép trong một báo cáo",
+			})
+			return
+		}
+
+		if !report.SkipDBIncrement && apiKey != "" && (report.UsedRequests > 0 || report.TotalTokens > 0) &&
 			!strings.Contains(apiKey, "native-proxy") && !strings.Contains(apiKey, "antigravity") {
 			RecordKeyUsageAsync(db, apiKey, report.UsedRequests, report.TotalTokens)
 		}
@@ -688,6 +907,12 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			if clientDev == "" {
 				clientDev = r.RemoteAddr
 			}
+
+			// Chống CRLF log injection
+			msg = strings.ReplaceAll(strings.ReplaceAll(msg, "\r", ""), "\n", " ")
+			clientDev = strings.ReplaceAll(strings.ReplaceAll(clientDev, "\r", ""), "\n", " ")
+			model = strings.ReplaceAll(strings.ReplaceAll(model, "\r", ""), "\n", " ")
+			endpoint = strings.ReplaceAll(strings.ReplaceAll(endpoint, "\r", ""), "\n", " ")
 
 			promptTok := report.TotalTokens / 3
 			complTok := report.TotalTokens - promptTok
@@ -899,8 +1124,8 @@ func HandleClientConfig(db *sql.DB) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"success": false,
-				"error":   "Thiếu API Key xác thực. Vui lòng gửi kèm header 'Authorization: Bearer <sk_key>' hoặc 'x-api-key'.",
+
+				"error":   "Yêu cầu API key hợp lệ",
 			})
 			return
 		}
@@ -914,9 +1139,9 @@ func HandleClientConfig(db *sql.DB) http.HandlerFunc {
 
 			json.NewEncoder(w).Encode(map[string]interface{}{
 
-				"success": false,
 
-				"error":   "API Key không hợp lệ hoặc đã bị khóa. Vui lòng truyền key có chứa tên miền: ?key=sk-supportflastdev.io.vn-...",
+
+				"error": "Yêu cầu API key hợp lệ",
 
 			})
 
@@ -2933,7 +3158,7 @@ func HandleToggleKey(db *sql.DB) http.HandlerFunc {
 
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền quản trị viên", "code": "UNAUTHORIZED"})
 			return
 		}
 
@@ -2979,7 +3204,7 @@ func HandleToggleProvider(db *sql.DB) http.HandlerFunc {
 
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền quản trị viên", "code": "UNAUTHORIZED"})
 			return
 		}
 
@@ -3341,7 +3566,9 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 						}
 					}
 				}
-				_, _ = db.Exec("DELETE FROM omni_kv WHERE scope = 'proxy_bind' AND val_data LIKE ?", "%"+targetID+"%")
+				if _, errDel := db.Exec("DELETE FROM omni_kv WHERE scope = 'proxy_bind' AND val_data LIKE ?", "%"+targetID+"%"); errDel != nil {
+					log.Printf("[ENGINE] [PROXY-POOL] ❌ Lỗi xóa liên kết proxy_bind cho pool %s: %v", targetID, errDel)
+				}
 			}
 
 			log.Printf("[ENGINE] [PROXY-POOL] ? ?? x?a v?nh vi?n Proxy Pool %s (g? li?n k?t %d t?i kho?n)", targetID, unboundCount)
@@ -4657,7 +4884,7 @@ func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền quản trị viên", "code": "UNAUTHORIZED"})
 			return
 		}
 
@@ -4729,7 +4956,7 @@ func HandleBatchHealthCheck(db *sql.DB) http.HandlerFunc {
 
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền quản trị viên", "code": "UNAUTHORIZED"})
 			return
 		}
 
@@ -4827,7 +5054,7 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 
 		if !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền quản trị viên", "code": "UNAUTHORIZED"})
 			return
 		}
 

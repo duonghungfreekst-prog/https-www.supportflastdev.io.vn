@@ -1,8 +1,9 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -267,6 +268,476 @@ func ParseGeminiChunk(chunkJSON string) (string, int64, int64, int64) {
 	return deltaText, pTok, cTok, caTok
 }
 
+// DetermineProvider xác định provider upstream dựa trên ProviderConnection và model
+func DetermineProvider(acc *ProviderConnection, model string) string {
+	if acc != nil {
+		p := strings.ToLower(strings.TrimSpace(acc.Provider))
+		switch {
+		case p == "openai" || p == "azure" || p == "codex":
+			return "openai"
+		case p == "anthropic" || p == "claude":
+			return "anthropic"
+		case p == "google" || p == "gemini":
+			return "google"
+		case p == "antigravity":
+			return "antigravity"
+		}
+	}
+	// Fallback dựa trên model nếu account provider chưa xác định
+	m := strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case strings.HasPrefix(m, "openai/") || strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1") || strings.HasPrefix(m, "o3") || strings.Contains(m, "chatgpt"):
+		return "openai"
+	case strings.HasPrefix(m, "anthropic/") || strings.Contains(m, "claude") || strings.Contains(m, "sonnet") || strings.Contains(m, "opus"):
+		return "anthropic"
+	case strings.HasPrefix(m, "google/") || strings.Contains(m, "gemini"):
+		return "google"
+	default:
+		return "antigravity"
+	}
+}
+
+// TargetProviderForModel xác định provider mục tiêu của một model để ưu tiên sắp xếp tài khoản
+func TargetProviderForModel(model string) string {
+	m := strings.ToLower(strings.TrimSpace(model))
+	switch {
+	case strings.HasPrefix(m, "openai/") || strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1") || strings.HasPrefix(m, "o3") || strings.Contains(m, "chatgpt"):
+		return "openai"
+	case strings.HasPrefix(m, "anthropic/") || strings.Contains(m, "claude") || strings.Contains(m, "sonnet") || strings.Contains(m, "opus"):
+		return "anthropic"
+	case strings.HasPrefix(m, "google/") || strings.Contains(m, "gemini"):
+		return "antigravity"
+	default:
+		return ""
+	}
+}
+
+// orderAccountsForChat sắp xếp tài khoản ưu tiên theo Provider phù hợp với model
+func orderAccountsForChat(accounts []ProviderConnection, currentTierModel string, startIdx int) []ProviderConnection {
+	n := len(accounts)
+	if n <= 1 {
+		return accounts
+	}
+	base := make([]ProviderConnection, n)
+	for i := 0; i < n; i++ {
+		base[i] = accounts[(startIdx+i)%n]
+	}
+
+	targetProv := TargetProviderForModel(currentTierModel)
+	if targetProv == "" {
+		return base
+	}
+
+	var matched []ProviderConnection
+	var others []ProviderConnection
+
+	for _, acc := range base {
+		p := strings.ToLower(strings.TrimSpace(acc.Provider))
+		isMatch := false
+		switch targetProv {
+		case "openai":
+			isMatch = (p == "openai" || p == "azure" || p == "codex")
+		case "anthropic":
+			isMatch = (p == "anthropic" || p == "claude" || p == "antigravity")
+		case "google", "antigravity":
+			isMatch = (p == "google" || p == "gemini" || p == "antigravity")
+		}
+		if isMatch {
+			matched = append(matched, acc)
+		} else {
+			others = append(others, acc)
+		}
+	}
+
+	if len(matched) > 0 {
+		return append(matched, others...)
+	}
+	return base
+}
+
+// ConvertMessagesToAnthropic chuyển đổi OpenAI messages sang format Anthropic Messages API
+func ConvertMessagesToAnthropic(messages []map[string]interface{}) (string, []map[string]interface{}) {
+	var systemParts []string
+	var anthropicMsgs []map[string]interface{}
+
+	for _, m := range messages {
+		role, _ := m["role"].(string)
+		content := m["content"]
+		if role == "system" || role == "developer" {
+			switch c := content.(type) {
+			case string:
+				if strings.TrimSpace(c) != "" {
+					systemParts = append(systemParts, strings.TrimSpace(c))
+				}
+			case []interface{}:
+				for _, item := range c {
+					if im, ok := item.(map[string]interface{}); ok {
+						if txt, ok := im["text"].(string); ok && strings.TrimSpace(txt) != "" {
+							systemParts = append(systemParts, strings.TrimSpace(txt))
+						}
+					}
+				}
+			}
+			continue
+		}
+
+		if role == "model" {
+			role = "assistant"
+		} else if role != "user" && role != "assistant" {
+			role = "user"
+		}
+
+		anthropicMsgs = append(anthropicMsgs, map[string]interface{}{
+			"role":    role,
+			"content": content,
+		})
+	}
+
+	if len(anthropicMsgs) == 0 {
+		anthropicMsgs = append(anthropicMsgs, map[string]interface{}{
+			"role":    "user",
+			"content": "Hello",
+		})
+	}
+
+	return strings.Join(systemParts, "\n\n"), anthropicMsgs
+}
+
+// ParseOpenAIChunk bóc tách delta text và tokens từ SSE chunk của OpenAI
+func ParseOpenAIChunk(chunkJSON string) (string, int64, int64, string) {
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(chunkJSON), &obj); err != nil {
+		return "", 0, 0, ""
+	}
+
+	var deltaText, finishReason string
+	var pTok, cTok int64
+
+	if usage, ok := obj["usage"].(map[string]interface{}); ok && usage != nil {
+		if p, ok := usage["prompt_tokens"].(float64); ok {
+			pTok = int64(p)
+		}
+		if c, ok := usage["completion_tokens"].(float64); ok {
+			cTok = int64(c)
+		}
+	}
+
+	if choices, ok := obj["choices"].([]interface{}); ok && len(choices) > 0 {
+		if ch, ok := choices[0].(map[string]interface{}); ok {
+			if fr, ok := ch["finish_reason"].(string); ok {
+				finishReason = fr
+			}
+			if delta, ok := ch["delta"].(map[string]interface{}); ok {
+				if c, ok := delta["content"].(string); ok {
+					deltaText = c
+				}
+			}
+		}
+	}
+
+	return deltaText, pTok, cTok, finishReason
+}
+
+// ParseAnthropicChunk bóc tách delta text và tokens từ SSE chunk của Anthropic
+func ParseAnthropicChunk(chunkJSON string) (string, int64, int64, string) {
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(chunkJSON), &obj); err != nil {
+		return "", 0, 0, ""
+	}
+
+	var deltaText, finishReason string
+	var pTok, cTok int64
+
+	evtType, _ := obj["type"].(string)
+	switch evtType {
+	case "content_block_delta":
+		if delta, ok := obj["delta"].(map[string]interface{}); ok {
+			if t, ok := delta["text"].(string); ok {
+				deltaText = t
+			}
+		}
+	case "message_start":
+		if msg, ok := obj["message"].(map[string]interface{}); ok {
+			if usage, ok := msg["usage"].(map[string]interface{}); ok {
+				if inp, ok := usage["input_tokens"].(float64); ok {
+					pTok = int64(inp)
+				}
+			}
+		}
+	case "message_delta":
+		if delta, ok := obj["delta"].(map[string]interface{}); ok {
+			if sr, ok := delta["stop_reason"].(string); ok {
+				finishReason = sr
+			}
+		}
+		if usage, ok := obj["usage"].(map[string]interface{}); ok {
+			if out, ok := usage["output_tokens"].(float64); ok {
+				cTok = int64(out)
+			}
+		}
+	}
+
+	return deltaText, pTok, cTok, finishReason
+}
+
+// BuildOutboundRequest khởi tạo HTTP Request gửi lên Upstream phân nhánh động theo Provider
+func BuildOutboundRequest(
+	ctx context.Context,
+	provider string,
+	model string,
+	creds *Credentials,
+	req ChatCompletionRequest,
+	isStream bool,
+) (*http.Request, error) {
+	switch provider {
+	case "openai":
+		cleanModel := strings.TrimPrefix(model, "openai/")
+		upstreamURL := "https://api.openai.com/v1/chat/completions"
+		payload := map[string]interface{}{
+			"model":    cleanModel,
+			"messages": req.Messages,
+			"stream":   isStream,
+		}
+		if req.Request != nil {
+			for k, v := range req.Request {
+				if k != "messages" && k != "model" && k != "stream" && k != "contents" {
+					payload[k] = v
+				}
+			}
+		}
+		outboundBody, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi encode payload OpenAI: %w", err)
+		}
+		fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+		if err != nil {
+			return nil, fmt.Errorf("lỗi tạo request OpenAI: %w", err)
+		}
+		fReq.Header.Set("Content-Type", "application/json")
+		fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
+		return fReq, nil
+
+	case "anthropic":
+		cleanModel := strings.TrimPrefix(model, "anthropic/")
+		upstreamURL := "https://api.anthropic.com/v1/messages"
+		systemPrompt, anthropicMsgs := ConvertMessagesToAnthropic(req.Messages)
+		maxTokens := 4096
+		if req.Request != nil {
+			if mt, ok := req.Request["max_tokens"].(float64); ok && mt > 0 {
+				maxTokens = int(mt)
+			}
+		}
+		payload := map[string]interface{}{
+			"model":      cleanModel,
+			"messages":   anthropicMsgs,
+			"max_tokens": maxTokens,
+			"stream":     isStream,
+		}
+		if systemPrompt != "" {
+			payload["system"] = systemPrompt
+		}
+		if req.Request != nil {
+			for k, v := range req.Request {
+				if k != "messages" && k != "model" && k != "stream" && k != "contents" && k != "system" && k != "max_tokens" {
+					payload[k] = v
+				}
+			}
+		}
+		outboundBody, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi encode payload Anthropic: %w", err)
+		}
+		fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+		if err != nil {
+			return nil, fmt.Errorf("lỗi tạo request Anthropic: %w", err)
+		}
+		fReq.Header.Set("Content-Type", "application/json")
+		fReq.Header.Set("x-api-key", creds.AccessToken)
+		fReq.Header.Set("anthropic-version", "2023-06-01")
+		return fReq, nil
+
+	case "google":
+		cleanModel := strings.TrimPrefix(model, "google/")
+		contents := ConvertMessagesToGeminiContents(req.Messages)
+		if strings.HasPrefix(creds.AccessToken, "AIza") {
+			upstreamURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s", cleanModel, creds.AccessToken)
+			payload := map[string]interface{}{
+				"contents": contents,
+			}
+			outboundBody, err := json.Marshal(payload)
+			if err != nil {
+				return nil, fmt.Errorf("lỗi encode payload Google AI Studio: %w", err)
+			}
+			fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+			if err != nil {
+				return nil, fmt.Errorf("lỗi tạo request Google AI Studio: %w", err)
+			}
+			fReq.Header.Set("Content-Type", "application/json")
+			return fReq, nil
+		}
+
+		// Google Cloud Code PA
+		upstreamURL := "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+		generatedReqID := fmt.Sprintf("agent/%s/%d/%s/1", generateUUID(), time.Now().UnixMilli(), generateUUID())
+		geminiReq := map[string]interface{}{
+			"model":     model,
+			"userAgent": "antigravity",
+			"requestId": generatedReqID,
+			"request": map[string]interface{}{
+				"contents": contents,
+			},
+		}
+		if creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
+			geminiReq["project"] = creds.ProjectId
+		}
+		if len(contents) == 0 && req.Request != nil {
+			geminiReq["request"] = req.Request
+		}
+		outboundBody, err := json.Marshal(geminiReq)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi encode payload Google Cloud Code: %w", err)
+		}
+		fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+		if err != nil {
+			return nil, fmt.Errorf("lỗi tạo request Google Cloud Code: %w", err)
+		}
+		fReq.Header.Set("Content-Type", "application/json")
+		fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
+		fReq.Header.Set("User-Agent", "antigravity/ide/2.11.0 darwin/arm64")
+		return fReq, nil
+
+	default: // "antigravity"
+		upstreamURL := "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+		generatedReqID := fmt.Sprintf("agent/%s/%d/%s/1", generateUUID(), time.Now().UnixMilli(), generateUUID())
+		contents := ConvertMessagesToGeminiContents(req.Messages)
+		geminiReq := map[string]interface{}{
+			"model":     model,
+			"userAgent": "antigravity",
+			"requestId": generatedReqID,
+			"request": map[string]interface{}{
+				"contents": contents,
+			},
+		}
+		if creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
+			geminiReq["project"] = creds.ProjectId
+		}
+		if len(contents) == 0 && req.Request != nil {
+			geminiReq["request"] = req.Request
+		}
+		outboundBody, err := json.Marshal(geminiReq)
+		if err != nil {
+			return nil, fmt.Errorf("lỗi encode payload Antigravity: %w", err)
+		}
+		fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+		if err != nil {
+			return nil, fmt.Errorf("lỗi tạo request Antigravity: %w", err)
+		}
+		fReq.Header.Set("Content-Type", "application/json")
+		fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
+		fReq.Header.Set("User-Agent", "antigravity/ide/2.11.0 darwin/arm64")
+		return fReq, nil
+	}
+}
+
+// ParseNonStreamingResponse bóc tách kết quả non-streaming từ phản hồi của upstream
+func ParseNonStreamingResponse(provider string, body []byte) (string, int64, int64, error) {
+	trimmed := bytes.TrimSpace(body)
+	if bytes.HasPrefix(trimmed, []byte("data:")) {
+		var fullText strings.Builder
+		var pTok, cTok int64
+		scanner := bufio.NewScanner(bytes.NewReader(trimmed))
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(line, "data:") {
+				dataJSON := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+				if dataJSON != "" && dataJSON != "[DONE]" {
+					var delta string
+					var p, c int64
+					switch provider {
+					case "openai":
+						delta, p, c, _ = ParseOpenAIChunk(dataJSON)
+					case "anthropic":
+						delta, p, c, _ = ParseAnthropicChunk(dataJSON)
+					default:
+						delta, p, c, _ = ParseGeminiChunk(dataJSON)
+					}
+					if p > 0 {
+						pTok = p
+					}
+					if c > 0 {
+						cTok = c
+					}
+					fullText.WriteString(delta)
+				}
+			}
+		}
+		return fullText.String(), pTok, cTok, nil
+	}
+
+	switch provider {
+	case "openai":
+		var oaiResp struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+			Usage struct {
+				PromptTokens     int64 `json:"prompt_tokens"`
+				CompletionTokens int64 `json:"completion_tokens"`
+			} `json:"usage"`
+		}
+		if err := json.Unmarshal(body, &oaiResp); err == nil && len(oaiResp.Choices) > 0 {
+			return oaiResp.Choices[0].Message.Content, oaiResp.Usage.PromptTokens, oaiResp.Usage.CompletionTokens, nil
+		}
+
+	case "anthropic":
+		var anthResp struct {
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+			Usage struct {
+				InputTokens  int64 `json:"input_tokens"`
+				OutputTokens int64 `json:"output_tokens"`
+			} `json:"usage"`
+		}
+		if err := json.Unmarshal(body, &anthResp); err == nil && len(anthResp.Content) > 0 {
+			var sb strings.Builder
+			for _, item := range anthResp.Content {
+				if item.Type == "text" {
+					sb.WriteString(item.Text)
+				}
+			}
+			return sb.String(), anthResp.Usage.InputTokens, anthResp.Usage.OutputTokens, nil
+		}
+	}
+
+	// Fallback Gemini non-streaming JSON:
+	var gemResp struct {
+		Candidates []struct {
+			Content struct {
+				Parts []struct {
+					Text string `json:"text"`
+				} `json:"parts"`
+			} `json:"content"`
+		} `json:"candidates"`
+		UsageMetadata struct {
+			PromptTokens     int64 `json:"promptTokenCount"`
+			CandidatesTokens int64 `json:"candidatesTokenCount"`
+		} `json:"usageMetadata"`
+	}
+	if err := json.Unmarshal(body, &gemResp); err == nil && len(gemResp.Candidates) > 0 {
+		var sb strings.Builder
+		for _, part := range gemResp.Candidates[0].Content.Parts {
+			sb.WriteString(part.Text)
+		}
+		return sb.String(), gemResp.UsageMetadata.PromptTokens, gemResp.UsageMetadata.CandidatesTokens, nil
+	}
+
+	return string(body), 0, 0, nil
+}
+
 // HandleChatCompletions xử lý request /v1/chat/completions chuẩn OpenAI
 func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -372,17 +843,14 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Đọc payload với giới hạn 10MB chống tấn công tràn bộ nhớ OOM
-		bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 10*1024*1024))
+		// Giới hạn kích thước body bằng http.MaxBytesReader 10MB trước khi đọc qua io.ReadAll
+		r.Body = http.MaxBytesReader(w, r.Body, 10*1024*1024)
+		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]string{
-					"message": "Không thể đọc dữ liệu yêu cầu",
-					"type":    "invalid_request_error",
-					"code":    "cannot_read_body",
-				},
+				"error": "Dữ liệu yêu cầu vượt quá giới hạn cho phép hoặc không thể đọc",
 			})
 			return
 		}
@@ -393,11 +861,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]string{
-					"message": fmt.Sprintf("Cú pháp JSON không hợp lệ: %v", err),
-					"type":    "invalid_request_error",
-					"code":    "invalid_json",
-				},
+				"error": "Dữ liệu JSON không hợp lệ",
 			})
 			return
 		}
@@ -456,23 +920,39 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		// Lọc tài khoản không bị cooldown
 		var readyAccounts []ProviderConnection
 		now := time.Now()
+		var earliestCoolUntil time.Time
 		for _, acc := range accounts {
-			if coolUntil, ok := accountCooldownMap.Load(acc.ID); ok {
-				if now.Before(coolUntil.(time.Time)) {
+			if coolUntilVal, ok := accountCooldownMap.Load(acc.ID); ok {
+				if coolUntil, isTime := coolUntilVal.(time.Time); isTime && now.Before(coolUntil) {
+					if earliestCoolUntil.IsZero() || coolUntil.Before(earliestCoolUntil) {
+						earliestCoolUntil = coolUntil
+					}
 					continue
 				}
 			}
 			readyAccounts = append(readyAccounts, acc)
 		}
 		if len(readyAccounts) == 0 {
+			// TUYỆT ĐỐI KHÔNG gán lại readyAccounts = accounts bừa bãi!
+			// Trả về lỗi 503 Service Unavailable kèm Retry-After tính theo tài khoản có cooldown sớm nhất
+			retryAfterSec := 30
+			if !earliestCoolUntil.IsZero() {
+				diff := int(time.Until(earliestCoolUntil).Seconds())
+				if diff > 0 {
+					retryAfterSec = diff
+				} else {
+					retryAfterSec = 1
+				}
+			}
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.Header().Set("Retry-After", "60")
-			w.WriteHeader(http.StatusTooManyRequests)
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSec))
+			w.WriteHeader(http.StatusServiceUnavailable)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]string{
-					"message": "Toàn bộ tài khoản AI upstream đang trong thời gian hồi phục (Rate Limited). Vui lòng thử lại sau 60 giây.",
-					"type":    "rate_limit_error",
+				"error": map[string]interface{}{
+					"message": fmt.Sprintf("Toàn bộ tài khoản AI upstream đang trong thời gian hồi phục (Cooldown). Vui lòng thử lại sau %d giây.", retryAfterSec),
+					"type":    "service_unavailable",
 					"code":    "all_accounts_in_cooldown",
+					"retry_after": retryAfterSec,
 				},
 			})
 			return
@@ -485,6 +965,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		var resp *http.Response
 		var usedAccount *ProviderConnection
 		var usedModel string
+		var usedProvider string
 		maxAttempts := 5
 		if maxAttempts > numAccounts {
 			maxAttempts = numAccounts
@@ -502,9 +983,15 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				tierLabel = fmt.Sprintf("TIER 1 CHÍNH (Model: %s)", currentTierModel)
 			}
 
-			for attempt := 0; attempt < maxAttempts; attempt++ {
-				idx := (startIdx + attempt) % numAccounts
-				acc := readyAccounts[idx]
+			orderedAccounts := orderAccountsForChat(readyAccounts, currentTierModel, startIdx)
+			attemptLimit := maxAttempts
+			if attemptLimit > len(orderedAccounts) {
+				attemptLimit = len(orderedAccounts)
+			}
+
+			for attempt := 0; attempt < attemptLimit; attempt++ {
+				acc := orderedAccounts[attempt]
+				provider := DetermineProvider(&acc, currentTierModel)
 
 				c, cErr := GetValidCredentials(db, &acc)
 				if cErr != nil {
@@ -512,40 +999,22 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 
-				upstreamURL := "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
-				generatedReqID := fmt.Sprintf("agent/%s/%d/%s/1", generateUUID(), time.Now().UnixMilli(), generateUUID())
-
-				contents := ConvertMessagesToGeminiContents(req.Messages)
-				geminiReq := map[string]interface{}{
-					"model":     currentTierModel,
-					"userAgent": "antigravity",
-					"requestId": generatedReqID,
-					"request": map[string]interface{}{
-						"contents": contents,
-					},
-				}
-
-				if c.ProjectId != "" && c.ProjectId != "aicode-consumers" {
-					geminiReq["project"] = c.ProjectId
-				}
-
-				if len(contents) == 0 && req.Request != nil {
-					geminiReq["request"] = req.Request
-				}
-
-				outboundBody, _ := json.Marshal(geminiReq)
-				fReq, reqErr := http.NewRequestWithContext(r.Context(), "POST", upstreamURL, bytes.NewReader(outboundBody))
+				fReq, reqErr := BuildOutboundRequest(r.Context(), provider, currentTierModel, c, req, isStream)
 				if reqErr != nil {
 					lastErr = reqErr
 					continue
 				}
 
-				fReq.Header.Set("Content-Type", "application/json")
-				fReq.Header.Set("Authorization", "Bearer "+c.AccessToken)
-				fReq.Header.Set("User-Agent", "antigravity/ide/2.11.0 darwin/arm64")
+				targetClient := chatHTTPClient
+				if c.ConnectionProxyEnabled && c.ProxyUrl != "" && isProxyHealthy(c.ProxyUrl) {
+					targetClient = getClientForAccount(c.ProxyUrl)
+				}
 
-				rResp, doErr := chatHTTPClient.Do(fReq)
+				rResp, doErr := targetClient.Do(fReq)
 				if doErr != nil {
+					if c.ConnectionProxyEnabled && c.ProxyUrl != "" {
+						markProxyFailure(c.ProxyUrl, doErr.Error())
+					}
 					lastErr = doErr
 					continue
 				}
@@ -553,14 +1022,14 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				if rResp.StatusCode == http.StatusTooManyRequests {
 					rResp.Body.Close()
 					accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
-					lastErr = fmt.Errorf("rate limited (429 Quota) trên %s cho model %s", acc.Name, currentTierModel)
+					lastErr = fmt.Errorf("rate limited (429 Quota) trên %s (%s) cho model %s", acc.Name, provider, currentTierModel)
 					continue
 				}
 
 				if rResp.StatusCode != http.StatusOK {
 					errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
 					rResp.Body.Close()
-					lastErr = fmt.Errorf("upstream error %d trên %s cho model %s: %s", rResp.StatusCode, acc.Name, currentTierModel, strings.TrimSpace(string(errBody)))
+					lastErr = fmt.Errorf("upstream error %d trên %s (%s) cho model %s: %s", rResp.StatusCode, acc.Name, provider, currentTierModel, strings.TrimSpace(string(errBody)))
 					continue
 				}
 
@@ -568,15 +1037,16 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				resp = rResp
 				usedAccount = &acc
 				usedModel = currentTierModel
+				usedProvider = provider
 				tierSucceeded = true
 				break
 			}
 
 			if tierSucceeded {
 				if tierIdx > 0 {
-					log.Printf("[ENGINE] [CASCADE] ⚡ Model chính gặp sự cố, đã chuyển mạch sang %s thành công qua tài khoản %s", tierLabel, usedAccount.Name)
+					log.Printf("[ENGINE] [CASCADE] ⚡ Model chính gặp sự cố, đã chuyển mạch sang %s (Provider: %s) thành công qua tài khoản %s", tierLabel, usedProvider, usedAccount.Name)
 				} else {
-					log.Printf("[ENGINE] [CASCADE] ✔ Model chính %s phản hồi thành công qua tài khoản %s", tierLabel, usedAccount.Name)
+					log.Printf("[ENGINE] [CASCADE] ✔ Model chính %s (Provider: %s) phản hồi thành công qua tài khoản %s", tierLabel, usedProvider, usedAccount.Name)
 				}
 				break
 			}
@@ -612,7 +1082,18 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 					if strings.HasPrefix(lineStr, "data:") {
 						dataJSON := strings.TrimSpace(strings.TrimPrefix(lineStr, "data:"))
 						if dataJSON != "" && dataJSON != "[DONE]" {
-							deltaText, pTok, cTok, _ := ParseGeminiChunk(dataJSON)
+							var deltaText string
+							var pTok, cTok int64
+
+							switch usedProvider {
+							case "openai":
+								deltaText, pTok, cTok, _ = ParseOpenAIChunk(dataJSON)
+							case "anthropic":
+								deltaText, pTok, cTok, _ = ParseAnthropicChunk(dataJSON)
+							default:
+								deltaText, pTok, cTok, _ = ParseGeminiChunk(dataJSON)
+							}
+
 							if pTok > 0 {
 								promptTokens = pTok
 							}
@@ -676,7 +1157,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			}
 
 			accEmail := ""
-			accName := "Ti kho?n Antigravity"
+			accName := "Tài khoản Antigravity"
 			if usedAccount != nil {
 				accEmail = usedAccount.Email
 				accName = usedAccount.Name
@@ -687,37 +1168,26 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			}
 			ReportProxyUsageWithKeyAsync(db, reqKey, usedModel, accEmail, accName, r.URL.Path, time.Since(startTime).Milliseconds(), http.StatusOK, promptTokens, completionTokens)
 		} else {
-			// Non-streaming: Gom toàn bộ phản hồi trả về JSON chuẩn OpenAI
-			reader := bufio.NewReader(resp.Body)
-			var fullContent strings.Builder
-
-			for {
-				line, readErr := reader.ReadBytes('\n')
-				if len(line) > 0 {
-					lineStr := strings.TrimSpace(string(line))
-					if strings.HasPrefix(lineStr, "data:") {
-						dataJSON := strings.TrimSpace(strings.TrimPrefix(lineStr, "data:"))
-						if dataJSON != "" && dataJSON != "[DONE]" {
-							deltaText, pTok, cTok, _ := ParseGeminiChunk(dataJSON)
-							if pTok > 0 {
-								promptTokens = pTok
-							}
-							if cTok > 0 {
-								completionTokens = cTok
-							}
-							fullContent.WriteString(deltaText)
-						}
-					}
-				}
-				if readErr != nil {
-					break
-				}
+			// Non-streaming: Gom toàn bộ phản hồi từ các chunk SSE hoặc body JSON trả về JSON chuẩn OpenAI
+			respBytes, rErr := io.ReadAll(io.LimitReader(resp.Body, 20*1024*1024))
+			if rErr != nil {
+				log.Printf("[ENGINE] [OMNIROUTER] ⚠ Lỗi khi đọc dữ liệu phản hồi từ upstream: %v", rErr)
+			}
+			fullContentText, pTok, cTok, parseErr := ParseNonStreamingResponse(usedProvider, respBytes)
+			if parseErr != nil {
+				log.Printf("[ENGINE] [OMNIROUTER] ⚠ Lỗi bóc tách response non-streaming: %v", parseErr)
+			}
+			if pTok > 0 {
+				promptTokens = pTok
+			}
+			if cTok > 0 {
+				completionTokens = cTok
 			}
 
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			attachRateLimitHeaders(w, clientKeyItem)
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id":      chatCmplID,
 				"object":  "chat.completion",
 				"created": createdTimestamp,
@@ -727,7 +1197,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 						"index": 0,
 						"message": map[string]string{
 							"role":    "assistant",
-							"content": fullContent.String(),
+							"content": fullContentText,
 						},
 						"finish_reason": "stop",
 					},
@@ -740,7 +1210,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			})
 
 			accEmail := ""
-			accName := "Ti kho?n Antigravity"
+			accName := "Tài khoản Antigravity"
 			if usedAccount != nil {
 				accEmail = usedAccount.Email
 				accName = usedAccount.Name
@@ -753,7 +1223,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		}
 
 		if usedAccount != nil {
-			log.Printf("[ENGINE] [OMNIROUTER] ✔ Chat hoàn thành qua %s (Model: %s)", usedAccount.Name, usedModel)
+			log.Printf("[ENGINE] [OMNIROUTER] ✔ Chat hoàn thành qua %s (%s, Model: %s)", usedAccount.Name, usedProvider, usedModel)
 			keyName := "Direct API"
 			if clientKeyItem != nil {
 				keyName = clientKeyItem.Name
@@ -763,7 +1233,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 				APIKeyName:       keyName,
 				Endpoint:         "/v1/chat/completions",
 				Method:           "POST",
-				Provider:         usedAccount.Provider,
+				Provider:         usedProvider,
 				AccountID:        usedAccount.ID,
 				AccountName:      usedAccount.Email,
 				Model:            usedModel,
