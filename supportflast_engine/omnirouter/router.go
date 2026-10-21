@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"bytes"
@@ -78,6 +78,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 
 	// 4. API Ping siÃªu nháº¹ & Health check
 	safeRegister(mux, "/ping", HandlePing)
+	safeRegister(mux, "/health", HandleHealth)       // alias cho HTML gateway check
 	safeRegister(mux, "/api/health", HandleHealth)
 	safeRegister(mux, "/api/router/health", HandleHealth)
 
