@@ -15203,7 +15203,7 @@
             for (let i = 0; i < 13; i++) {
               await new Promise(r => setTimeout(r, 800));
               try {
-                const hc = await fetch('http://127.0.0.1:20128/health', { signal: AbortSignal.timeout(600) });
+                const hc = await fetch('http://127.0.0.1:20128/api/health', { signal: AbortSignal.timeout(600) });
                 if (hc.ok) { engineUp = true; break; }
               } catch (_) {}
               if (btnText) btnText.textContent = '⏳ Chờ Engine... (' + (i+1) + 's)';
