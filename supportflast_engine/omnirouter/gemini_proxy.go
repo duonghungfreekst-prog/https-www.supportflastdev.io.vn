@@ -2842,6 +2842,8 @@ func orderAccountsForModel(accounts []ProviderConnection, model string, startIdx
 
 // buildVirtualAggregatedQuota biến đổi response quota của Google thành Virtual Aggregated Quota chuẩn 9Router
 // Giúp Antigravity IDE luôn hiển thị 100% hạn mức dồi dào, không bị Notice hay khóa model
+// Đồng thời INJECT các model mà ModelRouter9 hỗ trợ (gemini-3.1-pro-high, claude-sonnet-4-6...)
+// vào response để IDE hiển thị chúng trong danh sách model selector
 func buildVirtualAggregatedQuota(raw []byte) []byte {
 	if len(raw) == 0 {
 		return raw
@@ -2850,6 +2852,13 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 	if err := json.Unmarshal(raw, &data); err != nil || data == nil {
 		return raw
 	}
+
+	// Log raw response (chỉ 500 ký tự đầu) để debug cấu trúc
+	rawStr := string(raw)
+	if len(rawStr) > 500 {
+		rawStr = rawStr[:500]
+	}
+	log.Printf("[ENGINE] [QUOTA-VIRTUAL] 🔍 Raw quota response (500 chars): %s", rawStr)
 
 	patchGroupList := func(groupsRaw interface{}) {
 		groups, ok := groupsRaw.([]interface{})
@@ -2895,6 +2904,7 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 
 	if modelsRaw, has := data["models"]; has {
 		if modelsMap, ok := modelsRaw.(map[string]interface{}); ok {
+			// Patch quota cho tất cả model hiện có
 			for _, mVal := range modelsMap {
 				if mInfo, ok := mVal.(map[string]interface{}); ok {
 					if qInfo, ok := mInfo["quotaInfo"].(map[string]interface{}); ok {
@@ -2903,6 +2913,33 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 					}
 				}
 			}
+
+			// INJECT model mới mà ModelRouter9 hỗ trợ nhưng Google không trả về
+			// Danh sách virtual model cần inject vào response cho IDE
+			virtualModels := []struct {
+				key         string
+				displayName string
+				modelID     string
+			}{
+				{"gemini-3.1-pro-high", "Gemini 3.1 Pro (High)", "gemini-3.1-pro-high"},
+				{"gemini-3.1-pro-low", "Gemini 3.1 Pro (Low)", "gemini-3.1-pro-low"},
+			}
+
+			for _, vm := range virtualModels {
+				if _, exists := modelsMap[vm.key]; !exists {
+					// Inject model với quota đầy (100%) để IDE hiển thị
+					modelsMap[vm.key] = map[string]interface{}{
+						"displayName": vm.displayName,
+						"modelId":     vm.modelID,
+						"quotaInfo": map[string]interface{}{
+							"remainingFraction": 1.0,
+							"disabled":          false,
+						},
+					}
+					log.Printf("[ENGINE] [QUOTA-VIRTUAL] ✅ Injected virtual model: %s", vm.key)
+				}
+			}
+			data["models"] = modelsMap
 		}
 	}
 
