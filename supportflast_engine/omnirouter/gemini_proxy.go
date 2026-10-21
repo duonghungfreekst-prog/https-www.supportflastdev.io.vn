@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 
 
@@ -158,72 +158,74 @@ func init() {
 
 
 
-var proxyClientCache sync.Map // proxyURL -> *http.Client
+var (
+	proxyClientCache sync.Map // proxyURL -> *http.Client
+	proxyCooldownMap sync.Map // proxyURL -> time.Time (thời điểm hết hạn phạt)
+)
 
+// isProxyHealthy kiểm tra xem proxy có đang bị Circuit Breaker tạm phạt do chậm/rớt gói không
+func isProxyHealthy(proxyURL string) bool {
+	if proxyURL == "" {
+		return false
+	}
+	if untilVal, ok := proxyCooldownMap.Load(proxyURL); ok {
+		if until, ok := untilVal.(time.Time); ok {
+			if time.Now().Before(until) {
+				return false // Proxy đang bị phạt, tự động chuyển sang Direct
+			}
+			proxyCooldownMap.Delete(proxyURL)
+		}
+	}
+	return true
+}
 
+// markProxyFailure phạt proxy trong 90 giây khi gặp sự cố, tự động bypass sang Direct
+func markProxyFailure(proxyURL string, reason string) {
+	if proxyURL == "" {
+		return
+	}
+	penaltyUntil := time.Now().Add(90 * time.Second)
+	proxyCooldownMap.Store(proxyURL, penaltyUntil)
+	log.Printf("[ENGINE] [PROXY-CIRCUIT-BREAKER] ⚡ Đánh dấu Proxy %s bị phạt 90s (Lý do: %s). Tự động chuyển toàn bộ request sang DIRECT siêu tốc!", proxyURL, reason)
+}
 
 // getClientForAccount trả về HTTP client được định tuyến qua proxy riêng của tài khoản hoặc geminiProxyClient nếu kết nối trực tiếp
-
 func getClientForAccount(proxyURL string) *http.Client {
-
-	if proxyURL == "" {
-
+	if proxyURL == "" || !isProxyHealthy(proxyURL) {
 		return geminiProxyClient
-
 	}
 
 	if clientVal, ok := proxyClientCache.Load(proxyURL); ok {
-
 		return clientVal.(*http.Client)
-
 	}
 
 	pParsed, err := url.Parse(proxyURL)
-
 	if err != nil {
-
 		return geminiProxyClient
-
 	}
 
 	tr := &http.Transport{
-
 		Proxy: http.ProxyURL(pParsed),
-
 		TLSClientConfig: &tls.Config{
-
 			InsecureSkipVerify: false,
-
 		},
-
 		DialContext: (&net.Dialer{
-
-			Timeout:   8 * time.Second,
-
+			Timeout:   3 * time.Second, // Timeout bắt tay nhanh 3s (chống nghẽn khi proxy lag)
 			KeepAlive: 30 * time.Second,
-
 		}).DialContext,
-
-		MaxIdleConns:        50,
-
-		MaxIdleConnsPerHost: 20,
-
-		IdleConnTimeout:     120 * time.Second,
-
+		ResponseHeaderTimeout: 8 * time.Second, // Tối đa 8s nhận header (chống treo 120s khi proxy nghẽn)
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   30,
+		IdleConnTimeout:       120 * time.Second,
 	}
 
 	client := &http.Client{
-
 		Transport: tr,
-
 		Timeout:   120 * time.Second,
-
 	}
 
 	proxyClientCache.Store(proxyURL, client)
-
 	return client
-
 }
 
 
@@ -838,7 +840,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				targetClient := geminiProxyClient
 
-				if creds.ConnectionProxyEnabled && creds.ProxyUrl != "" {
+				if creds.ConnectionProxyEnabled && creds.ProxyUrl != "" && isProxyHealthy(creds.ProxyUrl) {
 
 					targetClient = getClientForAccount(creds.ProxyUrl)
 
@@ -850,6 +852,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				if doErr != nil && targetClient != geminiProxyClient {
 
+					markProxyFailure(creds.ProxyUrl, doErr.Error())
 					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Proxy %s gặp sự cố (%v), tự động fallback chuyển sang kết nối trực tiếp (Direct)...", creds.ProxyUrl, doErr)
 
 					creds.ConnectionProxyEnabled = false
