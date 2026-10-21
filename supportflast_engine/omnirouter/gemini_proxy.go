@@ -424,7 +424,16 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		rawModel := extractModelFromBody(bodyBytes)
 
-		model := sanitizeAndUpgradeModel(rawModel)
+		// Bước 1: Áp dụng User Alias Mapping (mitm_alias/mappings) - ưu tiên tuyệt đối
+		// Người dùng đã cấu hình slot trong UI (ví dụ "Gemini 3.8 Flash (Medium)/Default" → "gemini-3.1-pro-high")
+		// Proxy PHẢI tôn trọng mapping này trước bất kỳ logic sanitize nào
+		mappedModel := applyUserModelAlias(db, rawModel)
+		if mappedModel == "" {
+			mappedModel = rawModel
+		}
+
+		// Bước 2: Sanitize model (chỉ chuẩn hóa ký tự, KHÔNG ép đổi tên model)
+		model := sanitizeAndUpgradeModel(mappedModel)
 
 
 
@@ -1270,6 +1279,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 // và quy về đúng 100% các model đang hoạt động thực tế trên Antigravity IDE
 
+// sanitizeAndUpgradeModel chuẩn hóa model string (loại bỏ model cũ lỗi thời, alias sai)
+// NGUYÊN TẮC: Nếu model đã được resolve qua User Alias Mapping thì GIỮ NGUYÊN.
+// Chỉ upgrade các model name thực sự lỗi thời (2.0, 1.5, claude-2...)
 func sanitizeAndUpgradeModel(model string) string {
 
 	mLower := strings.ToLower(strings.TrimSpace(model))
@@ -1280,6 +1292,35 @@ func sanitizeAndUpgradeModel(model string) string {
 
 	}
 
+	// Nếu model đã là tên chính xác hợp lệ -> GIỮ NGUYÊN TUYỆT ĐỐI
+	// (quan trọng: người dùng đã map slot vào đây)
+	validModels := map[string]bool{
+		"gemini-3.8-flash-high":    true,
+		"gemini-3.8-flash-medium":  true,
+		"gemini-3.8-flash-low":     true,
+		"gemini-3.1-pro-high":      true,
+		"gemini-3.1-pro-low":       true,
+		"gemini-pro-agent":         true,
+		"gemini-3.7-flash-high":    true,
+		"gemini-3.7-flash-medium":  true,
+		"gemini-3.7-flash-low":     true,
+		"gemini-3.6-flash-high":    true,
+		"gemini-3.6-flash-medium":  true,
+		"gemini-3.6-flash-low":     true,
+		"gemini-3.5-flash-high":    true,
+		"gemini-3.5-flash-low":     true,
+		"gemini-3-flash-agent":     true,
+		"gemini-3-flash":           true,
+		"claude-sonnet-4-6":        true,
+		"claude-opus-4-6-thinking": true,
+		"gpt-oss-120b-medium":      true,
+		"4-argon":                  true,
+	}
+	if validModels[mLower] {
+		return mLower
+	}
+
+	// Upgrade model đời cũ (claude-2, claude-3, gemini-1.5, gemini-2.0...)
 	if strings.Contains(mLower, "opus") {
 
 		return "claude-opus-4-6-thinking"
@@ -1298,10 +1339,18 @@ func sanitizeAndUpgradeModel(model string) string {
 
 	}
 
-	if strings.Contains(mLower, "3.1-pro") || strings.Contains(mLower, "pro-agent") || strings.Contains(mLower, "2.5-pro") || strings.Contains(mLower, "1.5-pro") {
+	if strings.Contains(mLower, "pro-agent") || strings.Contains(mLower, "2.5-pro") || strings.Contains(mLower, "1.5-pro") {
 
 		return "gemini-pro-agent"
 
+	}
+
+	// 3.1-pro-high/low -> giữ đúng tên (KHÔNG map về gemini-pro-agent nữa)
+	if strings.Contains(mLower, "3.1-pro") {
+		if strings.Contains(mLower, "low") {
+			return "gemini-3.1-pro-low"
+		}
+		return "gemini-3.1-pro-high"
 	}
 
 	if strings.Contains(mLower, "argon") {
@@ -1310,10 +1359,15 @@ func sanitizeAndUpgradeModel(model string) string {
 
 	}
 
+	// Flash: phân biệt rõ high/medium/low theo suffix
 	if strings.Contains(mLower, "flash") {
-
+		if strings.Contains(mLower, "medium") {
+			return "gemini-3.8-flash-medium"
+		}
+		if strings.Contains(mLower, "low") {
+			return "gemini-3.8-flash-low"
+		}
 		return "gemini-3.8-flash-high"
-
 	}
 
 	return model
@@ -2596,6 +2650,66 @@ func selectWeightedStartIndex(accounts []ProviderConnection, model string) int {
 	return n - 1
 }
 
+
+// applyUserModelAlias tra cứu User Alias Mapping (KV: mitm_alias/mappings) để ánh xạ model slot IDE
+// sang model thực tế người dùng đã cấu hình trong UI (ví dụ: "gemini-3.8-flash-medium" -> "gemini-3.1-pro-high")
+// Cache RAM 10s để tránh truy vấn DB liên tục cho mỗi request
+var (
+	userAliasCacheLock sync.RWMutex
+	userAliasCache     map[string]string
+	userAliasCachedAt  time.Time
+)
+
+func applyUserModelAlias(db *sql.DB, rawModel string) string {
+	if rawModel == "" || db == nil {
+		return rawModel
+	}
+
+	// Cache hit: TTL 10s (đủ nhanh và ít query DB)
+	userAliasCacheLock.RLock()
+	if userAliasCache != nil && time.Since(userAliasCachedAt) < 10*time.Second {
+		mapped := userAliasCache[rawModel]
+		userAliasCacheLock.RUnlock()
+		if mapped != "" && mapped != rawModel {
+			log.Printf("[ENGINE] [GEMINI-PROXY] 🗺️ User Alias: %s → %s (RAM cache)", rawModel, mapped)
+		}
+		return mapped
+	}
+	userAliasCacheLock.RUnlock()
+
+	// Load từ DB KV
+	val, err := GetOmniKV(db, "mitm_alias", "mappings")
+	if err != nil || val == "" {
+		return rawModel
+	}
+
+	var allMappings map[string]map[string]string
+	if err := json.Unmarshal([]byte(val), &allMappings); err != nil {
+		return rawModel
+	}
+
+	// Flatten: merge tất cả provider mappings (antigravity, copilot, claude-code...) vào 1 map
+	flat := make(map[string]string)
+	for _, providerMap := range allMappings {
+		for alias, target := range providerMap {
+			if alias != "" && target != "" {
+				flat[alias] = target
+			}
+		}
+	}
+
+	// Cập nhật cache
+	userAliasCacheLock.Lock()
+	userAliasCache = flat
+	userAliasCachedAt = time.Now()
+	userAliasCacheLock.Unlock()
+
+	mapped := flat[rawModel]
+	if mapped != "" && mapped != rawModel {
+		log.Printf("[ENGINE] [GEMINI-PROXY] 🗺️ User Alias: %s → %s (DB load)", rawModel, mapped)
+	}
+	return mapped
+}
 
 func isClaudeModel(m string) bool {
 	low := strings.ToLower(m)
