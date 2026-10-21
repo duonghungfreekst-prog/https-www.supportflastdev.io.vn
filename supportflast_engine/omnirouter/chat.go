@@ -95,8 +95,41 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 	}
 
 	// 2. requestedModel chính là Model TIER 1 (Primary Model)
+	// NGUYÊN TẮC: Nếu model đã là tên chính xác hợp lệ (đã được user alias mapping hoặc sanitize đúng)
+	// → GIỮ NGUYÊN TUYỆT ĐỐI. Chỉ normalize các model alias/lỗi thời chưa được resolve.
 	normPrimary := reqTrim
 	lowerNorm := strings.ToLower(normPrimary)
+
+	// Danh sách model hợp lệ đã được chuẩn hóa - nếu trùng khớp → KHÔNG map lại
+	knownValidModels := map[string]bool{
+		"gemini-3.8-flash-high":    true,
+		"gemini-3.8-flash-medium":  true,
+		"gemini-3.8-flash-low":     true,
+		"gemini-3.1-pro-high":      true,
+		"gemini-3.1-pro-low":       true,
+		"gemini-pro-agent":         true,
+		"gemini-3.7-flash-high":    true,
+		"gemini-3.7-flash-medium":  true,
+		"gemini-3.7-flash-low":     true,
+		"gemini-3.6-flash-high":    true,
+		"gemini-3.6-flash-medium":  true,
+		"gemini-3.6-flash-low":     true,
+		"gemini-3.5-flash-high":    true,
+		"gemini-3.5-flash-low":     true,
+		"gemini-3-flash-agent":     true,
+		"gemini-3-flash":           true,
+		"claude-sonnet-4-6":        true,
+		"claude-opus-4-6-thinking": true,
+		"gpt-oss-120b-medium":      true,
+		"4-argon":                  true,
+	}
+	if knownValidModels[lowerNorm] {
+		// Model đã hợp lệ (ví dụ: do user alias mapping từ UI) → giữ nguyên 100%
+		log.Printf("[ENGINE] [GEMINI-PROXY] ✅ Model đã valid từ alias mapping: %q → giữ nguyên", normPrimary)
+		return []string{normPrimary}
+	}
+
+	// Chỉ normalize khi model là alias/lỗi thời chưa được resolve (ví dụ: "gemini-2.5-pro", "claude-3-5-sonnet"...)
 	switch {
 	case strings.Contains(lowerNorm, "opus"):
 		normPrimary = "claude-opus-4-6-thinking"
@@ -104,15 +137,12 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		normPrimary = "claude-sonnet-4-6"
 	case strings.Contains(lowerNorm, "gpt-oss") || strings.Contains(lowerNorm, "120b"):
 		normPrimary = "gpt-oss-120b-medium"
-	// FIX: Kiểm tra gemini-3.1-pro-high/low TRƯỚC khi match "3.1-pro" chung chung
-	// để tránh bị override sang gemini-pro-agent khi model đã được sanitize đúng
-	case lowerNorm == "gemini-3.1-pro-high":
-		normPrimary = "gemini-3.1-pro-high"
-	case lowerNorm == "gemini-3.1-pro-low":
-		normPrimary = "gemini-3.1-pro-low"
 	case strings.Contains(lowerNorm, "3.1-pro"):
-		// Alias chưa đầy đủ suffix → nâng lên high
-		normPrimary = "gemini-3.1-pro-high"
+		if strings.Contains(lowerNorm, "low") {
+			normPrimary = "gemini-3.1-pro-low"
+		} else {
+			normPrimary = "gemini-3.1-pro-high"
+		}
 	case strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
 		normPrimary = "gemini-pro-agent"
 	case strings.Contains(lowerNorm, "argon"):
