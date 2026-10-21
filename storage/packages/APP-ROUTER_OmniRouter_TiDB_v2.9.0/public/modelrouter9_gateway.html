@@ -1260,11 +1260,6 @@
             <span id="header-gateway-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
 
             <span id="header-gateway-text" class="text-xs font-mono font-bold text-emerald-400">ONLINE :20128</span>
-
-            <div id="header-gw-toggle-switch" onclick="toggleGatewayPowerSwitch()" class="nexus-switch nexus-switch-sm active cursor-pointer ml-1" title="Gạt công tắc để BẬT hoặc TẮT Gateway">
-
-              <div class="nexus-switch-knob"></div>
-
             </div>
 
           </div>
@@ -15206,15 +15201,28 @@
 
         } else {
 
+          // ── AUTO-START ENGINE: polling tối đa 10s chờ Engine online ─────────────────
           if (!isGatewayConnected) {
-
-            sendHostAction('startGateway');
-
-            await new Promise(r => setTimeout(r, 1800));
-
+            if (btnText) btnText.textContent = '⏳ Đang khởi động Engine...';
+            sendHostAction('startwithupdate');
+            let engineUp = false;
+            for (let i = 0; i < 13; i++) {
+              await new Promise(r => setTimeout(r, 800));
+              try {
+                const hc = await fetch('http://127.0.0.1:20128/health', { signal: AbortSignal.timeout(600) });
+                if (hc.ok) { engineUp = true; break; }
+              } catch (_) {}
+              if (btnText) btnText.textContent = '⏳ Chờ Engine... (' + (i+1) + 's)';
+            }
+            if (!engineUp) {
+              showToastNotification('Engine không phản hồi sau 10 giây. Vui lòng thử lại.', true);
+              resetMitmUiToStopped();
+              return;
+            }
+            if (btnText) btnText.textContent = '⏳ Engine online, đang bật MITM...';
+            await new Promise(r => setTimeout(r, 300));
           }
-
-
+          // ── END AUTO-START ENGINE ────────────────────────────────────────────
 
           // Gửi lệnh bật server với apiKey thật
 
