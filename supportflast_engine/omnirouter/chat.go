@@ -104,7 +104,16 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		normPrimary = "claude-sonnet-4-6"
 	case strings.Contains(lowerNorm, "gpt-oss") || strings.Contains(lowerNorm, "120b"):
 		normPrimary = "gpt-oss-120b-medium"
-	case strings.Contains(lowerNorm, "3.1-pro") || strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
+	// FIX: Kiểm tra gemini-3.1-pro-high/low TRƯỚC khi match "3.1-pro" chung chung
+	// để tránh bị override sang gemini-pro-agent khi model đã được sanitize đúng
+	case lowerNorm == "gemini-3.1-pro-high":
+		normPrimary = "gemini-3.1-pro-high"
+	case lowerNorm == "gemini-3.1-pro-low":
+		normPrimary = "gemini-3.1-pro-low"
+	case strings.Contains(lowerNorm, "3.1-pro"):
+		// Alias chưa đầy đủ suffix → nâng lên high
+		normPrimary = "gemini-3.1-pro-high"
+	case strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
 		normPrimary = "gemini-pro-agent"
 	case strings.Contains(lowerNorm, "argon"):
 		normPrimary = "4-argon"

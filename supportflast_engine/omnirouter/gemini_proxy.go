@@ -424,6 +424,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		rawModel := extractModelFromBody(bodyBytes)
 
+		// 🔍 LOG DEBUG: Capture rawModel thực tế từ IDE để trace routing
+		log.Printf("[ENGINE] [GEMINI-PROXY] 🔍 RAW model từ IDE: %q | URL: %s", rawModel, r.URL.Path)
+
 		// Bước 1: Áp dụng User Alias Mapping (mitm_alias/mappings) - ưu tiên tuyệt đối
 		// Người dùng đã cấu hình slot trong UI (ví dụ "Gemini 3.8 Flash (Medium)/Default" → "gemini-3.1-pro-high")
 		// Proxy PHẢI tôn trọng mapping này trước bất kỳ logic sanitize nào
@@ -434,6 +437,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		// Bước 2: Sanitize model (chỉ chuẩn hóa ký tự, KHÔNG ép đổi tên model)
 		model := sanitizeAndUpgradeModel(mappedModel)
+		log.Printf("[ENGINE] [GEMINI-PROXY] 🔍 Sau alias+sanitize: rawModel=%q → mapped=%q → model=%q", rawModel, mappedModel, model)
 
 
 
