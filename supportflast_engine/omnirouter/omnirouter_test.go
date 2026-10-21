@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -783,5 +785,53 @@ func TestChatCompletionsAuthMatrix(t *testing.T) {
 	handler(recValid, reqValid)
 	if recValid.Code == http.StatusUnauthorized || recValid.Code == http.StatusForbidden {
 		t.Errorf("Key hợp lệ không được bị từ chối xác thực: %d", recValid.Code)
+	}
+}
+
+// TestAtomicQuotaReservationConcurrent kiểm chứng phép thử nghiệm thu bắt buộc:
+// Đặt quota còn đúng 1 lượt, gửi 10 request đồng thời. Chỉ DUY NHẤT 1 request được chấp nhận.
+func TestAtomicQuotaReservationConcurrent(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	key, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Concurrency", "supportflastdev.io.vn", 1, 24)
+	if err != nil {
+		t.Fatalf("Tạo key thất bại: %v", err)
+	}
+
+	concurrentRequests := 10
+	var wg sync.WaitGroup
+	var successCount int32
+	var failCount int32
+
+	for i := 0; i < concurrentRequests; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			reserved, _ := ReserveClientKeyQuota(db, key.Key)
+			if reserved {
+				atomic.AddInt32(&successCount, 1)
+			} else {
+				atomic.AddInt32(&failCount, 1)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if successCount != 1 {
+		t.Fatalf("Atomic Reservation thất bại: Kỳ vọng ĐÚNG 1 request thành công, thực tế có %d thành công (fail=%d)", successCount, failCount)
+	}
+	if failCount != int32(concurrentRequests-1) {
+		t.Fatalf("Kỳ vọng %d request bị từ chối, thực tế có %d", concurrentRequests-1, failCount)
+	}
+
+	// Gọi thêm 1 lần nữa sau khi đã hết quota
+	reservedAfter, msg := ReserveClientKeyQuota(db, key.Key)
+	if reservedAfter {
+		t.Fatalf("Kỳ vọng bị từ chối sau khi hết quota, nhưng lại thành công")
+	}
+	if !strings.Contains(msg, "hết hạn mức Quota") && !strings.Contains(msg, "bị khóa") {
+		t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %s", msg)
 	}
 }

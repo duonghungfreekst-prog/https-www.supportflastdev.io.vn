@@ -1,4 +1,4 @@
-"""FastAPI Entrypoint cho Python Subagent System (supportflast_ai)
+﻿"""FastAPI Entrypoint cho Python Subagent System (supportflast_ai)
 Cổng kết nối AI Engine cho 5 Subagents trên supportflast.dev.io.vn.
 """
 import os
@@ -15,7 +15,7 @@ from core.subagent_dispatcher import SubagentDispatcher
 from core.security_scanner import PackageSecurityScanner
 from core.siem_engine import SIEMEngine
 
-INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET") or os.getenv("JWT_SECRET") or ""
+INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "").strip()
 
 def verify_internal_auth(request: Request) -> bool:
     """Xác thực token nội bộ giữa Go Engine và Python AI (Rule 2.4 & Rule 3.2)."""

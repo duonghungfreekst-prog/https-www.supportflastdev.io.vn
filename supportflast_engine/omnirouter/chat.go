@@ -372,29 +372,84 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// Đọc payload
-		bodyBytes, err := io.ReadAll(r.Body)
+		// Đọc payload với giới hạn 10MB chống tấn công tràn bộ nhớ OOM
+		bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 10*1024*1024))
 		if err != nil {
-			http.Error(w, `{"error":"Cannot read body"}`, http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Không thể đọc dữ liệu yêu cầu",
+					"type":    "invalid_request_error",
+					"code":    "cannot_read_body",
+				},
+			})
 			return
 		}
 		defer r.Body.Close()
 
 		var req ChatCompletionRequest
-		_ = json.Unmarshal(bodyBytes, &req)
+		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": fmt.Sprintf("Cú pháp JSON không hợp lệ: %v", err),
+					"type":    "invalid_request_error",
+					"code":    "invalid_json",
+				},
+			})
+			return
+		}
+
+		if len(req.Messages) == 0 {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Trường 'messages' không được để trống",
+					"type":    "invalid_request_error",
+					"code":    "missing_messages",
+				},
+			})
+			return
+		}
+
+		// Giữ chỗ Quota nguyên tử (Atomic Quota Reservation) chống race condition khi tải đồng thời
+		reserved, resMsg := ReserveClientKeyQuota(db, clientKeyItem.Key)
+		if !reserved {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": resMsg,
+					"type":    "quota_error",
+					"code":    "quota_reservation_failed",
+				},
+			})
+			return
+		}
 
 		// 1. Phân giải danh sách Tầng Ưu Tiên (Tier 1: Model chính -> Tier 2, Tier 3: Dự phòng)
 		modelTiers := resolveCascadeModelTiers(db, req.Model)
 
 		isStream := false
 		if req.Stream != nil && *req.Stream {
-			isStream = false
+			isStream = true
 		}
 
 		// 2. Lấy danh sách tài khoản AI từ RAM cache
 		accounts := GetCachedActiveProviders()
 		if len(accounts) == 0 {
-			http.Error(w, `{"error":"Không có tài khoản AI nào khả dụng trong hệ thống"}`, http.StatusServiceUnavailable)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Không có tài khoản AI nào khả dụng trong hệ thống",
+					"type":    "service_unavailable",
+					"code":    "no_available_accounts",
+				},
+			})
 			return
 		}
 
@@ -410,7 +465,17 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			readyAccounts = append(readyAccounts, acc)
 		}
 		if len(readyAccounts) == 0 {
-			readyAccounts = accounts
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("Retry-After", "60")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Toàn bộ tài khoản AI upstream đang trong thời gian hồi phục (Rate Limited). Vui lòng thử lại sau 60 giây.",
+					"type":    "rate_limit_error",
+					"code":    "all_accounts_in_cooldown",
+				},
+			})
+			return
 		}
 
 		numAccounts := len(readyAccounts)

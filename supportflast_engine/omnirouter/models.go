@@ -168,3 +168,11 @@ type CmdQuickstartPayload struct {
 	CurlTest     string `json:"curl_test"`
 }
 
+
+// ClientHeartbeatPayload gói dữ liệu heartbeat từ máy khách gửi lên Web Master
+type ClientHeartbeatPayload struct {
+	Event    string `json:"event"`
+	Client   string `json:"client"`
+	Hostname string `json:"hostname"`
+	APIKey   string `json:"apiKey"`
+}

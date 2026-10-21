@@ -135,30 +135,22 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 		switch r.Method {
 
 		case http.MethodGet:
-
 			keys, err := ListAllClientKeys(db)
-
 			if err != nil {
-
 				http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
-
 				return
-
 			}
-
+			var maskedList []ClientKey
+			for _, k := range keys {
+				k.Key = maskAPIKey(k.Key)
+				maskedList = append(maskedList, k)
+			}
 			json.NewEncoder(w).Encode(map[string]interface{}{
-
 				"success": true,
-
-				"data":    keys,
-
-				"keys":    keys,
-
-				"total":   len(keys),
-
+				"data":    maskedList,
+				"keys":    maskedList,
+				"total":   len(maskedList),
 			})
-
-
 
 		case http.MethodPost:
 
@@ -565,7 +557,25 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 
 				ProjectID:      creds.ProjectId,
 
-				QuotaRemaining: 100000,
+				QuotaRemaining: func() int64 {
+					if qMap, ok := GetCachedQuotas(p.ID); ok && len(qMap) > 0 {
+						if it, exists := qMap["gemini_weekly"]; exists {
+							rem := int64(it.Total - it.Used)
+							if rem > 0 { return rem }
+						}
+					}
+					var dm map[string]interface{}
+					if err := json.Unmarshal(p.Data, &dm); err == nil {
+						if qo, ok := dm["quotas"].(map[string]interface{}); ok {
+							if wo, ok := qo["gemini_weekly"].(map[string]interface{}); ok {
+								tot, _ := wo["total"].(float64)
+								usd, _ := wo["used"].(float64)
+								if tot > usd { return int64(tot - usd) }
+							}
+						}
+					}
+					return 1000
+				}(),
 
 				Priority:       p.Priority,
 
@@ -612,182 +622,108 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 // HandleClientReport API nhận báo cáo ngầm từ App Go (PC / Termux)
 
 func HandleClientReport(db *sql.DB) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-
-
 		var report ClientReportPayload
-
 		if err := json.NewDecoder(r.Body).Decode(&report); err != nil {
-
 			http.Error(w, `{"error":"Invalid JSON"}`, http.StatusBadRequest)
-
 			return
-
 		}
 
-
-
-		if !report.SkipDBIncrement && report.ApiKey != "" && report.UsedRequests > 0 &&
-
-			!strings.Contains(report.ApiKey, "native-proxy") && !strings.Contains(report.ApiKey, "antigravity") {
-
-			RecordKeyUsageAsync(db, report.ApiKey, report.UsedRequests, report.TotalTokens)
-
+		// P0 SECURITY: Bắt buộc xác thực client API Key
+		apiKey := report.ApiKey
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		}
+		if apiKey == "" {
+			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
+		}
+		if apiKey == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Thiếu API Key xác thực"})
+			return
+		}
+		_, validKey := ValidateClientKey(apiKey)
+		if !validKey {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "API Key không hợp lệ hoặc đã bị khóa"})
+			return
 		}
 
+		if !report.SkipDBIncrement && apiKey != "" && report.UsedRequests > 0 &&
+			!strings.Contains(apiKey, "native-proxy") && !strings.Contains(apiKey, "antigravity") {
+			RecordKeyUsageAsync(db, apiKey, report.UsedRequests, report.TotalTokens)
+		}
 
-
-		// Xử lý báo cáo lỗi và cooldown tài khoản nếu có
-
-		for _, u := range report.AccountUpdates {
-
-			if u.IsRateLimited {
-
-				accountCooldownMap.Store(u.ID, time.Now().Add(60*time.Second))
-
+		// P0 SECURITY: Chỉ admin mới được đưa tài khoản upstream vào cooldown qua API
+		if len(report.AccountUpdates) > 0 && requireAdminAuth(r) {
+			for _, u := range report.AccountUpdates {
+				if u.IsRateLimited {
+					accountCooldownMap.Store(u.ID, time.Now().Add(60*time.Second))
+				}
 			}
-
 		}
-
-
-
-		// Đẩy log telemetry vào GlobalLogHub để hiển thị thời gian thực trên Console Web
 
 		if report.LogMessage != "" || report.Model != "" {
-
 			now := time.Now().UTC()
-
 			nowStr := now.Format("15:04:05")
-
 			status := report.StatusCode
-
 			if status == 0 {
-
 				status = http.StatusOK
-
 			}
-
 			endpoint := report.Endpoint
-
 			if endpoint == "" {
-
 				endpoint = "/v1internal:streamGenerateContent"
-
 			}
-
 			model := report.Model
-
 			if model == "" {
-
 				model = "gemini-3.8-flash-high"
-
 			}
-
 			msg := report.LogMessage
-
 			if msg == "" {
-
-				msg = fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s (%dms)", model, report.LatencyMs)
-
+				msg = fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi model %s (%dms, status=%d)", model, report.LatencyMs, status)
 			}
-
 			clientDev := report.ClientDevice
-
 			if clientDev == "" {
-
 				clientDev = r.RemoteAddr
-
 			}
 
 			promptTok := report.TotalTokens / 3
-
 			complTok := report.TotalTokens - promptTok
 
-			if promptTok == 0 && complTok == 0 {
-
-				promptTok = 180
-
-				complTok = 360
-
+			statusLabel := "success"
+			if status == http.StatusTooManyRequests {
+				statusLabel = "rate_limited"
+			} else if status >= 400 {
+				statusLabel = "error"
 			}
 
 			GlobalLogHub.RecordLog(RouterLogEntry{
-
 				Timestamp:        nowStr,
-
 				TimestampISO:     now.Format(time.RFC3339Nano),
-
 				ClientDevice:     clientDev,
-
-				APIKeyName:       maskAPIKey(report.ApiKey),
-
+				APIKeyName:       maskAPIKey(apiKey),
 				Endpoint:         endpoint,
-
 				Method:           "POST",
-
 				Provider:         "Antigravity",
-
 				Model:            model,
-
 				AccountName:      report.AccountName,
-
 				StatusCode:       status,
-
 				LatencyMs:        report.LatencyMs,
-
 				PromptTokens:     promptTok,
-
 				CompletionTokens: complTok,
-
 				ErrorMessage:     msg,
-
 			})
 
-
-
-			// Ghi nhật ký vào omni_usage_history để hiển thị chi tiết trên bảng nhật ký Web & Desktop
-
-			RecordUsageHistoryAsync(db, "Antigravity", model, report.AccountName, report.ApiKey, endpoint, promptTok, complTok, report.TotalTokens, 0.0, "success", report.LatencyMs)
-
+			RecordUsageHistoryAsync(db, "Antigravity", model, report.AccountName, apiKey, endpoint, promptTok, complTok, report.TotalTokens, 0.0, statusLabel, report.LatencyMs)
 		}
 
-
-
 		json.NewEncoder(w).Encode(map[string]interface{}{
-
-			"status":  "recorded",
-
-			"success": true,
-
+			"status": "ok",
 		})
-
 	}
-
 }
-
-
-
-// ClientHeartbeatPayload đại diện cho gói tin tín hiệu từ client CMD / Antigravity IDE
-
-type ClientHeartbeatPayload struct {
-
-	Event    string `json:"event"`
-
-	Client   string `json:"client"`
-
-	Hostname string `json:"hostname"`
-
-	APIKey   string `json:"api_key"`
-
-}
-
-
-
-// HandleClientHeartbeat xử lý tín hiệu kết nối thời gian thực từ các client CMD / IDE
 
 func HandleClientHeartbeat(db *sql.DB) http.HandlerFunc {
 
@@ -958,28 +894,18 @@ func HandleClientConfig(db *sql.DB) http.HandlerFunc {
 
 
 
-		// Xác thực key
-
-		var keyItem *ClientKey
-
-		var valid bool
-
-		if clientKey != "" {
-
-			keyItem, valid = ValidateClientKey(clientKey)
-
-		} else {
-
-			// Thử tìm master key
-
-			masterKey := "sk-" + DefaultDomain + "-master-live"
-
-			keyItem, valid = ValidateClientKey(masterKey)
-
+		// Xác thực key bắt buộc (P0 SECURITY: KHÔNG fallback sang master key mặc định)
+		if clientKey == "" {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"error":   "Thiếu API Key xác thực. Vui lòng gửi kèm header 'Authorization: Bearer <sk_key>' hoặc 'x-api-key'.",
+			})
+			return
 		}
 
-
-
+		keyItem, valid := ValidateClientKey(clientKey)
 		if !valid || keyItem == nil {
 
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")

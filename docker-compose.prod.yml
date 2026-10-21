@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # Docker Compose Production Stack - SupportFlast Production Platform
 # Domain: supportflastdev.io.vn | Port: 8080 / 80 / 443
 # Kiến trúc: Unified Monolith Engine + Nginx WAF Reverse Proxy + Certbot Auto-SSL
@@ -40,7 +40,7 @@ services:
       - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
       - TZ=Asia/Ho_Chi_Minh
     ports:
-      - "${PORT:-8080}:8080"
+      - "127.0.0.1:${PORT:-8080}:8080"
     volumes:
       # Volume 1: Cơ sở dữ liệu SQLite (WAL/SHM) và cặp khóa bảo mật RS256
       - ./data:/app/data
@@ -93,8 +93,8 @@ services:
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - TZ=Asia/Ho_Chi_Minh
-    ports:
-      - "${AI_PORT:-8000}:8000"
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
       interval: 30s
