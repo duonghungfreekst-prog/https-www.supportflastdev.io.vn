@@ -2927,10 +2927,11 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 
 			for _, vm := range virtualModels {
 				if _, exists := modelsMap[vm.key]; !exists {
-					// Inject model với quota đầy (100%) để IDE hiển thị
+					// Inject model với quota đầy (100%) để IDE hiển thị trong dropdown
 					modelsMap[vm.key] = map[string]interface{}{
 						"displayName": vm.displayName,
 						"modelId":     vm.modelID,
+						"isInternal":  false,
 						"quotaInfo": map[string]interface{}{
 							"remainingFraction": 1.0,
 							"disabled":          false,
