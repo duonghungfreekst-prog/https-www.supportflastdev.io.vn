@@ -894,6 +894,16 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// P0: Quản lý vòng đời Reservation (Reserved -> Committed / Released)
+		// Chỉ khi upstream AI phản hồi thành công và bắt đầu stream / trả kết quả thì mới Commit.
+		// Mọi trường hợp lỗi trước đó (không có tài khoản, toàn bộ cooldown, upstream lỗi...) đều tự động hoàn lại quota.
+		quotaCommitted := false
+		defer func() {
+			if !quotaCommitted {
+				ReleaseClientKeyQuota(db, clientKeyItem.Key, 1)
+			}
+		}()
+
 		// 1. Phân giải danh sách Tầng Ưu Tiên (Tier 1: Model chính -> Tier 2, Tier 3: Dự phòng)
 		modelTiers := resolveCascadeModelTiers(db, req.Model)
 
@@ -949,9 +959,9 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": map[string]interface{}{
-					"message": fmt.Sprintf("Toàn bộ tài khoản AI upstream đang trong thời gian hồi phục (Cooldown). Vui lòng thử lại sau %d giây.", retryAfterSec),
-					"type":    "service_unavailable",
-					"code":    "all_accounts_in_cooldown",
+					"message":     fmt.Sprintf("Toàn bộ tài khoản AI upstream đang trong thời gian hồi phục (Cooldown). Vui lòng thử lại sau %d giây.", retryAfterSec),
+					"type":        "service_unavailable",
+					"code":        "all_accounts_in_cooldown",
 					"retry_after": retryAfterSec,
 				},
 			})
@@ -1071,6 +1081,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			w.Header().Set("Connection", "keep-alive")
 			attachRateLimitHeaders(w, clientKeyItem)
 			w.WriteHeader(http.StatusOK)
+			quotaCommitted = true // Upstream stream bắt đầu thành công -> Xác nhận trừ Quota
 
 			flusher, isFlusher := w.(http.Flusher)
 			reader := bufio.NewReader(resp.Body)
@@ -1187,6 +1198,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			attachRateLimitHeaders(w, clientKeyItem)
 			w.WriteHeader(http.StatusOK)
+			quotaCommitted = true // Upstream stream bắt đầu thành công -> Xác nhận trừ Quota
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"id":      chatCmplID,
 				"object":  "chat.completion",

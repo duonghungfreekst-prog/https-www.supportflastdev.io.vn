@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"database/sql"
@@ -25,7 +25,7 @@ func TestQuotaMathFormula(t *testing.T) {
 		{remFrac: 0.854, expectedPct: 85.4, expectedRem: 854, expectedUsed: 146},
 		{remFrac: 0.05, expectedPct: 5.0, expectedRem: 50, expectedUsed: 950},
 		{remFrac: 0.0, expectedPct: 0.0, expectedRem: 0, expectedUsed: 1000},
-		{remFrac: -0.2, expectedPct: 0.0, expectedRem: 0, expectedUsed: 1000}, // Kẹp clamp dưới
+		{remFrac: -0.2, expectedPct: 0.0, expectedRem: 0, expectedUsed: 1000},  // Kẹp clamp dưới
 		{remFrac: 1.5, expectedPct: 100.0, expectedRem: 1000, expectedUsed: 0}, // Kẹp clamp trên
 	}
 
@@ -90,10 +90,12 @@ func TestQuotaHandlersIntegration(t *testing.T) {
 		t.Fatalf("InitStorage lỗi: %v", err)
 	}
 
-	// 1. Test /api/quotas/refresh-all
+	// 1. Test /api/quotas/refresh-all (Bắt buộc xác thực Admin theo chuẩn P0)
+	testAdminKey := "test_master_admin_key_secure_32_bytes_123"
+	t.Setenv("MASTER_ADMIN_KEY", testAdminKey)
 	refreshHandler := HandleRefreshAllQuotas(db)
 	req := httptest.NewRequest("GET", "/api/quotas/refresh-all", nil)
-	req.RemoteAddr = "127.0.0.1:20128"
+	req.Header.Set("Authorization", "Bearer "+testAdminKey)
 	rr := httptest.NewRecorder()
 	refreshHandler.ServeHTTP(rr, req)
 
@@ -113,9 +115,10 @@ func TestQuotaHandlersIntegration(t *testing.T) {
 		t.Errorf("Mong đợi trường accountData trong phản hồi JSON")
 	}
 
-	// 2. Test /api/usage/seed_antigravity_01
+	// 2. Test /api/usage/seed_antigravity_01 (yêu cầu Admin auth)
 	usageHandler := HandleAccountUsage(db)
 	req2 := httptest.NewRequest("GET", "/api/usage/seed_antigravity_01", nil)
+	req2.Header.Set("Authorization", "Bearer "+testAdminKey)
 	rr2 := httptest.NewRecorder()
 	usageHandler.ServeHTTP(rr2, req2)
 

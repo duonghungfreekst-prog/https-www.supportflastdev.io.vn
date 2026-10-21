@@ -923,9 +923,85 @@
 
 
 
+  <!-- ==================== MÀN HÌNH KHÓA BẢO MẬT QUẢN TRỊ VIÊN (ADMIN AUTH GUARD) ==================== -->
+  <div id="admin-lock-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#02050e]/95 backdrop-blur-md" style="display: none;">
+    <div class="w-full max-w-md rounded-2xl bg-gradient-to-b from-[#0b1329] to-[#040817] border border-cyan-500/30 p-6 md:p-8 shadow-[0_0_50px_rgba(6,182,212,0.25)] relative overflow-hidden">
+      <!-- Glow decoration -->
+      <div class="absolute -top-12 -right-12 w-36 h-36 bg-cyan-500/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 -left-12 w-36 h-36 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Icon & Header -->
+      <div class="text-center mb-6 relative z-10">
+        <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+          <svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-white tracking-wide">MODELROUTER9 QUẢN TRỊ</h2>
+        <p class="text-xs text-cyan-300 font-mono mt-1">Yêu cầu xác thực tài khoản Quản Trị Viên (Admin)</p>
+        <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+          Khu vực quản lý 19 tài khoản AI, theo dõi quota và thiết lập hệ thống được bảo vệ nghiêm ngặt. Người dùng ứng dụng client hoặc khách không có quyền truy cập.
+        </p>
+      </div>
+
+      <!-- Error Message Box -->
+      <div id="lock-screen-error-msg" class="hidden mb-4 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-center font-medium"></div>
+
+      <!-- Tab selector: Account Login vs Master Key -->
+      <div class="flex rounded-xl bg-black/40 p-1 border border-white/5 mb-5 text-xs font-semibold">
+        <button type="button" onclick="switchLockAuthMode('account')" id="btn-lock-tab-account" class="flex-1 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all cursor-pointer text-center">Tài Khoản Admin</button>
+        <button type="button" onclick="switchLockAuthMode('key')" id="btn-lock-tab-key" class="flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer text-center">Master Admin Key</button>
+      </div>
+
+      <!-- Mode 1: Account Login Form -->
+      <form id="lock-form-account" onsubmit="handleAdminLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-[11px] font-mono text-slate-400 mb-1">Tên đăng nhập Quản Trị</label>
+          <div class="relative">
+            <input type="text" id="lock-admin-user" value="admin" autocomplete="username" placeholder="admin" required
+                   class="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white placeholder-slate-500 text-xs focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all">
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-mono text-slate-400 mb-1">Mật khẩu</label>
+          <div class="relative">
+            <input type="password" id="lock-admin-pass" autocomplete="current-password" placeholder="••••••••" required
+                   class="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white placeholder-slate-500 text-xs focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all">
+          </div>
+        </div>
+        <button type="submit" id="btn-lock-admin-login"
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer">
+          Đăng nhập Quản Trị
+        </button>
+      </form>
+
+      <!-- Mode 2: Master Key Form -->
+      <form id="lock-form-key" onsubmit="handleMasterKeySubmit(event)" class="space-y-4 hidden">
+        <div>
+          <label class="block text-[11px] font-mono text-slate-400 mb-1">Master Admin Key</label>
+          <input type="password" id="lock-master-key" placeholder="sk-supportflastdev-master-..."
+                 class="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white placeholder-slate-500 text-xs font-mono focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all">
+          <p class="text-[10px] text-slate-400 mt-1 font-mono">Dùng Master Key từ biến môi trường MASTER_ADMIN_KEY.</p>
+        </div>
+        <button type="submit" id="btn-lock-master-key"
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer">
+          Xác thực Key
+        </button>
+      </form>
+
+      <!-- Return to Hub Link -->
+      <div class="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-xs">
+        <a href="/" class="text-slate-400 hover:text-cyan-300 transition-colors flex items-center gap-1 cursor-pointer">
+          <span>←</span> Quay về Trang chủ Hub
+        </a>
+        <span class="text-[10px] font-mono text-slate-400">Zero-Trust Protected</span>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== KHUNG ỨNG DỤNG CHÍNH ==================== -->
 
-  <div class="flex-1 flex overflow-hidden relative">
+  <div id="main-app-container" class="flex-1 flex overflow-hidden relative" style="display: none;">
 
 
 
@@ -1289,6 +1365,17 @@
 
               </button>
 
+            </div>
+
+            <!-- Thông tin phiên Quản Trị Viên & Nút Đăng Xuất Bảo Mật -->
+            <div id="sidebar-admin-session-box" class="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-[10px] font-mono text-cyan-300 mt-2">
+              <span class="flex items-center gap-1.5 font-bold">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                Quản Trị Viên
+              </span>
+              <button onclick="logoutAdminFromRouter()" class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 cursor-pointer font-bold text-[9px] transition-colors" title="Đăng xuất quyền quản trị">
+                Đăng Xuất
+              </button>
             </div>
 
           </div>
@@ -8746,9 +8833,261 @@
       if (apiSec) apiSec.style.setProperty('display', 'none', 'important');
     }
 
-    // Giữ nguyên 100% thông tin tài khoản/email thật trên nhật ký hệ thống theo yêu cầu người dùng
+    // Che giấu email và thông tin tài khoản nhạy cảm (duo***@gmail.com) để bảo mật chống lộ thông tin
     function maskAccountInfoForDesktop(str) {
-      return str;
+      if (!str || typeof str !== 'string') return str || '';
+      return str.replace(/([a-zA-Z0-9_\-\.]{1,3})[a-zA-Z0-9_\-\.]+([a-zA-Z0-9_\-\.]@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)+)/g, function(match, p1, p2) {
+        return p1 + '***' + p2;
+      });
+    }
+
+    // =========================================================================
+    // HỆ THỐNG XÁC THỰC QUẢN TRỊ VIÊN & ADMIN LOCK SCREEN GUARD
+    // Cơ cấu: Chỉ tài khoản Admin mới có quyền truy cập Router Dashboard & 19 AI Accounts
+    // =========================================================================
+    let isAdminAuthenticated = false;
+
+    function switchLockAuthMode(mode) {
+      const fAcc = document.getElementById('lock-form-account');
+      const fKey = document.getElementById('lock-form-key');
+      const bAcc = document.getElementById('btn-lock-tab-account');
+      const bKey = document.getElementById('btn-lock-tab-key');
+      if (mode === 'key') {
+        if (fAcc) fAcc.classList.add('hidden');
+        if (fKey) fKey.classList.remove('hidden');
+        if (bAcc) {
+          bAcc.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+          bAcc.classList.add('text-slate-400');
+        }
+        if (bKey) {
+          bKey.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+          bKey.classList.remove('text-slate-400');
+        }
+      } else {
+        if (fAcc) fAcc.classList.remove('hidden');
+        if (fKey) fKey.classList.add('hidden');
+        if (bKey) {
+          bKey.classList.remove('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+          bKey.classList.add('text-slate-400');
+        }
+        if (bAcc) {
+          bAcc.classList.add('bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/30');
+          bAcc.classList.remove('text-slate-400');
+        }
+      }
+    }
+
+    function lockAdminDashboard(msg) {
+      const lockScreen = document.getElementById('admin-lock-screen');
+      const mainContainer = document.getElementById('main-app-container');
+      if (lockScreen) {
+        lockScreen.style.setProperty('display', 'flex', 'important');
+      }
+      if (mainContainer) {
+        mainContainer.style.setProperty('display', 'none', 'important');
+      }
+      if (msg) {
+        const msgEl = document.getElementById('lock-screen-error-msg');
+        if (msgEl) {
+          msgEl.innerText = msg;
+          msgEl.classList.remove('hidden');
+        }
+      }
+    }
+
+    function unlockAdminDashboard() {
+      const lockScreen = document.getElementById('admin-lock-screen');
+      const mainContainer = document.getElementById('main-app-container');
+      if (lockScreen) {
+        lockScreen.style.setProperty('display', 'none', 'important');
+      }
+      if (mainContainer) {
+        mainContainer.style.setProperty('display', 'flex', 'important');
+      }
+      const msgEl = document.getElementById('lock-screen-error-msg');
+      if (msgEl) msgEl.classList.add('hidden');
+    }
+
+    function triggerAdminLockScreen(errMsg) {
+      if (IS_DESKTOP_ENV) return;
+      isAdminAuthenticated = false;
+      lockAdminDashboard(errMsg || 'Phiên quản trị viên đã hết hạn hoặc không hợp lệ.');
+    }
+
+    async function checkAdminAuthAccess() {
+      // 1. Nếu ở môi trường Desktop Native WPF kết nối loopback 127.0.0.1
+      if (IS_DESKTOP_ENV) {
+        isAdminAuthenticated = true;
+        unlockAdminDashboard();
+        return true;
+      }
+
+      // 2. Thử gọi API quản trị nhanh với cookie / token hiện tại
+      try {
+        const testRes = await apiRequest('/api/providers', { timeout: 8000 });
+        if (testRes.ok) {
+          isAdminAuthenticated = true;
+          unlockAdminDashboard();
+          return true;
+        }
+      } catch (err) {
+        console.warn('[AUTH GUARD] Kiểm tra quyền Admin ban đầu thất bại:', err);
+      }
+
+      // 3. Nếu chưa xác thực hoặc bị 401: Khóa giao diện ngay lập tức
+      isAdminAuthenticated = false;
+      lockAdminDashboard('Yêu cầu đăng nhập tài khoản Quản Trị Viên (Admin) để truy cập ModelRouter9.');
+      return false;
+    }
+
+    async function handleAdminLoginSubmit(e) {
+      if (e) e.preventDefault();
+      const uEl = document.getElementById('lock-admin-user');
+      const pEl = document.getElementById('lock-admin-pass');
+      const btnEl = document.getElementById('btn-lock-admin-login');
+      const errEl = document.getElementById('lock-screen-error-msg');
+
+      const username = (uEl ? uEl.value : '').trim();
+      const password = (pEl ? pEl.value : '').trim();
+      if (!username || !password) {
+        if (errEl) {
+          errEl.innerText = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu quản trị.';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerText = 'Đang xác thực...';
+      }
+      if (errEl) errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (res.ok && data && (data.token || data.user)) {
+          const token = data.token || '';
+          if (token) {
+            localStorage.setItem('cloudpool_jwt_token', token);
+            sessionStorage.setItem('cloudpool_jwt_token', token);
+            localStorage.setItem('sf_admin_token', token);
+          }
+          if (data.user) {
+            localStorage.setItem('cloudpool_current_user', JSON.stringify(data.user));
+          }
+          isAdminAuthenticated = true;
+          unlockAdminDashboard();
+          showToastNotification('✓ Đăng nhập Quản Trị Viên thành công!');
+          // Nạp dữ liệu toàn bộ dashboard
+          if (typeof startRealtimeConnection === 'function') {
+            startRealtimeConnection();
+          }
+        } else {
+          const errMsg = data?.error || data?.message || 'Tài khoản hoặc mật khẩu không chính xác.';
+          if (errEl) {
+            errEl.innerText = errMsg;
+            errEl.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        if (errEl) {
+          errEl.innerText = 'Không thể kết nối máy chủ xác thực: ' + (err.message || err);
+          errEl.classList.remove('hidden');
+        }
+      } finally {
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerText = 'Đăng nhập Quản Trị';
+        }
+      }
+    }
+
+    async function handleMasterKeySubmit(e) {
+      if (e) e.preventDefault();
+      const kEl = document.getElementById('lock-master-key');
+      const btnEl = document.getElementById('btn-lock-master-key');
+      const errEl = document.getElementById('lock-screen-error-msg');
+      const key = (kEl ? kEl.value : '').trim();
+      if (!key) {
+        if (errEl) {
+          errEl.innerText = 'Vui lòng nhập Master Admin Key.';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerText = 'Đang kiểm tra...';
+      }
+      if (errEl) errEl.classList.add('hidden');
+
+      try {
+        const testRes = await fetch('/api/providers', {
+          headers: {
+            'Authorization': 'Bearer ' + key,
+            'x-admin-key': key,
+            'x-api-key': key
+          },
+          credentials: 'include'
+        });
+        if (testRes.ok) {
+          localStorage.setItem('omnirouter_web_key', key);
+          localStorage.setItem('cloudpool_jwt_token', key);
+          isAdminAuthenticated = true;
+          unlockAdminDashboard();
+          showToastNotification('✓ Xác thực Master Admin Key thành công!');
+          if (typeof startRealtimeConnection === 'function') {
+            startRealtimeConnection();
+          }
+        } else {
+          if (errEl) {
+            errEl.innerText = 'Master Admin Key không hợp lệ hoặc bị từ chối.';
+            errEl.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        if (errEl) {
+          errEl.innerText = 'Lỗi kết nối khi xác thực key: ' + (err.message || err);
+          errEl.classList.remove('hidden');
+        }
+      } finally {
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerText = 'Xác thực Key';
+        }
+      }
+    }
+
+    async function logoutAdminFromRouter() {
+      try {
+        const token = localStorage.getItem('cloudpool_jwt_token') || sessionStorage.getItem('cloudpool_jwt_token') || '';
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+          credentials: 'include'
+        }).catch(() => {});
+      } catch (_) {}
+
+      localStorage.removeItem('cloudpool_jwt_token');
+      sessionStorage.removeItem('cloudpool_jwt_token');
+      localStorage.removeItem('sf_admin_token');
+      localStorage.removeItem('omnirouter_web_key');
+      localStorage.removeItem('cloudpool_current_user');
+
+      // Xóa cookies
+      ['cloudpool_token', 'sf_auth_token', 'supportflast_auth_token', 'auth_token'].forEach(cName => {
+        document.cookie = cName + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; SameSite=Lax;';
+      });
+
+      isAdminAuthenticated = false;
+      lockAdminDashboard('Đã đăng xuất tài khoản Quản Trị Viên thành công.');
+      showToastNotification('Đã đăng xuất Quản Trị Viên.');
     }
 
     const checkIsOmniGatewayHost = () => {
@@ -8887,12 +9226,28 @@
             restOptions.signal.addEventListener('abort', () => abortCtrl.abort(restOptions.signal.reason), { once: true });
           }
 
+          let adminToken = '';
+          try {
+            adminToken = (
+              sessionStorage.getItem('cloudpool_jwt_token') ||
+              localStorage.getItem('cloudpool_jwt_token') ||
+              localStorage.getItem('sf_admin_token') ||
+              localStorage.getItem('omnirouter_web_key') ||
+              savedWebKey ||
+              ''
+            ).trim();
+          } catch (_) {}
+
           const reqHeaders = {
             'Content-Type': 'application/json',
             'x-9r-cli-token': GET_CLI_TOKEN(),
             ...(optHeaders || {})
           };
-          if (isRemoteWebHost && savedWebKey) {
+          if (adminToken && !reqHeaders['Authorization']) {
+            reqHeaders['Authorization'] = `Bearer ${adminToken}`;
+            reqHeaders['x-admin-key'] = adminToken;
+            reqHeaders['x-api-key'] = adminToken;
+          } else if (isRemoteWebHost && savedWebKey) {
             reqHeaders['Authorization'] = `Bearer ${savedWebKey}`;
             reqHeaders['x-api-key'] = savedWebKey;
           }
@@ -8979,6 +9334,16 @@
 
 
             console.warn(`[GATEWAY API] Endpoint [${endpoint}] phản hồi mã ${res.status}:`, errMsg);
+
+            if ((res.status === 401 || res.status === 403) && typeof triggerAdminLockScreen === 'function') {
+              // Tự động kích hoạt Lock Screen khi nhận 401/403 trên các API quản trị
+              const isMgmtEndpoint = endpoint.includes('/providers') || endpoint.includes('/settings') || 
+                                     endpoint.includes('/keys') || endpoint.includes('/usage') || 
+                                     endpoint.includes('/proxy-pools') || endpoint.includes('/logs');
+              if (isMgmtEndpoint) {
+                triggerAdminLockScreen(errMsg);
+              }
+            }
 
 
 
@@ -31297,7 +31662,18 @@
 
     // Khởi động kết nối Realtime và Diff Poller
 
-    function startRealtimeConnection() {
+    async function startRealtimeConnection() {
+
+      // 1. Kiểm tra quyền Quản Trị Viên trước khi nạp dữ liệu
+      if (!IS_DESKTOP_ENV) {
+        const isAdmin = await checkAdminAuthAccess();
+        if (!isAdmin) {
+          console.warn('[AUTH GUARD] Chưa đăng nhập Quản Trị Viên - Dừng toàn bộ tác vụ nạp dữ liệu.');
+          return;
+        }
+      } else {
+        unlockAdminDashboard();
+      }
 
       applyAppBgStyles();
 

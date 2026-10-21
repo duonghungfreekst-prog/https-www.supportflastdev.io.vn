@@ -232,7 +232,6 @@ func TestClientConfigEndpoint(t *testing.T) {
 		t.Fatalf("Nội dung setup.bat thiếu OPENAI_BASE_URL hoặc key: %s", batContent)
 	}
 
-
 	// 4. Test từ chối khi không gửi API key -> BẮT BUỘC 401 {"error":"Yêu cầu API key hợp lệ"}
 	reqNoKey := httptest.NewRequest("GET", "/api/v1/client/config", nil)
 	recNoKey := httptest.NewRecorder()
@@ -531,10 +530,12 @@ func TestClientKeyHourlyAndQuotaLimit(t *testing.T) {
 	}
 
 	// 3. Test HTTP POST /api/router/keys tạo key theo giờ và quota
+	testHourlyAdminKey := "test_master_admin_key_hourly_12345"
+	t.Setenv("MASTER_ADMIN_KEY", testHourlyAdminKey)
 	handler := HandleManageKeys(db)
 	postBody := `{"name":"Device-Hourly","quotaLimit":100,"durationHours":48}`
 	req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(postBody))
-	req.RemoteAddr = "127.0.0.1:1234"
+	req.Header.Set("Authorization", "Bearer "+testHourlyAdminKey)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	handler(rec, req)
@@ -586,9 +587,14 @@ func TestUpgradedRouterEndpoints(t *testing.T) {
 		{"ClientSyncAlias", "GET", "/api/client/sync", http.StatusUnauthorized},
 	}
 
+	testUpgradedAdminKey := "test_master_admin_key_upgraded_12345"
+	t.Setenv("MASTER_ADMIN_KEY", testUpgradedAdminKey)
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.method, tc.path, nil)
+			if tc.wantStatus == http.StatusOK {
+				req.Header.Set("Authorization", "Bearer "+testUpgradedAdminKey)
+			}
 			req.RemoteAddr = "127.0.0.1:20128"
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
@@ -657,14 +663,14 @@ func TestClientTelemetryAndQuotaReport(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond) // chờ async ghi nhận vào SQLite/TiDB
 
-	// 5. Kiểm tra Quota đã tăng lên 3 trong DB
+	// 5. P1 Security: Client report chỉ là telemetry/audit log, KHÔNG làm tăng used_requests của key
 	var usedReqs int64
 	err = db.QueryRow("SELECT used_requests FROM omni_client_keys WHERE api_key = ?", testKey.Key).Scan(&usedReqs)
 	if err != nil {
 		t.Fatalf("Lỗi truy vấn used_requests: %v", err)
 	}
-	if usedReqs != 3 {
-		t.Fatalf("Kỳ vọng used_requests = 3, nhận được: %d", usedReqs)
+	if usedReqs != 0 {
+		t.Fatalf("P1 VIOLATION: used_requests bị client report tăng (%d), kỳ vọng giữ nguyên 0!", usedReqs)
 	}
 }
 
@@ -672,101 +678,112 @@ func TestProxyConfigurationAndBinding(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	// 1. T?o 2 t?i kho?n antigravity m?u
+	testAdminKey := "test-admin-secret-key-32-chars-long!"
+	t.Setenv("MASTER_ADMIN_KEY", testAdminKey)
+
+	// 1. Tạo 2 tài khoản antigravity mẫu
 	accData := `{"accessToken":"ya29.test","connectionProxyEnabled":false,"proxyUrl":""}`
 	_, _ = db.Exec(`INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
 		VALUES ('acc_test_1', 'antigravity', 'oauth', 'Acc 1', 'acc1@gmail.com', 1, 1, ?, '2026-10-19', '2026-10-19'),
 		       ('acc_test_2', 'antigravity', 'oauth', 'Acc 2', 'acc2@gmail.com', 2, 1, ?, '2026-10-19', '2026-10-19')`,
 		accData, accData)
 
-	// 2. Test POST /api/proxy-pools: T?o proxy pool m?u
+	// 2. Test POST /api/proxy-pools: Tạo proxy pool mẫu
 	createPayload := `{"id":"42db42b6-7136-4c0c-8feb-20759c8e0946","name":"VNPT Test","proxyUrl":"http://pyYXdt:QWfItD@58.186.63.192:18753/","type":"http"}`
 	reqCreate := httptest.NewRequest("POST", "/api/proxy-pools", strings.NewReader(createPayload))
 	reqCreate.Header.Set("Content-Type", "application/json")
+	reqCreate.Header.Set("X-Admin-Key", testAdminKey)
 	recCreate := httptest.NewRecorder()
 	HandleProxyPools(db)(recCreate, reqCreate)
 	if recCreate.Code != http.StatusOK {
-		t.Fatalf("POST /api/proxy-pools t?o proxy th?t b?i: %d", recCreate.Code)
+		t.Fatalf("POST /api/proxy-pools tạo proxy thất bại: %d", recCreate.Code)
 	}
 
 	// 3. Test GET /api/proxy-pools
 	reqPools := httptest.NewRequest("GET", "/api/proxy-pools", nil)
+	reqPools.Header.Set("X-Admin-Key", testAdminKey)
 	recPools := httptest.NewRecorder()
 	HandleProxyPools(db)(recPools, reqPools)
 	if recPools.Code != http.StatusOK {
-		t.Fatalf("GET /api/proxy-pools th?t b?i: %d", recPools.Code)
+		t.Fatalf("GET /api/proxy-pools thất bại: %d", recPools.Code)
 	}
 	var poolsResp map[string]interface{}
 	_ = json.Unmarshal(recPools.Body.Bytes(), &poolsResp)
 	pList, _ := poolsResp["proxyPools"].([]interface{})
 	if len(pList) == 0 {
-		t.Fatalf("K? v?ng proxyPools c? danh s?ch")
+		t.Fatalf("Kỳ vọng proxyPools có danh sách")
 	}
 
-	// 4. Test PUT /api/proxy-pools/{id}: C?p nh?t proxy pool
+	// 4. Test PUT /api/proxy-pools/{id}: Cập nhật proxy pool
 	putPayload := `{"name":"VNPT Clean Strict","strictProxy":true}`
 	reqPut := httptest.NewRequest("PUT", "/api/proxy-pools/42db42b6-7136-4c0c-8feb-20759c8e0946", strings.NewReader(putPayload))
 	reqPut.Header.Set("Content-Type", "application/json")
+	reqPut.Header.Set("X-Admin-Key", testAdminKey)
 	recPut := httptest.NewRecorder()
 	HandleProxyPools(db)(recPut, reqPut)
 	if recPut.Code != http.StatusOK {
-		t.Fatalf("PUT /api/proxy-pools c?p nh?t th?t b?i: %d", recPut.Code)
+		t.Fatalf("PUT /api/proxy-pools cập nhật thất bại: %d", recPut.Code)
 	}
 
-	// 5. Test POST /api/proxy-pools/bind: G?n proxy pool cho antigravity
+	// 5. Test POST /api/proxy-pools/bind: Gắn proxy pool cho antigravity
 	bindPayload := `{"proxyPoolId":"42db42b6-7136-4c0c-8feb-20759c8e0946","provider":"antigravity","action":"bind"}`
 	reqBind := httptest.NewRequest("POST", "/api/proxy-pools/bind", strings.NewReader(bindPayload))
 	reqBind.Header.Set("Content-Type", "application/json")
+	reqBind.Header.Set("X-Admin-Key", testAdminKey)
 	recBind := httptest.NewRecorder()
 	HandleBindProxyPool(db)(recBind, reqBind)
 	if recBind.Code != http.StatusOK {
-		t.Fatalf("POST /api/proxy-pools/bind th?t b?i: %d", recBind.Code)
+		t.Fatalf("POST /api/proxy-pools/bind thất bại: %d", recBind.Code)
 	}
 	var bindResp map[string]interface{}
 	_ = json.Unmarshal(recBind.Body.Bytes(), &bindResp)
 	if count, ok := bindResp["count"].(float64); !ok || count != 2 {
-		t.Fatalf("K? v?ng bind th?nh c?ng cho 2 t?i kho?n, nh?n ???c: %v", bindResp["count"])
+		t.Fatalf("Kỳ vọng bind thành công cho 2 tài khoản, nhận được: %v", bindResp["count"])
 	}
 
-	// 6. Test GET /api/providers: Ki?m tra badge proxy ?? c?p nh?t
+	// 6. Test GET /api/providers: Kiểm tra badge proxy đã cập nhật (yêu cầu Admin auth)
 	reqProviders := httptest.NewRequest("GET", "/api/providers", nil)
+	reqProviders.Header.Set("X-Admin-Key", testAdminKey)
 	recProviders := httptest.NewRecorder()
 	HandleListProviders(db)(recProviders, reqProviders)
 	if recProviders.Code != http.StatusOK {
-		t.Fatalf("GET /api/providers th?t b?i: %d", recProviders.Code)
+		t.Fatalf("GET /api/providers thất bại: %d", recProviders.Code)
 	}
 	var provResp map[string]interface{}
 	_ = json.Unmarshal(recProviders.Body.Bytes(), &provResp)
 	pArr, _ := provResp["providers"].([]interface{})
 	if len(pArr) != 2 {
-		t.Fatalf("K? v?ng 2 providers, nh?n ???c: %d", len(pArr))
+		t.Fatalf("Kỳ vọng 2 providers, nhận được: %d", len(pArr))
 	}
 	p0 := pArr[0].(map[string]interface{})
 	if en, ok := p0["connectionProxyEnabled"].(bool); !ok || !en {
-		t.Fatalf("K? v?ng connectionProxyEnabled = true sau khi bind, nh?n ???c: %v", p0["connectionProxyEnabled"])
+		t.Fatalf("Kỳ vọng connectionProxyEnabled = true sau khi bind, nhận được: %v", p0["connectionProxyEnabled"])
 	}
 
-	// 7. Test DELETE /api/proxy-pools/{id}: X?a v?nh vi?n proxy v? cascade unbind
+	// 7. Test DELETE /api/proxy-pools/{id}: Xóa vĩnh viễn proxy và cascade unbind
 	reqDelete := httptest.NewRequest("DELETE", "/api/proxy-pools/42db42b6-7136-4c0c-8feb-20759c8e0946", nil)
+	reqDelete.Header.Set("X-Admin-Key", testAdminKey)
 	recDelete := httptest.NewRecorder()
 	HandleProxyPools(db)(recDelete, reqDelete)
 	if recDelete.Code != http.StatusOK {
-		t.Fatalf("DELETE /api/proxy-pools x?a th?t b?i: %d", recDelete.Code)
+		t.Fatalf("DELETE /api/proxy-pools xóa thất bại: %d", recDelete.Code)
 	}
 
-	// 8. Test GET /api/proxy-pools sau khi x?a: Ph?i r?ng (0 pool)
+	// 8. Test GET /api/proxy-pools sau khi xóa: Phải rỗng (0 pool)
 	reqPoolsAfter := httptest.NewRequest("GET", "/api/proxy-pools", nil)
+	reqPoolsAfter.Header.Set("X-Admin-Key", testAdminKey)
 	recPoolsAfter := httptest.NewRecorder()
 	HandleProxyPools(db)(recPoolsAfter, reqPoolsAfter)
 	var poolsRespAfter map[string]interface{}
 	_ = json.Unmarshal(recPoolsAfter.Body.Bytes(), &poolsRespAfter)
 	pListAfter, _ := poolsRespAfter["proxyPools"].([]interface{})
 	if len(pListAfter) != 0 {
-		t.Fatalf("K? v?ng danh s?ch proxyPools r?ng sau khi x?a, nh?n ???c: %d", len(pListAfter))
+		t.Fatalf("Kỳ vọng danh sách proxyPools rỗng sau khi xóa, nhận được: %d", len(pListAfter))
 	}
 
-	// 9. Test GET /api/providers sau khi x?a proxy: Ph?i t? ??ng cascade unbind v? Direct
+	// 9. Test GET /api/providers sau khi xóa proxy: Phải tự động cascade unbind về Direct
 	reqProvAfter := httptest.NewRequest("GET", "/api/providers", nil)
+	reqProvAfter.Header.Set("X-Admin-Key", testAdminKey)
 	recProvAfter := httptest.NewRecorder()
 	HandleListProviders(db)(recProvAfter, reqProvAfter)
 	var provRespAfter map[string]interface{}
@@ -774,10 +791,10 @@ func TestProxyConfigurationAndBinding(t *testing.T) {
 	pArrAfter, _ := provRespAfter["providers"].([]interface{})
 	p0After := pArrAfter[0].(map[string]interface{})
 	if en, ok := p0After["connectionProxyEnabled"].(bool); ok && en {
-		t.Fatalf("K? v?ng connectionProxyEnabled = false sau khi x?a proxy pool, nh?ng v?n c?n b?t!")
+		t.Fatalf("Kỳ vọng connectionProxyEnabled = false sau khi xóa proxy pool, nhưng vẫn còn bật!")
 	}
 	if pUrl, _ := p0After["proxyUrl"].(string); pUrl != "" {
-		t.Fatalf("K? v?ng proxyUrl = '' sau khi x?a proxy pool, nh?n ???c: %s", pUrl)
+		t.Fatalf("Kỳ vọng proxyUrl = '' sau khi xóa proxy pool, nhận được: %s", pUrl)
 	}
 }
 
@@ -808,11 +825,6 @@ func TestResolveCascadeModelTiers_NoAutomaticFallback(t *testing.T) {
 		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier claude-sonnet-4-6, nhận được: %v", tiersSonnet)
 	}
 }
-
-
-
-
-
 
 func TestChatCompletionsAuthMatrix(t *testing.T) {
 	db := setupTestDB(t)
@@ -932,7 +944,6 @@ func TestAtomicQuotaReservationConcurrent(t *testing.T) {
 		t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %s", msg)
 	}
 }
-
 
 func TestHandleClientSync_IsolateUpstreamAccessToken(t *testing.T) {
 	db := setupTestDB(t)
@@ -1156,8 +1167,6 @@ func TestCheckClientKeyStatusConcurrency(t *testing.T) {
 	}
 }
 
-
-
 func TestClientReportAuthAndSanitization(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
@@ -1299,16 +1308,14 @@ func TestClientReportAuthAndSanitization(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond) // Đợi async ghi DB
 
-	var usedRequests, totalTokens int64
-	err = db.QueryRow("SELECT used_requests, total_tokens FROM omni_client_keys WHERE api_key = ?", activeKey.Key).Scan(&usedRequests, &totalTokens)
+	// P1 Security: Xác nhận quota Client Key không bị client report tự ý ghi đè/tăng bừa bãi
+	var usedRequests int64
+	err = db.QueryRow("SELECT used_requests FROM omni_client_keys WHERE api_key = ?", activeKey.Key).Scan(&usedRequests)
 	if err != nil {
 		t.Fatalf("Lỗi truy vấn usage trong DB: %v", err)
 	}
-	if usedRequests != 5 { // 2 + 3
-		t.Errorf("Kỳ vọng used_requests = 5, nhận được: %d", usedRequests)
-	}
-	if totalTokens != 1250 { // 500 + 750
-		t.Errorf("Kỳ vọng total_tokens = 1250, nhận được: %d", totalTokens)
+	if usedRequests != 0 {
+		t.Errorf("P1 VIOLATION: used_requests bị client report tăng (%d), kỳ vọng giữ nguyên 0!", usedRequests)
 	}
 }
 
@@ -1458,7 +1465,7 @@ func TestManageKeys_AdminAuthentication(t *testing.T) {
 		}
 	})
 
-	t.Run("POST /api/router/keys với Master Domain Key mặc định -> 200", func(t *testing.T) {
+	t.Run("POST /api/router/keys với Master Domain Key mặc định cố định -> BẮT BUỘC 401 (Chặn P0)", func(t *testing.T) {
 		body := `{"name":"Device-Admin-Test","quotaLimit":50}`
 		req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(body))
 		req.RemoteAddr = remoteIP
@@ -1467,8 +1474,19 @@ func TestManageKeys_AdminAuthentication(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusOK {
-			t.Fatalf("Kỳ vọng 200 tạo key với Master Key, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("P0 SECURITY: Kỳ vọng 401 từ chối Master Key mặc định cố định, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("GET /api/router/keys từ localhost không có auth -> BẮT BUỘC 401 (Chặn P0)", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/keys", nil)
+		req.RemoteAddr = "127.0.0.1:54321"
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("P0 SECURITY: Kỳ vọng 401 từ chối localhost không có auth, nhận: %d", rec.Code)
 		}
 	})
 
@@ -1484,7 +1502,6 @@ func TestManageKeys_AdminAuthentication(t *testing.T) {
 		}
 	})
 }
-
 
 // ==============================================================================
 // TEST MULTI-PROVIDER ADAPTER (Task 8: OpenAI, Anthropic, Google, Antigravity)
@@ -1696,7 +1713,6 @@ func TestBuildOutboundRequestMultiProvider(t *testing.T) {
 	}
 }
 
-
 // TestHandleClientSync_RealQuotaCalculation_NoHardcodedFallback kiểm tra loại bỏ hoàn toàn hạn mức cố định 100000
 // và tính toán QuotaRemaining thực tế của Client Key từ omni_client_keys, đồng thời phân biệt rõ với Quota Upstream.
 func TestHandleClientSync_RealQuotaCalculation_NoHardcodedFallback(t *testing.T) {
@@ -1826,4 +1842,110 @@ func TestHandleClientSync_RealQuotaCalculation_NoHardcodedFallback(t *testing.T)
 	if unlimResp.ClientQuota == nil || !unlimResp.ClientQuota.IsUnlimited {
 		t.Errorf("Kỳ vọng ClientQuota.IsUnlimited = true cho key không giới hạn")
 	}
+}
+
+// TestRouterAdminSecurityAndAuthentication kiểm tra bảo vệ tuyệt đối tất cả API quản trị Router
+// Chống việc người dùng không đăng nhập truy cập vào xem danh sách tài khoản, quota, cài đặt (P0)
+func TestRouterAdminSecurityAndAuthentication(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	testAdminSecret := "super-secure-admin-secret-key-32b-length!"
+	t.Setenv("MASTER_ADMIN_KEY", testAdminSecret)
+
+	// Tạo JWT Admin hợp lệ (RS256)
+	adminToken, err := security.GenerateRS256Token(&security.UserClaims{
+		UserID:   "usr-admin-001",
+		Username: "admin",
+		Role:     "admin",
+	})
+	if err != nil {
+		t.Fatalf("Không thể sinh token Admin RS256: %v", err)
+	}
+
+	// 1. GET /api/providers không có auth -> BẮT BUỘC HTTP 401
+	t.Run("GET /api/providers không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/providers", nil)
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng HTTP 401 Unauthorized khi không đăng nhập, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 2. GET /api/router/providers không có auth -> BẮT BUỘC HTTP 401
+	t.Run("GET /api/router/providers không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng HTTP 401 Unauthorized khi không đăng nhập, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 3. GET /api/settings không có auth -> BẮT BUỘC HTTP 401
+	t.Run("GET /api/settings không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/settings", nil)
+		rec := httptest.NewRecorder()
+		HandleSettings(db)(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng HTTP 401 cho Settings, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 4. GET /api/usage/request-logs không có auth -> BẮT BUỘC HTTP 401
+	t.Run("GET /api/usage/request-logs không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/usage/request-logs", nil)
+		rec := httptest.NewRecorder()
+		HandleRequestDetails(db)(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng HTTP 401 cho RequestDetails, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 5. GET /api/proxy-pools không có auth -> BẮT BUỘC HTTP 401
+	t.Run("GET /api/proxy-pools không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/proxy-pools", nil)
+		rec := httptest.NewRecorder()
+		HandleProxyPools(db)(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("Kỳ vọng HTTP 401 cho ProxyPools, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 6. GET /api/router/providers với Master Admin Key -> HTTP 200 OK
+	t.Run("GET /api/router/providers với Master Admin Key -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		req.Header.Set("X-Admin-Key", testAdminSecret)
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 với Master Admin Key, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 7. GET /api/router/providers với Admin JWT RS256 Bearer Token -> HTTP 200 OK
+	t.Run("GET /api/router/providers với Admin JWT RS256 -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 với Admin JWT, nhận được: %d", rec.Code)
+		}
+	})
+
+	// 8. GET /api/providers với Cookie cloudpool_token của Admin -> HTTP 200 OK (Tích hợp Web Browser SSO)
+	t.Run("GET /api/providers với Cookie cloudpool_token -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/providers", nil)
+		req.AddCookie(&http.Cookie{
+			Name:  "cloudpool_token",
+			Value: adminToken,
+		})
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 với Cookie cloudpool_token của Admin, nhận được: %d", rec.Code)
+		}
+	})
 }

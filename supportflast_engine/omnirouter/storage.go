@@ -557,37 +557,15 @@ func RecordKeyUsageAsync(db *sql.DB, apiKey string, reqCount int64, tokenCount i
 	}()
 }
 
-
 // ReserveClientKeyQuota thực hiện giữ chỗ (reservation) quota nguyên tử trước khi gọi AI upstream
 // Trả về true nếu giữ chỗ thành công; false nếu đã hết quota hoặc key không hợp lệ
+// Hoàn toàn chống race condition ở cả chế độ Database lẫn chế độ RAM Cache fallback (Rule 3 & P0)
 func ReserveClientKeyQuota(db *sql.DB, apiKey string) (bool, string) {
 	if apiKey == "" {
 		return false, "Thiếu API Key"
 	}
 
-	// 1. Kiểm tra nhanh qua RAM Cache
-	keyCacheMu.RLock()
-	item, ok := keyCache[apiKey]
-	if !ok || item == nil {
-		keyCacheMu.RUnlock()
-		return false, "API Key không tồn tại hoặc không hợp lệ"
-	}
-	itemCopy := *item
-	keyCacheMu.RUnlock()
-
-	if itemCopy.IsActive != 1 {
-		return false, "API Key đã bị khóa hoặc hết hạn"
-	}
-	if itemCopy.QuotaLimit > 0 && itemCopy.UsedRequests >= itemCopy.QuotaLimit {
-		return false, fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", itemCopy.UsedRequests, itemCopy.QuotaLimit)
-	}
-	if itemCopy.ExpiresAt != "" {
-		if t, err := time.Parse(time.RFC3339, itemCopy.ExpiresAt); err == nil && time.Now().After(t) {
-			return false, "API Key đã hết thời hạn sử dụng"
-		}
-	}
-
-	// 2. Atomic Reservation trên Database (nếu có DB)
+	// 1. Chế độ Database: Atomic Reservation trực tiếp bằng UPDATE nguyên tử
 	if db != nil {
 		res, err := db.Exec(`
 			UPDATE omni_client_keys 
@@ -603,23 +581,104 @@ func ReserveClientKeyQuota(db *sql.DB, apiKey string) (bool, string) {
 		}
 		rows, _ := res.RowsAffected()
 		if rows == 0 {
-			// Không cập nhật được dòng nào -> Key đã chạm/vượt quota đúng thời điểm này
-			return false, "API Key đã sử dụng hết hạn mức Quota"
+			// Không cập nhật được dòng nào -> Key không tồn tại, bị khóa hoặc đã vượt quota
+			keyCacheMu.RLock()
+			it, ok := keyCache[apiKey]
+			var quotaErr string
+			if ok && it != nil {
+				if it.IsActive != 1 {
+					quotaErr = "API Key đã bị khóa hoặc hết hạn sử dụng"
+				} else if it.QuotaLimit > 0 && it.UsedRequests >= it.QuotaLimit {
+					quotaErr = fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", it.UsedRequests, it.QuotaLimit)
+				}
+			}
+			keyCacheMu.RUnlock()
+			if quotaErr != "" {
+				return false, quotaErr
+			}
+			return false, "API Key không hợp lệ hoặc đã sử dụng hết hạn mức Quota"
+		}
+
+		// Đồng bộ số liệu đã tăng thành công vào RAM Cache
+		keyCacheMu.Lock()
+		if it, exists := keyCache[apiKey]; exists && it != nil {
+			it.UsedRequests++
+			it.LastUsedAt = NowISO()
+			if it.QuotaLimit > 0 && it.UsedRequests >= it.QuotaLimit {
+				it.IsActive = 0
+			}
+		}
+		keyCacheMu.Unlock()
+		return true, ""
+	}
+
+	// 2. Chế độ RAM Cache fallback (db == nil): Đảm bảo nguyên tử 100% hoàn toàn dưới Write Lock
+	keyCacheMu.Lock()
+	defer keyCacheMu.Unlock()
+	it, ok := keyCache[apiKey]
+	if !ok || it == nil {
+		return false, "API Key không tồn tại hoặc không hợp lệ"
+	}
+	if it.IsActive != 1 {
+		return false, "API Key đã bị khóa hoặc hết hạn"
+	}
+	if it.QuotaLimit > 0 && it.UsedRequests >= it.QuotaLimit {
+		it.IsActive = 0
+		return false, fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", it.UsedRequests, it.QuotaLimit)
+	}
+	if it.ExpiresAt != "" {
+		if t, err := time.Parse(time.RFC3339, it.ExpiresAt); err == nil && time.Now().After(t) {
+			it.IsActive = 0
+			return false, "API Key đã hết thời hạn sử dụng"
 		}
 	}
 
-	// 3. Cập nhật đồng bộ vào RAM Cache
+	// Tăng nguyên tử ngay lập tức dưới Write Lock
+	it.UsedRequests++
+	it.LastUsedAt = NowISO()
+	if it.QuotaLimit > 0 && it.UsedRequests >= it.QuotaLimit {
+		it.IsActive = 0
+	}
+	return true, ""
+}
+
+// ReleaseClientKeyQuota giải phóng / hoàn lại quota đã giữ chỗ khi yêu cầu AI thất bại trước khi upstream xử lý
+func ReleaseClientKeyQuota(db *sql.DB, apiKey string, amount int64) bool {
+	if apiKey == "" || amount <= 0 {
+		return false
+	}
+
+	// 1. Cập nhật giải phóng trên Database nếu có DB
+	if db != nil {
+		_, err := db.Exec(`
+			UPDATE omni_client_keys 
+			SET used_requests = CASE WHEN used_requests >= ? THEN used_requests - ? ELSE 0 END,
+			    is_active = CASE WHEN quota_limit > 0 AND (used_requests - ?) < quota_limit THEN 1 ELSE is_active END,
+			    last_used_at = ?
+			WHERE api_key = ?
+		`, amount, amount, amount, NowISO(), apiKey)
+		if err != nil {
+			log.Printf("[ENGINE] [QUOTA] ❌ Lỗi giải phóng reservation quota trên DB: %v", err)
+		}
+	}
+
+	// 2. Cập nhật đồng bộ vào RAM Cache dưới Write Lock
 	keyCacheMu.Lock()
 	if it, exists := keyCache[apiKey]; exists && it != nil {
-		it.UsedRequests++
-		it.LastUsedAt = NowISO()
-		if it.QuotaLimit > 0 && it.UsedRequests >= it.QuotaLimit {
-			it.IsActive = 0
+		if it.UsedRequests >= amount {
+			it.UsedRequests -= amount
+		} else {
+			it.UsedRequests = 0
 		}
+		if it.QuotaLimit > 0 && it.UsedRequests < it.QuotaLimit {
+			it.IsActive = 1
+		}
+		it.LastUsedAt = NowISO()
 	}
 	keyCacheMu.Unlock()
 
-	return true, ""
+	log.Printf("[ENGINE] [QUOTA] ↩️ Đã hoàn lại %d quota giữ chỗ cho API Key (%s)", amount, MaskAPIKey(apiKey))
+	return true
 }
 
 // RefreshProviderCache đọc các tài khoản AI từ DB nạp vào RAM
@@ -818,5 +877,3 @@ func RecordUsageHistoryAsync(db *sql.DB, provider, model, connectionId, apiKey, 
 		}
 	}()
 }
-
-
