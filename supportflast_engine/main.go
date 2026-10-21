@@ -1,10 +1,11 @@
-package main
+﻿package main
 
 import (
 	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -755,32 +756,44 @@ func main() {
 		cleanLog := security.SanitizeCRLF(payload.Query)
 		log.Printf("[ENGINE] Dispatching query to subagents (Pool: 10 max): %s (agent=%s)", cleanLog, payload.AgentID)
 
-		// 3.2 Chuyển tiếp tới AI Engine nếu có (context timeout 15s)
-		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		// 3.2 Chuyển tiếp tới AI Engine nếu có (context timeout 60s đồng bộ với HTTP Client)
+		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 		defer cancel()
 
 		jsonBody, _ := json.Marshal(payload)
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, getAIEngineURL()+"/api/agents/chat", bytes.NewBuffer(jsonBody))
-		var aiSuccess = false
+		var aiHandled = false
 		if err == nil {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Internal-Token", getInternalServiceSecret())
 
-			client := http.Client{Timeout: 3 * time.Second}
+			client := http.Client{Timeout: 60 * time.Second}
 			resp, errDo := client.Do(req)
 			if errDo == nil {
 				defer resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					w.WriteHeader(resp.StatusCode)
-					io.Copy(w, resp.Body)
-					aiSuccess = true
+				w.WriteHeader(resp.StatusCode)
+				_, _ = io.Copy(w, resp.Body)
+				aiHandled = true
+			} else {
+				// Phân biệt rõ Timeout vs Lỗi kết nối
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) || os.IsTimeout(errDo) {
+					log.Printf("[ENGINE] [ERROR] AI Engine request timeout sau 60s: %v", errDo)
+					w.Header().Set("Content-Type", "application/json; charset=utf-8")
+					w.WriteHeader(http.StatusGatewayTimeout)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"error":   "Yêu cầu tới AI Engine bị quá thời gian chờ (60s). Vui lòng thử lại sau.",
+						"code":    "ERR_AI_TIMEOUT",
+						"details": "Gateway timeout waiting for Python AI Engine response",
+					})
+					return
 				}
+				log.Printf("[ENGINE] [WARN] Không kết nối được tới Python AI Engine (%v). Chuyển sang On-Device Local Dispatcher.", errDo)
 			}
 		}
 
-		// Nếu Python AI Engine không chạy (Chế độ Standalone Mobile Engine):
+		// Nếu Python AI Engine không khả dụng (Chế độ Standalone Mobile Engine / offline):
 		// Tự động xử lý bằng Local On-Device AI Dispatcher siêu nhẹ (~18MB RAM)
-		if !aiSuccess {
+		if !aiHandled {
 			mobileResult := dispatchInternalMobileSubagent(payload)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(mobileResult)

@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"database/sql"
@@ -93,6 +93,7 @@ func TestQuotaHandlersIntegration(t *testing.T) {
 	// 1. Test /api/quotas/refresh-all
 	refreshHandler := HandleRefreshAllQuotas(db)
 	req := httptest.NewRequest("GET", "/api/quotas/refresh-all", nil)
+	req.RemoteAddr = "127.0.0.1:20128"
 	rr := httptest.NewRecorder()
 	refreshHandler.ServeHTTP(rr, req)
 

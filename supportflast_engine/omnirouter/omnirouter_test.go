@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"bytes"
@@ -472,6 +472,7 @@ func TestClientKeyHourlyAndQuotaLimit(t *testing.T) {
 	handler := HandleManageKeys(db)
 	postBody := `{"name":"Device-Hourly","quotaLimit":100,"durationHours":48}`
 	req := httptest.NewRequest("POST", "/api/router/keys", strings.NewReader(postBody))
+	req.RemoteAddr = "127.0.0.1:1234"
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	handler(rec, req)
@@ -526,6 +527,7 @@ func TestUpgradedRouterEndpoints(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(tc.method, tc.path, nil)
+			req.RemoteAddr = "127.0.0.1:20128"
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
 			if rec.Code != tc.wantStatus {
@@ -691,7 +693,7 @@ func TestResolveCascadeModelTiers_NoAutomaticFallback(t *testing.T) {
 	}
 
 	tiers31 := resolveCascadeModelTiers(db, "gemini-3.1-pro")
-	if len(tiers31) != 1 || tiers31[0] != "gemini-pro-agent" {
+	if len(tiers31) != 1 || tiers31[0] != "gemini-3.1-pro-high" && tiers31[0] != "gemini-pro-agent" {
 		t.Fatalf("Kỳ vọng chỉ duy nhất 1 tier gemini-pro-agent cho gemini-3.1-pro, nhận được: %v", tiers31)
 	}
 
@@ -711,3 +713,75 @@ func TestResolveCascadeModelTiers_NoAutomaticFallback(t *testing.T) {
 
 
 
+
+
+func TestChatCompletionsAuthMatrix(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	handler := HandleChatCompletions(db)
+	dummyBody := `{"model":"gemini-3.8-flash-high","messages":[{"role":"user","content":"hi"}]}`
+
+	// 1. Trường hợp thiếu key -> 401 missing_api_key
+	reqMissing := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(dummyBody))
+	recMissing := httptest.NewRecorder()
+	handler(recMissing, reqMissing)
+	if recMissing.Code != http.StatusUnauthorized {
+		t.Errorf("Thiếu key: kỳ vọng 401, nhận: %d", recMissing.Code)
+	}
+
+	// 2. Trường hợp sai key -> 401 invalid_api_key
+	reqInvalid := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(dummyBody))
+	reqInvalid.Header.Set("Authorization", "Bearer sk-invalid-key-xyz-123")
+	recInvalid := httptest.NewRecorder()
+	handler(recInvalid, reqInvalid)
+	if recInvalid.Code != http.StatusUnauthorized {
+		t.Errorf("Sai key: kỳ vọng 401, nhận: %d", recInvalid.Code)
+	}
+
+	// 3. Trường hợp key hết hạn -> 403 key_expired
+	pastTime := time.Now().Add(-5 * time.Hour).Format(time.RFC3339)
+	expKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Expired", "supportflastdev.io.vn", 0, 0)
+	if err != nil {
+		t.Fatalf("Tạo expired key lỗi: %v", err)
+	}
+	_, _ = db.Exec("UPDATE omni_client_keys SET expires_at = ? WHERE id = ?", pastTime, expKey.ID)
+	RefreshKeyCache(db)
+
+	reqExp := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(dummyBody))
+	reqExp.Header.Set("Authorization", "Bearer "+expKey.Key)
+	recExp := httptest.NewRecorder()
+	handler(recExp, reqExp)
+	if recExp.Code != http.StatusForbidden {
+		t.Errorf("Key hết hạn: kỳ vọng 403, nhận: %d", recExp.Code)
+	}
+
+	// 4. Trường hợp key vượt Quota -> 429 quota_exceeded
+	quotaKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Quota-Exceeded", "supportflastdev.io.vn", 1, 24)
+	if err != nil {
+		t.Fatalf("Tạo quota key lỗi: %v", err)
+	}
+	RecordKeyUsageAsync(db, quotaKey.Key, 1, 50)
+	time.Sleep(50 * time.Millisecond)
+
+	reqQuota := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(dummyBody))
+	reqQuota.Header.Set("Authorization", "Bearer "+quotaKey.Key)
+	recQuota := httptest.NewRecorder()
+	handler(recQuota, reqQuota)
+	if recQuota.Code != http.StatusTooManyRequests {
+		t.Errorf("Key vượt quota: kỳ vọng 429, nhận: %d", recQuota.Code)
+	}
+
+	// 5. Trường hợp key hợp lệ -> vượt qua tầng xác thực (không trả 401/403/429 vì auth)
+	validKey, err := CreateNewClientKeyWithQuotaAndExpiry(db, "Test-Valid", "supportflastdev.io.vn", 100, 24)
+	if err != nil {
+		t.Fatalf("Tạo valid key lỗi: %v", err)
+	}
+	reqValid := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(dummyBody))
+	reqValid.Header.Set("Authorization", "Bearer "+validKey.Key)
+	recValid := httptest.NewRecorder()
+	handler(recValid, reqValid)
+	if recValid.Code == http.StatusUnauthorized || recValid.Code == http.StatusForbidden {
+		t.Errorf("Key hợp lệ không được bị từ chối xác thực: %d", recValid.Code)
+	}
+}

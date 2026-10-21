@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"bufio"
@@ -283,7 +283,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		}
 		startTime := time.Now()
 
-		// 1. Kiểm tra xác thực API Key
+		// 1. Kiểm tra xác thực API Key bắt buộc (P0 Security: KHÔNG fallback sang key chủ server)
 		authHeader := r.Header.Get("Authorization")
 		apiKey := strings.TrimPrefix(authHeader, "Bearer ")
 		apiKey = strings.TrimSpace(apiKey)
@@ -291,74 +291,82 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			apiKey = strings.TrimSpace(r.Header.Get("x-api-key"))
 		}
 
+		if apiKey == "" {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Thiếu API Key xác thực. Vui lòng gửi kèm header 'Authorization: Bearer <sk_api_key>' hoặc 'x-api-key'.",
+					"type":    "authentication_error",
+					"code":    "missing_api_key",
+				},
+			})
+			return
+		}
+
 		var clientKeyItem *ClientKey
-		if apiKey != "" {
-			item, status, errMsg := CheckClientKeyStatus(apiKey)
-			switch status {
-			case "EXPIRED":
-				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã hết hạn: %s", errMsg)
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": map[string]string{
-						"message": errMsg,
-						"type":    "quota_error",
-						"code":    "key_expired",
-					},
-				})
-				return
-			case "QUOTA_EXCEEDED":
-				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã vượt quá hạn mức Quota: %s", errMsg)
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusTooManyRequests)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": map[string]string{
-						"message": errMsg,
-						"type":    "quota_error",
-						"code":    "quota_exceeded",
-					},
-				})
-				return
-			case "INACTIVE":
-				log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã bị vô hiệu hóa")
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"error": map[string]string{
-						"message": "API Key đã bị tạm khóa bởi quản trị viên",
-						"type":    "auth_error",
-						"code":    "key_inactive",
-					},
-				})
-				return
-			case "OK":
-				clientKeyItem = item
-				SetActiveClientKey(item.Key)
-			}
-		}
-
-		// N?u khng c API Key trong header ho?c key ngoi h? th?ng, t? d?ng fallback v? Active Client Key c?a ngu?i dng
-				// Neu khong co API Key trong header hoac key ngoai he thong, tu dong fallback ve Active Client Key con hieu luc
-		if clientKeyItem == nil {
-			activeKey := GetActiveClientKey(db)
-			if activeKey != "" {
-				if item, status, _ := CheckClientKeyStatus(activeKey); status == "OK" && item != nil {
-					clientKeyItem = item
-					SetActiveClientKey(item.Key)
-				}
-			}
-		}
-
-		// CHAN TUYET DOI: Neu khong co API Key hop le hoac khoa da het han muc Quota -> Khong dung de cung cap duoc nua!
-		if clientKeyItem == nil {
-			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Tu choi request vi khong co API Key hop le hoac khoa da het han muc")
+		item, status, errMsg := CheckClientKeyStatus(apiKey)
+		switch status {
+		case "EXPIRED":
+			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã hết hạn: %s", errMsg)
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusForbidden)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": map[string]string{
-					"message": "Khoa API da dat han muc toi da va bi KHOA HOAN TOAN. Khong the tiep tuc cung cap yeu cau.",
-					"type":    "quota_exhausted_error",
-					"code":    "key_exhausted",
+					"message": errMsg,
+					"type":    "quota_error",
+					"code":    "key_expired",
+				},
+			})
+			return
+		case "QUOTA_EXCEEDED":
+			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã vượt quá hạn mức Quota: %s", errMsg)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": errMsg,
+					"type":    "quota_error",
+					"code":    "quota_exceeded",
+				},
+			})
+			return
+		case "INACTIVE":
+			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key đã bị vô hiệu hóa")
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "API Key đã bị tạm khóa bởi quản trị viên",
+					"type":    "auth_error",
+					"code":    "key_inactive",
+				},
+			})
+			return
+		case "OK":
+			clientKeyItem = item
+		default:
+			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key không hợp lệ: %s", MaskAPIKey(apiKey))
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "API Key không hợp lệ hoặc không tồn tại trên hệ thống",
+					"type":    "authentication_error",
+					"code":    "invalid_api_key",
+				},
+			})
+			return
+		}
+
+		if clientKeyItem == nil {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]string{
+					"message": "Không thể xác thực API Key",
+					"type":    "authentication_error",
+					"code":    "auth_failed",
 				},
 			})
 			return
@@ -378,8 +386,8 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		// 1. Phân giải danh sách Tầng Ưu Tiên (Tier 1: Model chính -> Tier 2, Tier 3: Dự phòng)
 		modelTiers := resolveCascadeModelTiers(db, req.Model)
 
-		isStream := true
-		if req.Stream != nil && !*req.Stream {
+		isStream := false
+		if req.Stream != nil && *req.Stream {
 			isStream = false
 		}
 

@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"crypto/rand"
@@ -313,14 +313,12 @@ func CheckClientKeyStatus(rawKey string) (item *ClientKey, status string, errMsg
 		if subtle.ConstantTimeCompare([]byte(cachedK), rawBytes) == 1 {
 			// 1. Kiểm tra hạn mức Quota requests nếu có cấu hình QuotaLimit > 0 (ưu tiên phát hiện lý do vượt Quota)
 			if k.QuotaLimit > 0 && k.UsedRequests >= k.QuotaLimit {
-				k.IsActive = 0
 				return k, "QUOTA_EXCEEDED", fmt.Sprintf("API Key đã sử dụng hết hạn mức Quota (%d/%d requests)", k.UsedRequests, k.QuotaLimit)
 			}
 			// 2. Kiểm tra thời hạn hiệu lực theo giờ nếu có ExpiresAt
 			if k.ExpiresAt != "" {
 				if t, err := time.Parse(time.RFC3339, k.ExpiresAt); err == nil {
 					if time.Now().After(t) {
-						k.IsActive = 0
 						return k, "EXPIRED", fmt.Sprintf("API Key đã hết thời hạn sử dụng (Hết hạn lúc: %s)", t.Format("15:04:05 02/01/2006"))
 					}
 				}

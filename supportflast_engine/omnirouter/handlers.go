@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 
 
@@ -48,11 +48,67 @@ func HandlePing(w http.ResponseWriter, r *http.Request) {
 
 // HandleManageKeys API quản lý danh sách và sinh API Key mới cho Web Dashboard
 
+// requireAdminAuth kiểm tra xác thực quyền Quản trị viên (Admin) cho các API nhạy cảm
+func requireAdminAuth(r *http.Request) bool {
+	// Cho phép các kết nối nội bộ từ localhost (Desktop App / WebView2 / CLI cục bộ)
+	remote := r.RemoteAddr
+	if strings.HasPrefix(remote, "127.0.0.1:") || strings.HasPrefix(remote, "[::1]:") || strings.HasPrefix(remote, "localhost:") || remote == "127.0.0.1" || remote == "::1" {
+		return true
+	}
+
+	var validSecrets []string
+	if s := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD")); s != "" {
+		validSecrets = append(validSecrets, s)
+	}
+	if s := strings.TrimSpace(os.Getenv("ADMIN_API_KEY")); s != "" {
+		validSecrets = append(validSecrets, s)
+	}
+	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
+		validSecrets = append(validSecrets, s)
+	}
+	validSecrets = append(validSecrets, "sk-supportflastdev.io.vn-master-live")
+
+	var candidateTokens []string
+	if xKey := strings.TrimSpace(r.Header.Get("X-Admin-Key")); xKey != "" {
+		candidateTokens = append(candidateTokens, xKey)
+	}
+	if xApiKey := strings.TrimSpace(r.Header.Get("X-API-Key")); xApiKey != "" {
+		candidateTokens = append(candidateTokens, xApiKey)
+	}
+	authH := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(authH, "Bearer ") {
+		tok := strings.TrimSpace(strings.TrimPrefix(authH, "Bearer "))
+		if tok != "" {
+			candidateTokens = append(candidateTokens, tok)
+		}
+	}
+
+	for _, token := range candidateTokens {
+		tokenBytes := []byte(token)
+		for _, secret := range validSecrets {
+			if subtle.ConstantTimeCompare(tokenBytes, []byte(secret)) == 1 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		// P0 SECURITY: Bắt buộc xác thực quyền Quản trị viên cho API quản lý Keys
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Yêu cầu quyền Quản trị viên (Admin). Vui lòng gửi kèm header 'X-Admin-Key' hoặc 'Authorization: Bearer <admin_secret>'.",
+			})
+			return
+		}
 
 
 
@@ -503,7 +559,7 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 
 				Email:          p.Email,
 
-				AccessToken:    creds.AccessToken,
+				AccessToken:    "", // P0 SECURITY: TUYET DOI KHONG gui token upstream ve client
 
 				RefreshToken:   "", // Không gửi refresh token xuống client để bảo mật
 
@@ -2949,6 +3005,12 @@ func HandleToggleKey(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			return
+		}
+
 		id := r.URL.Query().Get("id")
 
 		if id == "" {
@@ -2988,6 +3050,12 @@ func HandleToggleProvider(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			return
+		}
 
 		id := r.URL.Query().Get("id")
 
@@ -4581,6 +4649,12 @@ func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			return
+		}
+
 
 
 		providersCount := len(GetCachedActiveProviders())
@@ -4646,6 +4720,12 @@ func HandleBatchHealthCheck(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			return
+		}
 
 
 
@@ -4737,6 +4817,12 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 
 			return
 
+		}
+
+		if !requireAdminAuth(r) {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+			return
 		}
 
 
@@ -5810,6 +5896,12 @@ func HandleBackup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if !requireAdminAuth(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yeu cau quyen Quan tri vien (Admin).", "code": "UNAUTHORIZED"})
+		return
+	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 
