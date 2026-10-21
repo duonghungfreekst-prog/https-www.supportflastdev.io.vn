@@ -367,8 +367,13 @@ func startMitmServer(handler http.Handler, baseDir string) error {
 		MinVersion:     tls.VersionTLS12,
 	}
 
+	// Bind 127.0.0.1:443 thay vì 0.0.0.0:443 để tránh conflict với
+	// Windows http.sys URL reservation (sra_{...}/C574AC30-...) giữ port 443 ở kernel level.
+	// DNS hosts redirect đã trỏ về 127.0.0.1 nên chức năng không thay đổi.
+	mitmAddr := "127.0.0.1:443"
+
 	server := &http.Server{
-		Addr:      "0.0.0.0:443",
+		Addr:      mitmAddr,
 		Handler:   handler,
 		TLSConfig: tlsConfig,
 	}
@@ -376,14 +381,15 @@ func startMitmServer(handler http.Handler, baseDir string) error {
 	var ln net.Listener
 	var err error
 	for attempt := 0; attempt < 4; attempt++ {
-		ln, err = net.Listen("tcp", server.Addr)
+		ln, err = net.Listen("tcp", mitmAddr)
 		if err == nil {
 			break
 		}
+		log.Printf("[ENGINE] [MITM] Thử bind cổng 443 lần %d thất bại: %v — chờ 600ms...", attempt+1, err)
 		time.Sleep(600 * time.Millisecond)
 	}
 	if err != nil {
-		return fmt.Errorf("cổng 443 đang bị chiếm dụng hoặc thiếu quyền Administrator: %w", err)
+		return fmt.Errorf("không thể bind 127.0.0.1:443 sau 4 lần thử. Kiểm tra: (1) chạy với quyền Admin, (2) netstat -ano | findstr :443, (3) netsh http show urlacl: %w", err)
 	}
 
 	tlsListener := tls.NewListener(ln, tlsConfig)
