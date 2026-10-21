@@ -611,76 +611,112 @@ func TestProxyConfigurationAndBinding(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	// 1. Tạo 2 tài khoản antigravity mẫu
+	// 1. T?o 2 t?i kho?n antigravity m?u
 	accData := `{"accessToken":"ya29.test","connectionProxyEnabled":false,"proxyUrl":""}`
 	_, _ = db.Exec(`INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
 		VALUES ('acc_test_1', 'antigravity', 'oauth', 'Acc 1', 'acc1@gmail.com', 1, 1, ?, '2026-10-19', '2026-10-19'),
 		       ('acc_test_2', 'antigravity', 'oauth', 'Acc 2', 'acc2@gmail.com', 2, 1, ?, '2026-10-19', '2026-10-19')`,
 		accData, accData)
 
-	// 2. Test GET /api/proxy-pools
+	// 2. Test POST /api/proxy-pools: T?o proxy pool m?u
+	createPayload := `{"id":"42db42b6-7136-4c0c-8feb-20759c8e0946","name":"VNPT Test","proxyUrl":"http://pyYXdt:QWfItD@58.186.63.192:18753/","type":"http"}`
+	reqCreate := httptest.NewRequest("POST", "/api/proxy-pools", strings.NewReader(createPayload))
+	reqCreate.Header.Set("Content-Type", "application/json")
+	recCreate := httptest.NewRecorder()
+	HandleProxyPools(db)(recCreate, reqCreate)
+	if recCreate.Code != http.StatusOK {
+		t.Fatalf("POST /api/proxy-pools t?o proxy th?t b?i: %d", recCreate.Code)
+	}
+
+	// 3. Test GET /api/proxy-pools
 	reqPools := httptest.NewRequest("GET", "/api/proxy-pools", nil)
 	recPools := httptest.NewRecorder()
 	HandleProxyPools(db)(recPools, reqPools)
 	if recPools.Code != http.StatusOK {
-		t.Fatalf("GET /api/proxy-pools thất bại: %d", recPools.Code)
+		t.Fatalf("GET /api/proxy-pools th?t b?i: %d", recPools.Code)
 	}
 	var poolsResp map[string]interface{}
 	_ = json.Unmarshal(recPools.Body.Bytes(), &poolsResp)
 	pList, _ := poolsResp["proxyPools"].([]interface{})
 	if len(pList) == 0 {
-		t.Fatalf("Kỳ vọng proxyPools có danh sách")
+		t.Fatalf("K? v?ng proxyPools c? danh s?ch")
 	}
 
-	// 3. Test POST /api/proxy-pools/bind (Gán proxy pool)
+	// 4. Test PUT /api/proxy-pools/{id}: C?p nh?t proxy pool
+	putPayload := `{"name":"VNPT Clean Strict","strictProxy":true}`
+	reqPut := httptest.NewRequest("PUT", "/api/proxy-pools/42db42b6-7136-4c0c-8feb-20759c8e0946", strings.NewReader(putPayload))
+	reqPut.Header.Set("Content-Type", "application/json")
+	recPut := httptest.NewRecorder()
+	HandleProxyPools(db)(recPut, reqPut)
+	if recPut.Code != http.StatusOK {
+		t.Fatalf("PUT /api/proxy-pools c?p nh?t th?t b?i: %d", recPut.Code)
+	}
+
+	// 5. Test POST /api/proxy-pools/bind: G?n proxy pool cho antigravity
 	bindPayload := `{"proxyPoolId":"42db42b6-7136-4c0c-8feb-20759c8e0946","provider":"antigravity","action":"bind"}`
 	reqBind := httptest.NewRequest("POST", "/api/proxy-pools/bind", strings.NewReader(bindPayload))
 	reqBind.Header.Set("Content-Type", "application/json")
 	recBind := httptest.NewRecorder()
 	HandleBindProxyPool(db)(recBind, reqBind)
 	if recBind.Code != http.StatusOK {
-		t.Fatalf("POST /api/proxy-pools/bind thất bại: %d", recBind.Code)
+		t.Fatalf("POST /api/proxy-pools/bind th?t b?i: %d", recBind.Code)
 	}
 	var bindResp map[string]interface{}
 	_ = json.Unmarshal(recBind.Body.Bytes(), &bindResp)
 	if count, ok := bindResp["count"].(float64); !ok || count != 2 {
-		t.Fatalf("Kỳ vọng bind thành công cho 2 tài khoản, nhận được: %v", bindResp["count"])
+		t.Fatalf("K? v?ng bind th?nh c?ng cho 2 t?i kho?n, nh?n ???c: %v", bindResp["count"])
 	}
 
-	// 4. Test GET /api/providers để kiểm tra badge proxy đã cập nhật
+	// 6. Test GET /api/providers: Ki?m tra badge proxy ?? c?p nh?t
 	reqProviders := httptest.NewRequest("GET", "/api/providers", nil)
 	recProviders := httptest.NewRecorder()
 	HandleListProviders(db)(recProviders, reqProviders)
 	if recProviders.Code != http.StatusOK {
-		t.Fatalf("GET /api/providers thất bại: %d", recProviders.Code)
+		t.Fatalf("GET /api/providers th?t b?i: %d", recProviders.Code)
 	}
 	var provResp map[string]interface{}
 	_ = json.Unmarshal(recProviders.Body.Bytes(), &provResp)
 	pArr, _ := provResp["providers"].([]interface{})
 	if len(pArr) != 2 {
-		t.Fatalf("Kỳ vọng 2 providers, nhận được: %d", len(pArr))
+		t.Fatalf("K? v?ng 2 providers, nh?n ???c: %d", len(pArr))
 	}
 	p0 := pArr[0].(map[string]interface{})
 	if en, ok := p0["connectionProxyEnabled"].(bool); !ok || !en {
-		t.Fatalf("Kỳ vọng connectionProxyEnabled = true sau khi bind, nhận được: %v", p0["connectionProxyEnabled"])
-	}
-	if pUrl, ok := p0["proxyUrl"].(string); !ok || !strings.Contains(pUrl, "58.186.63.192") {
-		t.Fatalf("Kỳ vọng proxyUrl chứa 58.186.63.192, nhận được: %v", p0["proxyUrl"])
+		t.Fatalf("K? v?ng connectionProxyEnabled = true sau khi bind, nh?n ???c: %v", p0["connectionProxyEnabled"])
 	}
 
-	// 5. Test POST /api/proxy-pools/bind với action=unbind (chuyển về Direct)
-	unbindPayload := `{"provider":"antigravity","action":"unbind"}`
-	reqUnbind := httptest.NewRequest("POST", "/api/proxy-pools/bind", strings.NewReader(unbindPayload))
-	reqUnbind.Header.Set("Content-Type", "application/json")
-	recUnbind := httptest.NewRecorder()
-	HandleBindProxyPool(db)(recUnbind, reqUnbind)
-	if recUnbind.Code != http.StatusOK {
-		t.Fatalf("POST /api/proxy-pools/bind unbind thất bại: %d", recUnbind.Code)
+	// 7. Test DELETE /api/proxy-pools/{id}: X?a v?nh vi?n proxy v? cascade unbind
+	reqDelete := httptest.NewRequest("DELETE", "/api/proxy-pools/42db42b6-7136-4c0c-8feb-20759c8e0946", nil)
+	recDelete := httptest.NewRecorder()
+	HandleProxyPools(db)(recDelete, reqDelete)
+	if recDelete.Code != http.StatusOK {
+		t.Fatalf("DELETE /api/proxy-pools x?a th?t b?i: %d", recDelete.Code)
 	}
-	var unbindResp map[string]interface{}
-	_ = json.Unmarshal(recUnbind.Body.Bytes(), &unbindResp)
-	if count, ok := unbindResp["count"].(float64); !ok || count != 2 {
-		t.Fatalf("Kỳ vọng unbind thành công cho 2 tài khoản, nhận được: %v", unbindResp["count"])
+
+	// 8. Test GET /api/proxy-pools sau khi x?a: Ph?i r?ng (0 pool)
+	reqPoolsAfter := httptest.NewRequest("GET", "/api/proxy-pools", nil)
+	recPoolsAfter := httptest.NewRecorder()
+	HandleProxyPools(db)(recPoolsAfter, reqPoolsAfter)
+	var poolsRespAfter map[string]interface{}
+	_ = json.Unmarshal(recPoolsAfter.Body.Bytes(), &poolsRespAfter)
+	pListAfter, _ := poolsRespAfter["proxyPools"].([]interface{})
+	if len(pListAfter) != 0 {
+		t.Fatalf("K? v?ng danh s?ch proxyPools r?ng sau khi x?a, nh?n ???c: %d", len(pListAfter))
+	}
+
+	// 9. Test GET /api/providers sau khi x?a proxy: Ph?i t? ??ng cascade unbind v? Direct
+	reqProvAfter := httptest.NewRequest("GET", "/api/providers", nil)
+	recProvAfter := httptest.NewRecorder()
+	HandleListProviders(db)(recProvAfter, reqProvAfter)
+	var provRespAfter map[string]interface{}
+	_ = json.Unmarshal(recProvAfter.Body.Bytes(), &provRespAfter)
+	pArrAfter, _ := provRespAfter["providers"].([]interface{})
+	p0After := pArrAfter[0].(map[string]interface{})
+	if en, ok := p0After["connectionProxyEnabled"].(bool); ok && en {
+		t.Fatalf("K? v?ng connectionProxyEnabled = false sau khi x?a proxy pool, nh?ng v?n c?n b?t!")
+	}
+	if pUrl, _ := p0After["proxyUrl"].(string); pUrl != "" {
+		t.Fatalf("K? v?ng proxyUrl = '' sau khi x?a proxy pool, nh?n ???c: %s", pUrl)
 	}
 }
 

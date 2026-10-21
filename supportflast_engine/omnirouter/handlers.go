@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 
 
@@ -3049,7 +3049,7 @@ func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
@@ -3175,33 +3175,58 @@ func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 
 
 
+// extractProxyPoolID trích xuất ID của proxy pool từ URL path hoặc query param
+func extractProxyPoolID(r *http.Request) string {
+	p := strings.TrimPrefix(r.URL.Path, "/api/proxy-pools/")
+	p = strings.TrimPrefix(p, "/api/proxy-pools")
+	p = strings.Trim(p, "/")
+	p = strings.TrimSpace(p)
+	if p != "" && p != "test" && p != "bind" && p != "switch" {
+		return p
+	}
+	if qID := strings.TrimSpace(r.URL.Query().Get("id")); qID != "" {
+		return qID
+	}
+	return ""
+}
+
 // HandleProxyPools trả về danh sách các proxy pools đã cấu hình (/api/proxy-pools)
 
+// UpsertProxyPool ho tro luu hoac cap nhat proxy pool tuong thich 100% tren ca TiDB Cloud lan SQLite
+func UpsertProxyPool(db *sql.DB, poolID string, isActive int, testStatus string, dataJSON string, now string) error {
+	if db == nil {
+		return nil
+	}
+	_, err := db.Exec(`
+		INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), test_status = VALUES(test_status), data = VALUES(data), updated_at = VALUES(updated_at)
+	`, poolID, isActive, testStatus, dataJSON, now, now)
+	if err != nil && (strings.Contains(err.Error(), "syntax error") || strings.Contains(err.Error(), "near \"ON\"") || strings.Contains(err.Error(), "near")) {
+		_, err = db.Exec(`
+			INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET is_active = excluded.is_active, test_status = excluded.test_status, data = excluded.data, updated_at = excluded.updated_at
+		`, poolID, isActive, testStatus, dataJSON, now, now)
+	}
+	return err
+}
+
+// HandleProxyPools quan ly toan dien cac proxy pools da cau hinh (/api/proxy-pools)
+// Ho tro day du: GET (danh sach), POST (tao moi), PUT (cap nhat), DELETE (xoa + cascade unbind)
 func HandleProxyPools(db *sql.DB) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-
-
 		if r.Method == http.MethodOptions {
-
 			w.WriteHeader(http.StatusOK)
-
 			return
-
 		}
 
-
-
-		// Kiểm tra kết nối mạng THẬT 100% tới Proxy URL (Tuân thủ triệt để PHẦN 9: CẤM DUMMY / MOCK)
+		// Kiem tra ket noi mang THAT 100% toi Proxy URL (Tuan thu triet de PHAN 9: CAM DUMMY / MOCK)
 		if strings.HasSuffix(r.URL.Path, "/test") {
 			targetURL := strings.TrimSpace(r.URL.Query().Get("url"))
 			if targetURL == "" {
@@ -3218,278 +3243,333 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 			}
 
 			if targetURL == "" {
-				http.Error(w, `{"ok":false,"status":"error","latencyMs":0,"elapsedMs":0,"error":"Vui lòng cung cấp URL proxy"}`, http.StatusBadRequest)
+				http.Error(w, `{"ok":false,"status":"error","latencyMs":0,"elapsedMs":0,"error":"Vui l?ng cung c?p URL proxy"}`, http.StatusBadRequest)
 				return
 			}
 
 			latencyMs, checkedTarget, err := TestRealProxyConnection(targetURL)
 			if err != nil {
-				log.Printf("[ENGINE] [PROXY-TEST] ❌ Proxy %s thất bại: %v", targetURL, err)
+				log.Printf("[ENGINE] [PROXY-TEST] ? Proxy %s th?t b?i: %v", targetURL, err)
 				w.WriteHeader(http.StatusBadGateway)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"ok":        false,
 					"status":    "error",
 					"latencyMs": 0,
 					"elapsedMs": 0,
-					"error":     fmt.Sprintf("Không thể kết nối qua proxy: %v", err),
-					"message":   "Proxy không phản hồi hoặc thông tin xác thực không chính xác",
+					"error":     fmt.Sprintf("Kh?ng th? k?t n?i qua proxy: %v", err),
+					"message":   "Proxy kh?ng ph?n h?i ho?c th?ng tin x?c th?c kh?ng ch?nh x?c",
 				})
 				return
 			}
 
-			log.Printf("[ENGINE] [PROXY-TEST] ✔ Proxy %s hoạt động tốt qua %s (%dms)", targetURL, checkedTarget, latencyMs)
+			log.Printf("[ENGINE] [PROXY-TEST] ? Proxy %s ho?t ??ng t?t qua %s (%dms)", targetURL, checkedTarget, latencyMs)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"ok":        true,
 				"status":    "active",
 				"latencyMs": latencyMs,
 				"elapsedMs": latencyMs,
 				"target":    checkedTarget,
-				"message":   fmt.Sprintf("Proxy hoạt động tốt (%dms)", latencyMs),
+				"message":   fmt.Sprintf("Proxy ho?t ??ng t?t (%dms)", latencyMs),
 			})
 			return
 		}
 
-
-
-		if r.Method == http.MethodPost {
-
-			var newPool struct {
-
-				ID       string `json:"id"`
-
-				Name     string `json:"name"`
-
-				ProxyURL string `json:"proxyUrl"`
-
-				Type     string `json:"type"`
-
-				IsActive *bool  `json:"isActive"`
-
+		// DELETE /api/proxy-pools/{id} hoac /api/proxy-pools?id={id} - Xoa vinh vien va cascade unbind
+		if r.Method == http.MethodDelete {
+			targetID := extractProxyPoolID(r)
+			if targetID == "" {
+				var bData struct {
+					ID string `json:"id"`
+				}
+				_ = json.NewDecoder(r.Body).Decode(&bData)
+				targetID = strings.TrimSpace(bData.ID)
 			}
-
-			if err := json.NewDecoder(r.Body).Decode(&newPool); err != nil {
-
-				http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
-
+			if targetID == "" {
+				http.Error(w, `{"error":"Thi?u ID c?a Proxy Pool c?n x?a"}`, http.StatusBadRequest)
 				return
-
 			}
 
-			poolID := newPool.ID
-
-			if poolID == "" {
-
-				poolID = generateUUID()
-
-			}
-
-			act := 1
-
-			if newPool.IsActive != nil && !*newPool.IsActive {
-
-				act = 0
-
-			}
-
-			poolData := map[string]interface{}{
-
-				"id":           poolID,
-
-				"name":         newPool.Name,
-
-				"proxyUrl":     newPool.ProxyURL,
-
-				"proxy_url":    newPool.ProxyURL,
-
-				"proxy":        newPool.ProxyURL,
-
-				"type":         newPool.Type,
-
-				"isActive":     act == 1,
-
-				"is_active":    act,
-
-				"testStatus":   "active",
-
-				"lastError":    nil,
-
-				"lastTestedAt": time.Now().Format(time.RFC3339),
-
-			}
-
-			bytesData, _ := json.Marshal(poolData)
-
+			var oldDataStr string
+			var oldProxyURL string
 			if db != nil {
+				_ = db.QueryRow("SELECT data FROM omni_proxy_pools WHERE id = ?", targetID).Scan(&oldDataStr)
+				if oldDataStr != "" {
+					var oldMap map[string]interface{}
+					if json.Unmarshal([]byte(oldDataStr), &oldMap) == nil {
+						if u, ok := oldMap["proxyUrl"].(string); ok {
+							oldProxyURL = u
+						} else if u, ok := oldMap["proxy_url"].(string); ok {
+							oldProxyURL = u
+						} else if u, ok := oldMap["proxy"].(string); ok {
+							oldProxyURL = u
+						}
+					}
+				}
 
-				_, _ = db.Exec(`
-
-					INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
-
-					VALUES (?, ?, 'active', ?, ?, ?)
-
-					ON DUPLICATE KEY UPDATE is_active = VALUES(is_active), data = VALUES(data), updated_at = VALUES(updated_at)
-
-				`, poolID, act, string(bytesData), NowISO(), NowISO())
-
+				if _, err := db.Exec("DELETE FROM omni_proxy_pools WHERE id = ?", targetID); err != nil {
+					log.Printf("[ENGINE] [PROXY-POOL] ? L?i x?a omni_proxy_pools: %v", err)
+					http.Error(w, fmt.Sprintf(`{"error":"L?i x?a c? s? d? li?u: %s"}`, err.Error()), http.StatusInternalServerError)
+					return
+				}
 			}
 
+			// Go lien ket (cascade unbind) khoi tat ca cac tai khoan AI dang dung Proxy Pool nay
+			unboundCount := 0
+			if db != nil {
+				providers, err := GetAllProviders(db)
+				if err == nil {
+					for _, p := range providers {
+						var pData map[string]interface{}
+						if json.Unmarshal(p.Data, &pData) == nil && pData != nil {
+							cPoolID, _ := pData["proxyPoolId"].(string)
+							cProxy, _ := pData["proxy"].(string)
+							cProxyURL, _ := pData["proxyUrl"].(string)
+							cConnProxyURL, _ := pData["connectionProxyUrl"].(string)
+
+							needReset := (cPoolID == targetID) ||
+								(oldProxyURL != "" && (cProxy == oldProxyURL || cProxyURL == oldProxyURL || cConnProxyURL == oldProxyURL))
+
+							if needReset {
+								pData["connectionProxyEnabled"] = false
+								pData["proxy"] = ""
+								pData["proxyUrl"] = ""
+								pData["connectionProxyUrl"] = ""
+								pData["proxyPoolId"] = ""
+								_ = UpdateProviderData(db, p.ID, pData)
+								unboundCount++
+							}
+						}
+					}
+				}
+				_, _ = db.Exec("DELETE FROM omni_kv WHERE scope = 'proxy_bind' AND val_data LIKE ?", "%"+targetID+"%")
+			}
+
+			log.Printf("[ENGINE] [PROXY-POOL] ? ?? x?a v?nh vi?n Proxy Pool %s (g? li?n k?t %d t?i kho?n)", targetID, unboundCount)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-
-				"success": true,
-
-				"id":      poolID,
-
-				"pool":    poolData,
-
-				"message": "Đã lưu Proxy Pool vào TiDB Cloud thành công",
-
+				"success":      true,
+				"ok":           true,
+				"id":           targetID,
+				"unboundCount": unboundCount,
+				"message":      fmt.Sprintf("?? x?a v?nh vi?n Proxy Pool v? t? ??ng g? li?n k?t kh?i %d t?i kho?n AI", unboundCount),
 			})
-
 			return
-
 		}
 
+		// PUT /api/proxy-pools/{id} hoac /api/proxy-pools - Cap nhat cau hinh Proxy Pool
+		if r.Method == http.MethodPut {
+			targetID := extractProxyPoolID(r)
+			var updateReq struct {
+				ID          string  `json:"id"`
+				Name        *string `json:"name"`
+				ProxyURL    *string `json:"proxyUrl"`
+				Type        *string `json:"type"`
+				IsActive    *bool   `json:"isActive"`
+				NoProxy     *string `json:"noProxy"`
+				StrictProxy *bool   `json:"strictProxy"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
+				http.Error(w, `{"error":"D? li?u JSON kh?ng h?p l?"}`, http.StatusBadRequest)
+				return
+			}
+			if targetID == "" {
+				targetID = strings.TrimSpace(updateReq.ID)
+			}
+			if targetID == "" {
+				http.Error(w, `{"error":"Thi?u ID c?a Proxy Pool c?n c?p nh?t"}`, http.StatusBadRequest)
+				return
+			}
 
+			var currentDataStr string
+			var currentActive int = 1
+			currentMap := make(map[string]interface{})
+			if db != nil {
+				if err := db.QueryRow("SELECT is_active, data FROM omni_proxy_pools WHERE id = ?", targetID).Scan(&currentActive, &currentDataStr); err == nil {
+					_ = json.Unmarshal([]byte(currentDataStr), &currentMap)
+				}
+			}
 
-		poolList := []map[string]interface{}{
+			if currentMap == nil {
+				currentMap = make(map[string]interface{})
+			}
+			currentMap["id"] = targetID
 
-			{
+			if updateReq.Name != nil {
+				currentMap["name"] = *updateReq.Name
+			}
+			if updateReq.ProxyURL != nil {
+				currentMap["proxyUrl"] = *updateReq.ProxyURL
+				currentMap["proxy_url"] = *updateReq.ProxyURL
+				currentMap["proxy"] = *updateReq.ProxyURL
+			}
+			if updateReq.Type != nil {
+				currentMap["type"] = *updateReq.Type
+			}
+			if updateReq.NoProxy != nil {
+				currentMap["noProxy"] = *updateReq.NoProxy
+			}
+			if updateReq.StrictProxy != nil {
+				currentMap["strictProxy"] = *updateReq.StrictProxy
+			}
+			if updateReq.IsActive != nil {
+				if *updateReq.IsActive {
+					currentActive = 1
+				} else {
+					currentActive = 0
+				}
+				currentMap["isActive"] = *updateReq.IsActive
+				currentMap["is_active"] = currentActive
+			}
 
-				"id":        "7d2a5888-2bb1-4c6e-8120-e2ef64dbcefa",
+			newBytes, _ := json.Marshal(currentMap)
+			now := NowISO()
+			if db != nil {
+				_ = UpsertProxyPool(db, targetID, currentActive, "active", string(newBytes), now)
+			}
 
-				"name":      "Viettel Static Clean (36.50.175.113)",
-
-				"proxy_url": "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
-
-				"proxyUrl":  "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
-
-				"proxy":     "http://VFSlnL:ldwKGZ@36.50.175.113:20329/",
-
-				"ip":        "36.50.175.113",
-
-				"port":      20329,
-
-				"label":     "Proxy: 36.50.175.113:20329",
-
-				"is_active": 1,
-
-				"isActive":  true,
-
-				"latency":   "42ms",
-
-			},
-
-			{
-
-				"id":        "42db42b6-7136-4c0c-8feb-20759c8e0946",
-
-				"name":      "VNPT Backup Pool (58.186.63.192)",
-
-				"proxy_url": "http://pyYXdt:QWfItD@58.186.63.192:18753/",
-
-				"proxyUrl":  "http://pyYXdt:QWfItD@58.186.63.192:18753/",
-
-				"proxy":     "http://pyYXdt:QWfItD@58.186.63.192:18753/",
-
-				"ip":        "58.186.63.192",
-
-				"port":      18753,
-
-				"label":     "Proxy: 58.186.63.192:18753",
-
-				"is_active": 1,
-
-				"isActive":  true,
-
-				"latency":   "58ms",
-
-			},
-
+			log.Printf("[ENGINE] [PROXY-POOL] ? ?? c?p nh?t c?u h?nh Proxy Pool %s", targetID)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"ok":      true,
+				"id":      targetID,
+				"pool":    currentMap,
+				"message": "?? c?p nh?t Proxy Pool th?nh c?ng",
+			})
+			return
 		}
 
+		// POST /api/proxy-pools - Them Proxy Pool moi
+		if r.Method == http.MethodPost {
+			var newPool struct {
+				ID          string `json:"id"`
+				Name        string `json:"name"`
+				ProxyURL    string `json:"proxyUrl"`
+				Type        string `json:"type"`
+				IsActive    *bool  `json:"isActive"`
+				NoProxy     string `json:"noProxy"`
+				StrictProxy bool   `json:"strictProxy"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&newPool); err != nil {
+				http.Error(w, `{"error":"D? li?u JSON kh?ng h?p l?"}`, http.StatusBadRequest)
+				return
+			}
+			poolID := newPool.ID
+			if poolID == "" {
+				poolID = generateUUID()
+			}
+			act := 1
+			if newPool.IsActive != nil && !*newPool.IsActive {
+				act = 0
+			}
+			poolData := map[string]interface{}{
+				"id":           poolID,
+				"name":         newPool.Name,
+				"proxyUrl":     newPool.ProxyURL,
+				"proxy_url":    newPool.ProxyURL,
+				"proxy":        newPool.ProxyURL,
+				"type":         newPool.Type,
+				"noProxy":      newPool.NoProxy,
+				"strictProxy":  newPool.StrictProxy,
+				"isActive":     act == 1,
+				"is_active":    act,
+				"testStatus":   "active",
+				"lastError":    nil,
+				"lastTestedAt": time.Now().Format(time.RFC3339),
+			}
+			bytesData, _ := json.Marshal(poolData)
+			if db != nil {
+				_ = UpsertProxyPool(db, poolID, act, "active", string(bytesData), NowISO())
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"id":      poolID,
+				"pool":    poolData,
+				"message": "?? l?u Proxy Pool v?o CSDL th?nh c?ng",
+			})
+			return
+		}
 
+		// GET /api/proxy-pools - Truy van danh sach thuc te tu co so du lieu (CAM HARDCODED DEMO / FALLBACK)
+		poolList := make([]map[string]interface{}, 0)
 
 		if db != nil {
-
-			rows, err := db.Query("SELECT id, is_active, data FROM omni_proxy_pools")
-
+			rows, err := db.Query("SELECT id, is_active, data FROM omni_proxy_pools ORDER BY created_at ASC")
 			if err == nil {
-
 				defer rows.Close()
-
-				var dbPools []map[string]interface{}
-
 				for rows.Next() {
-
 					var id string
-
 					var isActive int
-
 					var dataStr string
-
 					if scanErr := rows.Scan(&id, &isActive, &dataStr); scanErr == nil {
-
 						var item map[string]interface{}
-
 						_ = json.Unmarshal([]byte(dataStr), &item)
-
 						if item == nil {
-
 							item = make(map[string]interface{})
-
 						}
-
 						item["id"] = id
-
 						item["is_active"] = isActive
-
 						item["isActive"] = (isActive == 1)
-
 						pu := ""
-
 						if u, ok := item["proxyUrl"].(string); ok && u != "" {
-
 							pu = u
-
 						} else if u, ok := item["proxy_url"].(string); ok && u != "" {
-
 							pu = u
-
 						} else if u, ok := item["proxy"].(string); ok && u != "" {
-
 							pu = u
-
 						}
-
 						item["proxyUrl"] = pu
-
 						item["proxy_url"] = pu
-
 						item["proxy"] = pu
-
 						if _, ok := item["name"]; !ok || item["name"] == "" {
-
-							item["name"] = "Proxy Pool " + id[:8]
-
+							if len(id) >= 8 {
+								item["name"] = "Proxy Pool " + id[:8]
+							} else {
+								item["name"] = "Proxy Pool " + id
+							}
 						}
-
-						dbPools = append(dbPools, item)
-
+						poolList = append(poolList, item)
 					}
-
 				}
-
-				if len(dbPools) > 0 {
-
-					poolList = dbPools
-
-				}
-
 			}
 
+			// Dem so lien ket thuc te tu co so du lieu omni_providers
+			if len(poolList) > 0 {
+				providers, pErr := GetAllProviders(db)
+				if pErr == nil {
+					for idx := range poolList {
+						pID, _ := poolList[idx]["id"].(string)
+						pURL, _ := poolList[idx]["proxyUrl"].(string)
+						boundCount := 0
+						provSet := make(map[string]bool)
+
+						for _, prov := range providers {
+							var provData map[string]interface{}
+							if json.Unmarshal(prov.Data, &provData) == nil && provData != nil {
+								cPoolID, _ := provData["proxyPoolId"].(string)
+								cProxy, _ := provData["proxy"].(string)
+								cProxyURL, _ := provData["proxyUrl"].(string)
+								cConnProxyURL, _ := provData["connectionProxyUrl"].(string)
+
+								if (pID != "" && cPoolID == pID) ||
+									(pURL != "" && (cProxy == pURL || cProxyURL == pURL || cConnProxyURL == pURL)) {
+									boundCount++
+									provName := strings.ToUpper(prov.Provider)
+									if provName == "" {
+										provName = "AI"
+									}
+									provSet[provName] = true
+								}
+							}
+						}
+						poolList[idx]["boundConnectionCount"] = boundCount
+						provNames := make([]string, 0, len(provSet))
+						for pn := range provSet {
+							provNames = append(provNames, pn)
+						}
+						poolList[idx]["boundProviders"] = provNames
+					}
+				}
+			}
 		}
-
-
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":      "ok",
@@ -4491,7 +4571,7 @@ func HandleSettings(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
 
@@ -4731,7 +4811,7 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

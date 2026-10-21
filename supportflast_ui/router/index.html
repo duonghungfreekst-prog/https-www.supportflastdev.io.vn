@@ -24688,21 +24688,7 @@
 
         // Dự phòng nhận diện chính xác theo ID proxy từ LibSQL nếu danh sách tài khoản chưa nạp xong
 
-        if (boundCount === 0) {
-
-          if (pool.id === '42db42b6-7136-4c0c-8feb-20759c8e0946' || (pool.name && pool.name.includes('58.186.63.192'))) {
-
-            boundCount = 18;
-
-            boundProviders = ['ANTIGRAVITY'];
-
-          } else if (pool.id === '96684253-0dbb-471a-ad1f-6a1fb23a6213' || (pool.name && pool.name.includes('36.50.175.113'))) {
-
-            boundCount = 1;
-
-            boundProviders = ['ANTIGRAVITY'];
-
-          }
+        
 
         }
 
@@ -25055,6 +25041,14 @@
           throw new Error(result.error || 'Xóa proxy thất bại');
 
         }
+
+        
+        // X?a ngay l?p t?c kh?i b? nh? RAM v? l?u v?o cache b?n v?ng
+        window.__currentProxyPools = (window.__currentProxyPools || []).filter(p => p.id !== id);
+        try {
+          NexusStore.setItem('nexus_cached_proxy_pools', JSON.stringify(window.__currentProxyPools));
+        } catch (_) {}
+        renderProxyPoolsTable();
 
         showToastNotification(`Đã xóa Proxy Pool "${name}" khỏi cơ sở dữ liệu!`);
 
