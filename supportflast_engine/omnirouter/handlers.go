@@ -2073,11 +2073,8 @@ func HandleClientQuotaCLI(db *sql.DB) http.HandlerFunc {
 				w.Header().Set("Content-Disposition", `attachment; filename="run.bat"`)
 
 				activeKey := clientKey
-
 				if activeKey == "" {
-
-					activeKey = "sk-supportflastdev.io.vn-master-live"
-
+					activeKey = "YOUR_API_KEY_HERE"
 				}
 
 				batCode := fmt.Sprintf(`@echo off
@@ -2309,11 +2306,8 @@ pause
 				w.Header().Set("Content-Disposition", `attachment; filename="link.bat"`)
 
 				activeKey := clientKey
-
 				if activeKey == "" {
-
-					activeKey = "sk-supportflastdev.io.vn-master-live"
-
+					activeKey = "YOUR_API_KEY_HERE"
 				}
 
 				batCode := fmt.Sprintf(`@echo off

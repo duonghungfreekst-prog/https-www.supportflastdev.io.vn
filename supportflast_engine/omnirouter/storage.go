@@ -220,26 +220,9 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		_, _ = db.Exec(alterSQL)
 	}
 
-	// Dọn dẹp key cũ thừa thãi sk-9router-master-live theo yêu cầu
-	if _, errDel := db.Exec("DELETE FROM omni_client_keys WHERE id = 'key_master_legacy' OR api_key = 'sk-9router-master-live'"); errDel != nil {
-		log.Printf("[ENGINE] [STORAGE] ⚠️ Lỗi dọn dẹp key cũ: %v", errDel)
-	}
-
-	// Chỉ tạo Master Key mặc định nếu bảng omni_client_keys hoàn toàn RỖNG (khởi tạo lần đầu)
-	// Nếu người dùng đã chủ động xóa key, server TUYỆT ĐỐI không tự ý chèn lại
-	var totalKeysCount int
-	_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys").Scan(&totalKeysCount)
-	if totalKeysCount == 0 {
-		now := NowISO()
-		masterDomainKey := "sk-" + DefaultDomain + "-master-live"
-		masterDomainHash := HashString(masterDomainKey)
-		if _, errIns := db.Exec(`
-			INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
-			VALUES ('key_master_domain_cloud', 'Master Web Domain Key (`+DefaultDomain+`)', ?, ?, 0, 0, 1, ?, ?)
-		`, masterDomainKey, masterDomainHash, now, now); errIns != nil {
-			log.Printf("[ENGINE] [OMNIROUTER] ❌ Lỗi khởi tạo Master API Key ban đầu: %v", errIns)
-		}
-		log.Println("[ENGINE] [OMNIROUTER] ✔ Khởi tạo Master API Key ban đầu:", masterDomainKey)
+	// Dọn dẹp dứt điểm các key mặc định cố định thừa thãi (chặn đứng lỗ hổng P0)
+	if _, errDel := db.Exec("DELETE FROM omni_client_keys WHERE id IN ('key_master_legacy', 'key_master_domain_cloud') OR api_key LIKE '%master-live%'"); errDel != nil {
+		log.Printf("[ENGINE] [STORAGE] ⚠️ Lỗi dọn dẹp key mặc định cũ: %v", errDel)
 	}
 
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")

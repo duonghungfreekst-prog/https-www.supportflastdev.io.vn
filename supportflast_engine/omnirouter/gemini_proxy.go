@@ -1797,14 +1797,8 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		}
 
-		if activeKey == "" {
-
-			activeKey = "sk-supportflastdev.io.vn-master-live"
-
-		} else {
-
+		if activeKey != "" {
 			SetActiveClientKey(activeKey)
-
 		}
 
 		totTokens := promptTokens + completionTokens
@@ -2957,6 +2951,5 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 	}
 	return patched
 }
-
 
 
