@@ -524,3 +524,48 @@ func IsProduction() bool {
 	env := strings.ToLower(Get("ENV", "production"))
 	return env == "production" || env == "prod"
 }
+
+
+// ValidateProductionSecrets kiểm tra và từ chối khởi động nếu các secret nhạy cảm vẫn mang giá trị mẫu/mặc định trong Production
+func ValidateProductionSecrets() error {
+	if !IsProduction() {
+		return nil
+	}
+
+	jwtSecret := strings.TrimSpace(Get("JWT_SECRET", ""))
+	insecureJWTs := []string{
+		"",
+		"CHANGE_ME_RANDOM_SECRET_KEY_SUPPORTFLAST_2026",
+		"<GENERATE_SECURE_RANDOM_64_HEX_CHARACTERS>",
+		"default_secret",
+		"secret",
+		"123456",
+	}
+	for _, bad := range insecureJWTs {
+		if jwtSecret == bad || strings.HasPrefix(jwtSecret, "<GENERATE") || strings.Contains(strings.ToLower(jwtSecret), "change_me") {
+			return fmt.Errorf("JWT_SECRET mang giá trị mẫu hoặc chưa được thiết lập an toàn cho môi trường Production (%s). Bắt buộc phải là chuỗi ngẫu nhiên CSPRNG tối thiểu 32 ký tự.", jwtSecret)
+		}
+	}
+
+	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
+	insecurePass := []string{
+		"",
+		"Admin@2026!SupportFlast",
+		"<GENERATE_STRONG_RANDOM_PASSWORD_MIN_24_CHARS>",
+		"admin",
+		"password",
+		"123456",
+	}
+	for _, bad := range insecurePass {
+		if adminPass == bad || strings.HasPrefix(adminPass, "<GENERATE") {
+			return fmt.Errorf("ADMIN_PASSWORD đang sử dụng mật khẩu mặc định hoặc placeholder trong Production. Bắt buộc phải đổi sang mật khẩu mạnh ngẫu nhiên tối thiểu 16 ký tự.")
+		}
+	}
+
+	masterKey := strings.TrimSpace(Get("CLOUDPOOL_MASTER_KEY", ""))
+	if masterKey == "cloudpool_secure_master_key_2026" || strings.HasPrefix(masterKey, "<GENERATE") {
+		return fmt.Errorf("CLOUDPOOL_MASTER_KEY đang sử dụng khóa mẫu mặc định trong Production. Vui lòng tạo khóa AES-256 ngẫu nhiên 32-byte hex.")
+	}
+
+	return nil
+}

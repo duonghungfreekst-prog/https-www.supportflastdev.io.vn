@@ -450,6 +450,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ENGINE] Auto-Bootstrapping thất bại: %v", err)
 	}
+
+	// 1.1 Khởi động an toàn: Từ chối chạy nếu phát hiện secret mặc định / placeholder trong Production
+	if err := config.ValidateProductionSecrets(); err != nil {
+		log.Fatalf("[ENGINE] [SECURITY CRITICAL] %v", err)
+	}
 	dataDir := bootstrapResult.DataDir
 	dbPath := bootstrapResult.MainDBPath
 	storageDB := bootstrapResult.StorageDB

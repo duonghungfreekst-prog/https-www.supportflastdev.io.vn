@@ -23,17 +23,22 @@ def verify_internal_auth(request: Request) -> bool:
     if client_host == "testclient":
         return True
 
+    is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
+    if is_prod and not INTERNAL_SECRET:
+        logging.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET chưa được cấu hình trong Production! Từ chối toàn bộ request nội bộ.")
+        return False
+
     token = request.headers.get("X-Internal-Token") or ""
     if not token:
         auth_hdr = request.headers.get("Authorization") or ""
         if auth_hdr.lower().startswith("bearer "):
             token = auth_hdr[7:].strip()
 
-    if token and hmac.compare_digest(token, INTERNAL_SECRET):
+    if token and INTERNAL_SECRET and hmac.compare_digest(token, INTERNAL_SECRET):
         return True
 
-    # Cho phép localhost kết nối trong dev nếu không bật biến môi trường REQUIRE_INTERNAL_AUTH
-    if client_host in ("127.0.0.1", "::1", "localhost") and not os.getenv("REQUIRE_INTERNAL_AUTH"):
+    # Chỉ cho phép localhost trong môi trường dev khi KHÔNG phải production
+    if not is_prod and client_host in ("127.0.0.1", "::1", "localhost"):
         return True
 
     return False

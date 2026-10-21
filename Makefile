@@ -1,4 +1,4 @@
-# Makefile cho hệ thống SupportFlast (supportflast.dev.io.vn)
+﻿# Makefile cho hệ thống SupportFlast (supportflast.dev.io.vn)
 
 .PHONY: all build build-linux test clean docker docker-multiarch run pqc-test
 
@@ -12,8 +12,8 @@ build:
 	@echo "==> Build complete!"
 
 build-linux:
-	@echo "==> Cross-compiling Linux Binaries (amd64 & arm64)..."
-	cmd /c build_linux.bat
+	@echo "==> Cross-compiling Linux Binaries (amd64)..."
+	cd supportflast_engine && go build -ldflags="-s -w" -o ../bin/supportflast-linux-amd64 .
 
 
 test:
