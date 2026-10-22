@@ -1679,7 +1679,10 @@
                                 window.location.href = redirectUrl;
                                 return;
                             }
-                            alert(`Chào mừng ${data.user.display_name || data.user.username}! Bạn đã đăng ký và đăng nhập thành công.`);
+                            const welcomeName = (data.user && (data.user.display_name || data.user.username)) || 'Thành Viên Mới';
+                            if (typeof showStateToast === 'function') {
+                                showStateToast(`🎉 Chào mừng ${welcomeName}! Bạn đã đăng ký và đăng nhập thành công.`, '⭐', 3500);
+                            }
                         } else {
                             switchAuthTab('login');
                             const userInp = document.getElementById('admin-login-user');
@@ -1744,7 +1747,7 @@
 
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerText = 'Đang xác thực...';
+                submitBtn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px;vertical-align:middle;"></span> Đang xác thực...';
             }
 
             try {
@@ -1799,7 +1802,10 @@
                         window.location.href = redirectUrl;
                         return;
                     }
-                    alert(`Đăng nhập thành công! Chào mừng ${data.user.display_name || data.user.username} đã kích hoạt phiên làm việc.`);
+                    const welcomeName = (data.user && (data.user.display_name || data.user.username)) || 'Quản Trị Viên';
+                    if (typeof showStateToast === 'function') {
+                        showStateToast(`✅ Đăng nhập thành công! Chào mừng ${welcomeName} đã kích hoạt phiên làm việc.`, '⚡', 3500);
+                    }
                 } else {
                     if (errEl) {
                         errEl.textContent = (data && data.error) ? data.error : 'Tên đăng nhập hoặc mật khẩu không đúng';

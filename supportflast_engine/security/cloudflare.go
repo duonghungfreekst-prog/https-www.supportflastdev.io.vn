@@ -222,6 +222,17 @@ type TurnstileVerificationResult struct {
 	CData       string    `json:"cdata"`
 }
 
+var turnstileClient = &http.Client{
+	Timeout: 4 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 3 * time.Second,
+		DisableKeepAlives:   false,
+	},
+}
+
 // VerifyTurnstileToken xác thực token bảo vệ chống Bot của Cloudflare Turnstile
 func VerifyTurnstileToken(secretKey, token, remoteIP string, expectedAction ...string) (bool, error) {
 	token = strings.TrimSpace(token)
@@ -251,8 +262,7 @@ func VerifyTurnstileToken(secretKey, token, remoteIP string, expectedAction ...s
 		data.Set("remoteip", remoteIP)
 	}
 
-	client := &http.Client{Timeout: 6 * time.Second}
-	resp, err := client.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", data)
+	resp, err := turnstileClient.PostForm("https://challenges.cloudflare.com/turnstile/v0/siteverify", data)
 	if err != nil {
 		return false, fmt.Errorf("không thể kết nối tới Cloudflare Turnstile: %w", err)
 	}

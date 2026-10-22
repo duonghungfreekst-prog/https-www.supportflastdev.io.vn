@@ -1052,12 +1052,17 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Cập nhật last login vào SQLite
-	_ = UpdateUserLastLogin(foundUser.ID)
-	foundUser.LastLogin = time.Now().Format(time.RFC3339)
+	// Cập nhật last login vào SQLite bất đồng bộ (Zero Critical Path Latency)
+	nowStr := time.Now().Format(time.RFC3339)
+	foundUser.LastLogin = nowStr
+	go func(uid string) {
+		_ = UpdateUserLastLogin(uid)
+	}(foundUser.ID)
 
-	// Lưu vết đăng nhập thành công vào audit_logs
-	_ = database.RecordAuditLog(foundUser.ID, database.AuditActionLoginSuccess, clientIP, r.UserAgent(), fmt.Sprintf("Đăng nhập thành công với vai trò: %s", foundUser.Role))
+	// Lưu vết đăng nhập thành công vào audit_logs bất đồng bộ
+	go func(uid, ip, ua, role string) {
+		_ = database.RecordAuditLog(uid, database.AuditActionLoginSuccess, ip, ua, fmt.Sprintf("Đăng nhập thành công với vai trò: %s", role))
+	}(foundUser.ID, clientIP, r.UserAgent(), foundUser.Role)
 
 	token := CreateSession(*foundUser)
 	if foundUser.Role == "admin" {
