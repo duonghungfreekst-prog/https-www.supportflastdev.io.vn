@@ -75,10 +75,9 @@ const AuthManager = {
         this.currentUser = me;
         API.setCurrentUser(me);
         if (me.role === 'admin' || me.username === 'admin') {
-          // CHỈ MỞ KHÓA ADMIN NẾU TAB HIỆN TẠI ĐÃ ĐƯỢC XÁC THỰC
-          const hasSession = sessionStorage.getItem('cloudpool_admin_session') === 'true';
-          App.isAdminUnlocked = hasSession;
-          localStorage.removeItem('cloudpool_admin_session');
+          // Mở khóa quyền Quản Trị Viên khi máy chủ xác thực thành công phiên làm việc SSO
+          App.isAdminUnlocked = true;
+          sessionStorage.setItem('cloudpool_admin_session', 'true');
         } else {
           App.isAdminUnlocked = false;
           sessionStorage.removeItem('cloudpool_admin_session');
@@ -270,15 +269,13 @@ const AuthManager = {
   },
 
   openLoginModal() {
-    // Bắt buộc xác thực qua Cổng Đăng Nhập Trang Chính (SSO)
-    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = '/?auth=login&redirect=' + returnUrl;
+    // Bắt buộc đăng nhập tập trung qua Trang Chủ (SSO) - chuyển thẳng về trang chủ
+    window.location.href = '/';
   },
 
   openRegisterModal() {
-    // Bắt buộc xác thực/đăng ký qua Cổng Đăng Nhập Trang Chính (SSO)
-    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = '/?auth=register&redirect=' + returnUrl;
+    // Bắt buộc đăng ký tập trung qua Trang Chủ (SSO) - chuyển thẳng về trang chủ
+    window.location.href = '/';
   },
 
   openAdminAddUserModal() {

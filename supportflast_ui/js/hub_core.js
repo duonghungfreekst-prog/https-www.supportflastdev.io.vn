@@ -1056,24 +1056,16 @@
             const lastAdminAct = parseInt(localStorage.getItem('sf_admin_last_activity') || sessionStorage.getItem('auth_last_activity') || '0', 10);
             const isIdleTimeout = lastAdminAct > 0 && (Date.now() - lastAdminAct > AUTH_MAX_IDLE_MS);
 
-            // 2. Kiểm tra phiên của tab hiện tại:
-            // QUY TẮC BẢO MẬT: Tab mới mở (không có sessionStorage) HOẶC đã quá 15 phút không hoạt động
-            // thì TUYỆT ĐỐI KHÔNG TỰ ĐỘNG ĐĂNG NHẬP VÀO ADMIN TỪ COOKIE NỀN!
-            const tabHasAdminSession = sessionStorage.getItem('cloudpool_admin_session') === 'true';
-
-            if (!tabHasAdminSession || isIdleTimeout) {
-                if (isIdleTimeout) {
-                    console.warn('[AUTH] Phiên Quản Trị Viên đã hết hạn do không hoạt động quá 15 phút.');
-                }
-                // Hủy bỏ phiên và xóa sạch tàn dư
+            if (isIdleTimeout) {
+                console.warn('[AUTH] Phiên Quản Trị Viên đã hết hạn do không hoạt động quá 15 phút.');
                 await purgeClientAuth();
                 updateAdminUI(false, null);
                 return;
             }
 
-            // 3. Nếu tab này ĐÃ CÓ phiên admin hợp lệ (vừa đăng nhập trong tab này và chưa quá 15 phút):
+            // 2. Xác thực trực tiếp với máy chủ qua Cookie SSO (cloudpool_token / sf_auth_token)
             try {
-                const token = sessionStorage.getItem('cloudpool_jwt_token') || '';
+                const token = sessionStorage.getItem('cloudpool_jwt_token') || localStorage.getItem('cloudpool_jwt_token') || '';
                 const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
                 
@@ -1094,19 +1086,16 @@
                         return;
                     } else {
                         // User thường hoặc không đủ quyền Admin
-                        await purgeClientAuth();
                         updateAdminUI(false, user);
                         return;
                     }
                 } else {
-                    // Máy chủ báo 401 hoặc lỗi -> Xóa phiên triệt để
-                    await purgeClientAuth();
+                    // Phiên không hợp lệ hoặc chưa đăng nhập: hiển thị giao diện Khách
                     updateAdminUI(false, null);
                     return;
                 }
             } catch(e) {
                 console.warn('[AUTH] Không thể kết nối server xác thực, hạ cấp về trạng thái an toàn:', e);
-                await purgeClientAuth();
                 updateAdminUI(false, null);
             }
         }
@@ -1842,16 +1831,11 @@
         function checkUrlAuthParams() {
             try {
                 const p = new URLSearchParams(window.location.search);
-                const authMode = p.get('auth');
-                const isLogin = p.get('login') === '1' || p.get('login') === 'true';
-                if (authMode === 'login' || isLogin) {
-                    setTimeout(() => {
-                        if (typeof openAuthModal === 'function') openAuthModal('login');
-                    }, 200);
-                } else if (authMode === 'register') {
-                    setTimeout(() => {
-                        if (typeof openAuthModal === 'function') openAuthModal('register');
-                    }, 200);
+                if (p.has('auth') || p.has('login') || p.has('redirect')) {
+                    // Bắt buộc làm sạch URL về trang chủ sạch sẽ, không lưu các param xác thực rời rạc
+                    try {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    } catch (_) {}
                 }
             } catch (_) {}
         }
