@@ -553,6 +553,7 @@ func ReserveClientKeyQuota(db *sql.DB, apiKey string) (bool, string) {
 		res, err := db.Exec(`
 			UPDATE omni_client_keys 
 			SET used_requests = used_requests + 1,
+			    is_active = CASE WHEN quota_limit > 0 AND (used_requests + 1) >= quota_limit THEN 0 ELSE 1 END,
 			    last_used_at = ?
 			WHERE api_key = ? 
 			  AND is_active = 1 

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,8 +22,24 @@ import (
 var (
 	rrCounter          uint64
 	accountCooldownMap sync.Map // connId -> time.Time
-	chatHTTPClient     = &http.Client{
-		Timeout: 300 * time.Second,
+	chatTransport      = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 60 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		DisableKeepAlives:     false,
+		MaxIdleConns:          500,
+		MaxIdleConnsPerHost:   100, // Tối ưu Keep-Alive: tái sử dụng kết nối TLS sẵn có cho mỗi provider AI
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 120 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	chatHTTPClient = &http.Client{
+		Transport: chatTransport,
+		Timeout:   300 * time.Second,
 	}
 )
 
@@ -1084,6 +1101,9 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 			quotaCommitted = true // Upstream stream bắt đầu thành công -> Xác nhận trừ Quota
 
 			flusher, isFlusher := w.(http.Flusher)
+			if isFlusher {
+				flusher.Flush() // Fast-Flush ngay lập tức gửi header SSE xuống client
+			}
 			reader := bufio.NewReader(resp.Body)
 
 			for {

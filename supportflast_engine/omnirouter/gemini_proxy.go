@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 
 
@@ -1829,7 +1829,8 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		// 1. Cập nhật số lượt gọi (used_requests) và số token tiêu thụ cho Active Client Key
 
-		RecordKeyUsageAsync(db, activeKey, 1, totTokens)
+		// used_requests đã được giữ chỗ nguyên tử trong ReserveClientKeyQuota, ở đây truyền 0 để tránh trừ đúp quota
+		RecordKeyUsageAsync(db, activeKey, 0, totTokens)
 
 
 
