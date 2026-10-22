@@ -220,6 +220,10 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 		_, _ = db.Exec(alterSQL)
 	}
 
+	// Migration cho PostgreSQL: Đảm bảo cột id của omni_usage_history có sequence tự tăng nếu thiếu
+	_, _ = db.Exec("CREATE SEQUENCE IF NOT EXISTS omni_usage_history_id_seq;")
+	_, _ = db.Exec("ALTER TABLE omni_usage_history ALTER COLUMN id SET DEFAULT nextval('omni_usage_history_id_seq');")
+
 	// Dọn dẹp dứt điểm các key mặc định cố định thừa thãi (chặn đứng lỗ hổng P0)
 	if _, errDel := db.Exec("DELETE FROM omni_client_keys WHERE id IN ('key_master_legacy', 'key_master_domain_cloud') OR api_key LIKE '%master-live%'"); errDel != nil {
 		log.Printf("[ENGINE] [STORAGE] ⚠️ Lỗi dọn dẹp key mặc định cũ: %v", errDel)
