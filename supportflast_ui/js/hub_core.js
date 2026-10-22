@@ -1683,6 +1683,13 @@
                             updateAdminUI(isAdmin, data.user);
                             const modal = document.getElementById('admin-login-modal');
                             if (modal) modal.style.display = 'none';
+                            
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const redirectUrl = urlParams.get('redirect');
+                            if (redirectUrl && (redirectUrl.startsWith('/') || redirectUrl.startsWith(window.location.origin))) {
+                                window.location.href = redirectUrl;
+                                return;
+                            }
                             alert(`Chào mừng ${data.user.display_name || data.user.username}! Bạn đã đăng ký và đăng nhập thành công.`);
                         } else {
                             switchAuthTab('login');
@@ -1796,6 +1803,13 @@
                     recordAuthActivity();
                     updateAdminUI(isAdmin, data.user);
                     document.getElementById('admin-login-modal').style.display = 'none';
+                    
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const redirectUrl = urlParams.get('redirect');
+                    if (redirectUrl && (redirectUrl.startsWith('/') || redirectUrl.startsWith(window.location.origin))) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
                     alert(`Đăng nhập thành công! Chào mừng ${data.user.display_name || data.user.username} đã kích hoạt phiên làm việc.`);
                 } else {
                     if (errEl) {
@@ -1824,9 +1838,33 @@
             }
         }
 
+        // Tự động kiểm tra tham số URL mở modal đăng nhập SSO từ các phân hệ (như /storage/)
+        function checkUrlAuthParams() {
+            try {
+                const p = new URLSearchParams(window.location.search);
+                const authMode = p.get('auth');
+                const isLogin = p.get('login') === '1' || p.get('login') === 'true';
+                if (authMode === 'login' || isLogin) {
+                    setTimeout(() => {
+                        if (typeof openAuthModal === 'function') openAuthModal('login');
+                    }, 200);
+                } else if (authMode === 'register') {
+                    setTimeout(() => {
+                        if (typeof openAuthModal === 'function') openAuthModal('register');
+                    }, 200);
+                }
+            } catch (_) {}
+        }
+
         // Tự động kiểm tra phiên xác thực quản trị viên khi nạp trang
-        window.addEventListener('DOMContentLoaded', verifyAdminAuth);
-        window.addEventListener('load', verifyAdminAuth);
+        window.addEventListener('DOMContentLoaded', () => {
+            verifyAdminAuth();
+            checkUrlAuthParams();
+        });
+        window.addEventListener('load', () => {
+            verifyAdminAuth();
+            checkUrlAuthParams();
+        });
 
         /* Modal Cấu Hình Tên Miền & WAF */
         function openDomainModal(tab) {

@@ -4,102 +4,8 @@
 
 const AuthManager = {
   currentUser: null,
-  turnstileWidgetId: null,
-  turnstileToken: '',
-  turnstileSiteKey: '0x4AAAAAAFNOQjeERzGCn47f',
-  turnstileEnabled: true,
-  turnstileRetryCount: 0,
-  turnstileFailed: false,
-
-  async fetchTurnstileConfig() {
-    try {
-      const res = await fetch('/api/auth/turnstile-config');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.site_key) this.turnstileSiteKey = data.site_key;
-        this.turnstileEnabled = (data.enabled !== false);
-        const container = document.getElementById('cf-turnstile-storage-login');
-        if (container) {
-          container.classList.remove('cf-turnstile-clean');
-          if (!this.turnstileEnabled) {
-            container.style.display = 'none';
-          }
-        }
-      }
-    } catch (_) {}
-  },
-
-  renderTurnstile() {
-    if (!this.turnstileEnabled) {
-      const container = document.getElementById('cf-turnstile-storage-login');
-      if (container) container.style.display = 'none';
-      return;
-    }
-    const container = document.getElementById('cf-turnstile-storage-login');
-    if (!container) return;
-
-    // Giới hạn số lần thử lại tối đa 10 lần (3 giây) để chống treo vô tận nếu script bị chặn/offline
-    if (typeof turnstile === 'undefined') {
-      this.turnstileRetryCount = (this.turnstileRetryCount || 0) + 1;
-      if (this.turnstileRetryCount <= 10) {
-        setTimeout(() => this.renderTurnstile(), 300);
-        return;
-      }
-      console.warn('[TURNSTILE] Script Cloudflare Turnstile không tải được hoặc bị chặn (Adblock/Offline/Localhost). Kích hoạt cơ chế an toàn.');
-      this.turnstileFailed = true;
-      const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
-      const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-      if (isTestKey || isLocalhost) {
-        this.turnstileToken = 'XXXX.DUMMY.TOKEN.XXXX';
-        container.innerHTML = '<span style="font-size: 11px; color: var(--accent-green); display: flex; align-items: center; gap: 4px;">🛡️ Xác thực an toàn (Chế độ tự động / Localhost)</span>';
-      }
-      return;
-    }
-
-    if (this.turnstileWidgetId !== null) {
-      try { turnstile.reset(this.turnstileWidgetId); } catch (_) {}
-      this.turnstileToken = '';
-      return;
-    }
-
-    try {
-      this.turnstileWidgetId = turnstile.render('#cf-turnstile-storage-login', {
-        sitekey: this.turnstileSiteKey,
-        action: 'login',
-        theme: 'dark',
-        size: 'normal',
-        callback: (token) => {
-          this.turnstileToken = token;
-          this.turnstileFailed = false;
-        },
-        'expired-callback': () => {
-          this.turnstileToken = '';
-        },
-        'error-callback': (errorCode) => {
-          console.warn('[TURNSTILE] Storage login error-callback, code:', errorCode);
-          this.turnstileFailed = true;
-          const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
-          const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-          if (isTestKey || isLocalhost) {
-            this.turnstileToken = 'XXXX.DUMMY.TOKEN.XXXX';
-            if (container) {
-              container.innerHTML = '<span style="font-size: 11px; color: var(--accent-green); display: flex; align-items: center; gap: 4px;">🛡️ Xác thực an toàn (Bypass Test/Localhost)</span>';
-            }
-          } else {
-            this.turnstileToken = '';
-          }
-        }
-      });
-    } catch (e) {
-      console.warn('[TURNSTILE] Storage login render err:', e);
-      this.turnstileFailed = true;
-      const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
-      const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-      if (isTestKey || isLocalhost) {
-        this.turnstileToken = 'XXXX.DUMMY.TOKEN.XXXX';
-      }
-    }
-  },
+  // Đã gỡ bỏ toàn bộ chống bot Cloudflare Turnstile ở phía lưu trữ.
+  // Bắt buộc 100% xác thực tập trung qua Trang Chính (SSO).
 
   recordActivity() {
     try {
@@ -125,7 +31,6 @@ const AuthManager = {
 
   async init() {
     this.bindEvents();
-    this.fetchTurnstileConfig();
 
     // Lắng nghe tín hiệu đồng bộ đăng xuất từ tab khác
     try {
@@ -245,83 +150,12 @@ const AuthManager = {
       });
     }
 
-    // Login Form Submit (Chỉ duy nhất Đăng Nhập Tài Khoản)
-    const formLogin = document.getElementById('form-login');
-    if (formLogin) {
-      formLogin.addEventListener('submit', async (e) => {
+    // Chuyển hướng xác thực qua Cổng Đăng Nhập Trang Chính (SSO)
+    const btnRedirectLogin = document.getElementById('btn-redirect-main-login');
+    if (btnRedirectLogin) {
+      btnRedirectLogin.addEventListener('click', (e) => {
         e.preventDefault();
-        const username = document.getElementById('login-username').value.trim();
-        const password = document.getElementById('login-password').value;
-
-        let logToken = this.turnstileToken;
-        if (!logToken && typeof turnstile !== 'undefined' && this.turnstileWidgetId !== null) {
-          try {
-            logToken = turnstile.getResponse(this.turnstileWidgetId);
-          } catch (_) {}
-        }
-
-        const isTestKey = !this.turnstileSiteKey || this.turnstileSiteKey.startsWith('1x');
-        const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-
-        // Fallback an toàn: Nếu đang dùng testing sitekey (1x...) hoặc Turnstile bị chặn/lỗi/timeout
-        if (!logToken && (isTestKey || isLocalhost || this.turnstileFailed || typeof turnstile === 'undefined')) {
-          logToken = 'XXXX.DUMMY.TOKEN.XXXX';
-        }
-
-        if (this.turnstileEnabled && !logToken) {
-          Toast.error('Vui lòng xác thực mã chống Bot (Cloudflare Turnstile) trước khi đăng nhập!');
-          return;
-        }
-
-        const submitBtn = document.getElementById('btn-login-submit');
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Đang đăng nhập...';
-        }
-
-        try {
-          const res = await API.login(username, password, logToken);
-          const userData = (res && res.user) ? res.user : res;
-          this.currentUser = userData;
-          API.setCurrentUser(userData);
-          if (res.token) {
-            API.setToken(res.token);
-          }
-          this.recordActivity();
-          this.closeAuthModal();
-          this.updateUserUI();
-
-          // If admin, auto-unlock admin mode
-          if (userData.role === 'admin' || userData.username === 'admin') {
-            App.isAdminUnlocked = true;
-            sessionStorage.setItem('cloudpool_admin_session', 'true');
-            localStorage.setItem('cloudpool_admin_session', 'true');
-          } else {
-            App.isAdminUnlocked = false;
-            sessionStorage.removeItem('cloudpool_admin_session');
-            localStorage.removeItem('cloudpool_admin_session');
-          }
-
-          App.applyAdminState();
-          if (typeof FilesManager !== 'undefined') {
-            FilesManager.resetToRoot();
-          }
-          Toast.success(`Chào mừng trở lại, ${userData.display_name || userData.username}!`);
-        } catch (err) {
-          Toast.error(err.message);
-          if (typeof turnstile !== 'undefined' && this.turnstileWidgetId !== null) {
-            try { turnstile.reset(this.turnstileWidgetId); } catch (_) {}
-            this.turnstileToken = '';
-          }
-          if (isTestKey || isLocalhost || this.turnstileFailed) {
-            this.turnstileToken = 'XXXX.DUMMY.TOKEN.XXXX';
-          }
-        } finally {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Đăng Nhập';
-          }
-        }
+        this.openLoginModal();
       });
     }
 
@@ -436,18 +270,15 @@ const AuthManager = {
   },
 
   openLoginModal() {
-    const modal = document.getElementById('modal-auth');
-    if (modal) modal.classList.add('active');
-    this.turnstileRetryCount = 0;
-    this.turnstileFailed = false;
-    this.fetchTurnstileConfig().then(() => {
-      setTimeout(() => this.renderTurnstile(), 60);
-    });
+    // Bắt buộc xác thực qua Cổng Đăng Nhập Trang Chính (SSO)
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = '/?auth=login&redirect=' + returnUrl;
   },
 
   openRegisterModal() {
-    // Đã bỏ hoàn toàn đăng ký công khai - chuyển sang đăng nhập
-    this.openLoginModal();
+    // Bắt buộc xác thực/đăng ký qua Cổng Đăng Nhập Trang Chính (SSO)
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = '/?auth=register&redirect=' + returnUrl;
   },
 
   openAdminAddUserModal() {

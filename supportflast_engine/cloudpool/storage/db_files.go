@@ -391,7 +391,7 @@ func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFi
 	// Thay vì chạy N câu truy vấn đệ quy CTE (N+1 query) gây nghẽn mạng tới TiDB Cloud qua Internet,
 	// chỉ cần thực hiện 1 truy vấn duy nhất lấy danh sách active public shares:
 	shareQuery := `
-	SELECT ps.file_id, COALESCE(vf.is_dir, 0) 
+	SELECT ps.file_id, CASE WHEN vf.is_dir THEN 1 ELSE 0 END 
 	FROM public_shares ps 
 	LEFT JOIN virtual_files vf ON ps.file_id = vf.id 
 	WHERE ps.is_active = 1 

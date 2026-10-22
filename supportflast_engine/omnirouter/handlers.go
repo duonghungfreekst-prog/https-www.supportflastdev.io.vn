@@ -2658,7 +2658,7 @@ pause
 
 		sb.WriteString(fmt.Sprintf("[Ping Latency]: %dms (Phan hoi may chu Gateway)\n", elapsed))
 
-		sb.WriteString(fmt.Sprintf("[TiDB Cloud]  : Dong bo phan tan • Quan ly %d API Keys da tao\n", len(summaries)))
+		sb.WriteString(fmt.Sprintf("[Aiven Cloud] : Dong bo phan tan • Quan ly %d API Keys da tao\n", len(summaries)))
 
 		// Khối thông tin API Key hiện tại
 
@@ -5569,7 +5569,7 @@ func HandleHealth(w http.ResponseWriter, r *http.Request) {
 
 		"uptime": time.Since(serverStartTime).String(),
 
-		"database": "TiDB Cloud Serverless (MySQL Protocol)",
+		"database": "Aiven PostgreSQL Cloud (Multi-AZ)",
 
 		"libsql": "removed",
 
@@ -5657,7 +5657,7 @@ func HandleSettings(db *sql.DB) http.HandlerFunc {
 
 				"success": true,
 
-				"message": "Đã lưu cấu hình cài đặt vào CSDL TiDB Cloud thành công",
+				"message": "Đã lưu cấu hình cài đặt vào CSDL Aiven PostgreSQL thành công",
 			})
 
 			return
@@ -6325,7 +6325,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 				if err := SetOmniKV(db, "combos", cID, string(bytesData)); err != nil {
 
-					http.Error(w, fmt.Sprintf(`{"error":"Lỗi lưu vào TiDB Cloud: %v"}`, err), http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf(`{"error":"Lỗi lưu vào Aiven PostgreSQL: %v"}`, err), http.StatusInternalServerError)
 
 					return
 
@@ -6339,7 +6339,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 				"status": "ok",
 
-				"message": "Đã lưu cấu hình Phân Tầng Dự Phòng Combo vào TiDB Cloud thành công",
+				"message": "Đã lưu cấu hình Phân Tầng Dự Phòng Combo vào Aiven PostgreSQL thành công",
 
 				"id": cID,
 
@@ -6364,7 +6364,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 				if err != nil {
 
-					http.Error(w, fmt.Sprintf(`{"error":"Lỗi xóa khỏi TiDB Cloud: %v"}`, err), http.StatusInternalServerError)
+					http.Error(w, fmt.Sprintf(`{"error":"Lỗi xóa khỏi Aiven PostgreSQL: %v"}`, err), http.StatusInternalServerError)
 
 					return
 
@@ -6378,7 +6378,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 				"status": "ok",
 
-				"message": fmt.Sprintf("Đã xóa vĩnh viễn Combo [%s] khỏi TiDB Cloud", targetID),
+				"message": fmt.Sprintf("Đã xóa vĩnh viễn Combo [%s] khỏi Aiven PostgreSQL", targetID),
 			})
 
 			return
@@ -6884,9 +6884,9 @@ func HandleBackup(w http.ResponseWriter, r *http.Request) {
 
 		"status": "ok",
 
-		"engine": "TiDB Cloud Serverless",
+		"engine": "Aiven PostgreSQL Multi-AZ",
 
-		"message": "Cơ sở dữ liệu lưu trữ trực tiếp trên TiDB Cloud Serverless có cơ chế tự động snapshot đa vùng (Multi-AZ).",
+		"message": "Cơ sở dữ liệu lưu trữ trực tiếp trên Aiven PostgreSQL có cơ chế tự động snapshot đa vùng (Multi-AZ).",
 
 		"lastBackup": time.Now().Format(time.RFC3339),
 	})
@@ -6977,7 +6977,7 @@ func HandleClientAppDownload() http.HandlerFunc {
 
 		}
 
-		w.Header().Set("Content-Disposition", `attachment; filename="OmniRouter_TiDB_Cloud_v2.9.0.zip"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="OmniRouter_Desktop_Gateway_v2.9.0.zip"`)
 
 		w.Header().Set("Content-Type", "application/zip")
 

@@ -15,6 +15,18 @@ func init() {
 	sql.Register("pgcompat", &pgCompatDriver{parent: &pq.Driver{}})
 }
 
+var (
+	reReplaceOmniSettings = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_settings"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`)
+	reReplaceOmniKV       = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_kv"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`)
+	reBoolEqZero          = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*0\b`)
+	reBoolEqOne           = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*1\b`)
+	reBoolNeqZero         = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*0\b`)
+	reBoolNeqOne          = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*1\b`)
+	reZeroEqBool          = regexp.MustCompile(`(?i)\b0\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
+	reOneEqBool           = regexp.MustCompile(`(?i)\b1\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
+	reCoalesceIsDir       = regexp.MustCompile(`(?i)\bCOALESCE\s*\(\s*((?:[a-zA-Z0-9_]+\.)?is_dir)\s*,\s*0\s*\)`)
+)
+
 // RebindPostgres chuyển đổi câu lệnh SQL tương thích PostgreSQL:
 // 1. Chuyển placeholder '?' thành '$1', '$2', '$3'... (bỏ qua '?' trong chuỗi string literal và comment)
 // 2. Chuyển dấu backtick `column` thành "column"
@@ -28,14 +40,27 @@ func RebindPostgres(query string) string {
 
 	// Xử lý REPLACE INTO cho omni_settings
 	if strings.Contains(strings.ToLower(q), "replace into omni_settings") || strings.Contains(strings.ToLower(q), "replace into \"omni_settings\"") {
-		q = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_settings"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`).
-			ReplaceAllString(q, `INSERT INTO "omni_settings" ($1) VALUES ($2) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`)
+		q = reReplaceOmniSettings.ReplaceAllString(q, `INSERT INTO "omni_settings" ($1) VALUES ($2) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`)
 	}
 
 	// Xử lý REPLACE INTO cho omni_kv
 	if strings.Contains(strings.ToLower(q), "replace into omni_kv") || strings.Contains(strings.ToLower(q), "replace into \"omni_kv\"") {
-		q = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_kv"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`).
-			ReplaceAllString(q, `INSERT INTO "omni_kv" ($1) VALUES ($2) ON CONFLICT (scope, key_name) DO UPDATE SET val_data = EXCLUDED.val_data`)
+		q = reReplaceOmniKV.ReplaceAllString(q, `INSERT INTO "omni_kv" ($1) VALUES ($2) ON CONFLICT (scope, key_name) DO UPDATE SET val_data = EXCLUDED.val_data`)
+	}
+
+	// Xử lý kiểu BOOLEAN cho PostgreSQL (virtual_files: is_deleted, is_dir, is_encrypted, has_missing_chunks)
+	lowerQ := strings.ToLower(q)
+	if strings.Contains(lowerQ, "is_deleted") ||
+		strings.Contains(lowerQ, "is_dir") ||
+		strings.Contains(lowerQ, "is_encrypted") ||
+		strings.Contains(lowerQ, "has_missing_chunks") {
+		q = reBoolEqZero.ReplaceAllString(q, "${1} = FALSE")
+		q = reBoolEqOne.ReplaceAllString(q, "${1} = TRUE")
+		q = reBoolNeqZero.ReplaceAllString(q, "${1} = TRUE")
+		q = reBoolNeqOne.ReplaceAllString(q, "${1} = FALSE")
+		q = reZeroEqBool.ReplaceAllString(q, "FALSE = ${1}")
+		q = reOneEqBool.ReplaceAllString(q, "TRUE = ${1}")
+		q = reCoalesceIsDir.ReplaceAllString(q, "CASE WHEN ${1} = TRUE THEN 1 ELSE 0 END")
 	}
 
 	// Xử lý INSERT IGNORE INTO hoặc INSERT OR IGNORE INTO
