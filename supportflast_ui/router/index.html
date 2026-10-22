@@ -813,6 +813,23 @@
     html.desktop-mode .desktop-hide-tab {
       display: none !important;
     }
+
+    /* Ché độ Chỉ Hiện Hình Nền (Zen Wallpaper-Only Mode) */
+    body.zen-wallpaper-mode #main-app-container,
+    body.zen-wallpaper-mode #nexus-main-layout {
+      display: none !important;
+    }
+    body.zen-wallpaper-mode #nexus-app-wallpaper {
+      opacity: 0.95 !important;
+    }
+    body.zen-wallpaper-mode #nexus-app-overlay {
+      opacity: 0.20 !important;
+    }
+    body.zen-wallpaper-mode #nexus-titlebar {
+      background: rgba(2, 5, 13, 0.40) !important;
+      backdrop-filter: blur(8px) !important;
+      border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+    }
   </style>
 
 </head>
@@ -869,7 +886,7 @@
 
   <!-- ==================== CỬA SỔ TITLEBAR (CHO WEBVIEW2 / WPF NATIVE) ==================== -->
 
-  <div class="h-9 w-full bg-[#02050D] border-b border-white/5 flex items-center justify-between px-3 select-none flex-shrink-0 z-50 cursor-default"
+  <div id="nexus-titlebar" class="h-9 w-full bg-[#02050D] border-b border-white/5 flex items-center justify-between px-3 select-none flex-shrink-0 z-50 cursor-default"
 
        ondblclick="sendHostAction('maximize')"
 
@@ -32685,6 +32702,41 @@
     
 </script>
 
+  <!-- Floating Zen Status Badge / Toggle (Bán trong suốt, siêu nhỏ gọn) -->
+  <div id="zen-mode-badge" onclick="toggleZenWallpaperMode()" class="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md border border-emerald-500/40 text-emerald-400 text-xs font-mono shadow-[0_0_15px_rgba(16,185,129,0.25)] cursor-pointer transition-all duration-300 group select-none" title="Bấm để chuyển đổi giữa Chế độ Hình Nền và Bảng điều khiển">
+    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+    <span class="font-bold tracking-wider">ONLINE :20128</span>
+    <span class="text-slate-400">|</span>
+    <span class="text-cyan-300">2ms – 5ms</span>
+    <span id="zen-toggle-text" class="text-[11px] text-slate-300 ml-1 opacity-70 group-hover:opacity-100 transition-opacity">👁️ Hiện thông tin</span>
+  </div>
+
+  <script>
+    function toggleZenWallpaperMode() {
+      const isZen = document.body.classList.toggle('zen-wallpaper-mode');
+      try {
+        localStorage.setItem('modelrouter9_zen_mode', isZen ? 'true' : 'false');
+      } catch (_) {}
+      const textEl = document.getElementById('zen-toggle-text');
+      if (textEl) {
+        textEl.textContent = isZen ? '👁️ Hiện thông tin' : '🖼️ Chỉ hiện hình nền';
+      }
+    }
+
+    // Khởi tạo Chế độ Chỉ Hiện Hình Nền (Mặc định: Bật để chỉ hiện hình nền)
+    (function initZenWallpaperMode() {
+      const saved = localStorage.getItem('modelrouter9_zen_mode');
+      if (saved === null || saved === 'true') {
+        document.body.classList.add('zen-wallpaper-mode');
+        const textEl = document.getElementById('zen-toggle-text');
+        if (textEl) textEl.textContent = '👁️ Hiện thông tin';
+      } else {
+        document.body.classList.remove('zen-wallpaper-mode');
+        const textEl = document.getElementById('zen-toggle-text');
+        if (textEl) textEl.textContent = '🖼️ Chỉ hiện hình nền';
+      }
+    })();
+  </script>
 </body>
 
 </html>
