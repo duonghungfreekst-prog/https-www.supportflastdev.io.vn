@@ -10,12 +10,12 @@ export default {
     // Chuyển tiếp các cuộc gọi API và WebDAV về máy chủ backend SupportFlast trên Render
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/webdav')) {
       const targetUrl = new URL(request.url);
-      targetUrl.hostname = 'supportflastdev-io-vn.onrender.com';
+      targetUrl.hostname = 'https-www-supportflastdev-io-vn.onrender.com';
       targetUrl.protocol = 'https:';
       targetUrl.port = '';
 
       const newHeaders = new Headers(request.headers);
-      newHeaders.set('Host', 'supportflastdev-io-vn.onrender.com');
+      newHeaders.set('Host', 'https-www-supportflastdev-io-vn.onrender.com');
       newHeaders.set('X-Forwarded-Host', url.hostname);
       newHeaders.set('X-Forwarded-Proto', url.protocol.replace(':', ''));
 
