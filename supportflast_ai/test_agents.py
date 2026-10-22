@@ -84,5 +84,15 @@ class TestSubagents(unittest.TestCase):
             results.append(r)
         self.assertEqual(len(results), 10)
 
+    def test_dispatch_concurrent_method(self):
+        """Kiểm tra gọi đồng thời 10 subagents qua ThreadPoolExecutor và kiểm tra độ trễ."""
+        res = self.dispatcher.dispatch_concurrent("Kiểm tra sức khỏe toàn bộ hệ thống phân tán")
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["total_agents"], 10)
+        self.assertIn("wall_clock_ms", res)
+        self.assertIn("p95_ms", res)
+        # Độ trễ toàn bộ batch phải dưới 500ms
+        self.assertLess(res["wall_clock_ms"], 500.0)
+
 if __name__ == "__main__":
     unittest.main()

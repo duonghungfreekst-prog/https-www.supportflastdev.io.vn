@@ -12,7 +12,8 @@ namespace OmniRouter.Views;
 
 public partial class MainWindow : Window
 {
-    private static System.Diagnostics.Process? _nodeBackendProcess;
+    private static System.Diagnostics.Process? _nodeBackendProcess;
+    private TrayIconManager? _trayIconManager;
 
     #region Win32 Native Drag & Drop và Khung Hình Đa Màn Hình
     [DllImport("user32.dll")]
@@ -75,12 +76,25 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         var source = (System.Windows.Interop.HwndSource?)PresentationSource.FromVisual(this);
-        source?.AddHook(WndProc);
+        source?.AddHook(WndProc);
+        try
+        {
+            _trayIconManager?.Initialize(this);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [ERROR] Khởi tạo khay hệ thống: {ex.Message}");
+        }
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WM_GETMINMAXINFO)
+        if (msg == TrayIconManager.WM_TRAYICON)
+        {
+            _trayIconManager?.HandleTrayMessage(lParam);
+            handled = true;
+        }
+        else if (msg == WM_GETMINMAXINFO)
         {
             WmGetMinMaxInfo(hwnd, lParam);
             handled = true;
@@ -158,7 +172,17 @@ public partial class MainWindow : Window
         {
             Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] Không thể nạp file icon: {ex.Message}");
         }
-        Loaded += OnMainWindowLoaded;
+        try
+        {
+            _trayIconManager = new TrayIconManager();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [ERROR] Khởi tạo TrayIconManager: {ex.Message}");
+        }
+
+        ContentRendered += OnMainWindowLoaded;
+        Closing += OnMainWindowClosing;
         Closed += OnMainWindowClosed;
         StateChanged += OnWindowStateChanged;
 
@@ -173,10 +197,21 @@ public partial class MainWindow : Window
         // TUYỆT ĐỐI KHÔNG tự động mở Gateway/Engine khi mở app. Chỉ chạy khi người dùng chủ động bật.
     }
 
+    private void OnMainWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_trayIconManager != null && !_trayIconManager.IsExiting)
+        {
+            e.Cancel = true;
+            _trayIconManager.MinimizeToTray(showNotification: true);
+            Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [TRAY] Cửa sổ được đóng -> Chuyển sang chạy ẩn dưới khay hệ thống.");
+        }
+    }
+
     private void OnMainWindowClosed(object? sender, EventArgs e)
     {
         try
         {
+            _trayIconManager?.Dispose();
             _healthCheckTimer?.Stop();
             if (_nodeBackendProcess != null && !_nodeBackendProcess.HasExited)
             {
@@ -986,6 +1021,12 @@ public partial class MainWindow : Window
 
     private void OnWindowStateChanged(object? sender, EventArgs e)
     {
+        if (WindowState == WindowState.Minimized)
+        {
+            _trayIconManager?.MinimizeToTray(showNotification: true);
+            return;
+        }
+
         if (RootBorder != null)
         {
             if (WindowState == WindowState.Maximized)
@@ -1001,10 +1042,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnMainWindowLoaded(object sender, RoutedEventArgs e)
+    // Cờ trạng thái khởi tạo giao diện
+    private bool _isWebViewInitialized = false;
+
+    private async void OnMainWindowLoaded(object? sender, EventArgs e)
+    // Entry point an toàn từ ContentRendered
     {
         try
         {
+            if (_isWebViewInitialized) return;
+            _isWebViewInitialized = true;
+
             string root = GetProjectRoot();
             string cacheFolder = System.IO.Path.Combine(root, "data", "cache", "webview2");
             if (!System.IO.Directory.Exists(cacheFolder))
@@ -1014,6 +1062,20 @@ public partial class MainWindow : Window
 
             var options = new CoreWebView2EnvironmentOptions("--disable-pinch --disable-features=TouchpadAndWheelScrollLatching,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessRespectPreflightResults,PrivateNetworkAccessSendPreflights --disable-web-security --allow-running-insecure-content");
             var env = await CoreWebView2Environment.CreateAsync(null, cacheFolder, options);
+            if (!AppWebView.IsLoaded)
+            {
+                var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                RoutedEventHandler? loadedHandler = null;
+                loadedHandler = (s, args) =>
+                {
+                    AppWebView.Loaded -= loadedHandler;
+                    tcs.TrySetResult(true);
+                };
+                AppWebView.Loaded += loadedHandler;
+                await System.Threading.Tasks.Task.WhenAny(tcs.Task, System.Threading.Tasks.Task.Delay(1500));
+            }
+            await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+
             await AppWebView.EnsureCoreWebView2Async(env);
 
             // Vô hiệu hóa hoàn toàn tính năng Zoom to/nhỏ bằng Ctrl + Con lăn chuột & Pinch-to-zoom
@@ -1228,7 +1290,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [ERROR] Lỗi khởi tạo WebView2: {ex.Message}");
+            Console.Error.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [ERROR] Lỗi khởi tạo WebView2: {ex}\nStackTrace:\n{ex.StackTrace}");
             System.Windows.MessageBox.Show(
                 $"Lỗi khởi tạo Microsoft Edge WebView2: {ex.Message}\n\nỨng dụng yêu cầu Microsoft Edge WebView2 Evergreen Runtime để hiển thị giao diện.\nVui lòng tải và cài đặt WebView2 Runtime từ Microsoft để sử dụng.",
                 "OmniRouter - Lỗi Khởi Tạo Giao Diện",
@@ -1526,11 +1588,31 @@ public partial class MainWindow : Window
             {
                 switch (lowerAction)
                 {
+                    case "minimizetotray":
+                        _trayIconManager?.MinimizeToTray(showNotification: true);
+                        break;
+                    case "restorefromtray":
+                        _trayIconManager?.RestoreFromTray();
+                        break;
                     case "close":
-                        Close();
+                        if (_trayIconManager != null && !_trayIconManager.IsExiting)
+                        {
+                            _trayIconManager.MinimizeToTray(showNotification: true);
+                        }
+                        else
+                        {
+                            Close();
+                        }
                         break;
                     case "minimize":
-                        WindowState = WindowState.Minimized;
+                        if (_trayIconManager != null)
+                        {
+                            _trayIconManager.MinimizeToTray(showNotification: true);
+                        }
+                        else
+                        {
+                            WindowState = WindowState.Minimized;
+                        }
                         break;
                     case "maximize":
                         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
