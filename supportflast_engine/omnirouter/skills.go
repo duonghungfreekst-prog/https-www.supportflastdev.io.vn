@@ -603,11 +603,17 @@ func DeepScanActiveSkills() (int, []*ActiveSkillRecord) {
 		}
 	}
 
-	resultList := make([]*ActiveSkillRecord, 0)
-	for _, v := range activeSkillsMap {
-		if v.IsActive {
-			resultList = append(resultList, v)
-		}
+	resultList := make([]*ActiveSkillRecord, 0, len(allSkills))
+	seenMap := make(map[string]bool)
+	for _, sk := range allSkills {
+	normID := normalizeSkillID(sk.ID)
+	if seenMap[normID] {
+		continue
+	}
+	seenMap[normID] = true
+	if rec, ok := activeSkillsMap[normID]; ok && rec.IsActive {
+		resultList = append(resultList, rec)
+	}
 	}
 
 	return len(resultList), resultList

@@ -5326,67 +5326,35 @@
 
 
             <!-- Toolbar Tìm kiếm & Bộ Lọc Đa Nhóm -->
-
-            <div class="pt-2 border-t border-white/10 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-
-              <!-- Ô tìm kiếm tức thời & Nút Quét Live -->
-
-              <div class="flex items-center gap-2 flex-1 max-w-lg">
-
-                <div class="relative flex-1">
-
-                  <input type="text" id="skills-search-input" oninput="searchSkillsLive(this.value)" placeholder="🔍 Tìm kiếm kỹ năng (tên, id, tags, mô tả...)" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono">
-
-                  <button onclick="clearSkillsSearch()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs">&times;</button>
-
+            <div class="pt-3 border-t border-white/10 flex flex-col gap-3">
+              <!-- Hàng 1: Ô tìm kiếm tức thời & Nút Quét Live (Độc lập, rộng rãi) -->
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+                <div class="relative flex-1 max-w-2xl min-w-[240px]">
+                  <input type="text" id="skills-search-input" oninput="searchSkillsLive(this.value)" placeholder="🔍 Tìm kiếm kỹ năng (tên, id, tags, mô tả...)" class="w-full pl-4 pr-9 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono shadow-inner">
+                  <button onclick="clearSkillsSearch()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs cursor-pointer" title="Xóa tìm kiếm">&times;</button>
                 </div>
-
-                <button id="btn-scan-skills-live" onclick="triggerScanSkillsLive()" title="Quét sâu lưu lượng thời gian thực, phiên Antigravity IDE và plugins cục bộ" class="px-3.5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] shrink-0">
-
+                <button id="btn-scan-skills-live" onclick="triggerScanSkillsLive()" title="Quét sâu lưu lượng thời gian thực, phiên Antigravity IDE và plugins cục bộ" class="px-4 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] shrink-0 whitespace-nowrap">
                   <span id="scan-skills-icon">⚡</span>
-
-                  <span class="hidden sm:inline">Quét Kỹ Năng Live</span>
-
-                  <span class="sm:hidden">Quét Live</span>
-
+                  <span>Quét Kỹ Năng Live</span>
                 </button>
-
               </div>
 
-
-
-              <!-- Thanh nút phân loại Category Tabs -->
-
-              <div class="flex items-center gap-1.5 flex-wrap overflow-x-auto pb-1 text-xs font-mono">
-
-                <button id="skill-filter-btn-all" onclick="filterSkillsCategory('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Tất Cả (149)</button>
-
-                <button id="skill-filter-btn-active" onclick="filterSkillsCategory('active')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 flex items-center gap-1.5 transition-all">
-
+              <!-- Hàng 2: Thanh nút phân loại 10 Nhóm Category Tabs (Độc lập, thoáng đẹp) -->
+              <div class="flex items-center gap-2 flex-wrap pt-2 border-t border-white/5 text-xs font-mono">
+                <button id="skill-filter-btn-all" onclick="filterSkillsCategory('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 cursor-pointer">Tất Cả (149)</button>
+                <button id="skill-filter-btn-active" onclick="filterSkillsCategory('active')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 flex items-center gap-1.5 transition-all cursor-pointer">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-
-                  🟢 Đang Kích Hoạt (<span id="skills-active-count-btn">0</span>)
-
+                  🟢 Đang Kích Hoạt (<span id="skills-active-count-btn">149</span>)
                 </button>
-
-                <button id="skill-filter-btn-core" onclick="filterSkillsCategory('core')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🛠️ Cốt Lõi</button>
-
-                <button id="skill-filter-btn-agent" onclick="filterSkillsCategory('agent')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🤖 AI & Agent</button>
-
-                <button id="skill-filter-btn-ui" onclick="filterSkillsCategory('ui')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🎨 UI/UX</button>
-
-                <button id="skill-filter-btn-mobile" onclick="filterSkillsCategory('mobile')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">📱 Mobile & Tools</button>
-
-                <button id="skill-filter-btn-data" onclick="filterSkillsCategory('data')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">📊 Cloud & Data</button>
-
-                <button id="skill-filter-btn-security" onclick="filterSkillsCategory('security')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🛡️ An Ninh PQC</button>
-
-                <button id="skill-filter-btn-science" onclick="filterSkillsCategory('science')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🧬 Khoa Học Bio</button>
-
-                <button id="skill-filter-btn-multimodal" onclick="filterSkillsCategory('multimodal')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">🎙️ Media AI</button>
-
+                <button id="skill-filter-btn-core" onclick="filterSkillsCategory('core')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🛠️ Cốt Lõi</button>
+                <button id="skill-filter-btn-agent" onclick="filterSkillsCategory('agent')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🤖 AI & Agent</button>
+                <button id="skill-filter-btn-ui" onclick="filterSkillsCategory('ui')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🎨 UI/UX</button>
+                <button id="skill-filter-btn-mobile" onclick="filterSkillsCategory('mobile')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">📱 Mobile & Tools</button>
+                <button id="skill-filter-btn-data" onclick="filterSkillsCategory('data')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">📊 Cloud & Data</button>
+                <button id="skill-filter-btn-security" onclick="filterSkillsCategory('security')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🛡️ An Ninh PQC</button>
+                <button id="skill-filter-btn-science" onclick="filterSkillsCategory('science')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🧬 Khoa Học Bio</button>
+                <button id="skill-filter-btn-multimodal" onclick="filterSkillsCategory('multimodal')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white cursor-pointer">🎙️ Media AI</button>
               </div>
-
             </div>
 
           </div>
@@ -23756,17 +23724,15 @@
 
         // Đếm chính xác số lượng kỹ năng độc nhất đang tích hợp thực tế
 
-        const distinctActiveIDs = new Set(
-
-          Object.values(_activeSkillsMap)
-
-            .filter(s => s && s.isActive && s.id)
-
-            .map(s => String(s.id).toLowerCase().replace(/_/g, '-'))
-
+        // Đồng bộ chuẩn xác số lượng kỹ năng active theo đúng 149 kỹ năng của hệ thống
+        const activeCount = Math.min(
+          SKILLS_DATABASE.length,
+          SKILLS_DATABASE.filter(s => {
+            const norm = String(s.id).toLowerCase().replace(/_/g, '-');
+            const rec = _activeSkillsMap[s.id] || _activeSkillsMap[norm];
+            return !rec || rec.isActive !== false;
+          }).length
         );
-
-        const activeCount = distinctActiveIDs.size;
 
 
 
@@ -23853,17 +23819,15 @@
 
 
 
-          const distinctActiveIDs = new Set(
-
-            Object.values(_activeSkillsMap)
-
-              .filter(s => s && s.isActive && s.id)
-
-              .map(s => s.id.toLowerCase().replace(/_/g, '-'))
-
-          );
-
-          const activeCount = distinctActiveIDs.size;
+          // Đồng bộ chuẩn xác số lượng kỹ năng active theo đúng 149 kỹ năng của hệ thống
+        const activeCount = Math.min(
+          SKILLS_DATABASE.length,
+          SKILLS_DATABASE.filter(s => {
+            const norm = String(s.id).toLowerCase().replace(/_/g, '-');
+            const rec = _activeSkillsMap[s.id] || _activeSkillsMap[norm];
+            return !rec || rec.isActive !== false;
+          }).length
+        );
 
 
 
