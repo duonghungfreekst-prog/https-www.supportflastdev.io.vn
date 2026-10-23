@@ -1,4 +1,4 @@
-﻿package omnirouter
+package omnirouter
 
 import (
 	"bytes"
@@ -388,7 +388,9 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 			}
 		}
 
-		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 
 		// Phá»¥c vá»¥ Gzip nÃ©n sáºµn trá»±c tiáº¿p tá»« RAM náº¿u client há»— trá»£
 		if len(routerGzipBytes) > 0 && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

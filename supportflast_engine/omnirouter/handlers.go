@@ -7175,5 +7175,5 @@ func HandleV1Base(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"online","gateway":"SupportFlast ModelRouter9 Gateway","version":"v2.9.1","message":"Gateway API v1 is active and ready to process OpenAI-compatible requests.","base_url":"http://127.0.0.1:20128/v1","endpoints":{"chat_completions":"/v1/chat/completions","models":"/v1/models","audio_transcriptions":"/v1/audio/transcriptions","dashboard":"/router/"}}`))
+	_, _ = w.Write([]byte(`{"status":"online","gateway":"SupportFlast ModelRouter9 Gateway","version":"v2.9.2","message":"Gateway API v1 is active and ready to process OpenAI-compatible requests.","base_url":"http://127.0.0.1:20128/v1","endpoints":{"chat_completions":"/v1/chat/completions","models":"/v1/models","audio_transcriptions":"/v1/audio/transcriptions","dashboard":"/router/"}}`))
 }
