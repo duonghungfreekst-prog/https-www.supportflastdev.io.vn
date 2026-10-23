@@ -2727,27 +2727,31 @@ func isAccountClaudeReady(acc *ProviderConnection) bool {
 	if acc == nil {
 		return false
 	}
-	if cached, ok := GetCachedQuotas(acc.ID); ok && len(cached) > 0 {
-		if q, has := cached["claude_gpt_weekly"]; has && q.RemainingPercentage <= 0.0 {
+	// Kiểm tra nếu tài khoản đang bị cooldown
+	if cdUntil, hasCd := accountCooldownMap.Load(acc.ID); hasCd {
+		if t, ok := cdUntil.(time.Time); ok && time.Now().Before(t) {
 			return false
 		}
-		if q, has := cached["claude_gpt_session"]; has && q.RemainingPercentage <= 0.0 {
-			return false
+	}
+	// Lấy từ cache RAM
+	if cached, ok := GetCachedQuotas(acc.ID); ok && len(cached) > 0 {
+		for _, key := range []string{"claude-sonnet-4-6", "claude_weekly", "claude_gpt_weekly", "claude_session", "claude_gpt_session"} {
+			if q, has := cached[key]; has && q.RemainingPercentage <= 0.0 {
+				return false
+			}
 		}
 		return true
 	}
+	// Lấy từ DB JSON
 	if len(acc.Data) > 0 {
 		var dataMap map[string]interface{}
 		if err := json.Unmarshal(acc.Data, &dataMap); err == nil && dataMap != nil {
 			if qMap, ok := dataMap["quotas"].(map[string]interface{}); ok && qMap != nil {
-				if cWeekly, ok := qMap["claude_gpt_weekly"].(map[string]interface{}); ok && cWeekly != nil {
-					if rem, ok := cWeekly["remainingPercentage"].(float64); ok && rem <= 0.0 {
-						return false
-					}
-				}
-				if cSession, ok := qMap["claude_gpt_session"].(map[string]interface{}); ok && cSession != nil {
-					if rem, ok := cSession["remainingPercentage"].(float64); ok && rem <= 0.0 {
-						return false
+				for _, key := range []string{"claude-sonnet-4-6", "claude_weekly", "claude_gpt_weekly", "claude_session", "claude_gpt_session"} {
+					if sub, ok := qMap[key].(map[string]interface{}); ok && sub != nil {
+						if rem, ok := sub["remainingPercentage"].(float64); ok && rem <= 0.0 {
+							return false
+						}
 					}
 				}
 			}
@@ -3051,6 +3055,54 @@ func GetDefaultVirtualAggregatedQuota() []byte {
 func GetDefaultAvailableModels() []byte {
 	return []byte(`{
   "models": {
+    "gemini-3.8-flash-medium": {
+      "displayName": "Gemini 3.8 Flash (Medium)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gemini-3.8-flash-high": {
+      "displayName": "Gemini 3.8 Flash (High)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gemini-3.8-flash-low": {
+      "displayName": "Gemini 3.8 Flash (Low)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "claude-sonnet-4-6": {
+      "displayName": "Claude Sonnet 4.6 (Thinking)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "claude-opus-4-6-thinking": {
+      "displayName": "Claude Opus 4.6 (Thinking)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gpt-oss-120b-medium": {
+      "displayName": "GPT-OSS 120B (Medium)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
     "gemini-3.1-pro-high": {
       "displayName": "Gemini 3.1 Pro (High)",
       "isInternal": false,
@@ -3075,16 +3127,8 @@ func GetDefaultAvailableModels() []byte {
         "resetTime": "2026-10-30T00:00:00Z"
       }
     },
-    "gemini-3.8-flash-high": {
-      "displayName": "Gemini 2.5 Flash",
-      "isInternal": false,
-      "quotaInfo": {
-        "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
-      }
-    },
-    "claude-sonnet-4-6": {
-      "displayName": "Claude 3.5 Sonnet",
+    "4-argon": {
+      "displayName": "Gemini 4 Argon",
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
