@@ -29941,7 +29941,7 @@
       const quotas = [];
 
       const uData = item.usageData;
-      const qMap = uData ? (uData.quotas || (uData.gemini_session ? uData : null)) : null;
+      const qMap = (uData && (uData.quotas || (uData.gemini_session ? uData : null))) || (item.quotas || null);
       const isLoaded = Boolean(qMap);
 
       if (item.provider === 'antigravity' || item.provider === 'google') {
@@ -30161,30 +30161,46 @@
       const spinEl = document.getElementById('quota-global-spin');
       if (spinEl) spinEl.classList.add('animate-spin');
 
-      try {
-        // Kiểm tra nhanh token Quản Trị Viên trên môi trường Web Cloud
-        let adminToken = '';
-        try {
-          adminToken = (
-            sessionStorage.getItem('cloudpool_jwt_token') ||
-            localStorage.getItem('cloudpool_jwt_token') ||
-            localStorage.getItem('sf_admin_token') ||
-            localStorage.getItem('omnirouter_web_key') ||
-            ''
-          ).trim();
-        } catch (_) {}
-
-        if (!IS_DESKTOP_ENV && !adminToken) {
-          _quotaAuthError = true;
-          _quotaAccountsList = [];
-          renderQuotaCards();
-          return;
+      // 🚀 BƯỚC 0: INSTANT CACHE RENDER (<5ms)
+      // Nếu _quotaAccountsList đang rỗng, dùng ngay cache trong RAM/localStorage để người dùng thấy ngay danh sách
+      if (!_quotaAccountsList || _quotaAccountsList.length === 0) {
+        let preloaded = [];
+        if (Array.isArray(window._allConnectionsList) && window._allConnectionsList.length > 0) {
+          preloaded = window._allConnectionsList;
+        } else {
+          try {
+            const rawCached = localStorage.getItem('omnirouter_cached_connections');
+            if (rawCached) {
+              const parsed = JSON.parse(rawCached);
+              if (Array.isArray(parsed) && parsed.length > 0) preloaded = parsed;
+            }
+          } catch (_) {}
         }
 
-        // Áp dụng Timeout Guard 2.5 giây cho API lấy danh sách providers
-        const res = await fetchWithTimeoutGuard(apiRequest('/api/providers', { timeout: 2500 }), 2500);
+        if (preloaded.length > 0) {
+          _quotaAccountsList = preloaded.map(conn => {
+            let cachedQuotas = conn.quotas || null;
+            if (!cachedQuotas && conn.data) {
+              try {
+                const d = typeof conn.data === 'string' ? JSON.parse(conn.data) : conn.data;
+                if (d && d.quotas) cachedQuotas = d.quotas;
+              } catch (_) {}
+            }
+            return {
+              ...conn,
+              usageData: { quotas: cachedQuotas }
+            };
+          });
+          _quotaAuthError = false;
+          renderQuotaCards();
+        }
+      }
 
-        // Xử lý ngay trường hợp 401 Unauthorized / 403 Forbidden (chưa đăng nhập Admin trên Web)
+      try {
+        // Áp dụng apiRequest lấy danh sách providers (hỗ trợ cả Cookie Web và x-9r-cli-token, timeout 8000ms)
+        const res = await apiRequest('/api/providers', { timeout: 8000 });
+
+        // Xử lý khi thực sự 401 Unauthorized / 403 Forbidden
         if (res && (res.status === 401 || res.status === 403 || res.isAuthError || res.code === 'UNAUTHORIZED')) {
           _quotaAuthError = true;
           _quotaAccountsList = [];
@@ -30193,25 +30209,29 @@
         }
 
         let data = null;
-        const cType = res.headers?.get('content-type') || '';
-        if (cType.includes('application/json')) {
-          data = await res.json().catch(() => null);
-        }
-        if (!data) {
-          const rawText = await res.text().catch(() => '');
-          try {
-            data = JSON.parse(rawText);
-          } catch (_) {
-            if (!res.ok) {
-              if (res.status === 401 || res.status === 403) {
-                _quotaAuthError = true;
-                _quotaAccountsList = [];
-                renderQuotaCards();
-                return;
+        if (res && typeof res.json === 'function') {
+          const cType = res.headers?.get('content-type') || '';
+          if (cType.includes('application/json')) {
+            data = await res.json().catch(() => null);
+          }
+          if (!data && typeof res.text === 'function') {
+            const rawText = await res.text().catch(() => '');
+            try {
+              data = JSON.parse(rawText);
+            } catch (_) {
+              if (!res.ok) {
+                if (res.status === 401 || res.status === 403) {
+                  _quotaAuthError = true;
+                  _quotaAccountsList = [];
+                  renderQuotaCards();
+                  return;
+                }
+                throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
               }
-              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
             }
           }
+        } else if (res && typeof res === 'object') {
+          data = res;
         }
         if (!data) data = {};
 
@@ -30226,20 +30246,45 @@
         // Đã xác thực thành công
         _quotaAuthError = false;
 
-        const connections = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : []);
+        let connections = [];
+        if (Array.isArray(data)) {
+          connections = data;
+        } else if (data && Array.isArray(data.connections) && data.connections.length > 0) {
+          connections = data.connections;
+        } else if (data && Array.isArray(data.providers) && data.providers.length > 0) {
+          connections = data.providers;
+        } else if (data && Array.isArray(data.data) && data.data.length > 0) {
+          connections = data.data;
+        }
 
-        // Lọc các kết nối tài khoản (antigravity, google, codex, oauth...)
-        const trackable = connections.filter(c => c && (c.provider === 'antigravity' || c.provider === 'google' || c.provider === 'codex' || c.authType === 'oauth' || c.email));
+        // Lưu cache toàn cục
+        if (connections.length > 0) {
+          window._allConnectionsList = connections;
+          try {
+            localStorage.setItem('omnirouter_cached_connections', JSON.stringify(connections));
+          } catch (_) {}
+        }
+
+        // Lọc các kết nối tài khoản có thể theo dõi hạn mức
+        const trackable = connections.filter(c => c && (
+          c.provider === 'antigravity' ||
+          c.provider === 'google' ||
+          c.provider === 'codex' ||
+          c.authType === 'oauth' ||
+          c.email ||
+          c.quotas ||
+          c.id
+        ));
 
         // 🚀 BƯỚC 1: CACHE-FIRST INSTANT DISPLAY - RENDER THẺ NGAY LẬP TỨC (<50ms)
         // Lấy ngay dữ liệu quota đã được lưu sẵn trong CSDL PostgreSQL/RAM của từng tài khoản
         _quotaAccountsList = trackable.map(conn => {
-          let cachedQuotas = null;
-          if (conn.data) {
+          let cachedQuotas = conn.quotas || null;
+          if (!cachedQuotas && conn.data) {
             try {
               const d = typeof conn.data === 'string' ? JSON.parse(conn.data) : conn.data;
               if (d && d.quotas) cachedQuotas = d.quotas;
-            } catch(e) {}
+            } catch (_) {}
           }
           return {
             ...conn,
@@ -30250,15 +30295,9 @@
         // Vẽ ngay toàn bộ thẻ tài khoản lên lưới - Loại bỏ 100% tình trạng kẹt spinner quay tròn!
         renderQuotaCards();
 
-        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (4s)
-        let quotasMap = {};
-        let batchLoaded = false;
-
+        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (6s)
         try {
-          const batchRes = await fetchWithTimeoutGuard(
-            apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`, { timeout: 4000 }),
-            4000
-          );
+          const batchRes = await apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`, { timeout: 6000 });
 
           if (batchRes && (batchRes.status === 401 || batchRes.status === 403 || batchRes.isAuthError || batchRes.code === 'UNAUTHORIZED')) {
             _quotaAuthError = true;
@@ -30269,47 +30308,23 @@
           if (batchRes && batchRes.ok) {
             const batchData = await batchRes.json().catch(() => null);
             if (batchData && (batchData.accountData || batchData.results)) {
-              quotasMap = batchData.accountData || batchData.results;
-              batchLoaded = true;
+              const quotasMap = batchData.accountData || batchData.results;
+              _quotaAccountsList = trackable.map(conn => {
+                const refreshed = quotasMap[conn.id];
+                const existing = conn.quotas || (conn.data && typeof conn.data === 'object' ? conn.data.quotas : null);
+                return {
+                  ...conn,
+                  usageData: { quotas: refreshed || existing }
+                };
+              });
+              renderQuotaCards();
             }
           }
         } catch (e) {
-          console.warn("Batch quota fetch ngầm từ Google (hoặc timeout 4s):", e.message || e);
+          console.warn("Batch quota fetch ngầm từ Google (hoặc timeout):", e.message || e);
         }
 
-        if (batchLoaded) {
-          _quotaAccountsList = trackable.map(conn => ({
-            ...conn,
-            usageData: { quotas: quotasMap[conn.id] || (conn.data && typeof conn.data === 'object' ? conn.data.quotas : null) }
-          }));
-          // Cập nhật lại số liệu tươi mới nhất từ Google mà không giật lag màn hình
-          renderQuotaCards();
-        } else if (force) {
-          // Dự phòng khi gọi ép buộc force=1: Gọi từng tài khoản nhanh kèm timeout guard 4s
-          try {
-            const fetched = await fetchWithTimeoutGuard(
-              Promise.allSettled(trackable.map(async conn => {
-                try {
-                  const uRes = await apiRequest(`/api/usage/${conn.id}?force=1`, { timeout: 4000 });
-                  if (uRes && uRes.ok) {
-                    const uData = await uRes.json().catch(() => null);
-                    return { conn, usage: uData };
-                  }
-                } catch (err) {}
-                return { conn, usage: null };
-              })),
-              4000
-            );
-
-            _quotaAccountsList = fetched.map(r => ({
-              ...(r.value?.conn || {}),
-              usageData: r.value?.usage || null
-            }));
-            renderQuotaCards();
-          } catch (_) {}
-        }
-
-        // Reset thời gian đếm ngược siêu nhanh về 15 giây
+        // Reset thời gian đếm ngược về 15 giây
         _quotaCountdownSeconds = 15;
         const cdEl = document.getElementById('quota-refresh-countdown');
         if (cdEl) cdEl.textContent = '15s';
@@ -32740,6 +32755,9 @@
       loadRecentRequestLogsLive();
 
       loadRealtimeFullModelsLive();
+
+      // Nạp trước dữ liệu Quota Tracker chạy nền (0ms block UI)
+      loadQuotaTrackerLive(false).catch(() => {});
 
       if (typeof switchTopologyProvider === 'function') {
 
