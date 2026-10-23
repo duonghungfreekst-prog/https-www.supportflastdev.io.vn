@@ -781,19 +781,19 @@ func SaveProvider(db *sql.DB, p *ProviderConnection) error {
 	}
 	p.UpdatedAt = now
 
-	// 1. Thử cú pháp MySQL / Aiven PostgreSQL (ON DUPLICATE KEY UPDATE)
+	// 1. Thử cú pháp chuẩn ON CONFLICT (Aiven PostgreSQL & SQLite)
 	_, err := db.Exec(`
 		INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE 
-			provider = VALUES(provider),
-			auth_type = VALUES(auth_type),
-			name = VALUES(name),
-			email = VALUES(email),
-			priority = VALUES(priority),
-			is_active = VALUES(is_active),
-			data = VALUES(data),
-			updated_at = VALUES(updated_at)`,
+		ON CONFLICT(id) DO UPDATE SET
+			provider = excluded.provider,
+			auth_type = excluded.auth_type,
+			name = excluded.name,
+			email = excluded.email,
+			priority = excluded.priority,
+			is_active = excluded.is_active,
+			data = excluded.data,
+			updated_at = excluded.updated_at`,
 		p.ID, p.Provider, p.AuthType, p.Name, p.Email, p.Priority, p.IsActive, string(p.Data), p.CreatedAt, p.UpdatedAt)
 
 	// 2. Fallback sang cú pháp SQLite (ON CONFLICT DO UPDATE) nếu gặp lỗi cú pháp

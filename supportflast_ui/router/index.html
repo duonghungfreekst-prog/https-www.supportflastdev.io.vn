@@ -6963,7 +6963,22 @@
 
         </div>
 
-
+        <!-- HƯỚNG DẪN HOÀN TẤT KẾT NỐI (ĐẶC BIỆT KHI DÙNG TRÊN TRÌNH DUYỆT WEB) -->
+        <div id="oauth-web-guide-tip" class="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed space-y-2">
+          <div class="flex items-center gap-1.5 font-bold text-amber-300">
+            <span>💡 LƯU Ý KHI ĐĂNG NHẬP TRÊN TRÌNH DUYỆT WEB:</span>
+          </div>
+          <p class="text-slate-300 text-[11px] leading-normal">
+            Sau khi bạn chọn tài khoản Google ở cửa sổ đăng nhập, trình duyệt sẽ báo <strong class="text-white bg-black/50 px-1 py-0.5 rounded font-mono">"localhost đã từ chối kết nối (ERR_CONNECTION_REFUSED)"</strong>. <span class="text-amber-300 font-bold">Đây là điều hoàn toàn bình thường</span> (Google đã cấp mã xác thực thành công trên thanh URL).
+          </p>
+          <div class="bg-black/50 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[11px]">
+            <div class="text-cyan-300 font-semibold flex items-center gap-1">👉 Các bước hoàn tất trong 5 giây:</div>
+            <ol class="list-decimal list-inside space-y-1 text-slate-300">
+              <li>Nhấp chuột vào thanh địa chỉ của cửa sổ popup đó -> Nhấn <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + A</kbd> rồi <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + C</kbd> để sao chép link.</li>
+              <li>Quay lại đây, bấm nút <strong class="text-cyan-400">[📋 Dán từ Clipboard &amp; Kết Nối]</strong> ở Step 2 bên dưới -> Bấm <strong class="text-emerald-400 font-bold">[Connect]</strong>!</li>
+            </ol>
+          </div>
+        </div>
 
         <!-- DIVIDER: OR PASTE CALLBACK URL MANUALLY -->
 
@@ -7017,10 +7032,8 @@
 
             </p>
 
-            <button type="button" onclick="pasteOAuthCallbackFromClipboard()" class="text-[11px] font-sans text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold">
-
-              <span>📋 Dán từ Clipboard</span>
-
+            <button type="button" onclick="pasteOAuthCallbackFromClipboard()" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-[11px] font-sans text-cyan-300 hover:text-white flex items-center gap-1 cursor-pointer font-bold transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+              <span>📋 Dán từ Clipboard & Kết Nối</span>
             </button>
 
           </div>
@@ -12067,8 +12080,8 @@
 
       }
 
-      // Tự động hoàn tất kết nối khi nhận diện URL hợp lệ
-      if (val && (val.includes('code=') || val.includes('/callback'))) {
+      // Tự động hoàn tất kết nối khi nhận diện URL hoặc mã Code hợp lệ
+      if (val && (val.includes('code=') || val.includes('/callback') || val.startsWith('4/'))) {
         if (!window._oauthAutoSubmitting) {
           window._oauthAutoSubmitting = true;
           setTimeout(() => {
@@ -12401,6 +12414,27 @@
         }
 
       });
+
+      // Kênh 4: Tự động kiểm tra Clipboard khi người dùng copy và chuyển tab quay lại (window focus)
+      if (!window._oauthFocusAttached) {
+        window._oauthFocusAttached = true;
+        window.addEventListener('focus', async () => {
+          if (window._oauthCallbackProcessed || !window._currentOAuthSession) return;
+          try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+              const clipText = await navigator.clipboard.readText();
+              if (clipText && (clipText.includes('code=') || clipText.includes('/callback') || clipText.trim().startsWith('4/'))) {
+                const input = document.getElementById('oauth-callback-url-input');
+                if (input && (!input.value || input.value !== clipText.trim())) {
+                  input.value = clipText.trim();
+                  onOAuthCallbackInputChanged();
+                  showToastNotification('✔ Đã tự động nhận diện mã xác thực từ Clipboard!');
+                }
+              }
+            }
+          } catch (_) {}
+        });
+      }
 
     }
 
