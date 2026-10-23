@@ -870,9 +870,15 @@
       margin: 0 !important;
       padding: 0 !important;
     }
-    html.desktop-mode #sidebar-web-footer {
-      display: flex !important;
-      visibility: visible !important;
+    html.desktop-mode #sidebar-web-footer,
+    html.desktop-mode #sidebar-admin-session-box {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
     }
 
     /* Hiển thị rõ ràng 3 nút tab desktop */
@@ -8993,6 +8999,10 @@
       if (apiSec) apiSec.style.removeProperty('display');
       const breadcrumbSub = document.getElementById('breadcrumb-sub');
       if (breadcrumbSub) breadcrumbSub.textContent = 'ModelRouter9 AI Gateway';
+      const webFooter = document.getElementById('sidebar-web-footer');
+      if (webFooter) webFooter.style.setProperty('display', 'none', 'important');
+      const adminSessionBox = document.getElementById('sidebar-admin-session-box');
+      if (adminSessionBox) adminSessionBox.style.setProperty('display', 'none', 'important');
     }
 
     // Che giấu email và thông tin tài khoản nhạy cảm (duo***@gmail.com) để bảo mật chống lộ thông tin
