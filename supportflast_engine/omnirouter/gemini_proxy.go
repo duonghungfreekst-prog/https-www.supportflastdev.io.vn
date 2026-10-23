@@ -138,17 +138,17 @@ func init() {
 
 			DisableKeepAlives:     false,
 
-			MaxIdleConns:          100,
+			MaxIdleConns:          300,
 
-			MaxIdleConnsPerHost:   30,
+			MaxIdleConnsPerHost:   150,
 
-			IdleConnTimeout:       90 * time.Second,
+			IdleConnTimeout:       120 * time.Second,
 
-			TLSHandshakeTimeout:   5 * time.Second,
+			TLSHandshakeTimeout:   3 * time.Second,
 
 			ResponseHeaderTimeout: 30 * time.Second,
 
-			ExpectContinueTimeout: 1 * time.Second,
+			ExpectContinueTimeout: 500 * time.Millisecond,
 
 		},
 
@@ -1233,7 +1233,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// Đây là transparent proxy nên IDE nhận đúng format Gemini native
 		flusher, isFlusher := w.(http.Flusher)
 		var totalRespBytes int64
-		buf := make([]byte, 4096)
+		buf := make([]byte, 1024) // Max Speed Zero-Lag Token Streaming
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
