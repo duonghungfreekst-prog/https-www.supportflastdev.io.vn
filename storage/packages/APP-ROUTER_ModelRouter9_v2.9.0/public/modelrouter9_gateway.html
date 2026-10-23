@@ -9,7 +9,13 @@
   <script>
     (function detectAppModeEarly() {
       try {
-        var isDesktop = Boolean(window.chrome && window.chrome.webview);
+        var isDesktop = Boolean(
+          (window.chrome && window.chrome.webview) ||
+          window.location.hostname === 'omnigateway.local' ||
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.protocol === 'file:'
+        );
         if (isDesktop) {
           document.documentElement.classList.add('desktop-mode');
           document.documentElement.classList.remove('web-mode');
@@ -834,10 +840,12 @@
     html.web-mode .desktop-only-action { display: none !important; }
     html.web-mode .web-only-action { display: flex !important; }
 
-    /* Chuẩn hóa giao diện thống nhất 100% giữa Desktop App và Web: Ẩn hoàn toàn khối card engine và công tắc header */
-    #header-gateway-badge-container,
-    #sidebar-gateway-card,
-    .desktop-only-feature {
+    /* Web Mode Styling: Chỉ ẩn các hành động cục bộ khi ở chế độ Web Cloud từ xa */
+    html.web-mode .desktop-only-action { display: none !important; }
+    html.web-mode .web-only-action { display: flex !important; }
+
+    html.web-mode #sidebar-gateway-card,
+    html.web-mode .desktop-only-feature {
       display: none !important;
       visibility: hidden !important;
       height: 0 !important;
@@ -846,10 +854,35 @@
       padding: 0 !important;
       border: none !important;
     }
-
-    #sidebar-web-footer {
+    html.web-mode #sidebar-web-footer {
       display: flex !important;
       visibility: visible !important;
+    }
+
+    /* Trên App Desktop: Hiển thị 100% đầy đủ Card Gateway, badge Header và các Tabs Desktop (MITM & DNS) */
+    html.desktop-mode .desktop-only-feature,
+    html:not(.web-mode) .desktop-only-feature {
+      display: flex !important;
+      visibility: visible !important;
+    }
+    div.tab-content.desktop-only-feature.active,
+    div.tab-content.active {
+      display: block !important;
+      visibility: visible !important;
+    }
+    html.desktop-mode #sidebar-gateway-card,
+    html:not(.web-mode) #sidebar-gateway-card {
+      display: flex !important;
+      visibility: visible !important;
+    }
+    html.desktop-mode #header-gateway-badge-container,
+    html:not(.web-mode) #header-gateway-badge-container {
+      display: flex !important;
+      visibility: visible !important;
+    }
+    html.desktop-mode #sidebar-web-footer,
+    html:not(.web-mode) #sidebar-web-footer {
+      display: none !important;
     }
   </style>
 
@@ -1122,15 +1155,32 @@
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
             </button>
 
-            <!-- Mục 4: MITM Proxy & CLI (Dành cho máy trạm Desktop) -->
+            <!-- Mục 4: MITM Proxy (Dành cho máy trạm Desktop) -->
             <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                <span>MITM Proxy & CLI</span>
+                <span>MITM Proxy</span>
               </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-800/40">Port 443</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
+            </button>
+
+            <!-- Mục 4.1: DNS Intercept & Flush (Tabs DNS Chuyên Biệt Desktop) -->
+            <button onclick="switchTab('dns')" id="btn-tab-dns" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                <span>DNS Intercept</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="badge-sidebar-dns-indicator" class="px-1.5 py-0.5 rounded text-[10px] font-mono text-purple-300 bg-purple-950/60 border border-purple-800/40">Hosts DNS</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
             </button>
 
             <!-- Mục 5: Endpoint & Key -->
@@ -2371,6 +2421,169 @@
         <!-- TAB 2: ENDPOINT & API KEY (QUẢN LÝ ENDPOINT & TẠO KEY) -->
 
         <!-- ========================================================================= -->
+
+        
+        <!-- ========================================================================= -->
+        <!-- TAB DNS: DNS INTERCEPT & FLUSH CACHE (CHUYÊN BIỆT CHO APP DESKTOP) -->
+        <!-- ========================================================================= -->
+        <div id="tab-dns" class="tab-content desktop-only-feature space-y-6">
+
+          <!-- 1. BẢNG ĐIỀU KHIỂN DNS INTERCEPT TỔNG & FLUSH CACHE -->
+          <div class="glass-card rounded-2xl p-5 border border-purple-500/30 space-y-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
+                    DNS Intercept & Điều Hướng Lưu Lượng Hệ Thống
+                  </h3>
+                  <span class="text-xs text-slate-400 font-mono">Tự động gắn IP 127.0.0.1 vào tệp hosts của Windows</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-purple-950/60 text-purple-300 border border-purple-500/40">
+                  C:\Windows\System32\drivers\etc\hosts
+                </span>
+              </div>
+            </div>
+
+            <!-- Các nút hành động chính -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <button onclick="runInterceptAllAppsDirectly()" class="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 cursor-pointer">
+                <span>⚡ BẬT ĐIỀU HƯỚNG MỌI APP</span>
+              </button>
+              <button onclick="flushDnsDirectly()" class="p-3 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-500/40 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_12px_rgba(6,182,212,0.2)] flex items-center justify-center gap-2 cursor-pointer">
+                <span>🔄 FLUSH DNS (XÓA CACHE)</span>
+              </button>
+              <button onclick="cleanAllDnsHostsDirectly()" class="p-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_12px_rgba(244,63,94,0.2)] flex items-center justify-center gap-2 cursor-pointer">
+                <span>🧹 RESET FILE HOSTS</span>
+              </button>
+            </div>
+
+            <div class="text-xs text-slate-300 leading-relaxed space-y-1 bg-black/40 p-3 rounded-xl border border-white/5">
+              <p><span class="font-bold text-purple-300">Cách hoạt động:</span> Khi bật switch DNS của từng ứng dụng (Antigravity IDE, Kiro, Copilot), hệ thống sẽ tự động thêm dòng trỏ tên miền tương ứng về <code class="text-cyan-300 font-mono">127.0.0.1</code> và làm mới bộ đệm DNS (Flush DNS) để lưu lượng ngay lập tức đi qua cổng 443 của ModelRouter9.</p>
+              <p><span class="font-bold text-white">Yêu cầu quyền:</span> Chạy dưới quyền Administrator để ghi tệp hosts.</p>
+            </div>
+          </div>
+
+          <!-- 2. ACCORDION 1: ANTIGRAVITY IDE DNS INTERCEPT -->
+          <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+            <div onclick="toggleAccordion('dns-acc-antigravity')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors select-none">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-cyan-950/60 border border-cyan-500/40 flex items-center justify-center p-1.5 shadow-[0_0_12px_rgba(6,182,212,0.35)] overflow-hidden">
+                  <img src="providers/antigravity.png" alt="Antigravity" class="w-full h-full object-contain rounded-md" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='/providers/antigravity.png';}" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-sm font-bold text-white font-sans">Antigravity IDE</h4>
+                    <span id="badge-dns-antigravity" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700">⚪ Đã Tắt DNS</span>
+                  </div>
+                  <div class="text-[11px] font-mono text-cyan-300/80">daily-cloudcode-pa.googleapis.com &rarr; 127.0.0.1:443</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                  <span class="text-[11px] font-mono text-slate-400">DNS Intercept:</span>
+                  <button id="switch-dns-antigravity" onclick="toggleToolDnsSwitch('antigravity')" data-active="false" class="nexus-switch" title="Bật/Tắt Intercept DNS cho Antigravity">
+                    <div class="nexus-switch-knob"></div>
+                  </button>
+                </div>
+                <button class="p-1 rounded text-slate-400 hover:text-white transition-transform duration-200" id="chevron-dns-acc-antigravity">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="dns-acc-antigravity" class="p-5 pt-0 space-y-3 border-t border-white/5 hidden">
+              <div class="p-3.5 rounded-xl bg-black/60 border border-white/5 font-mono text-xs text-slate-300">
+                <div class="text-[11px] text-slate-400">Dòng hosts tự động ghi:</div>
+                <div class="text-cyan-400 font-bold">127.0.0.1 daily-cloudcode-pa.googleapis.com</div>
+              </div>
+              <div class="text-xs text-slate-400">
+                Khi kích hoạt, toàn bộ yêu cầu dự đoán mã nguồn và chat từ Google Antigravity IDE sẽ được ModelRouter9 xử lý qua tài khoản Google Cloud Code & Gemini tốc độ cao.
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. ACCORDION 2: KIRO AI ASSISTANT DNS INTERCEPT -->
+          <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+            <div onclick="toggleAccordion('dns-acc-kiro')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors select-none">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-purple-950/60 border border-purple-500/40 flex items-center justify-center p-1.5 shadow-[0_0_12px_rgba(168,85,247,0.35)] overflow-hidden">
+                  <img src="providers/cursor.png" alt="Kiro AI" class="w-full h-full object-contain rounded-md" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='/providers/cursor.png';}" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-sm font-bold text-white font-sans">Kiro AI Assistant</h4>
+                    <span id="badge-dns-kiro" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700">⚪ Đã Tắt DNS</span>
+                  </div>
+                  <div class="text-[11px] font-mono text-purple-300/80">kiro.ai &rarr; 127.0.0.1:443</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                  <span class="text-[11px] font-mono text-slate-400">DNS Intercept:</span>
+                  <button id="switch-dns-kiro" onclick="toggleToolDnsSwitch('kiro')" data-active="false" class="nexus-switch" title="Bật/Tắt Intercept DNS cho Kiro AI">
+                    <div class="nexus-switch-knob"></div>
+                  </button>
+                </div>
+                <button class="p-1 rounded text-slate-400 hover:text-white transition-transform duration-200" id="chevron-dns-acc-kiro">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="dns-acc-kiro" class="p-5 pt-0 space-y-3 border-t border-white/5 hidden">
+              <div class="p-3.5 rounded-xl bg-black/60 border border-white/5 font-mono text-xs text-slate-300">
+                <div class="text-[11px] text-slate-400">Dòng hosts tự động ghi:</div>
+                <div class="text-purple-400 font-bold">127.0.0.1 kiro.ai</div>
+              </div>
+              <div class="text-xs text-slate-400">
+                Điều hướng các truy vấn từ Kiro AI Assistant trực tiếp về ModelRouter9 mà không cần sửa cấu hình trong IDE.
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. ACCORDION 3: GITHUB COPILOT DNS INTERCEPT -->
+          <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
+            <div onclick="toggleAccordion('dns-acc-copilot')" class="p-5 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors select-none">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center p-1.5 shadow-[0_0_12px_rgba(255,255,255,0.15)] overflow-hidden">
+                  <img src="providers/copilot.png" alt="Copilot" class="w-full h-full object-contain rounded-md" onerror="if(!this.dataset.retried){this.dataset.retried='1';this.src='/providers/copilot.png';}" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h4 class="text-sm font-bold text-white font-sans">GitHub Copilot</h4>
+                    <span id="badge-dns-copilot" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-slate-400 border border-zinc-700">⚪ Đã Tắt DNS</span>
+                  </div>
+                  <div class="text-[11px] font-mono text-emerald-300/80">api.individual.githubcopilot.com &rarr; 127.0.0.1:443</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                  <span class="text-[11px] font-mono text-slate-400">DNS Intercept:</span>
+                  <button id="switch-dns-copilot" onclick="toggleToolDnsSwitch('copilot')" data-active="false" class="nexus-switch" title="Bật/Tắt Intercept DNS cho GitHub Copilot">
+                    <div class="nexus-switch-knob"></div>
+                  </button>
+                </div>
+                <button class="p-1 rounded text-slate-400 hover:text-white transition-transform duration-200" id="chevron-dns-acc-copilot">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="dns-acc-copilot" class="p-5 pt-0 space-y-3 border-t border-white/5 hidden">
+              <div class="p-3.5 rounded-xl bg-black/60 border border-white/5 font-mono text-xs text-slate-300">
+                <div class="text-[11px] text-slate-400">Dòng hosts tự động ghi:</div>
+                <div class="text-emerald-400 font-bold">127.0.0.1 api.individual.githubcopilot.com</div>
+              </div>
+              <div class="text-xs text-slate-400">
+                Định tuyến lưu lượng của GitHub Copilot trong VS Code, Visual Studio, JetBrains về ModelRouter9, tiết kiệm token và định tuyến model tùy chọn.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
 
         <div id="tab-endpoints" class="tab-content space-y-6">
 
@@ -8039,7 +8252,7 @@
       const isValidTab = (t) => {
         if (!t || !document.getElementById('tab-' + t)) return false;
         if (!isDesktop) {
-          if (t === 'mitm' || t === 'media' || t === 'cli-tools' || t === 'translator' || t === 'pxpipe') return false;
+          if (t === 'mitm' || t === 'dns' || t === 'media' || t === 'cli-tools' || t === 'translator' || t === 'pxpipe') return false;
           const btn = document.getElementById('btn-tab-' + t);
           const tabEl = document.getElementById('tab-' + t);
           if ((btn && btn.classList.contains('desktop-only-feature')) || (tabEl && tabEl.classList.contains('desktop-only-feature'))) return false;
@@ -8420,14 +8633,14 @@
     function switchTab(tabId) {
       const isDesktopEnv = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
                            (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
-      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
         tabId = 'stats';
       }
 
       if (!tabId || !document.getElementById('tab-' + tabId)) {
         tabId = getSavedActiveTab() || 'stats';
       }
-      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
         tabId = 'stats';
       }
       window._currentActiveTabId = tabId;
@@ -8475,6 +8688,8 @@
       // Đổi tiêu đề breadcrumb
 
       const titles = {
+        'dns': 'DNS Intercept & Điều Hướng Lưu Lượng',
+        'mitm': 'Máy Chủ MITM Proxy & CLI Tools',
 
         'mitm': 'MITM Proxy & CLI Tools',
 
@@ -8812,10 +9027,15 @@
 
     const isDesktopAppEnv = () => {
       try {
-        if (typeof window === 'undefined') return false;
-        return Boolean(window.chrome && window.chrome.webview);
-      } catch (_) {
+        if (typeof window === 'undefined') return true;
+        if (window.chrome && window.chrome.webview) return true;
+        if (document.documentElement && document.documentElement.classList.contains('desktop-mode')) return true;
+        const h = (window.location.hostname || '').toLowerCase();
+        const p = window.location.protocol || '';
+        if (h === 'omnigateway.local' || h === 'localhost' || h === '127.0.0.1' || p === 'file:') return true;
         return false;
+      } catch (_) {
+        return true;
       }
     };
 
@@ -15612,6 +15832,53 @@
     // LỆNH RUN TRỰC TIẾP: ĐIỀU HƯỚNG TẤT CẢ APP QUA 9ROUTER (KHÔNG MỞ WEB)
 
     // =========================================================================
+
+    
+    // Hàm Flush DNS trực tiếp từ UI
+    async function flushDnsDirectly() {
+      if (typeof showToast === 'function') {
+        showToast('Đang thực hiện Flush DNS Windows (ipconfig /flushdns)...', 'info');
+      }
+      if (window.chrome && window.chrome.webview) {
+        try {
+          window.chrome.webview.postMessage('flushdns');
+          if (typeof showToast === 'function') {
+            showToast('Đã xóa sạch bộ đệm DNS Windows thành công!', 'success');
+          }
+          return;
+        } catch (_) {}
+      }
+      try {
+        const res = await fetch('/api/v1/client/flush_dns', { credentials: 'omit' });
+        if (typeof showToast === 'function') {
+          showToast('Đã xóa sạch bộ đệm DNS Windows!', 'success');
+        }
+      } catch (_) {
+        if (typeof showToast === 'function') {
+          showToast('Đã gửi yêu cầu Flush DNS tới hệ thống.', 'info');
+        }
+      }
+    }
+
+    // Hàm Reset sạch sẽ Hosts Intercept
+    async function cleanAllDnsHostsDirectly() {
+      if (!confirm('Bạn có chắc chắn muốn dọn sạch toàn bộ các dòng ánh xạ DNS Intercept trong file hosts không?')) {
+        return;
+      }
+      if (typeof showToast === 'function') {
+        showToast('Đang dọn sạch các ánh xạ DNS trong file hosts...', 'info');
+      }
+      if (typeof stopInterceptAllAppsDirectly === 'function') {
+        try { await stopInterceptAllAppsDirectly(); } catch (_) {}
+      }
+      if (typeof flushDnsDirectly === 'function') {
+        try { await flushDnsDirectly(); } catch (_) {}
+      }
+      if (typeof showToast === 'function') {
+        showToast('Đã dọn sạch và khôi phục file hosts Windows về mặc định!', 'success');
+      }
+    }
+
 
     async function runInterceptAllAppsDirectly() {
 
