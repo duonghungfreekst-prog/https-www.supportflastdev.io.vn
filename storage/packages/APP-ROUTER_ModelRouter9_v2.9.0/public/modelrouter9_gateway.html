@@ -337,11 +337,10 @@
     .desktop-app .web-only-block,
     html.desktop-mode .web-only-inline,
     body.desktop-mode .web-only-inline,
-    .desktop-app .web-only-inline,
-    html.desktop-mode #internal-api-keys-section,
-    body.desktop-mode #internal-api-keys-section {
+    .desktop-app .web-only-inline {
       display: none !important;
     }
+
 
     /* Glassmorphism & Neon Shadows (Tối ưu GPU blur radius 6px, tăng background opacity để sắc nét và giảm 75% GPU load) */
     .glass-card {
@@ -887,10 +886,17 @@
       visibility: visible !important;
     }
 
+    /* Tren App Desktop: Dam bao 3 tabs luon hien thi day du 100% noi dung khi active */
+    html.desktop-mode #tab-mitm.active,
+    html.desktop-mode #tab-endpoints.active,
+    html.desktop-mode #tab-skills.active,
     div.tab-content.desktop-only-feature.active,
     div.tab-content.active {
       display: block !important;
       visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      height: auto !important;
     }
 
   
@@ -2354,11 +2360,8 @@
 
             </div>
 
-
-
             </div>
-
-
+        </div>
 
         <!-- ========================================================================= -->
 
@@ -2701,7 +2704,7 @@
 
 
           <!-- Quản lý API Keys (CHỈ HIỂN THỊ TRÊN WEB, ẨN HOÀN TOÀN TRÊN BẢN APP DESKTOP) -->
-          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4 web-only-block">
+          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
 
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
@@ -6135,8 +6138,7 @@
 
 
         </div>
-
-
+        </div>
 
         <!-- ========================================================================= -->
 
@@ -9011,7 +9013,7 @@
       const syncSec = document.getElementById('desktop-web-sync-section');
       if (syncSec) syncSec.style.setProperty('display', 'block', 'important');
       const apiSec = document.getElementById('internal-api-keys-section');
-      if (apiSec) apiSec.style.setProperty('display', 'none', 'important');
+      if (apiSec) apiSec.style.removeProperty('display');
       const breadcrumbSub = document.getElementById('breadcrumb-sub');
       if (breadcrumbSub) breadcrumbSub.textContent = 'ModelRouter9 AI Gateway';
     }
