@@ -1578,42 +1578,6 @@
 
 
           
-          <!-- THẺ ĐIỀU KHIỂN DNS INTERCEPT & FLUSH DNS TÍCH HỢP -->
-          <div class="glass-card rounded-2xl p-5 border border-purple-500/30 space-y-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
-                </div>
-                <div>
-                  <h3 class="text-base font-bold text-white font-sans flex items-center gap-2">
-                    DNS Intercept & Flush Cache Điều Hướng Hệ Thống
-                  </h3>
-                  <span class="text-xs text-slate-400 font-mono">Tự động gắn IP 127.0.0.1 vào tệp hosts của Windows</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-purple-950/60 text-purple-300 border border-purple-500/40">
-                  C:\Windows\System32\drivers\etc\hosts
-                </span>
-              </div>
-            </div>
-
-            <!-- Các nút hành động chính -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <button onclick="runInterceptAllAppsDirectly()" class="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 cursor-pointer">
-                <span>⚡ BẬT ĐIỀU HƯỚNG MỌI APP</span>
-              </button>
-              <button onclick="flushDnsDirectly()" class="p-3 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-500/40 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_12px_rgba(6,182,212,0.2)] flex items-center justify-center gap-2 cursor-pointer">
-                <span>🔄 FLUSH DNS (XÓA CACHE)</span>
-              </button>
-              <button onclick="cleanAllDnsHostsDirectly()" class="p-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/40 font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_12px_rgba(244,63,94,0.2)] flex items-center justify-center gap-2 cursor-pointer">
-                <span>🧹 RESET FILE HOSTS</span>
-              </button>
-            </div>
-          </div>
-
-
           <!-- 3. ACCORDION 1: ANTIGRAVITY (KHỚP 100% ẢNH CỦA NGƯỜI DÙNG) -->
 
           <div class="glass-card rounded-2xl border border-white/10 overflow-hidden transition-all">
