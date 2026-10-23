@@ -139,6 +139,31 @@ func main() {
 	safeRegister("/icons/app.png", serveLogo)
 	safeRegister("/public/app.png", serveLogo)
 
+	// Phục vụ hình nền Wallpaper Web App cho /v1 và frontend
+	serveWallpaper := func(w http.ResponseWriter, r *http.Request) {
+		candidates := []string{
+			filepath.Join(baseDir, "modelrouter9-topology-dark.png"),
+			filepath.Join(baseDir, "9router-topology-dark.png"),
+			filepath.Join(baseDir, "omnirouter-topology-dark.png"),
+			filepath.Join(baseDir, "public", "modelrouter9-topology-dark.png"),
+			filepath.Join("supportflast_ui", "router", "modelrouter9-topology-dark.png"),
+			filepath.Join("..", "supportflast_ui", "router", "modelrouter9-topology-dark.png"),
+		}
+		for _, cand := range candidates {
+			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+				w.Header().Set("Content-Type", "image/png")
+				w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+				http.ServeFile(w, r, cand)
+				return
+			}
+		}
+		http.NotFound(w, r)
+	}
+	safeRegister("/modelrouter9-topology-dark.png", serveWallpaper)
+	safeRegister("/9router-topology-dark.png", serveWallpaper)
+	safeRegister("/omnirouter-topology-dark.png", serveWallpaper)
+	safeRegister("/router/modelrouter9-topology-dark.png", serveWallpaper)
+
 	// Phục vụ tĩnh các thư mục assets
 	for _, folder := range []string{"icons", "images", "public"} {
 		dirPath := filepath.Join(baseDir, folder)

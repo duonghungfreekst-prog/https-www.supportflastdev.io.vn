@@ -7138,41 +7138,35 @@ func HandleV1Base(w http.ResponseWriter, r *http.Request) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ModelRouter9 Gateway - API v1 Online</title>
+  <title>ModelRouter9 Gateway</title>
+  <link rel="icon" type="image/x-icon" href="/app.ico">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: radial-gradient(circle at 50% 20%, #0d1929 0%, #060913 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(0, 240, 255, 0.35); border-radius: 24px; padding: 36px; max-width: 580px; width: 100%; box-shadow: 0 0 50px rgba(0, 240, 255, 0.18); text-align: center; backdrop-filter: blur(16px); }
-    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.5); color: #10b981; font-weight: 800; font-size: 13px; margin-bottom: 20px; letter-spacing: 0.5px; font-family: monospace; }
-    .badge-dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; animation: pulse 1.8s infinite; }
-    h1 { color: #ffffff; font-size: 24px; margin-bottom: 10px; font-weight: 800; letter-spacing: -0.5px; }
-    p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
-    .code-box { background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 14px; padding: 18px; text-align: left; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12.5px; color: #38bdf8; margin-bottom: 26px; line-height: 1.8; word-break: break-all; }
-    .code-label { color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.8px; }
-    .btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, #00f0ff, #3b82f6); color: #000; font-weight: 800; border-radius: 12px; text-decoration: none; font-size: 14px; transition: all 0.2s; box-shadow: 0 0 24px rgba(0, 240, 255, 0.35); }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 0 35px rgba(0, 240, 255, 0.6); }
-    .btn-sec { background: rgba(255, 255, 255, 0.08); color: #38bdf8; border: 1px solid rgba(0, 240, 255, 0.25); box-shadow: none; }
-    .btn-sec:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
-    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #060913;
+    }
+    .wallpaper {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #060913;
+      background-image: 
+        radial-gradient(circle at 50% 30%, rgba(13, 25, 41, 0.3) 0%, rgba(6, 9, 19, 0.75) 100%),
+        url('/modelrouter9-topology-dark.png'),
+        url('/router/modelrouter9-topology-dark.png'),
+        url('modelrouter9-topology-dark.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge"><div class="badge-dot"></div>GATEWAY API V1 ONLINE</div>
-    <h1>Cổng ModelRouter9 Gateway Đang Hoạt Động</h1>
-    <p>Đường dẫn này là <strong>Base URL chuẩn OpenAI</strong> dùng để kết nối trực tiếp các công cụ lập trình AI: <strong>Cursor, Claude Code, Cline, Roo Code, VS Code Antigravity IDE, OpenCode</strong>.</p>
-    <div class="code-box">
-      <div><span class="code-label">Base URL (Local):</span> http://127.0.0.1:20128/v1</div>
-      <div><span class="code-label">Chat Completions:</span> POST /v1/chat/completions</div>
-      <div><span class="code-label">Model Catalog:</span> GET /v1/models</div>
-      <div><span class="code-label">Trạng thái:</span> <span style="color:#10b981;font-weight:bold;">Sẵn sàng kết nối 100%</span></div>
-    </div>
-    <div class="btn-group">
-      <a href="/router/" class="btn">Mở Bảng Điều Khiển Router</a>
-      <a href="/v1/models" class="btn btn-sec">Xem Danh Sách Models</a>
-    </div>
-  </div>
+  <div class="wallpaper"></div>
 </body>
 </html>`
 		_, _ = w.Write([]byte(html))
