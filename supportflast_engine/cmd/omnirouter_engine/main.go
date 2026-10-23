@@ -21,7 +21,7 @@ func main() {
 	portFlag := flag.Int("port", 20128, "Cổng lắng nghe Gateway Core (mặc định 20128)")
 	dirFlag := flag.String("dir", "", "Thư mục gốc của dự án (mặc định tự động nhận diện)")
 	_ = flag.Int("mitm-port", 443, "Cổng lắng nghe MITM Proxy (mặc định 443)")
-	_ = flag.Bool("auto-mitm", false, "Tự động kích hoạt MITM Proxy")
+	_ = flag.Bool("auto-mitm", true, "Tự động kích hoạt MITM Proxy")
 	_ = flag.String("host", "127.0.0.1", "Host lắng nghe Gateway")
 	_ = flag.String("config", "", "Đường dẫn file config.json")
 	_ = flag.Bool("strict-proxy", false, "Chế độ proxy nghiêm ngặt")

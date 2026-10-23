@@ -8570,7 +8570,11 @@
     }
 
     function switchTab(tabId) {
-// Cho phep truy cap day du cac tab tren Desktop va Web
+      const isDesktopEnvNow = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
+                              (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
+      if (isDesktopEnvNow && tabId !== 'mitm' && tabId !== 'endpoints' && tabId !== 'skills') {
+        tabId = 'endpoints';
+      }
 
       const isDesktopEnv = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
                            (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));

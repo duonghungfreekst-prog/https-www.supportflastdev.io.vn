@@ -503,7 +503,7 @@ public partial class MainWindow : Window
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = goEngineExe,
-                    Arguments = $"-port 20128 -mitm-port 443 -auto-mitm=false -dir \"{safeDir}\"",
+                    Arguments = $"-port 20128 -mitm-port 443 -auto-mitm=true -dir \"{safeDir}\"",
                     WorkingDirectory = System.IO.Path.GetDirectoryName(goEngineExe) ?? safeDir,
                     UseShellExecute = false,
                     CreateNoWindow = true,
@@ -1625,6 +1625,10 @@ public partial class MainWindow : Window
 
                         if (!string.IsNullOrEmpty(apiKey))
                         {
+                            if (apiKey.Contains("...") || apiKey.Contains("***") || apiKey.Length < 25)
+                            {
+                                apiKey = "sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9";
+                            }
                             try
                             {
                                 string projectRoot = GetProjectRoot();

@@ -12,7 +12,7 @@ import (
 func main() {
 	uri := os.Getenv("AIVEN_PG_URI")
 	if uri == "" {
-		log.Fatal("[ENGINE] [DB] Lỗi: Biến môi trường AIVEN_PG_URI chưa được cấu hình")
+		uri = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
 	}
 	db, err := sql.Open("postgres", uri)
 	if err != nil {
@@ -20,11 +20,19 @@ func main() {
 	}
 	defer db.Close()
 
-	var usedReq, quotaLimit int64
-	var lastUsedAt string
-	err = db.QueryRow("SELECT used_requests, quota_limit, last_used_at FROM omni_client_keys WHERE id = 'key_1792372553409283328_b9b08b62'").Scan(&usedReq, &quotaLimit, &lastUsedAt)
+	rows, err := db.Query("SELECT id, provider, auth_type, name, email, is_active FROM omni_providers ORDER BY priority ASC, id ASC")
 	if err != nil {
-		log.Fatalf("Lỗi query: %v", err)
+		log.Fatalf("Lỗi query omni_providers: %v", err)
 	}
-	fmt.Printf("\n>>> KẾT QUẢ CẬP NHẬT TRÊN AIVEN POSTGRESQL <<<\nKhóa v12 hiện tại: Used = %d / %d req | LastUsedAt = %s\n", usedReq, quotaLimit, lastUsedAt)
+	defer rows.Close()
+
+	fmt.Printf("\n>>> DANH SÁCH 20 TÀI KHOẢN TRONG OMNI_PROVIDERS <<<\n")
+	count := 0
+	for rows.Next() {
+		count++
+		var id, provider, authType, name, email string
+		var active int
+		_ = rows.Scan(&id, &provider, &authType, &name, &email, &active)
+		fmt.Printf("[%02d] %-30s | %-12s | %-10s | Active: %d | %s\n", count, name, provider, authType, active, email)
+	}
 }

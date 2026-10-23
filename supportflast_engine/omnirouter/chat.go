@@ -123,8 +123,6 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		"gemini-3.8-flash-high":    true,
 		"gemini-3.8-flash-medium":  true,
 		"gemini-3.8-flash-low":     true,
-		"gemini-3.1-pro-high":      true,
-		"gemini-3.1-pro-low":       true,
 		"gemini-pro-agent":         true,
 		"gemini-3.7-flash-high":    true,
 		"gemini-3.7-flash-medium":  true,
@@ -155,12 +153,8 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		normPrimary = "claude-sonnet-4-6"
 	case strings.Contains(lowerNorm, "gpt-oss") || strings.Contains(lowerNorm, "120b"):
 		normPrimary = "gpt-oss-120b-medium"
-	case strings.Contains(lowerNorm, "3.1-pro"):
-		if strings.Contains(lowerNorm, "low") {
-			normPrimary = "gemini-3.1-pro-low"
-		} else {
-			normPrimary = "gemini-3.1-pro-high"
-		}
+	case strings.Contains(lowerNorm, "3.1-pro") || strings.Contains(lowerNorm, "pro-high"):
+		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
 		normPrimary = "gemini-pro-agent"
 	case strings.Contains(lowerNorm, "argon"):

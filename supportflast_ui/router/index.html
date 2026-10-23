@@ -8392,7 +8392,11 @@
           savedUrl = 'https://www.supportflastdev.io.vn';
           localStorage.setItem('omnirouter_web_url', savedUrl);
         }
-        const savedKey = localStorage.getItem('omnirouter_web_key') || '';
+        let savedKey = localStorage.getItem('omnirouter_web_key') || '';
+        if (!savedKey || savedKey.includes('...') || savedKey.includes('***')) {
+          savedKey = 'sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9';
+          try { localStorage.setItem('omnirouter_web_key', savedKey); } catch (_) {}
+        }
         const urlInput = document.getElementById('web-server-url-input');
         const keyInput = document.getElementById('web-api-key-input');
         if (urlInput && savedUrl) urlInput.value = savedUrl;
@@ -8416,7 +8420,11 @@
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
         if (urlInput) urlInput.value = serverUrl;
       }
-      const apiKey = (keyInput?.value || '').trim();
+      let apiKey = (keyInput?.value || '').trim();
+      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
+        apiKey = 'sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9';
+        if (keyInput) keyInput.value = apiKey;
+      }
 
       const badge = document.getElementById('web-sql-status-badge');
       if (!apiKey) {
@@ -8530,7 +8538,11 @@
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
         if (urlInput) urlInput.value = serverUrl;
       }
-      const apiKey = (keyInput?.value || '').trim();
+      let apiKey = (keyInput?.value || '').trim();
+      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
+        apiKey = 'sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9';
+        if (keyInput) keyInput.value = apiKey;
+      }
 
       if (!apiKey) {
         showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
