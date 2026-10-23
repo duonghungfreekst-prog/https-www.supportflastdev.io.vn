@@ -25,17 +25,20 @@ var (
 	chatTransport      = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
+			Timeout:   5 * time.Second,
 			KeepAlive: 60 * time.Second,
 		}).DialContext,
 		ForceAttemptHTTP2:     true,
 		DisableKeepAlives:     false,
+		DisableCompression:    true, // Max Speed: Raw SSE Streaming, cấm nén gzip khối
 		MaxIdleConns:          500,
-		MaxIdleConnsPerHost:   100, // Tối ưu Keep-Alive: tái sử dụng kết nối TLS sẵn có cho mỗi provider AI
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   5 * time.Second,
-		ResponseHeaderTimeout: 120 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConnsPerHost:   250, // Tối ưu Keep-Alive: tái sử dụng kết nối TLS sẵn có cho mỗi provider AI
+		IdleConnTimeout:       180 * time.Second,
+		TLSHandshakeTimeout:   2 * time.Second,
+		ResponseHeaderTimeout: 60 * time.Second,
+		ExpectContinueTimeout: 100 * time.Millisecond,
+		WriteBufferSize:       2048,
+		ReadBufferSize:        2048,
 	}
 	chatHTTPClient = &http.Client{
 		Transport: chatTransport,

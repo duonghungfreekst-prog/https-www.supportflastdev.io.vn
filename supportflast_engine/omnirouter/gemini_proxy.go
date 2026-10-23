@@ -74,7 +74,7 @@ func init() {
 
 	} else {
 
-		upstreamRealHost = "172.217.113.4" // Fallback IP tĩnh Google
+		upstreamRealHost = "172.217.114.4" // Fallback IP tĩnh Google
 
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ DNS resolve trả về loopback hoặc trống, dùng IP fallback: %s", upstreamRealHost)
 
@@ -110,7 +110,7 @@ func init() {
 
 				if targetHost == "" {
 
-					targetHost = "172.217.115.4"
+					targetHost = "172.217.114.4"
 
 				}
 
@@ -138,17 +138,23 @@ func init() {
 
 			DisableKeepAlives:     false,
 
-			MaxIdleConns:          300,
+			DisableCompression:    true, // Max Speed: Cấm nén gzip khối, truyền raw SSE chunks
 
-			MaxIdleConnsPerHost:   150,
+			MaxIdleConns:          500,
 
-			IdleConnTimeout:       120 * time.Second,
+			MaxIdleConnsPerHost:   250,
 
-			TLSHandshakeTimeout:   3 * time.Second,
+			IdleConnTimeout:       180 * time.Second,
+
+			TLSHandshakeTimeout:   2 * time.Second,
 
 			ResponseHeaderTimeout: 30 * time.Second,
 
-			ExpectContinueTimeout: 500 * time.Millisecond,
+			ExpectContinueTimeout: 100 * time.Millisecond,
+
+			WriteBufferSize:       2048,
+
+			ReadBufferSize:        2048,
 
 		},
 
@@ -898,6 +904,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				fReq.Header.Set("Content-Type", "application/json")
 
+				fReq.Header.Set("Accept-Encoding", "identity")
+
+				fReq.Header.Set("Cache-Control", "no-cache")
+
+				fReq.Header.Set("X-Accel-Buffering", "no")
+
 				fReq.Header.Set("X-Client-Name", "antigravity")
 
 				if fReq.Header.Get("User-Agent") == "" {
@@ -1261,7 +1273,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// Đây là transparent proxy nên IDE nhận đúng format Gemini native
 		flusher, isFlusher := w.(http.Flusher)
 		var totalRespBytes int64
-		buf := make([]byte, 1024) // Max Speed Zero-Lag Token Streaming
+		buf := make([]byte, 512) // Ultra-Low Latency Zero-Lag Token Streaming
 		for {
 			n, readErr := resp.Body.Read(buf)
 			if n > 0 {
