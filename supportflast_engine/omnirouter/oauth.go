@@ -67,7 +67,7 @@ func GetOAuthClientSecret() string {
 func init() {
 	// Nạp giá trị mặc định cho Antigravity Google OAuth Client khi khởi động ứng dụng
 	defaultID := "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
-	secBytes, _ := base64.StdEncoding.DecodeString("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzRxREFm")
+	secBytes, _ := base64.StdEncoding.DecodeString("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=")
 	defaultSec := string(secBytes)
 
 	cid := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
