@@ -17,11 +17,8 @@
         if (isDesktopApp) {
           document.documentElement.classList.add('desktop-mode');
           document.documentElement.classList.remove('web-mode');
-          document.documentElement.classList.remove('hide-content-wallpaper-only');
         } else {
-          // Khi truy cập qua đường link cổng 20128 hoặc trên trình duyệt web ngoài:
-          // Ẩn toàn bộ nội dung, chỉ để lại duy nhất hình nền của web app
-          document.documentElement.classList.add('hide-content-wallpaper-only');
+          document.documentElement.classList.add('web-mode');
           document.documentElement.classList.remove('desktop-mode');
         }
       } catch (_) {}
@@ -900,27 +897,7 @@
     }
 
   
-    /* Khi mở trên đường link 127.0.0.1:20128 hoặc trên trình duyệt web ngoài:
-       ẨN TOÀN BỘ NỘI DUNG, CHỈ ĐỂ LẠI HÌNH NỀN WEB APP */
-    html.hide-content-wallpaper-only body > *:not(#nexus-app-wallpaper-container) {
-      display: none !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
-    html.hide-content-wallpaper-only body {
-      background-color: #060913 !important;
-      overflow: hidden !important;
-    }
-    html.hide-content-wallpaper-only #nexus-app-wallpaper-container {
-      display: block !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      z-index: 9999 !important;
-    }
-    html.hide-content-wallpaper-only #nexus-app-wallpaper {
-      opacity: 1 !important;
-    }
+
   </style>
 
 </head>
