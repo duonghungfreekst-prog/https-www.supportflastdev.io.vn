@@ -1398,7 +1398,7 @@ func HandleClientHeartbeat(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
@@ -1918,7 +1918,7 @@ func HandleSetActiveKey(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
@@ -2752,7 +2752,7 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if r.Method == http.MethodOptions {
 
@@ -3618,7 +3618,7 @@ func HandleRealtimeLogsJSON(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 	if !requireAdminAuth(r) {
 
@@ -3748,7 +3748,7 @@ func HandleSyncLibSQLEndpoint(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if !requireAdminAuth(r) {
 
@@ -3910,7 +3910,7 @@ func HandleSwitchProxy(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if !requireAdminAuth(r) {
 
@@ -3942,7 +3942,7 @@ func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -4119,7 +4119,7 @@ func HandleProxyPools(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if r.Method == http.MethodOptions {
 
@@ -5735,7 +5735,7 @@ func HandleSettings(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if r.Method == http.MethodOptions {
 
@@ -5966,7 +5966,7 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -6027,7 +6027,7 @@ func HandleBindProxyPool(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if r.Method == http.MethodOptions {
 
@@ -6250,7 +6250,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if r.Method == http.MethodOptions {
 
@@ -6963,7 +6963,7 @@ func HandleRequestDetails(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 
 		if !requireAdminAuth(r) {
 
