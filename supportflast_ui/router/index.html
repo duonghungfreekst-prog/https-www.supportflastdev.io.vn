@@ -11143,51 +11143,52 @@
     // =========================================================================
     const PROVIDER_LOGIN_URLS = {
       // Nhóm 1: Google & Antigravity
-      'antigravity': { name: 'Google Cloud Platform (Antigravity)', url: 'https://console.cloud.google.com/', domain: 'console.cloud.google.com' },
+      'antigravity': { name: 'Google Antigravity Portal', url: 'https://antigravity.google', domain: 'antigravity.google' },
       'google': { name: 'Google Cloud Platform', url: 'https://console.cloud.google.com/', domain: 'console.cloud.google.com' },
       'gemini': { name: 'Google AI Studio (Gemini)', url: 'https://aistudio.google.com/app/apikey', domain: 'aistudio.google.com' },
-      'gemini-cli': { name: 'Google AI Studio (Gemini CLI)', url: 'https://aistudio.google.com/app/apikey', domain: 'aistudio.google.com' },
+      'gemini-cli': { name: 'Google Gemini CLI Platform', url: 'https://github.com/google-gemini/gemini-cli', domain: 'github.com' },
       'vertex': { name: 'Google Cloud Vertex AI', url: 'https://console.cloud.google.com/vertex-ai', domain: 'console.cloud.google.com' },
       'vertex-partner': { name: 'Google Cloud Model Garden', url: 'https://console.cloud.google.com/vertex-ai/model-garden', domain: 'console.cloud.google.com' },
       'google-pse': { name: 'Google Programmable Search', url: 'https://programmablesearchengine.google.com/', domain: 'programmablesearchengine.google.com' },
       'google-tts': { name: 'Google Cloud Text-to-Speech', url: 'https://console.cloud.google.com/apis/api/texttospeech.googleapis.com', domain: 'console.cloud.google.com' },
 
       // Nhóm 2: OpenAI & Azure
-      'codex': { name: 'OpenAI Developer Platform (Codex)', url: 'https://platform.openai.com/api-keys', domain: 'platform.openai.com' },
+      'codex': { name: 'OpenAI Codex (ChatGPT)', url: 'https://chatgpt.com/codex', domain: 'chatgpt.com' },
       'openai': { name: 'OpenAI Developer Platform', url: 'https://platform.openai.com/api-keys', domain: 'platform.openai.com' },
       'azure': { name: 'Microsoft Azure OpenAI Portal', url: 'https://portal.azure.com/', domain: 'portal.azure.com' },
 
       // Nhóm 3: Anthropic Claude
-      'claude': { name: 'Anthropic Console (Claude)', url: 'https://console.anthropic.com/settings/keys', domain: 'console.anthropic.com' },
+      'claude': { name: 'Claude Code Portal', url: 'https://claude.ai', domain: 'claude.ai' },
       'anthropic': { name: 'Anthropic Console (Claude)', url: 'https://console.anthropic.com/settings/keys', domain: 'console.anthropic.com' },
 
       // Nhóm 4: xAI Grok
-      'xai': { name: 'xAI Console (Grok)', url: 'https://console.x.ai/', domain: 'console.x.ai' },
-      'grok-cli': { name: 'xAI Console (Grok)', url: 'https://console.x.ai/', domain: 'console.x.ai' },
+      'xai': { name: 'xAI Developer Console (Grok)', url: 'https://console.x.ai/', domain: 'console.x.ai' },
+      'grok-cli': { name: 'Grok CLI (Grok Build SuperGrok)', url: 'https://grok.com/supergrok', domain: 'grok.com' },
       'bedrock-xai': { name: 'Amazon Bedrock (xAI Grok)', url: 'https://console.aws.amazon.com/bedrock/', domain: 'aws.amazon.com' },
 
       // Nhóm 5: GitHub Copilot
-      'copilot': { name: 'GitHub Settings (Copilot / Tokens)', url: 'https://github.com/settings/tokens', domain: 'github.com' },
-      'github': { name: 'GitHub Settings (Developer Tokens)', url: 'https://github.com/settings/tokens', domain: 'github.com' },
+      'copilot': { name: 'GitHub Copilot (Device Flow)', url: 'https://github.com/features/copilot', domain: 'github.com' },
+      'github': { name: 'GitHub Copilot Device Login', url: 'https://github.com/login/device', domain: 'github.com' },
 
       // Nhóm 6: DeepSeek
       'deepseek': { name: 'DeepSeek Open Platform (API Keys)', url: 'https://platform.deepseek.com/api_keys', domain: 'platform.deepseek.com' },
 
       // Nhóm 7: Coding IDEs & Agents
-      'cursor': { name: 'Cursor Settings Dashboard', url: 'https://www.cursor.com/settings', domain: 'cursor.com' },
-      'qoder': { name: 'Qoder AI Platform', url: 'https://qoder.ai/', domain: 'qoder.ai' },
-      'qoder-cn': { name: 'Qoder AI Platform (CN)', url: 'https://qoder.ai/', domain: 'qoder.ai' },
-      'kilo': { name: 'Kilo Code Platform', url: 'https://kilo.ai/', domain: 'kilo.ai' },
-      'kilo-gateway': { name: 'Kilo Gateway Console', url: 'https://kilo.ai/', domain: 'kilo.ai' },
-      'cline': { name: 'Cline Developer Portal', url: 'https://cline.bot/', domain: 'cline.bot' },
-      'clinepass': { name: 'ClinePass Gateway', url: 'https://cline.bot/', domain: 'cline.bot' },
-      'codebuddy': { name: 'CodeBuddy Platform', url: 'https://codebuddy.ai/', domain: 'codebuddy.ai' },
-      'codebuddy-cn': { name: 'CodeBuddy Platform (CN)', url: 'https://codebuddy.ai/', domain: 'codebuddy.ai' },
-      'zed': { name: 'Zed Editor Account', url: 'https://zed.dev/account', domain: 'zed.dev' },
-      'muse': { name: 'Together AI (Meta Llama / Muse)', url: 'https://api.together.ai/settings/api-keys', domain: 'together.ai' },
+      'cursor': { name: 'Cursor IDE Platform', url: 'https://cursor.com', domain: 'cursor.com' },
+      'qoder': { name: 'Qoder Official Platform', url: 'https://qoder.com', domain: 'qoder.com' },
+      'qoder-cn': { name: 'Qoder CN (Trung Quốc)', url: 'https://qoder.com.cn', domain: 'qoder.com.cn' },
+      'kilo': { name: 'Kilo Code Platform', url: 'https://kilocode.ai', domain: 'kilocode.ai' },
+      'kilocode': { name: 'Kilo Code Platform', url: 'https://kilocode.ai', domain: 'kilocode.ai' },
+      'kilo-gateway': { name: 'Kilo Gateway Console', url: 'https://kilocode.ai', domain: 'kilocode.ai' },
+      'cline': { name: 'Cline Developer Portal', url: 'https://cline.bot', domain: 'cline.bot' },
+      'clinepass': { name: 'ClinePass Gateway (API Keys)', url: 'https://app.cline.bot/settings/api-keys', domain: 'app.cline.bot' },
+      'codebuddy': { name: 'CodeBuddy Platform', url: 'https://www.codebuddy.ai', domain: 'codebuddy.ai' },
+      'codebuddy-cn': { name: 'CodeBuddy CN (Tencent Copilot)', url: 'https://copilot.tencent.com', domain: 'copilot.tencent.com' },
+      'zed': { name: 'Zed Editor (Native App Auth)', url: 'https://zed.dev', domain: 'zed.dev' },
+      'muse': { name: 'Muse (Meta Model API)', url: 'https://muse.ai', domain: 'muse.ai' },
       'blackbox': { name: 'Blackbox AI Code', url: 'https://www.blackbox.ai/', domain: 'blackbox.ai' },
       'commandcode': { name: 'CommandCode CLI Platform', url: 'https://commandcode.ai/', domain: 'commandcode.ai' },
-      'kiro': { name: 'Kiro AI Assistant', url: 'https://kiro.ai/', domain: 'kiro.ai' },
+      'kiro': { name: 'Kiro AI Assistant (AWS Builder ID)', url: 'https://kiro.dev', domain: 'kiro.dev' },
       'opencode-free': { name: 'OpenCode Free Gateway', url: 'https://opencode.ai/', domain: 'opencode.ai' },
       'opencode-go': { name: 'OpenCode Enterprise Platform', url: 'https://opencode.ai/', domain: 'opencode.ai' },
       'opencode-zen': { name: 'OpenCode Zen Engine', url: 'https://opencode.ai/', domain: 'opencode.ai' },
@@ -11195,16 +11196,18 @@
       'agnes': { name: 'Agnes AI Platform', url: 'https://agnes.ai/', domain: 'agnes.ai' },
 
       // Nhóm 8: MiniMax, Moonshot Kimi, Zhipu GLM, Xiaomi
-      'minimax': { name: 'MiniMax Open Platform (Global)', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
-      'minimax-api': { name: 'MiniMax LLM API Platform', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
-      'minimax-global': { name: 'MiniMax Code (Global)', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
+      'minimax': { name: 'MiniMax Code (Trung Quốc)', url: 'https://agent.minimax.cn', domain: 'agent.minimax.cn' },
+      'minimax-code': { name: 'MiniMax Code (Trung Quốc)', url: 'https://agent.minimax.cn', domain: 'agent.minimax.cn' },
+      'minimax-api': { name: 'MiniMax Open Platform (Global)', url: 'https://platform.minimax.io', domain: 'platform.minimax.io' },
+      'minimax-global': { name: 'MiniMax Code (Global)', url: 'https://agent.minimax.io', domain: 'agent.minimax.io' },
       'minimax-cn': { name: 'MiniMax 开放平台 (China)', url: 'https://api.minimax.chat/', domain: 'api.minimax.chat' },
-      'kimi': { name: 'Moonshot AI / Kimi Platform', url: 'https://platform.moonshot.cn/console/api-keys', domain: 'platform.moonshot.cn' },
-      'zai-glm': { name: '智谱 AI 开放平台 (Zhipu BigModel)', url: 'https://open.bigmodel.cn/usercenter/apikeys', domain: 'open.bigmodel.cn' },
-      'glm-cn': { name: '智谱 AI 开放平台 (China)', url: 'https://open.bigmodel.cn/usercenter/apikeys', domain: 'open.bigmodel.cn' },
-      'xiaomi-mimo': { name: 'Xiaomi MiMo Open Platform', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
-      'mimo-free': { name: 'Xiaomi MiMo Free Tier', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
-      'xiaomi-tokenplan': { name: 'Xiaomi TokenPlan Platform', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
+      'kimi': { name: 'Kimi Code (Moonshot AI)', url: 'https://www.kimi.com/code', domain: 'kimi.com' },
+      'zai-glm': { name: 'Zai GLM Coding (Z.ai)', url: 'https://chat.z.ai', domain: 'chat.z.ai' },
+      'glm': { name: 'Zai GLM Coding (Z.ai)', url: 'https://chat.z.ai', domain: 'chat.z.ai' },
+      'glm-cn': { name: '智谱 AI 开放平台 (BigModel China)', url: 'https://open.bigmodel.cn/usercenter/apikeys', domain: 'open.bigmodel.cn' },
+      'xiaomi-mimo': { name: 'Xiaomi MiMo Platform', url: 'https://platform.xiaomimimo.com', domain: 'platform.xiaomimimo.com' },
+      'mimo-free': { name: 'Xiaomi MiMo Open Platform', url: 'https://xiaomimimo.com', domain: 'xiaomimimo.com' },
+      'xiaomi-tokenplan': { name: 'Xiaomi TokenPlan Platform', url: 'https://platform.xiaomimimo.com', domain: 'platform.xiaomimimo.com' },
 
       // Nhóm 9: Inference & Gateway
       'openrouter': { name: 'OpenRouter Account (API Keys)', url: 'https://openrouter.ai/settings/keys', domain: 'openrouter.ai' },
