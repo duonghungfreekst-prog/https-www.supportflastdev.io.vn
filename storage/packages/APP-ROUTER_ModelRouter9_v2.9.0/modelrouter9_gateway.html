@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 
 <html lang="vi" class="dark web-mode">
 
@@ -4357,35 +4357,6 @@
           <!-- 2. LƯỚI THẺ ACCOUNT QUOTA CARDS (1 ĐẾN 4 CỘT RESPONSIVE THEO MÀN HÌNH) -->
 
           <div id="quota-cards-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-
-            <div class="col-span-full glass-card cyber-card-glow rounded-3xl p-8 lg:p-12 border border-cyan-500/30 text-center space-y-5 relative overflow-hidden my-4 shadow-[0_0_30px_rgba(0,240,255,0.08)]">
-              <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse"></div>
-              
-              <div class="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center mx-auto text-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.4)]">
-                <svg class="w-8 h-8 drop-shadow-[0_0_10px_#00F0FF] animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </div>
-
-              <div class="space-y-1.5 max-w-lg mx-auto">
-                <h3 class="text-base font-bold text-white tracking-wide">Đang Đồng Bộ Hạn Mức Quota Thời Gian Thực...</h3>
-                <p class="text-xs text-slate-400 font-sans leading-relaxed">
-                  Hệ thống đang kết nối CSDL Aiven PostgreSQL Cloud để nạp chi tiết hạn mức Token, lượt gọi và chu kỳ Reset của 20 tài khoản AI.
-                </p>
-              </div>
-
-              <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button onclick="loadQuotaTrackerLive(true)" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs tracking-wide shadow-[0_0_16px_rgba(0,240,255,0.4)] transition-all cursor-pointer flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                  <span>Làm Mới Hạn Mức Ngay</span>
-                </button>
-                <button onclick="switchTab('providers')" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 text-xs font-mono transition-all cursor-pointer flex items-center gap-2">
-                  <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                  <span>Quản Lý & Kết Nối Tài Khoản</span>
-                </button>
-              </div>
-            </div>
-
           </div>
 
 
@@ -8611,7 +8582,7 @@
 
       }
 
-      else if (tabId === 'quota') { loadQuotaTrackerLive(true); startQuotaCountdown(); }
+      else if (tabId === 'quota') { loadQuotaTrackerLive(false); startQuotaCountdown(); }
 
       else if (tabId === 'mitm') loadMitmStatusLive();
 
@@ -11350,18 +11321,15 @@
       };
     }
     const SEED_PROXY_POOLS = [];
-    const SEED_CONNECTIONS = [];
+    const SEED_CONNECTIONS = [{"id":"6848756d-09ba-426a-91ff-88c1fd64705a","name":"picolosv8sao@gmail.com","email":"picolosv8sao@gmail.com","provider":"antigravity","authType":"oauth","priority":1,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:19:35Z","used":108,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.2},"claude_gpt_weekly":{"resetAt":"2026-10-17T10:09:13Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-17T07:04:47Z","used":369,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":63.1},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:58Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"d920dd93-038e-4cb1-8489-2bb5a3677341","name":"phephabaylac@gmail.com","email":"phephabaylac@gmail.com","provider":"antigravity","authType":"oauth","priority":2,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T16:58:10Z","used":59,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":94.1},"claude_gpt_weekly":{"resetAt":"2026-10-18T07:50:12Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T02:36:03Z","used":208,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":79.2},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:58Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"6121513d-2e8c-4b62-ae41-b1ff49d5b2d9","name":"duongtronghiep1911@gmail.com","email":"duongtronghiep1911@gmail.com","provider":"antigravity","authType":"oauth","priority":3,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:20:25Z","used":99,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":90.1},"claude_gpt_weekly":{"resetAt":"2026-10-19T10:38:54Z","used":278,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":72.2},"gemini_weekly":{"resetAt":"2026-10-21T02:30:37Z","used":99,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":90.1},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:58Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"09582dfc-9c78-4b8b-b485-c49d06d04232","name":"manhhungkstfreefide@gmail.com","email":"manhhungkstfreefide@gmail.com","provider":"antigravity","authType":"oauth","priority":4,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T16:49:15Z","used":60,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":94},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:20:11Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T02:23:24Z","used":311,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":68.9},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:32Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"3365c852-9fae-4915-baf8-5965ebfe7b6a","name":"pcnttphongkhamdakhoaphuthai@gmail.com","email":"pcnttphongkhamdakhoaphuthai@gmail.com","provider":"antigravity","authType":"oauth","priority":5,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:12:50Z","used":105,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.5},"claude_gpt_weekly":{"resetAt":"2026-10-22T12:40:33Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":100},"gemini_weekly":{"resetAt":"2026-10-21T02:26:32Z","used":106,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":89.4},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:33Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"55e0efec-f980-4f01-84cc-80b7489d39cf","name":"acckepff0@gmail.com","email":"acckepff0@gmail.com","provider":"antigravity","authType":"oauth","priority":6,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:19:18Z","used":91,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":90.9},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:13:00Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T02:29:50Z","used":97,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":90.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:32Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"b09d7893-b788-48e6-bffb-f91b45bf2244","name":"duongmanhhung9900@gmail.com","email":"duongmanhhung9900@gmail.com","provider":"antigravity","authType":"oauth","priority":7,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:19:10Z","used":103,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.7},"claude_gpt_weekly":{"resetAt":"2026-10-21T16:45:50Z","used":506,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":49.4},"gemini_weekly":{"resetAt":"2026-10-21T03:10:23Z","used":127,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":87.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:33Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"196ab4ed-64ca-4823-b725-457a06a8dcfc","name":"duonghungfreekst@gmail.com","email":"duonghungfreekst@gmail.com","provider":"antigravity","authType":"oauth","priority":8,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:16:21Z","used":96,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":90.4},"claude_gpt_weekly":{"resetAt":"2026-10-22T12:41:09Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":100},"gemini_weekly":{"resetAt":"2026-10-21T02:34:39Z","used":97,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":90.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:41:09Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"b6c3fd6c-31a3-4449-96ca-f68b0ca4a7f4","name":"duongmanhhunghospital@gmail.com","email":"duongmanhhunghospital@gmail.com","provider":"antigravity","authType":"oauth","priority":9,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:16:06Z","used":76,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":92.4},"claude_gpt_weekly":{"resetAt":"2026-10-17T09:04:55Z","used":450,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":55},"gemini_weekly":{"resetAt":"2026-10-21T02:31:21Z","used":327,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":67.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:41Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"fc3e65e7-fa7e-4981-9abe-da7044ef6464","name":"mbe39820@gmail.com","email":"mbe39820@gmail.com","provider":"antigravity","authType":"oauth","priority":10,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:15:51Z","used":107,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.3},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:11:19Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T02:33:08Z","used":89,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":91.1},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:41Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"57f6be9d-e803-46da-90b6-067e3db7a515","name":"pcnttyhocphuthai@gmail.com","email":"pcnttyhocphuthai@gmail.com","provider":"antigravity","authType":"oauth","priority":11,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:15:38Z","used":113,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":88.7},"claude_gpt_weekly":{"resetAt":"2026-10-17T08:47:57Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T02:23:57Z","used":92,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":90.8},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:41Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"0adb4c96-6922-446f-915a-8e65a7f367f2","name":"it.phuthai@gmail.com","email":"it.phuthai@gmail.com","provider":"antigravity","authType":"oauth","priority":12,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:15:25Z","used":97,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":90.3},"claude_gpt_weekly":{"resetAt":"2026-10-17T08:10:53Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-20T01:17:20Z","used":100,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":90},"claude_gpt_session":{"resetAt":"2026-10-15T17:41:14Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"76a21653-96ab-48e0-970a-8739cdf0fb84","name":"kstlaodai@gmail.com","email":"kstlaodai@gmail.com","provider":"antigravity","authType":"oauth","priority":13,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:15:11Z","used":117,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":88.3},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:34:51Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-22T10:45:26Z","used":25,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":97.5},"claude_gpt_session":{"resetAt":"2026-10-15T17:41:14Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"e59c9c29-0ce7-46b4-952d-ed8645f7c10d","name":"vuha0813386623@gmail.com","email":"vuha0813386623@gmail.com","provider":"antigravity","authType":"oauth","priority":14,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:14:57Z","used":103,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.7},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:51:12Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-21T05:51:07Z","used":89,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":91.1},"claude_gpt_session":{"resetAt":"2026-10-15T17:41:14Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"6fdeea30-e0be-4ffe-8f82-7a63c57d265d","name":"vuha1907@gmail.com","email":"vuha1907@gmail.com","provider":"antigravity","authType":"oauth","priority":15,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:20:09Z","used":256,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":74.4},"claude_gpt_weekly":{"resetAt":"2026-10-19T13:46:51Z","used":698,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":30.2},"gemini_weekly":{"resetAt":"2026-10-21T05:17:50Z","used":107,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":89.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:41:10Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"2be26e58-58ec-43d7-8fd5-1ae27231bf43","name":"cautao446@gmail.com","email":"cautao446@gmail.com","provider":"antigravity","authType":"oauth","priority":16,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:20:01Z","used":107,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89.3},"claude_gpt_weekly":{"resetAt":"2026-10-17T06:14:29Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-16T06:30:23Z","used":856,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":14.4},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:38Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"2b4f6617-d357-4bd1-9229-c0c4e641bdf2","name":"hmanh8479@gmail.com","email":"hmanh8479@gmail.com","provider":"antigravity","authType":"oauth","priority":17,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T14:11:50Z","used":71,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":92.9},"claude_gpt_weekly":{"resetAt":"2026-10-17T07:29:12Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":0},"gemini_weekly":{"resetAt":"2026-10-17T07:37:35Z","used":973,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":2.7},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:38Z","used":1000,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":0}}},{"id":"272bd1ab-d0f2-47cf-a068-408016fb24b6","name":"han075224@gmail.com","email":"han075224@gmail.com","provider":"antigravity","authType":"oauth","priority":18,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:20:44Z","used":110,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":89},"claude_gpt_weekly":{"resetAt":"2026-10-21T16:56:21Z","used":508,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":49.2},"gemini_weekly":{"resetAt":"2026-10-22T03:20:44Z","used":77,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":92.3},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:51Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"cc4a79cf-44bb-4ed0-b3f0-024d1bdc16bb","name":"vuha89ss89@gmail.com","email":"vuha89ss89@gmail.com","provider":"antigravity","authType":"oauth","priority":19,"isActive":true,"quotas":{"gemini_session":{"resetAt":"2026-10-15T13:19:44Z","used":97,"total":1000,"unlimited":false,"displayName":"Gemini (5h)","remainingPercentage":90.3},"claude_gpt_weekly":{"resetAt":"2026-10-21T17:02:15Z","used":505,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (Weekly)","remainingPercentage":49.5},"gemini_weekly":{"resetAt":"2026-10-22T03:19:44Z","used":65,"total":1000,"unlimited":false,"displayName":"Gemini (Weekly)","remainingPercentage":93.5},"claude_gpt_session":{"resetAt":"2026-10-15T17:40:38Z","used":0,"total":1000,"unlimited":false,"displayName":"Claude \u0026 GPT (5h)","remainingPercentage":100}}},{"id":"a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d","name":"supportflast.ai@gmail.com","email":"supportflast.ai@gmail.com","provider":"antigravity","authType":"oauth","priority":20,"isActive":true,"quotas":{"gemini_session":{"displayName":"Gemini (5h)","used":25,"remainingPercentage":97.5,"total":1000,"unlimited":false},"claude_gpt_weekly":{"displayName":"Claude \u0026 GPT (Weekly)","used":30,"remainingPercentage":97,"total":1000,"unlimited":false},"gemini_weekly":{"displayName":"Gemini (Weekly)","used":80,"remainingPercentage":92,"total":1000,"unlimited":false},"claude_gpt_session":{"displayName":"Claude \u0026 GPT (5h)","used":0,"remainingPercentage":100,"total":1000,"unlimited":false}}}];
 
     let cachedConns = null;
     try {
       const stored = localStorage.getItem('omnirouter_cached_connections');
       if (stored) {
         cachedConns = JSON.parse(stored);
-        // Tự động xóa dữ liệu mẫu cũ nếu còn tồn đọng trong localStorage
-        if (Array.isArray(cachedConns) && cachedConns.some(c => c.name && (c.name.includes('vuha') || c.name.includes('duongtronghiep') || c.name.includes('manhhung')))) {
-          localStorage.removeItem('omnirouter_cached_connections');
-          cachedConns = [];
-        }
+        // Bảo tồn dữ liệu cache tài khoản AI hạt nhân
+
       }
     } catch (_) {}
 
@@ -30149,8 +30117,8 @@
       const spinEl = document.getElementById('quota-global-spin');
       if (spinEl) spinEl.classList.add('animate-spin');
 
-      // 🚀 BƯỚC 0: INSTANT RENDER (0ms - Render ngay từ RAM/Cache/Seed)
-      // Đảm bảo không bao giờ để người dùng nhìn thấy placeholder tĩnh ban đầu!
+      // 🚀 BƯỚC 0: INSTANT RENDER (0ms - Render ngay từ RAM/Cache 2 tầng/Seed Connections)
+      // Đảm bảo người dùng luôn thấy ngay 20 thẻ hạn mức mà không có bất kỳ spinner nào!
       if (!_quotaAccountsList || _quotaAccountsList.length === 0) {
         let preloaded = [];
         if (Array.isArray(window._allConnectionsList) && window._allConnectionsList.length > 0) {
@@ -30168,9 +30136,16 @@
           }
         }
 
+        // Đọc thêm bản đồ quota cache 2 tầng
+        let cachedQuotasMap = {};
+        try {
+          const rawQMap = localStorage.getItem('omnirouter_cached_quotas_map');
+          if (rawQMap) cachedQuotasMap = JSON.parse(rawQMap) || {};
+        } catch (_) {}
+
         if (preloaded.length > 0) {
           _quotaAccountsList = preloaded.map(conn => {
-            let cachedQuotas = conn.quotas || null;
+            let cachedQuotas = cachedQuotasMap[conn.id] || conn.quotas || null;
             if (!cachedQuotas && conn.data) {
               try {
                 const d = typeof conn.data === 'string' ? JSON.parse(conn.data) : conn.data;
@@ -30186,18 +30161,17 @@
           renderQuotaCards();
         }
       } else {
-        // Đã có danh sách trong RAM, vẽ lại ngay lập tức
+        // Đã có danh sách trong RAM, vẽ lại ngay lập tức (0ms)
         renderQuotaCards();
       }
 
       try {
-        // Áp dụng apiRequest lấy danh sách providers (hỗ trợ cả Cookie Web và x-9r-cli-token, timeout 15000ms)
-        const res = await apiRequest('/api/providers', { timeout: 15000 });
+        // Áp dụng apiRequest lấy danh sách providers (timeout 4000ms nhanh gọn chống treo)
+        const res = await apiRequest('/api/providers', { timeout: 4000 });
 
         // Xử lý khi thực sự 401 Unauthorized / 403 Forbidden
         if (res && (res.status === 401 || res.status === 403 || res.isAuthError || res.code === 'UNAUTHORIZED')) {
           _quotaAuthError = true;
-          _quotaAccountsList = [];
           renderQuotaCards();
           return;
         }
@@ -30216,11 +30190,10 @@
               if (!res.ok) {
                 if (res.status === 401 || res.status === 403) {
                   _quotaAuthError = true;
-                  _quotaAccountsList = [];
                   renderQuotaCards();
                   return;
                 }
-                throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+                throw new Error("Máy chủ phản hồi (HTTP " + res.status + "): " + (rawText.slice(0, 100).trim() || res.statusText));
               }
             }
           }
@@ -30230,9 +30203,8 @@
         if (!data) data = {};
 
         // Nếu dữ liệu JSON trả về báo lỗi 401
-        if (data.status === 401 || data.code === 'UNAUTHORIZED' || (typeof data.error === 'string' && data.error.includes('401'))) {
+        if (data.status === 401 || data.code === 'UNAUTHORIZED') {
           _quotaAuthError = true;
-          _quotaAccountsList = [];
           renderQuotaCards();
           return;
         }
@@ -30260,7 +30232,7 @@
         }
 
         // Lọc các kết nối tài khoản có thể theo dõi hạn mức
-        const trackable = connections.filter(c => c && (
+        const trackable = (connections.length > 0 ? connections : (_quotaAccountsList || [])).filter(c => c && (
           c.provider === 'antigravity' ||
           c.provider === 'google' ||
           c.provider === 'codex' ||
@@ -30270,11 +30242,16 @@
           c.id
         ));
 
-        // 🚀 BƯỚC 1: CACHE-FIRST INSTANT DISPLAY - RENDER THẺ NGAY LẬP TỨC (<50ms)
-        // Lấy ngay dữ liệu quota đã được lưu sẵn trong CSDL PostgreSQL/RAM của từng tài khoản
+        // 🚀 BƯỚC 1: CACHE-FIRST INSTANT DISPLAY - RENDER THẺ NGAY LẬP TỨC
         if (trackable.length > 0) {
+          let cachedQuotasMap = {};
+          try {
+            const rawQMap = localStorage.getItem('omnirouter_cached_quotas_map');
+            if (rawQMap) cachedQuotasMap = JSON.parse(rawQMap) || {};
+          } catch (_) {}
+
           _quotaAccountsList = trackable.map(conn => {
-            let cachedQuotas = conn.quotas || null;
+            let cachedQuotas = cachedQuotasMap[conn.id] || conn.quotas || null;
             if (!cachedQuotas && conn.data) {
               try {
                 const d = typeof conn.data === 'string' ? JSON.parse(conn.data) : conn.data;
@@ -30291,9 +30268,9 @@
           renderQuotaCards();
         }
 
-        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (8s)
+        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (4s)
         try {
-          const batchRes = await apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`, { timeout: 8000 });
+          const batchRes = await apiRequest('/api/quotas/refresh-all' + (force ? '?force=1' : ''), { timeout: 4000 });
 
           if (batchRes && (batchRes.status === 401 || batchRes.status === 403 || batchRes.isAuthError || batchRes.code === 'UNAUTHORIZED')) {
             _quotaAuthError = true;
@@ -30305,6 +30282,9 @@
             const batchData = await batchRes.json().catch(() => null);
             if (batchData && (batchData.accountData || batchData.results)) {
               const quotasMap = batchData.accountData || batchData.results;
+              try {
+                localStorage.setItem('omnirouter_cached_quotas_map', JSON.stringify(quotasMap));
+              } catch (_) {}
               _quotaAccountsList = trackable.map(conn => {
                 const refreshed = quotasMap[conn.id];
                 const existing = conn.quotas || (conn.data && typeof conn.data === 'object' ? conn.data.quotas : null);
@@ -30328,7 +30308,7 @@
       } catch (e) {
         console.warn("Lỗi tải Quota Tracker Live:", e);
         const msg = String(e?.message || e || '');
-        if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('xác thực')) {
+        if (msg.includes('401') || msg.includes('403') || msg.includes('UNAUTHORIZED')) {
           _quotaAuthError = true;
         }
       } finally {
@@ -30343,10 +30323,6 @@
         }
       }
     }
-
-
-
-    // Vẽ giao diện lưới các Thẻ Hạn Mức (Khớp 100% Ảnh Thực Tế, Phân Biệt Rõ Data Thật vs Chưa Fetch)
 
     function renderQuotaCards() {
 

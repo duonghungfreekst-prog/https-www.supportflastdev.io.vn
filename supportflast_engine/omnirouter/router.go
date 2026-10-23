@@ -1,4 +1,4 @@
-package omnirouter
+﻿package omnirouter
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -367,27 +368,33 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 		w.Header().Set("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://challenges.cloudflare.com data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' https: data: blob:; connect-src 'self' https: ws: wss: http://127.0.0.1:* http://localhost:*;")
 
 		// Kiá»ƒm tra ETag HTTP 304 Not Modified
+		// Kiểm tra ETag HTTP 304 Not Modified (Hỗ trợ cả Strong và Weak ETag W/ từ Cloudflare/Proxy)
 		if routerETag != "" {
 			w.Header().Set("ETag", routerETag)
-			if r.Header.Get("If-None-Match") == routerETag {
-				w.WriteHeader(http.StatusNotModified)
-				return
+			clientETag := strings.TrimSpace(r.Header.Get("If-None-Match"))
+			if clientETag != "" {
+				cleanClient := strings.Trim(clientETag, "W/\"")
+				cleanServer := strings.Trim(routerETag, "W/\"")
+				if clientETag == routerETag || cleanClient == cleanServer || strings.Contains(clientETag, cleanServer) {
+					w.WriteHeader(http.StatusNotModified)
+					return
+				}
 			}
 		}
 
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
+		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 
 		// Phá»¥c vá»¥ Gzip nÃ©n sáºµn trá»±c tiáº¿p tá»« RAM náº¿u client há»— trá»£
 		if len(routerGzipBytes) > 0 && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Set("Content-Length", strconv.Itoa(len(routerGzipBytes)))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(routerGzipBytes)
 			return
 		}
 
 		if len(routerRawBytes) > 0 {
+			w.Header().Set("Content-Length", strconv.Itoa(len(routerRawBytes)))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(routerRawBytes)
 			return

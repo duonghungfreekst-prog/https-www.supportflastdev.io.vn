@@ -1,4 +1,4 @@
-package storage
+﻿package storage
 
 import (
 	"database/sql"
@@ -325,21 +325,36 @@ func (s *DB) CleanupDuplicateAccounts() (cleanedCount int, mergedCount int, err 
 			if err != nil {
 				continue
 			}
-			var list []GrpAcc
+			type tempAcc struct {
+				id       string
+				stat     string
+				hasToken bool
+			}
+			var temps []tempAcc
 			for grpRows.Next() {
 				var gid, gstat string
 				var gtok sql.NullString
-				_ = grpRows.Scan(&gid, &gstat, &gtok)
+				if err := grpRows.Scan(&gid, &gstat, &gtok); err == nil {
+					temps = append(temps, tempAcc{
+						id:       gid,
+						stat:     gstat,
+						hasToken: gtok.Valid && len(strings.TrimSpace(gtok.String)) > 10,
+					})
+				}
+			}
+			grpRows.Close()
+
+			var list []GrpAcc
+			for _, t := range temps {
 				var chunkCnt int64
-				_ = s.db.QueryRow("SELECT COUNT(*) FROM file_chunks WHERE account_id = ?", gid).Scan(&chunkCnt)
+				_ = s.db.QueryRow("SELECT COUNT(*) FROM file_chunks WHERE account_id = ?", t.id).Scan(&chunkCnt)
 				list = append(list, GrpAcc{
-					ID:       gid,
-					Status:   gstat,
-					HasToken: gtok.Valid && len(strings.TrimSpace(gtok.String)) > 10,
+					ID:       t.id,
+					Status:   t.stat,
+					HasToken: t.hasToken,
 					Chunks:   chunkCnt,
 				})
 			}
-			grpRows.Close()
 
 			if len(list) > 1 {
 				master := list[0]
