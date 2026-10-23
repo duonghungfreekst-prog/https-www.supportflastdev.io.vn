@@ -6974,19 +6974,25 @@
         </div>
 
         <!-- HƯỚNG DẪN HOÀN TẤT KẾT NỐI (ĐẶC BIỆT KHI DÙNG TRÊN TRÌNH DUYỆT WEB) -->
-        <div id="oauth-web-guide-tip" class="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed space-y-2">
-          <div class="flex items-center gap-1.5 font-bold text-amber-300">
-            <span>💡 LƯU Ý KHI ĐĂNG NHẬP TRÊN TRÌNH DUYỆT WEB:</span>
+        <div id="oauth-web-guide-tip" class="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-cyan-500/10 border border-amber-500/30 text-amber-200 text-xs leading-relaxed space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 font-bold text-amber-300">
+              <span>💡 TẠI SAO POPUP BÁO "LOCALHOST TỪ CHỐI KẾT NỐI"?</span>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">TỰ ĐỘNG BẮT LINK</span>
           </div>
           <p class="text-slate-300 text-[11px] leading-normal">
-            Sau khi bạn chọn tài khoản Google ở cửa sổ đăng nhập, trình duyệt sẽ báo <strong class="text-white bg-black/50 px-1 py-0.5 rounded font-mono">"localhost đã từ chối kết nối (ERR_CONNECTION_REFUSED)"</strong>. <span class="text-amber-300 font-bold">Đây là điều hoàn toàn bình thường</span> (Google đã cấp mã xác thực thành công trên thanh URL).
+            Do bạn đang mở giao diện trên <strong>Trình duyệt Web</strong> (trong khi ứng dụng ModelRouter9 trên máy tính chưa bật), Google sẽ chuyển hướng mã xác thực về cổng <code class="text-cyan-300 bg-black/60 px-1 py-0.5 rounded font-mono">localhost:20128</code> trên thanh địa chỉ của popup. Vì lý do bảo mật trình duyệt Chrome (Same-Origin Policy), web không được phép tự đọc trộm thanh URL của cửa sổ khác.
           </p>
-          <div class="bg-black/50 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[11px]">
-            <div class="text-cyan-300 font-semibold flex items-center gap-1">👉 Các bước hoàn tất trong 5 giây:</div>
-            <ol class="list-decimal list-inside space-y-1 text-slate-300">
-              <li>Nhấp chuột vào thanh địa chỉ của cửa sổ popup đó -> Nhấn <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + A</kbd> rồi <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + C</kbd> để sao chép link.</li>
-              <li>Quay lại đây, bấm nút <strong class="text-cyan-400">[📋 Dán từ Clipboard &amp; Kết Nối]</strong> ở Step 2 bên dưới -> Bấm <strong class="text-emerald-400 font-bold">[Connect]</strong>!</li>
-            </ol>
+          <div class="bg-black/60 p-2.5 rounded-lg border border-white/10 space-y-1.5 text-[11px]">
+            <div class="text-emerald-300 font-bold flex items-center gap-1">⚡ Hoàn tất tự động siêu nhanh trong 3 giây:</div>
+            <p class="text-slate-300 leading-normal">
+              1. Nhấp vào thanh URL của popup -> Bấm <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + A</kbd> rồi <kbd class="px-1 py-0.5 bg-white/10 rounded font-mono text-white text-[10px]">Ctrl + C</kbd>.<br>
+              2. <strong>Chỉ cần nhấp chuột quay lại tab web này:</strong> Hệ thống sẽ <strong class="text-cyan-300">tự động nhận diện link từ bộ nhớ tạm và tự động kết nối ngay lập tức</strong> (không cần dán tay, không cần bấm nút)!
+            </p>
+            <div class="pt-1 border-t border-white/5 text-[10px] text-slate-400">
+              🚀 <em>Mẹo: Nếu bạn mở ứng dụng <strong>ModelRouter9 Desktop trên máy tính</strong> (cổng 20128), Google sẽ tự động bắt mã và đăng nhập 100% không bao giờ cần copy link!</em>
+            </div>
           </div>
         </div>
 
@@ -12419,25 +12425,38 @@
 
       });
 
-      // Kênh 4: Tự động kiểm tra Clipboard khi người dùng copy và chuyển tab quay lại (window focus)
+      // Kênh 4: Tự động kiểm tra Clipboard khi người dùng copy và chuyển tab quay lại (window focus / visibilitychange / click)
       if (!window._oauthFocusAttached) {
         window._oauthFocusAttached = true;
-        window.addEventListener('focus', async () => {
+        const autoCheckClipboardOAuth = async () => {
           if (window._oauthCallbackProcessed || !window._currentOAuthSession) return;
           try {
             if (navigator.clipboard && navigator.clipboard.readText) {
-              const clipText = await navigator.clipboard.readText();
+              const clipText = (await navigator.clipboard.readText().catch(() => '')) || '';
               if (clipText && (clipText.includes('code=') || clipText.includes('/callback') || clipText.trim().startsWith('4/'))) {
                 const input = document.getElementById('oauth-callback-url-input');
                 if (input && (!input.value || input.value !== clipText.trim())) {
                   input.value = clipText.trim();
                   onOAuthCallbackInputChanged();
-                  showToastNotification('✔ Đã tự động nhận diện mã xác thực từ Clipboard!');
+                  showToastNotification('✔ Đã tự động nhận diện mã xác thực từ Clipboard! Đang kết nối...');
+                  setTimeout(() => {
+                    submitOAuthCallbackManually();
+                  }, 150);
                 }
               }
             }
           } catch (_) {}
+        };
+
+        window.addEventListener('focus', autoCheckClipboardOAuth);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) autoCheckClipboardOAuth();
         });
+        const oauthModalEl = document.getElementById('new-connection-modal');
+        if (oauthModalEl) {
+          oauthModalEl.addEventListener('mouseenter', autoCheckClipboardOAuth);
+          oauthModalEl.addEventListener('click', autoCheckClipboardOAuth);
+        }
       }
 
     }
