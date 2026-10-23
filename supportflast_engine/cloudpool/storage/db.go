@@ -106,7 +106,7 @@ type DB struct {
 	cache   *cache.LRUCache
 }
 
-// Driver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "tidb")
+// Driver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "postgres")
 func (s *DB) Driver() string {
 	if s.driver == "" {
 		return "postgres"
@@ -120,15 +120,15 @@ func (s *DB) IsPostgres() bool {
 	return d == "postgres" || d == "postgresql" || d == "aiven"
 }
 
-// IsMySQLOrTiDB kiểm tra xem kết nối hiện tại có phải là TiDB hoặc MySQL hay không
-func (s *DB) IsMySQLOrTiDB() bool {
+// IsMySQL kiểm tra xem kết nối hiện tại có phải là PostgreSQL hoặc MySQL hay không
+func (s *DB) IsMySQL() bool {
 	d := strings.ToLower(s.Driver())
-	return d == "tidb" || d == "mysql"
+	return d == "postgres" || d == "mysql"
 }
 
 // IsSQLite kiểm tra xem kết nối hiện tại có phải là SQLite hay không
 func (s *DB) IsSQLite() bool {
-	return !s.IsMySQLOrTiDB() && !s.IsPostgres()
+	return !s.IsMySQL() && !s.IsPostgres()
 }
 
 // Checkpoint thực thi checkpoint WAL đối với SQLite
@@ -184,9 +184,7 @@ func NewDBWithConfig(driver string, dsn string, dbPath string) (*DB, error) {
 	if normDriver == "postgres" || normDriver == "postgresql" || normDriver == "aiven" {
 		return openPostgresConnection(dsn)
 	}
-	if normDriver == "tidb" || normDriver == "mysql" {
-		return openTiDBConnection(normDriver, dsn)
-	}
+
 	return openSQLiteConnection(dbPath)
 }
 
@@ -258,155 +256,6 @@ func openSQLiteConnection(dbPath string) (*DB, error) {
 	return s, nil
 }
 
-// NewTiDB khởi tạo đối tượng CloudPool DB kết nối trực tiếp tới TiDB Cloud qua cấu hình TiDBConfig
-
-
-func NewTiDB(cfg database.TiDBConfig) (*DB, error) {
-	return openTiDBWithConfig(cfg)
-}
-
-// NewTiDBFromDSN khởi tạo đối tượng CloudPool DB từ chuỗi DSN TiDB/MySQL
-
-
-func NewTiDBFromDSN(dsn string) (*DB, error) {
-	return openTiDBConnection("tidb", dsn)
-}
-
-
-
-func openTiDBConnection(driverName, dsn string) (*DB, error) {
-	dsn = strings.TrimSpace(dsn)
-	if dsn == "" {
-		dsn = strings.TrimSpace(os.Getenv("CLOUDPOOL_TIDB_DSN"))
-	}
-	if dsn == "" {
-		dsn = strings.TrimSpace(os.Getenv("TIDB_DSN"))
-	}
-
-	cfg := database.DefaultTiDBConfig()
-	if dsn != "" {
-		cfg.DSN = dsn
-	}
-	return openTiDBWithConfig(cfg, dsn)
-}
-
-
-
-func openTiDBWithConfig(cfg database.TiDBConfig, rawDSN ...string) (*DB, error) {
-	// 1. Đảm bảo cấu hình TLS 1.2+ đã được đăng ký với driver mysql (Rule 3.4 & TiDB Cloud Enforce)
-	tlsConfigName := cfg.TLSConfigName
-	if tlsConfigName == "" {
-		if cfg.TLS != "" && cfg.TLS != "true" && cfg.TLS != "false" && cfg.TLS != "skip-verify" {
-			tlsConfigName = cfg.TLS
-		} else {
-			tlsConfigName = database.DefaultTiDBTLSConfig
-		}
-	}
-	if cfg.MinTLSVersion < 0x0303 { // tls.VersionTLS12
-		cfg.MinTLSVersion = 0x0303
-	}
-
-	if !database.IsTLSRegistered(tlsConfigName) || cfg.CustomCAPath != "" || cfg.InsecureSkipVerify {
-		if err := database.RegisterTiDBTLSConfig(tlsConfigName, cfg.MinTLSVersion, cfg.CustomCAPath, cfg.InsecureSkipVerify); err != nil {
-			return nil, fmt.Errorf("lỗi khởi tạo cấu hình TLS cho CloudPool TiDB: %w", err)
-		}
-	}
-
-	// 2. Tạo hoặc sử dụng DSN
-	var dsn string
-	var err error
-	if len(rawDSN) > 0 && strings.TrimSpace(rawDSN[0]) != "" {
-		dsn = strings.TrimSpace(rawDSN[0])
-	} else if strings.TrimSpace(cfg.DSN) != "" {
-		dsn = strings.TrimSpace(cfg.DSN)
-	} else {
-		dsn, err = database.BuildTiDBDSN(cfg)
-		if err != nil {
-			return nil, fmt.Errorf("lỗi tạo DSN TiDB cho CloudPool: %w", err)
-		}
-	}
-
-	// 3. Mở kết nối với driver "mysql"
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open mysql/tidb connection: %w", err)
-	}
-
-	// 4. Áp dụng cấu hình Connection Pool của TiDB Cloud (Rule PHAN 7.1 & Yêu cầu 5)
-	// Bỏ qua hoàn toàn các lệnh PRAGMA của SQLite!
-	maxOpen := cfg.MaxOpenConns
-	if maxOpen <= 0 {
-		maxOpen = database.DefaultTiDBMaxOpenConns
-	}
-	maxIdle := cfg.MaxIdleConns
-	if maxIdle <= 0 {
-		maxIdle = database.DefaultTiDBMaxIdleConns
-	}
-	connMaxLifetime := cfg.ConnMaxLifetime
-	if connMaxLifetime <= 0 {
-		connMaxLifetime = database.DefaultTiDBConnMaxLifetime
-	}
-	connMaxIdleTime := cfg.ConnMaxIdleTime
-	if connMaxIdleTime <= 0 {
-		connMaxIdleTime = database.DefaultTiDBConnMaxIdleTime
-	}
-
-	db.SetMaxOpenConns(maxOpen)
-	db.SetMaxIdleConns(maxIdle)
-	db.SetConnMaxLifetime(connMaxLifetime)
-	db.SetConnMaxIdleTime(connMaxIdleTime)
-
-	// 5. Ping kiểm tra kết nối với timeout
-	pingTimeout := cfg.PingTimeout
-	if pingTimeout <= 0 {
-		pingTimeout = database.DefaultTiDBPingTimeout
-	}
-	pingCtx, pingCancel := context.WithTimeout(context.Background(), pingTimeout)
-	defer pingCancel()
-
-	if err := db.PingContext(pingCtx); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("ping check kết nối tới TiDB Cloud thất bại: %w", err)
-	}
-
-	endpoint := cfg.Host
-	if endpoint == "" {
-		endpoint = "tidb-cloud"
-	}
-	log.Printf("[ENGINE] [DATABASE] CloudPool TiDB/MySQL initialized at '%s' (MaxOpenConns=%d, MaxIdleConns=%d, Lifetime=%v)",
-		endpoint, maxOpen, maxIdle, connMaxLifetime)
-
-	pathStr := endpoint
-	if cfg.Host != "" && cfg.Port > 0 {
-		pathStr = fmt.Sprintf("%s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
-	}
-
-	s := &DB{
-		db:     db,
-		path:   pathStr,
-		driver: "tidb",
-		cache:  cache.NewLRUCache(cache.MaxEntriesLimit, cache.DefaultCleanupInterval),
-	}
-
-	// 6. Thực thi migrate schema cho TiDB (Bỏ qua PRAGMA của SQLite)
-	if err := s.migrate(); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to migrate cloudpool tidb schema: %w", err)
-	}
-
-	// 7. Tự động kiểm tra tính sẵn sàng của bảng accounts, virtual_files, settings
-	// và tự động khởi tạo an toàn (seed idempotent / auto-sync từ snapshot)
-	if err := s.EnsureTiDBCloudPoolDataReady(); err != nil {
-		log.Printf("[ENGINE] [TIDB] [STORAGE] [WARN] Cảnh báo kiểm tra dữ liệu TiDB Cloud: %v", err)
-	}
-
-	return s, nil
-}
-
-// Các hàm SQLite PRAGMA đã được loại bỏ
-
-
-
 func (s *DB) Path() string {
 	return s.path
 }
@@ -423,7 +272,7 @@ func (s *DB) Close() error {
 	s.cacheMu.Unlock()
 
 	if s.db != nil {
-		if !s.IsMySQLOrTiDB() {
+		if !s.IsMySQL() {
 			_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE);")
 		}
 		return s.db.Close()
@@ -434,323 +283,7 @@ func (s *DB) Close() error {
 
 
 func (s *DB) migrate() error {
-	if s.IsMySQLOrTiDB() {
-		return s.migrateTiDB()
-	}
 	return s.migrateSQLite()
-}
-
-
-
-func (s *DB) migrateTiDB() error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS accounts (
-			id VARCHAR(64) NOT NULL,
-			email VARCHAR(191) NOT NULL,
-			email_hash VARCHAR(191) NOT NULL,
-			name VARCHAR(191) DEFAULT NULL,
-			name_hash VARCHAR(191) DEFAULT NULL,
-			avatar_url VARCHAR(1024) DEFAULT NULL,
-			auth_type VARCHAR(64) NOT NULL,
-			credentials_json LONGTEXT DEFAULT NULL,
-			token_json LONGTEXT DEFAULT NULL,
-			root_folder_id VARCHAR(255) DEFAULT NULL,
-			total_quota_bytes BIGINT NOT NULL DEFAULT 0,
-			used_quota_bytes BIGINT NOT NULL DEFAULT 0,
-			free_quota_bytes BIGINT NOT NULL DEFAULT 0,
-			status VARCHAR(32) NOT NULL DEFAULT 'active',
-			last_error TEXT DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			UNIQUE KEY uk_accounts_email_hash (email_hash),
-			INDEX idx_accounts_email (email),
-			INDEX idx_accounts_status (status),
-			INDEX idx_accounts_name_hash (name_hash)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS cloudpool_users (
-			id VARCHAR(64) NOT NULL,
-			username VARCHAR(191) NOT NULL,
-			username_hash VARCHAR(191) NOT NULL,
-			email VARCHAR(191) DEFAULT '',
-			email_hash VARCHAR(191) DEFAULT '',
-			password_hash VARCHAR(255) NOT NULL,
-			security_pin_hash VARCHAR(255) DEFAULT '',
-			security_tier INT NOT NULL DEFAULT 1,
-			display_name VARCHAR(255) DEFAULT NULL,
-			avatar_url VARCHAR(1024) DEFAULT '',
-			role VARCHAR(32) NOT NULL DEFAULT 'user',
-			status VARCHAR(32) NOT NULL DEFAULT 'active',
-			quota_bytes BIGINT NOT NULL DEFAULT 0,
-			used_bytes BIGINT NOT NULL DEFAULT 0,
-			failed_login_count INT NOT NULL DEFAULT 0,
-			locked_until DATETIME DEFAULT NULL,
-			last_login_at DATETIME DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			UNIQUE KEY uk_users_username_hash (username_hash),
-			INDEX idx_users_email_hash (email_hash),
-			INDEX idx_users_role (role),
-			INDEX idx_users_status (status)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS virtual_files (
-			id VARCHAR(64) NOT NULL,
-			user_id VARCHAR(64) NOT NULL DEFAULT 'user_admin',
-			parent_id VARCHAR(64) NOT NULL DEFAULT '',
-			name VARCHAR(255) NOT NULL,
-			path VARCHAR(512) NOT NULL,
-			is_dir TINYINT(1) NOT NULL DEFAULT 0,
-			size_bytes BIGINT NOT NULL DEFAULT 0,
-			mime_type VARCHAR(128) DEFAULT NULL,
-			sha256 VARCHAR(64) DEFAULT NULL,
-			chunk_count INT NOT NULL DEFAULT 0,
-			is_encrypted TINYINT(1) NOT NULL DEFAULT 1,
-			has_missing_chunks TINYINT(1) NOT NULL DEFAULT 0,
-			is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-			deleted_at DATETIME DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			INDEX idx_vfiles_parent (parent_id),
-			INDEX idx_vfiles_path (path(255)),
-			INDEX idx_vfiles_user (user_id),
-			INDEX idx_vfiles_deleted (is_deleted),
-			INDEX idx_vfiles_missing_chunks (has_missing_chunks),
-			INDEX idx_vfiles_parent_deleted (parent_id, is_deleted),
-			INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name),
-			INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name),
-    INDEX idx_vfiles_trash_admin (is_deleted, deleted_at),
-    INDEX idx_vfiles_trash_user (user_id, is_deleted, deleted_at),
-    INDEX idx_vfiles_size_admin (is_deleted, is_dir, size_bytes),
-    INDEX idx_vfiles_size_user (user_id, is_deleted, is_dir, size_bytes),
-    INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
-
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS file_chunks (
-			chunk_id VARCHAR(128) NOT NULL,
-			file_id VARCHAR(64) NOT NULL,
-			chunk_index INT NOT NULL,
-			account_id VARCHAR(64) NOT NULL,
-			gdrive_file_id VARCHAR(255) NOT NULL,
-			chunk_size_bytes BIGINT NOT NULL DEFAULT 0,
-			encrypted_size_bytes BIGINT NOT NULL DEFAULT 0,
-			sha256 VARCHAR(64) DEFAULT NULL,
-			status VARCHAR(32) NOT NULL DEFAULT 'uploaded',
-			ref_count INT NOT NULL DEFAULT 1,
-			PRIMARY KEY (chunk_id),
-			INDEX idx_chunks_file (file_id, chunk_index),
-			INDEX idx_chunks_account (account_id),
-			INDEX idx_chunks_gdrive (gdrive_file_id(191)),
-			INDEX idx_chunks_sha256 (sha256, status),
-			CONSTRAINT fk_chunks_file FOREIGN KEY (file_id) REFERENCES virtual_files(id) ON DELETE CASCADE,
-			CONSTRAINT fk_chunks_account FOREIGN KEY (account_id) REFERENCES accounts(id)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS activity_logs (
-			id VARCHAR(64) NOT NULL,
-			user_id VARCHAR(64) DEFAULT NULL,
-			username VARCHAR(255) DEFAULT NULL,
-			action VARCHAR(64) DEFAULT NULL,
-			target VARCHAR(512) DEFAULT NULL,
-			ip_address VARCHAR(64) DEFAULT NULL,
-			details TEXT DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			INDEX idx_logs_user (user_id),
-			INDEX idx_logs_created (created_at)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS login_sessions (
-			id VARCHAR(64) NOT NULL,
-			user_id VARCHAR(64) DEFAULT NULL,
-			username VARCHAR(255) DEFAULT NULL,
-			ip_address VARCHAR(64) DEFAULT NULL,
-			device_info VARCHAR(255) DEFAULT NULL,
-			location_info VARCHAR(255) DEFAULT NULL,
-			status VARCHAR(32) DEFAULT NULL,
-			user_agent TEXT DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			INDEX idx_sessions_user (user_id),
-			INDEX idx_sessions_created (created_at)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS settings (
-			` + "`key`" + ` VARCHAR(128) NOT NULL,
-			` + "`value`" + ` LONGTEXT DEFAULT NULL,
-			PRIMARY KEY (` + "`key`" + `)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS file_access_otps (
-			id VARCHAR(64) NOT NULL,
-			file_id VARCHAR(64) NOT NULL,
-			file_name VARCHAR(255) NOT NULL,
-			target_user_id VARCHAR(64) NOT NULL DEFAULT 'all',
-			otp_code VARCHAR(64) NOT NULL,
-			created_by VARCHAR(64) NOT NULL DEFAULT 'user_admin',
-			is_used INT NOT NULL DEFAULT 0,
-			used_by VARCHAR(64) NOT NULL DEFAULT '',
-			used_at DATETIME DEFAULT NULL,
-			expires_at DATETIME NOT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			INDEX idx_file_otps (file_id, otp_code, is_used)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS file_access_requests (
-			id VARCHAR(64) NOT NULL,
-			file_id VARCHAR(64) NOT NULL,
-			file_name VARCHAR(255) NOT NULL,
-			user_id VARCHAR(64) NOT NULL,
-			username VARCHAR(255) NOT NULL,
-			user_display_name VARCHAR(255) NOT NULL,
-			status VARCHAR(32) NOT NULL DEFAULT 'pending',
-			otp_code VARCHAR(64) NOT NULL DEFAULT '',
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			PRIMARY KEY (id),
-			INDEX idx_access_req_user (user_id, status)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS public_shares (
-			id VARCHAR(64) NOT NULL,
-			file_id VARCHAR(64) NOT NULL,
-			created_by VARCHAR(64) NOT NULL DEFAULT 'user_admin',
-			password_hash VARCHAR(255) NOT NULL DEFAULT '',
-			max_downloads INT NOT NULL DEFAULT 0,
-			download_count INT NOT NULL DEFAULT 0,
-			expires_at DATETIME DEFAULT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			is_active INT NOT NULL DEFAULT 1,
-			PRIMARY KEY (id),
-			INDEX idx_public_shares (id, is_active),
-    INDEX idx_public_shares_file (file_id, is_active)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-
-		`CREATE TABLE IF NOT EXISTS gdrive_backups (
-			id VARCHAR(64) NOT NULL,
-			filename VARCHAR(255) NOT NULL,
-			size_bytes BIGINT NOT NULL,
-			sha256 VARCHAR(64) NOT NULL,
-			gdrive_file_id VARCHAR(255) NOT NULL,
-			gdrive_web_link VARCHAR(512) NOT NULL,
-			target_email VARCHAR(191) NOT NULL,
-			manifest_json LONGTEXT DEFAULT NULL,
-			created_at VARCHAR(64) NOT NULL,
-			PRIMARY KEY (id),
-			INDEX idx_gdrive_backups_email (target_email)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
-	}
-
-	for _, q := range queries {
-		if _, err := s.db.Exec(q); err != nil {
-			return fmt.Errorf("lỗi thực thi DDL TiDB: %w", err)
-		}
-	}
-
-	// Encrypt any existing plaintext credentials/tokens in database
-	s.migrateEncryptAllPlaintextSecrets()
-
-	// Ensure default admin user exists with valid password hash and Blind Indexing
-	masterKey := s.getMasterKey()
-	adminUsernameHash := core.BlindIndexHash(masterKey, "admin")
-	encAdminName := core.EncryptSecret(masterKey, "admin")
-	encAdminDisplay := core.EncryptSecret(masterKey, "Quản Trị Viên")
-
-	// Fetch master_passphrase from settings if already configured
-	var masterPass string
-	_ = s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&masterPass)
-	if masterPass == "" {
-		masterPass = "admin"
-	}
-
-	// Generate bcrypt password hash for admin
-	adminPassBcrypt, err := core.HashPasswordBcrypt(masterPass)
-	if err != nil {
-		adminPassBcrypt = core.HashSHA256([]byte(masterPass))
-	}
-
-	var adminCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM cloudpool_users WHERE username_hash = ?", adminUsernameHash).Scan(&adminCount)
-	if adminCount == 0 {
-		now := time.Now()
-		_, _ = s.db.Exec(`INSERT INTO cloudpool_users (id, username, username_hash, password_hash, display_name, role, quota_bytes, used_bytes, failed_login_count, locked_until, created_at, updated_at) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
-			"user_admin", encAdminName, adminUsernameHash, adminPassBcrypt, encAdminDisplay, "admin", 0, 0, now, now)
-	} else {
-		_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE username_hash = ?`, adminPassBcrypt, adminUsernameHash)
-	}
-
-	// Always clear any lockout on restart for admin
-	_, _ = s.db.Exec(`UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL WHERE username_hash = ?`, adminUsernameHash)
-
-	// Also repair any other users that have empty password_hash
-	defaultUserPassHash := core.HashSHA256([]byte("123456"))
-	_, _ = s.db.Exec(`UPDATE cloudpool_users SET password_hash = ? WHERE (password_hash = '' OR password_hash IS NULL) AND username_hash != ?`, defaultUserPassHash, adminUsernameHash)
-
-	// Insert default settings if not exist
-	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
-	s.setDefaultSetting("chunk_size_bytes", "20971520") // 20 MB
-	s.setDefaultSetting("allocation_strategy", "least_used")
-	s.setDefaultSetting("webdav_enabled", "true")
-	s.setDefaultSetting("webdav_username", "admin")
-	s.setDefaultSetting("webdav_password", "admin123")
-	s.setDefaultSetting("server_port", "8080")
-	s.setDefaultSetting("guest_access_mode", "view_only")
-	s.setDefaultSetting("allow_self_registration", "true")
-
-	oauthClientID := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
-	if oauthClientID == "" {
-		oauthClientID = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID"))
-	}
-	if oauthClientID == "" {
-		oauthClientID = DefaultGoogleClientID
-	}
-	oauthClientSecret := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
-	if oauthClientSecret == "" {
-		oauthClientSecret = strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET"))
-	}
-	if oauthClientSecret == "" {
-		oauthClientSecret = DefaultGoogleClientSecret
-	}
-	oauthRedirect := strings.TrimSpace(os.Getenv("OAUTH_REDIRECT_URL"))
-	if oauthRedirect == "" {
-		oauthRedirect = "http://localhost:8080/api/accounts/oauth/callback"
-	}
-	masterKey = s.getMasterKey()
-	s.setDefaultSetting("google_client_id", core.EncryptSecret(masterKey, oauthClientID))
-	s.setDefaultSetting("google_client_secret", core.EncryptSecret(masterKey, oauthClientSecret))
-	s.setDefaultSetting("redirect_url", oauthRedirect)
-
-	// Ensure root directory entry exists and is never marked as deleted
-	_ = s.ensureRootExistsUnlocked()
-
-	// Clean up any emoji duplicate prefixes in virtual folder names
-	_, _ = s.db.Exec(`UPDATE virtual_files SET name = REPLACE(name, '📁 ', '') WHERE name LIKE '📁 %'`)
-	_, _ = s.db.Exec(`UPDATE virtual_files SET path = REPLACE(path, '📁 ', '') WHERE path LIKE '%📁 %'`)
-
-	// Covering Composite Indexes tối ưu hóa triệt để ListVirtualFiles cho TiDB (Zero FileSort)
-	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_parent_del_dir_name (parent_id, is_deleted, is_dir, name)`)
-	_, _ = s.db.Exec(`ALTER TABLE virtual_files ADD INDEX idx_vfiles_user_parent_del_dir_name (user_id, parent_id, is_deleted, is_dir, name),
-    INDEX idx_vfiles_trash_admin (is_deleted, deleted_at),
-    INDEX idx_vfiles_trash_user (user_id, is_deleted, deleted_at),
-    INDEX idx_vfiles_size_admin (is_deleted, is_dir, size_bytes),
-    INDEX idx_vfiles_size_user (user_id, is_deleted, is_dir, size_bytes),
-    INDEX idx_vfiles_parent_name (parent_id, name, is_dir)
-`)
-
-	// Đảm bảo UNIQUE KEY uk_accounts_email_hash tồn tại trên bảng accounts
-	var idxCount int
-	_ = s.db.QueryRow("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'accounts' AND index_name = 'uk_accounts_email_hash'").Scan(&idxCount)
-	if idxCount == 0 {
-		_, _ = s.db.Exec("ALTER TABLE accounts ADD UNIQUE KEY uk_accounts_email_hash (email_hash)")
-	}
-
-	return nil
 }
 
 
@@ -1217,19 +750,19 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 
 
 
-func (s *DB) EnsureTiDBCloudPoolDataReady() error {
+func (s *DB) EnsurePostgreSQLCloudPoolDataReady() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if !s.IsMySQLOrTiDB() {
+	if !s.IsMySQL() {
 		return nil
 	}
 
-	// 1. Kiểm tra kết nối liveness và ping check tới cụm TiDB Cloud với context timeout 5s
+	// 1. Kiểm tra kết nối liveness và ping check tới cụm Aiven PostgreSQL Cloud với context timeout 5s
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := s.db.PingContext(ctx); err != nil {
-		return fmt.Errorf("ping kiểm tra sức khỏe TiDB Cloud thất bại: %w", err)
+		return fmt.Errorf("ping kiểm tra sức khỏe Aiven PostgreSQL Cloud thất bại: %w", err)
 	}
 
 	// 2. Khởi tạo toàn bộ cấu hình mặc định bắt buộc (Idempotent seed)
@@ -1271,9 +804,9 @@ func (s *DB) EnsureTiDBCloudPoolDataReady() error {
 	_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
 	_ = s.db.QueryRow("SELECT COUNT(1) FROM file_chunks").Scan(&chunkCount)
 
-	// Nếu TiDB Cloud rỗng (chưa có tài khoản hoặc chưa có file), tự động đồng bộ từ snapshot / token
+	// Nếu Aiven PostgreSQL Cloud rỗng (chưa có tài khoản hoặc chưa có file), tự động đồng bộ từ snapshot / token
 	if accCount == 0 || fileCount == 0 {
-		log.Printf("[ENGINE] [TIDB] [STORAGE] CSDL TiDB Cloud cần đồng nhất dữ liệu (tài khoản=%d, tệp tin=%d). Bắt đầu Auto-Sync...", accCount, fileCount)
+		log.Printf("[ENGINE] [STORAGE] CSDL Aiven PostgreSQL Cloud cần đồng nhất dữ liệu (tài khoản=%d, tệp tin=%d). Bắt đầu Auto-Sync...", accCount, fileCount)
 		_ = s.syncFromSnapshotUnlocked()
 		_ = s.db.QueryRow("SELECT COUNT(1) FROM accounts").Scan(&accCount)
 		_ = s.db.QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&fileCount)
@@ -1283,7 +816,7 @@ func (s *DB) EnsureTiDBCloudPoolDataReady() error {
 	// 6. Tự động đồng bộ dự phòng sang file SQLite cục bộ nếu file SQLite bị xóa hoặc rỗng
 	
 
-	log.Printf("[ENGINE] [TIDB] [STORAGE] Xác nhận CSDL TiDB Cloud sẵn sàng 100%%: %d tài khoản Google Drive, %d tệp tin VFS, %d chunk dữ liệu.",
+	log.Printf("[ENGINE] [STORAGE] Xác nhận CSDL Aiven PostgreSQL Cloud sẵn sàng 100%%: %d tài khoản Google Drive, %d tệp tin VFS, %d chunk dữ liệu.",
 		accCount, fileCount, chunkCount)
 	return nil
 }
@@ -1417,7 +950,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 		updatedAt := parseFlexibleTimestamp(u["updated_at"])
 
 		var uQ string
-		if s.IsMySQLOrTiDB() {
+		if s.IsMySQL() {
 			uQ = `INSERT IGNORE INTO cloudpool_users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		} else {
 			uQ = `INSERT OR IGNORE INTO cloudpool_users (id, username, username_hash, email, email_hash, password_hash, security_pin_hash, security_tier, display_name, avatar_url, role, status, quota_bytes, used_bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1428,7 +961,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	// 3. Phục hồi Accounts
 	insertedAccounts := 0
 	var accQ string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		accQ = `INSERT IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	} else {
 		accQ = `INSERT OR IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1464,7 +997,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	// 4. Phục hồi VirtualFiles
 	insertedFiles := 0
 	var vfQ string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		vfQ = `INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	} else {
 		vfQ = `INSERT OR IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, has_missing_chunks, is_deleted, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1506,7 +1039,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	// 5. Phục hồi FileChunks
 	insertedChunks := 0
 	var chkQ string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		chkQ = `INSERT IGNORE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	} else {
 		chkQ = `INSERT OR IGNORE INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status, ref_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1548,7 +1081,7 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 		createdAt := getSnapshotStr(b, "created_at")
 
 		var bQ string
-		if s.IsMySQLOrTiDB() {
+		if s.IsMySQL() {
 			bQ = `INSERT IGNORE INTO gdrive_backups (id, filename, size_bytes, sha256, gdrive_file_id, gdrive_web_link, target_email, manifest_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		} else {
 			bQ = `INSERT OR IGNORE INTO gdrive_backups (id, filename, size_bytes, sha256, gdrive_file_id, gdrive_web_link, target_email, manifest_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1664,12 +1197,12 @@ func (s *DB) restoreAccountsFromOAuthTokens() (int, error) {
 	masterKey := s.getMasterKey()
 	now := time.Now()
 	nowFormatted := now.UTC().Format("2006-01-02 15:04:05")
-	if !s.IsMySQLOrTiDB() {
+	if !s.IsMySQL() {
 		nowFormatted = now.Format(time.RFC3339)
 	}
 
 	var accQ string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		accQ = `INSERT IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	} else {
 		accQ = `INSERT OR IGNORE INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

@@ -19,10 +19,10 @@ func main() {
 	db.SetMaxIdleConns(1)
 
 	fmt.Println("================================================================================")
-	fmt.Println("      KIỂM TRA DỮ LIỆU THỰC TẾ TRÊN AIVEN POSTGRESQL (SO VỚI TIDB CLOUD)       ")
+	fmt.Println("      KIỂM TRA DỮ LIỆU THỰC TẾ TRÊN AIVEN POSTGRESQL (AIVEN POSTGRESQL CLOUD)       ")
 	fmt.Println("================================================================================")
 
-	// 1. Kiểm tra bảng virtual_files (đúng câu query người dùng đang mở trên TiDB)
+	// 1. Kiểm tra bảng virtual_files (đúng câu query người dùng đang mở trên Cloud)
 	fmt.Println("\n--- [1] BẢNG 'virtual_files' TRÊN AIVEN POSTGRESQL ---")
 	rows, err := db.Query("SELECT id, name, size_bytes, is_dir, updated_at FROM virtual_files ORDER BY is_dir DESC, name ASC LIMIT 10")
 	if err != nil {
@@ -45,7 +45,7 @@ func main() {
 		}
 		var totalFiles int
 		_ = db.QueryRow("SELECT count(*) FROM virtual_files").Scan(&totalFiles)
-		fmt.Printf("  ==> Tổng số virtual_files trên Aiven: %d dòng dữ liệu (đã đồng bộ 100%% từ TiDB)\n", totalFiles)
+		fmt.Printf("  ==> Tổng số virtual_files trên Aiven: %d dòng dữ liệu (đã đồng bộ 100%% toàn diện)\n", totalFiles)
 	}
 
 	// 2. Kiểm tra tổng số dòng của tất cả 25 bảng trên Aiven PostgreSQL

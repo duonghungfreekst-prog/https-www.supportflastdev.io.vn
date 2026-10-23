@@ -76,7 +76,7 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 		}
 	}
 	var insSettingQuery string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		insSettingQuery = "INSERT INTO settings (`key`, `value`) VALUES ('master_passphrase', ?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)"
 	} else {
 		insSettingQuery = "INSERT INTO settings (key, value) VALUES ('master_passphrase', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value"

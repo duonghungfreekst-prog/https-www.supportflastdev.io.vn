@@ -507,7 +507,7 @@ var EmbeddedAIAccounts = []CoreAIAccountSeed{
 	},
 }
 
-// SeedEmbeddedDataToDB n?p 19 t?i kho?n AI v? c?u h?nh h?t nh?n v?o CSDL TiDB Cloud ho?c SQLite
+// SeedEmbeddedDataToDB n?p 19 t?i kho?n AI v? c?u h?nh h?t nh?n v?o CSDL Aiven PostgreSQL Cloud ho?c SQLite
 func SeedEmbeddedDataToDB(targetDB *sql.DB) error {
 	if targetDB == nil {
 		return fmt.Errorf("targetDB is nil")
@@ -603,6 +603,6 @@ func SeedEmbeddedDataToDB(targetDB *sql.DB) error {
 	RefreshProviderCache(targetDB)
 	RefreshKeyCache(targetDB)
 
-	log.Printf("[ENGINE] [OMNIROUTER] [SEED] ?? nh?ng c? ??nh th?nh c?ng %d t?i kho?n AI v?o CSDL TiDB Cloud/SQLite", seededCount)
+	log.Printf("[ENGINE] [OMNIROUTER] [SEED] ?? nh?ng c? ??nh th?nh c?ng %d t?i kho?n AI v?o CSDL Aiven PostgreSQL Cloud/SQLite", seededCount)
 	return nil
 }

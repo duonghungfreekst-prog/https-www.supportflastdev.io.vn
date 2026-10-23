@@ -19,12 +19,12 @@ import (
 func createTestSandbox(t *testing.T) (string, func()) {
 	config.ResetForTest()
 	origDriver := os.Getenv("DB_DRIVER")
-	origTiDBHost := os.Getenv("TIDB_HOST")
+	origPGHost := os.Getenv("PG_HOST")
 	origRender := os.Getenv("RENDER")
 	origDomain := os.Getenv("DOMAIN")
 
 	os.Setenv("DB_DRIVER", "sqlite")
-	os.Setenv("TIDB_HOST", "")
+	os.Setenv("PG_HOST", "")
 	os.Setenv("RENDER", "")
 	os.Setenv("DOMAIN", "localhost")
 
@@ -40,7 +40,7 @@ func createTestSandbox(t *testing.T) (string, func()) {
 		security.SetCustomKeysDir("")
 		config.ResetForTest()
 		os.Setenv("DB_DRIVER", origDriver)
-		os.Setenv("TIDB_HOST", origTiDBHost)
+		os.Setenv("PG_HOST", origPGHost)
 		os.Setenv("RENDER", origRender)
 		os.Setenv("DOMAIN", origDomain)
 		_ = os.RemoveAll(sandboxDir)
@@ -321,8 +321,8 @@ func TestAutoBootstrapping_StandaloneWithoutEnvExample(t *testing.T) {
 	}
 }
 
-func TestAutoBootstrapping_TiDBFallbackToSQLite(t *testing.T) {
-	// Kiểm tra trường hợp cấu hình DB_DRIVER=tidb nhưng chạy ở môi trường local không có kết nối TiDB
+func TestAutoBootstrapping_PostgresFallbackToSQLite(t *testing.T) {
+	// Kiểm tra trường hợp cấu hình DB_DRIVER=postgres nhưng chạy ở môi trường local không có kết nối Postgres
 	// Hệ thống phải tự động fallback an toàn 100% sang SQLite cho cả Main DB và CloudPool DB
 	sandboxDir, cleanup := createTestSandbox(t)
 	defer cleanup()
@@ -331,22 +331,22 @@ func TestAutoBootstrapping_TiDBFallbackToSQLite(t *testing.T) {
 	testStorageDir := filepath.Join(sandboxDir, "storage")
 	testEnvDir := sandboxDir
 
-	os.Setenv("DB_DRIVER", "tidb")
-	os.Setenv("TIDB_HOST", "127.0.0.1")
-	os.Setenv("TIDB_PORT", "65534") // Cổng không có dịch vụ để kích hoạt fallback
-	os.Setenv("TIDB_CONNECT_TIMEOUT", "500ms")
-	os.Setenv("TIDB_PING_TIMEOUT", "500ms")
+	os.Setenv("DB_DRIVER", "postgres")
+	os.Setenv("PG_HOST", "127.0.0.1")
+	os.Setenv("PG_PORT", "65534") // Cổng không có dịch vụ để kích hoạt fallback
+	os.Setenv("PG_CONNECT_TIMEOUT", "500ms")
+	os.Setenv("PG_PING_TIMEOUT", "500ms")
 	defer func() {
 		os.Unsetenv("DB_DRIVER")
-		os.Unsetenv("TIDB_HOST")
-		os.Unsetenv("TIDB_PORT")
-		os.Unsetenv("TIDB_CONNECT_TIMEOUT")
-		os.Unsetenv("TIDB_PING_TIMEOUT")
+		os.Unsetenv("PG_HOST")
+		os.Unsetenv("PG_PORT")
+		os.Unsetenv("PG_CONNECT_TIMEOUT")
+		os.Unsetenv("PG_PING_TIMEOUT")
 	}()
 
 	res, err := BootstrapWithDirs(testDataDir, testStorageDir, testEnvDir)
 	if err != nil {
-		t.Fatalf("Bootstrap thất bại khi fallback từ TiDB sang SQLite: %v", err)
+		t.Fatalf("Bootstrap thất bại khi fallback từ Postgres sang SQLite: %v", err)
 	}
 	defer res.StorageDB.Close()
 

@@ -123,44 +123,44 @@ func TestFormatBytes(t *testing.T) {
 	}
 }
 
-func TestIsTiDBOrMySQL(t *testing.T) {
+func TestIsPostgresOrMySQL(t *testing.T) {
 	_ = database.CloseDB()
 	defer database.CloseDB()
 
-	// 1. Kiểm tra qua DB_DRIVER=tidb
-	t.Setenv("DB_DRIVER", "tidb")
-	if !isTiDBOrMySQL(nil) {
-		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi DB_DRIVER=tidb")
+	// 1. Kiểm tra qua DB_DRIVER=postgres
+	t.Setenv("DB_DRIVER", "postgres")
+	if !isPostgres(nil) {
+		t.Errorf("kỳ vọng isPostgres trả về true khi DB_DRIVER=postgres")
 	}
 
 	// 2. Kiểm tra qua DB_DRIVER=mysql
 	t.Setenv("DB_DRIVER", "mysql")
-	if !isTiDBOrMySQL(nil) {
-		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi DB_DRIVER=mysql")
+	if !isPostgres(nil) {
+		t.Errorf("kỳ vọng isPostgres trả về true khi DB_DRIVER=mysql")
 	}
 
 	// 3. Kiểm tra qua DB_DRIVER=sqlite
 	t.Setenv("DB_DRIVER", "sqlite")
-	if isTiDBOrMySQL(nil) {
-		t.Errorf("kỳ vọng isTiDBOrMySQL trả về false khi DB_DRIVER=sqlite")
+	if isPostgres(nil) {
+		t.Errorf("kỳ vọng isPostgres trả về false khi DB_DRIVER=sqlite")
 	}
 
-	// 4. Kiểm tra qua TIDB_HOST khi DB_DRIVER không đặt
+	// 4. Kiểm tra qua PG_HOST khi DB_DRIVER không đặt
 	t.Setenv("DB_DRIVER", "")
-	t.Setenv("TIDB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
-	if !isTiDBOrMySQL(nil) {
-		t.Errorf("kỳ vọng isTiDBOrMySQL trả về true khi TIDB_HOST được cấu hình")
+	t.Setenv("PG_HOST", "supportflast-postgres.aivencloud.com")
+	if !isPostgres(nil) {
+		t.Errorf("kỳ vọng isPostgres trả về true khi PG_HOST được cấu hình")
 	}
 
-	// 5. Kiểm tra chế độ fallback: DB_DRIVER=tidb nhưng database.ActiveDriver()="sqlite" -> isTiDBOrMySQL trả về false
-	t.Setenv("DB_DRIVER", "tidb")
+	// 5. Kiểm tra chế độ fallback: DB_DRIVER=postgres nhưng database.ActiveDriver()="sqlite" -> isPostgres trả về false
+	t.Setenv("DB_DRIVER", "postgres")
 	database.SetDBInstance(nil, "sqlite")
-	if isTiDBOrMySQL(nil) {
-		t.Errorf("kỳ vọng isTiDBOrMySQL trả về false khi database.ActiveDriver() là sqlite dù DB_DRIVER=tidb (chế độ fallback)")
+	if isPostgres(nil) {
+		t.Errorf("kỳ vọng isPostgres trả về false khi database.ActiveDriver() là sqlite dù DB_DRIVER=postgres (chế độ fallback)")
 	}
 }
 
-func TestPerformDiagnostics_TiDB_Config(t *testing.T) {
+func TestPerformDiagnostics_Postgres_Config(t *testing.T) {
 	_ = database.CloseDB()
 	defer database.CloseDB()
 	tempDir := t.TempDir()
@@ -171,10 +171,10 @@ func TestPerformDiagnostics_TiDB_Config(t *testing.T) {
 
 	t.Setenv("DATA_DIR", dataDir)
 	t.Setenv("STORAGE_DIR", storageDir)
-	t.Setenv("DB_DRIVER", "tidb")
-	t.Setenv("TIDB_HOST", "gateway01.ap-southeast-1.prod.aws.tidbcloud.com")
-	t.Setenv("TIDB_PORT", "4000")
-	t.Setenv("TIDB_DATABASE", "supportflast")
+	t.Setenv("DB_DRIVER", "postgres")
+	t.Setenv("PG_HOST", "supportflast-postgres.aivencloud.com")
+	t.Setenv("PG_PORT", "4000")
+	t.Setenv("PG_DATABASE", "supportflast")
 
 	resp := PerformDiagnostics()
 
@@ -183,23 +183,23 @@ func TestPerformDiagnostics_TiDB_Config(t *testing.T) {
 	}
 
 	dbCheck := resp.Diagnostics.Database
-	if dbCheck.Driver != "tidb" {
-		t.Errorf("kỳ vọng dbCheck.Driver là 'tidb', nhận: %s", dbCheck.Driver)
+	if dbCheck.Driver != "postgres" {
+		t.Errorf("kỳ vọng dbCheck.Driver là 'postgres', nhận: %s", dbCheck.Driver)
 	}
 
-	if dbCheck.Title != "Cơ Sở Dữ Liệu TiDB Cloud (Database Engine)" {
-		t.Errorf("kỳ vọng Title TiDB Cloud, nhận: %s", dbCheck.Title)
+	if dbCheck.Title != "Cơ Sở Dữ Liệu Aiven PostgreSQL Cloud (Database Engine)" {
+		t.Errorf("kỳ vọng Title Aiven PostgreSQL Cloud, nhận: %s", dbCheck.Title)
 	}
 
-	expectedPath := "gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/supportflast"
+	expectedPath := "supportflast-postgres.aivencloud.com:4000/supportflast"
 	if dbCheck.DBPath != expectedPath {
 		t.Errorf("kỳ vọng DBPath '%s', nhận: '%s'", expectedPath, dbCheck.DBPath)
 	}
 
 	if !dbCheck.WALModeActive {
-		t.Errorf("kỳ vọng WALModeActive là true cho TiDB")
+		t.Errorf("kỳ vọng WALModeActive là true cho Aiven PostgreSQL")
 	}
 	if !dbCheck.ForeignKeysEnabled {
-		t.Errorf("kỳ vọng ForeignKeysEnabled là true cho TiDB")
+		t.Errorf("kỳ vọng ForeignKeysEnabled là true cho Aiven PostgreSQL")
 	}
 }

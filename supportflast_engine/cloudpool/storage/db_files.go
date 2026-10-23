@@ -23,7 +23,7 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 	}
 
 	var query string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		query = `INSERT INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
@@ -388,7 +388,7 @@ func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFi
 	}
 
 	// Tối ưu hóa triệt để (Query & CTE Optimizer):
-	// Thay vì chạy N câu truy vấn đệ quy CTE (N+1 query) gây nghẽn mạng tới TiDB Cloud qua Internet,
+	// Thay vì chạy N câu truy vấn đệ quy CTE (N+1 query) gây nghẽn mạng tới Aiven PostgreSQL Cloud qua Internet,
 	// chỉ cần thực hiện 1 truy vấn duy nhất lấy danh sách active public shares:
 	shareQuery := `
 	SELECT ps.file_id, CASE WHEN vf.is_dir THEN 1 ELSE 0 END 
@@ -599,7 +599,7 @@ func (s *DB) ensureRootExistsUnlocked() error {
 	now := time.Now()
 	if count == 0 {
 		var err error
-		if s.IsMySQLOrTiDB() {
+		if s.IsMySQL() {
 			_, err = s.db.Exec(`INSERT IGNORE INTO virtual_files (id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, chunk_count, is_encrypted, is_deleted, created_at, updated_at) 
 				VALUES ('root', 'user_admin', '', 'root', '/', 1, 0, 'inode/directory', 0, 0, 0, ?, ?)`, now, now)
 		} else {

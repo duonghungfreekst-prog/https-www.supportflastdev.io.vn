@@ -482,8 +482,8 @@ func TestHandleHealthCheck(t *testing.T) {
 		t.Errorf("Kỳ vọng goroutines > 0, nhận: %v", res["goroutines"])
 	}
 
-	// Trường hợp 2: Chế độ Fallback (DB_DRIVER="tidb" nhưng driver thực tế là sqlite)
-	t.Setenv("DB_DRIVER", "tidb")
+	// Trường hợp 2: Chế độ Fallback (DB_DRIVER="postgres" nhưng driver thực tế là sqlite)
+	t.Setenv("DB_DRIVER", "postgres")
 	database.SetDBInstance(db, "sqlite")
 	rrFallback := httptest.NewRecorder()
 	HandleHealthCheck(rrFallback, req, false)

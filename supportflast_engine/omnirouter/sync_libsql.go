@@ -26,7 +26,7 @@ type SyncResult struct {
 	LibSQLPath     string `json:"libsqlPath"`
 }
 
-// SyncFromLibSQL đồng bộ toàn diện dữ liệu từ tệp data.libsql vào TiDB / SQLite của Web
+// SyncFromLibSQL đồng bộ toàn diện dữ liệu từ tệp data.libsql vào Aiven PostgreSQL / SQLite của Web
 func SyncFromLibSQL(targetDB *sql.DB, customLibSQLPath string) (*SyncResult, error) {
 	libPath := customLibSQLPath
 	if libPath == "" {

@@ -746,7 +746,7 @@ func (m *Manager) GetService(ctx context.Context, accountID string) (*drive.Serv
 	acc, accExists := m.accounts[accountID]
 	m.mu.RUnlock()
 
-	// FAST PATH (Zero TiDB Query): Nếu cả srv và acc đã có trong cache in-memory, trả về ngay lập tức!
+	// FAST PATH (Zero DB Query): Nếu cả srv và acc đã có trong cache in-memory, trả về ngay lập tức!
 	if srvExists && accExists && srv != nil && acc != nil {
 		return srv, acc, nil
 	}

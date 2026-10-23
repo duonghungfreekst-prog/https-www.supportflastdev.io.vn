@@ -14,7 +14,7 @@ func main() {
 	flag.Parse()
 
 	log.Println("=====================================================================")
-	log.Println("       CÔNG CỤ ĐỒNG BỘ DỮ LIỆU TỪ LIBSQL SANG WEB / TIDB CLOUD       ")
+	log.Println("       CÔNG CỤ ĐỒNG BỘ DỮ LIỆU TỪ LIBSQL SANG WEB / AIVEN POSTGRESQL CLOUD       ")
 	log.Println("=====================================================================")
 
 	db := database.GetDB()
@@ -27,8 +27,8 @@ func main() {
 		}
 	}
 
-	isTiDB := database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql"
-	if err := omnirouter.InitStorage(db, isTiDB); err != nil {
+	isCloudDB := database.ActiveDriver() == "postgres"
+	if err := omnirouter.InitStorage(db, isCloudDB); err != nil {
 		log.Fatalf("[FATAL] Khởi tạo bảng OmniRouter thất bại: %v", err)
 	}
 

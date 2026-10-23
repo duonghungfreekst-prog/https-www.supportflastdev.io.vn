@@ -168,26 +168,26 @@ func TestSubagent6Audit(t *testing.T) {
 	_ = sqlDB.QueryRow("SELECT count(*) FROM file_chunks").Scan(&fcCount)
 	t.Logf("  SQLite virtual_files: %d tệp | file_chunks: %d khối", vfCount, fcCount)
 
-	t.Logf("\n=== 3. KIỂM TRA TIDB CLOUD ===")
-	tidbCfg := database.DefaultTiDBConfig()
-	t.Logf("  TiDB Host: %s | Port: %d | User: %s | DB: %s | TLS: %s",
-		tidbCfg.Host, tidbCfg.Port, maskStr(tidbCfg.User), tidbCfg.Database, tidbCfg.TLS)
+	t.Logf("\n=== 3. KIỂM TRA AIVEN POSTGRESQL ===")
+	pgCfg := database.DefaultPostgresConfig()
+	t.Logf("  Postgres Host: %s | Port: %d | User: %s | DB: %s | TLS: %s",
+		pgCfg.Host, pgCfg.Port, maskStr(pgCfg.User), pgCfg.Database, pgCfg.TLS)
 
-	var tidbMasterPass string
-	tidbStore, err := storage.NewTiDB(tidbCfg)
+	var pgMasterPass string
+	pgStore, err := storage.NewPostgres(pgCfg)
 	if err != nil {
-		t.Logf("  [WARN] Không thể kết nối tới TiDB Cloud: %v", err)
+		t.Logf("  [WARN] Không thể kết nối tới Postgres Cloud: %v", err)
 	} else {
-		defer tidbStore.Close()
-		_ = tidbStore.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&tidbMasterPass)
-		t.Logf("  TiDB settings.master_passphrase: %s", maskStr(tidbMasterPass))
+		defer pgStore.Close()
+		_ = pgStore.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&pgMasterPass)
+		t.Logf("  Postgres settings.master_passphrase: %s", maskStr(pgMasterPass))
 
-		tidbKey := core.DeriveKey(tidbMasterPass, nil)
+		pgKey := core.DeriveKey(pgMasterPass, nil)
 
-		// Kiểm tra accounts trên TiDB
-		tRows, err := tidbStore.SQLDB().Query("SELECT id, email, email_hash, name, name_hash, token_json, credentials_json FROM accounts")
+		// Kiểm tra accounts trên Postgres
+		tRows, err := pgStore.SQLDB().Query("SELECT id, email, email_hash, name, name_hash, token_json, credentials_json FROM accounts")
 		if err != nil {
-			t.Logf("  Lỗi query accounts TiDB: %v", err)
+			t.Logf("  Lỗi query accounts Postgres: %v", err)
 		} else {
 			defer tRows.Close()
 			tAccCount := 0
@@ -202,17 +202,17 @@ func TestSubagent6Audit(t *testing.T) {
 					continue
 				}
 
-				decEmail := core.DecryptSecret(tidbKey, encEmail)
-				decName := core.DecryptSecret(tidbKey, encName)
-				decToken := core.DecryptSecret(tidbKey, encToken)
+				decEmail := core.DecryptSecret(pgKey, encEmail)
+				decName := core.DecryptSecret(pgKey, encName)
+				decToken := core.DecryptSecret(pgKey, encToken)
 
 				isDec := !strings.HasPrefix(decEmail, "ENC:") && strings.Contains(decEmail, "@")
 				if isDec {
 					tDecSuccess++
 				}
 
-				cEmailHash := core.BlindIndexHash(tidbKey, decEmail)
-				cNameHash := core.BlindIndexHash(tidbKey, decName)
+				cEmailHash := core.BlindIndexHash(pgKey, decEmail)
+				cNameHash := core.BlindIndexHash(pgKey, decName)
 				if cEmailHash == emailHash && cNameHash == nameHash {
 					tBlindMatch++
 				}
@@ -223,29 +223,29 @@ func TestSubagent6Audit(t *testing.T) {
 				}
 
 				if tAccCount <= 2 {
-					t.Logf("    [TiDB Account %d] ID: %s | Decrypt: %v | BlindIndex: %v | TokenJSON: %v",
+					t.Logf("    [Postgres Account %d] ID: %s | Decrypt: %v | BlindIndex: %v | TokenJSON: %v",
 						tAccCount, id, isDec, cEmailHash == emailHash, tokObj != nil)
 				}
 			}
-			t.Logf("  Tổng accounts TiDB: %d | Giải mã thành công: %d | BlindIndex khớp: %d | TokenJSON hợp lệ: %d",
+			t.Logf("  Tổng accounts Postgres: %d | Giải mã thành công: %d | BlindIndex khớp: %d | TokenJSON hợp lệ: %d",
 				tAccCount, tDecSuccess, tBlindMatch, tTokenValid)
 		}
 
 		var tVfCount, tFcCount int
-		_ = tidbStore.SQLDB().QueryRow("SELECT count(*) FROM virtual_files WHERE id != 'root'").Scan(&tVfCount)
-		_ = tidbStore.SQLDB().QueryRow("SELECT count(*) FROM file_chunks").Scan(&tFcCount)
-		t.Logf("  TiDB virtual_files: %d tệp | file_chunks: %d khối", tVfCount, tFcCount)
+		_ = pgStore.SQLDB().QueryRow("SELECT count(*) FROM virtual_files WHERE id != 'root'").Scan(&tVfCount)
+		_ = pgStore.SQLDB().QueryRow("SELECT count(*) FROM file_chunks").Scan(&tFcCount)
+		t.Logf("  Postgres virtual_files: %d tệp | file_chunks: %d khối", tVfCount, tFcCount)
 	}
 
 	t.Logf("\n=== 4. SO SÁNH KHÓA & TÍNH ĐỒNG BỘ ===")
 	t.Logf("  SQLite Passphrase: %s", maskStr(sqliteMasterPass))
-	t.Logf("  TiDB Passphrase:   %s", maskStr(tidbMasterPass))
+	t.Logf("  Postgres Passphrase:   %s", maskStr(pgMasterPass))
 	t.Logf("  .env Passphrase:   %s", maskStr(envMasterKey))
 
-	if sqliteMasterPass == tidbMasterPass {
-		t.Logf("  [ĐỒNG BỘ] SQLite và TiDB có cùng master_passphrase!")
+	if sqliteMasterPass == pgMasterPass {
+		t.Logf("  [ĐỒNG BỘ] SQLite và Postgres có cùng master_passphrase!")
 	} else {
-		t.Logf("  [LƯU Ý / KHÁC BIỆT] SQLite master_passphrase != TiDB master_passphrase!")
+		t.Logf("  [LƯU Ý / KHÁC BIỆT] SQLite master_passphrase != Postgres master_passphrase!")
 	}
 
 	if envMasterKey == sqliteMasterPass {

@@ -256,7 +256,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	res.AdminUsername = "admin"
 	registry.InitAuth()
 
-	// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc TiDB/MySQL)
+	// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc Aiven PostgreSQL)
 	var adminUser database.User
 	err = db.QueryRow("SELECT id, username, email, password_hash, role FROM users WHERE username = 'admin'").Scan(
 		&adminUser.ID, &adminUser.Username, &adminUser.Email, &adminUser.PasswordHash, &adminUser.Role,
@@ -272,7 +272,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		var adminExists int
 		_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR id = ?", database.DefaultAdminUsername, database.DefaultAdminID).Scan(&adminExists)
 		if adminExists == 0 {
-			isMySQL := database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "tidb" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
+			isMySQL := database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
 
 			var insertSQL string
 			var nowVal interface{}

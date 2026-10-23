@@ -4030,7 +4030,7 @@ func extractProxyPoolID(r *http.Request) string {
 
 // HandleProxyPools trả về danh sách các proxy pools đã cấu hình (/api/proxy-pools)
 
-// UpsertProxyPool ho tro luu hoac cap nhat proxy pool tuong thich 100% tren ca TiDB Cloud lan SQLite
+// UpsertProxyPool ho tro luu hoac cap nhat proxy pool tuong thich 100% tren ca Aiven PostgreSQL Cloud lan SQLite
 
 func UpsertProxyPool(db *sql.DB, poolID string, isActive int, testStatus string, dataJSON string, now string) error {
 
@@ -5686,7 +5686,7 @@ func HandleHealth(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// HandleSettings quản lý cấu hình router đọc/ghi trực tiếp vào TiDB omni_settings
+// HandleSettings quản lý cấu hình router đọc/ghi trực tiếp vào Aiven PostgreSQL omni_settings
 
 func HandleSettings(db *sql.DB) http.HandlerFunc {
 
@@ -5818,7 +5818,7 @@ func HandleSettingsDatabase(db *sql.DB) http.HandlerFunc {
 
 			"tls": "TLS 1.2+ SSL Enforced (require)",
 
-			"libsql": "Loại bỏ hoàn toàn TiDB / SQLite - Hoạt động 100% trên Aiven PostgreSQL",
+			"libsql": "Loại bỏ hoàn toàn Aiven PostgreSQL / SQLite - Hoạt động 100% trên Aiven PostgreSQL",
 
 			"tables": []string{
 
@@ -6063,7 +6063,7 @@ func HandleBindProxyPool(db *sql.DB) http.HandlerFunc {
 
 		}
 
-		// Lưu bind mapping vào TiDB KV
+		// Lưu bind mapping vào Aiven PostgreSQL KV
 
 		if targetProvider != "" {
 
@@ -6216,7 +6216,7 @@ func HandleBindProxyPool(db *sql.DB) http.HandlerFunc {
 
 }
 
-// HandleCombos quản lý Fusion Combos trong TiDB omni_kv (scope='combos')
+// HandleCombos quản lý Fusion Combos trong Aiven PostgreSQL omni_kv (scope='combos')
 
 func HandleCombos(db *sql.DB) http.HandlerFunc {
 
@@ -6309,7 +6309,7 @@ func HandleCombos(db *sql.DB) http.HandlerFunc {
 
 			}
 
-			// Nếu bảng rỗng, tự động gieo mầm (seed) 2 Combo Cascade chuẩn vào TiDB Cloud
+			// Nếu bảng rỗng, tự động gieo mầm (seed) 2 Combo Cascade chuẩn vào Aiven PostgreSQL Cloud
 
 			if len(combosList) == 0 {
 
@@ -6931,7 +6931,7 @@ func HandleTunnel(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// HandleRequestDetails trả về danh sách chi tiết các request gần nhất từ TiDB
+// HandleRequestDetails trả về danh sách chi tiết các request gần nhất từ Aiven PostgreSQL
 
 func HandleRequestDetails(db *sql.DB) http.HandlerFunc {
 
@@ -6970,7 +6970,7 @@ func HandleRequestDetails(db *sql.DB) http.HandlerFunc {
 
 }
 
-// HandleBackup báo cáo trạng thái snapshot sao lưu trên TiDB Cloud
+// HandleBackup báo cáo trạng thái snapshot sao lưu trên Aiven PostgreSQL Cloud
 
 func HandleBackup(w http.ResponseWriter, r *http.Request) {
 
@@ -7001,7 +7001,7 @@ func HandleBackup(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// HandleClientAppDownload phục vụ tải về gói App Desktop OmniRouter (đã bỏ LibSQL, trỏ TiDB)
+// HandleClientAppDownload phục vụ tải về gói App Desktop OmniRouter (đã bỏ LibSQL, trỏ Aiven PostgreSQL)
 
 func HandleClientAppDownload() http.HandlerFunc {
 
@@ -7009,17 +7009,17 @@ func HandleClientAppDownload() http.HandlerFunc {
 
 		candidates := []string{
 
-			filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 
-			filepath.Join("..", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("..", "storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 
-			filepath.Join("..", "..", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("..", "..", "storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 
-			filepath.Join("/app", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("/app", "storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 
-			filepath.Join("/app", "data", "storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join("/app", "data", "storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 
-			filepath.Join(os.Getenv("STORAGE_DIR"), "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip"),
+			filepath.Join(os.Getenv("STORAGE_DIR"), "packages", "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip"),
 		}
 
 		var targetFile string

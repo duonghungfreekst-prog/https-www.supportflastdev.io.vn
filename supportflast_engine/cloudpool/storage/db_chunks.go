@@ -18,7 +18,7 @@ func (s *DB) SaveChunks(chunks []models.FileChunk) error {
 	defer tx.Rollback()
 
 	var insertQuery string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		insertQuery = `INSERT INTO file_chunks (chunk_id, file_id, chunk_index, account_id, gdrive_file_id, chunk_size_bytes, encrypted_size_bytes, sha256, status)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE

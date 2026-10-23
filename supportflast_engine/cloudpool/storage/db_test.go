@@ -268,6 +268,7 @@ func TestResolveDBPathAndMigratedDB(t *testing.T) {
 	}
 	defer db.Close()
 
+	if db.IsSQLite() {
 	// Verify WAL Mode
 	var journalMode string
 	if err := db.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
@@ -295,6 +296,8 @@ func TestResolveDBPathAndMigratedDB(t *testing.T) {
 			t.Fatalf("Required table %s not found in migrated database", tbl)
 		}
 	}
+}
+
 }
 
 func TestCloudPool_JournalModeFallback(t *testing.T) {
@@ -360,7 +363,7 @@ func TestCloudPool_JournalModeFallback(t *testing.T) {
 	}
 }
 
-func TestTiDBAndMySQLCompatibilityHelpers(t *testing.T) {
+func TestMySQLCompatibilityHelpers(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test_compat.db")
 
@@ -377,30 +380,30 @@ func TestTiDBAndMySQLCompatibilityHelpers(t *testing.T) {
 	if !db.IsSQLite() {
 		t.Fatalf("Expected IsSQLite() == true")
 	}
-	if db.IsMySQLOrTiDB() {
-		t.Fatalf("Expected IsMySQLOrTiDB() == false")
+	if db.IsMySQL() {
+		t.Fatalf("Expected IsMySQL() == false")
 	}
 
-	// 2. Chuyển tạm thời driver sang tidb để kiểm tra các helper rẽ nhánh
-	db.driver = "tidb"
-	if db.Driver() != "tidb" {
-		t.Fatalf("Expected driver 'tidb', got '%s'", db.Driver())
+	// 2. Chuyển tạm thời driver sang postgres để kiểm tra các helper rẽ nhánh
+	db.driver = "mysql"
+	if db.Driver() != "mysql" {
+		t.Fatalf("Expected driver 'postgres', got '%s'", db.Driver())
 	}
 	if db.IsSQLite() {
-		t.Fatalf("Expected IsSQLite() == false when driver is tidb")
+		t.Fatalf("Expected IsSQLite() == false when driver is postgres")
 	}
-	if !db.IsMySQLOrTiDB() {
-		t.Fatalf("Expected IsMySQLOrTiDB() == true when driver is tidb")
+	if !db.IsMySQL() {
+		t.Fatalf("Expected IsMySQL() == true when driver is postgres")
 	}
 
-	// 3. Kiểm tra OptimizeDatabase và CheckDatabaseIntegrity trên chế độ TiDB/MySQL
+	// 3. Kiểm tra OptimizeDatabase và CheckDatabaseIntegrity trên chế độ PostgreSQL/MySQL
 	if err := db.OptimizeDatabase(); err != nil {
-		t.Fatalf("OptimizeDatabase failed on TiDB mode: %v", err)
+		t.Fatalf("OptimizeDatabase failed on Aiven PostgreSQL mode: %v", err)
 	}
 
 	status, err := db.CheckDatabaseIntegrity()
 	if err != nil || status != "ok" {
-		t.Fatalf("CheckDatabaseIntegrity failed on TiDB mode: status=%s, err=%v", status, err)
+		t.Fatalf("CheckDatabaseIntegrity failed on Aiven PostgreSQL mode: status=%s, err=%v", status, err)
 	}
 
 	// 4. Khôi phục lại driver sqlite để đóng DB an toàn
@@ -421,7 +424,7 @@ func TestFlexibleTimeParsing(t *testing.T) {
 		t.Errorf("Expected %v, got %v", refTime, got)
 	}
 
-	// []byte (mô phỏng []uint8 từ MySQL/TiDB driver)
+	// []byte (mô phỏng []uint8 từ MySQL/Aiven PostgreSQL driver)
 	byteVal := []byte("2026-09-30 08:30:00")
 	gotByte := parseFlexibleTime(byteVal)
 	if gotByte.Year() != 2026 || gotByte.Month() != 9 || gotByte.Day() != 30 || gotByte.Hour() != 8 || gotByte.Minute() != 30 {
@@ -489,9 +492,9 @@ func TestFlexibleTimeParsing(t *testing.T) {
 	}
 }
 
-func TestTiDBByteSliceScanCompatibility(t *testing.T) {
+func TestByteSliceScanCompatibility(t *testing.T) {
 	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "test_tidb_compat.db")
+	dbPath := filepath.Join(tempDir, "test_postgres_compat.db")
 
 	db, err := NewDB(dbPath)
 	if err != nil {
@@ -499,14 +502,14 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	}
 	defer db.Close()
 
-	// 1. Kiểm tra Account scan khi cột created_at, updated_at lưu dưới dạng chuỗi text hoặc blob (tương đương TiDB driver []uint8)
+	// 1. Kiểm tra Account scan khi cột created_at, updated_at lưu dưới dạng chuỗi text hoặc blob (tương đương Aiven PostgreSQL driver []uint8)
 	acc := &models.Account{
-		ID:              "acc_tidb_1",
-		Email:           "tidb_driver@test.com",
-		Name:            "TiDB Driver Test",
+		ID:              "acc_postgres_1",
+		Email:           "postgres_driver@test.com",
+		Name:            "Aiven PostgreSQL Driver Test",
 		AuthType:        "oauth",
-		CredentialsJSON: `{"client_id":"tidb_id"}`,
-		TokenJSON:       `{"access_token":"tidb_token"}`,
+		CredentialsJSON: `{"client_id":"postgres_id"}`,
+		TokenJSON:       `{"access_token":"postgres_token"}`,
 		TotalQuotaBytes: 10 * 1024 * 1024 * 1024,
 		FreeQuotaBytes:  10 * 1024 * 1024 * 1024,
 		Status:          "active",
@@ -517,35 +520,35 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 		t.Fatalf("SaveAccount failed: %v", err)
 	}
 
-	// Cập nhật giá trị cột created_at, updated_at thành dạng chuỗi SQL thô (mô phỏng driver TiDB/MySQL trả về []uint8)
+	// Cập nhật giá trị cột created_at, updated_at thành dạng chuỗi SQL thô (mô phỏng driver PostgreSQL/MySQL trả về []uint8)
 	rawTimeString := "2026-09-30 08:45:00"
 	_, err = db.SQLDB().Exec("UPDATE accounts SET created_at = ?, updated_at = ? WHERE id = ?", rawTimeString, rawTimeString, acc.ID)
 	if err != nil {
-		t.Fatalf("Failed to simulate TiDB string time in accounts: %v", err)
+		t.Fatalf("Failed to simulate Aiven PostgreSQL string time in accounts: %v", err)
 	}
 
 	// Test GetAccount
 	loadedAcc, err := db.GetAccount(acc.ID)
 	if err != nil {
-		t.Fatalf("GetAccount failed with TiDB string/blob time: %v", err)
+		t.Fatalf("GetAccount failed with Aiven PostgreSQL string/blob time: %v", err)
 	}
 	if loadedAcc.CreatedAt.Year() != 2026 || loadedAcc.UpdatedAt.Year() != 2026 {
 		t.Errorf("GetAccount returned unexpected CreatedAt/UpdatedAt: %v, %v", loadedAcc.CreatedAt, loadedAcc.UpdatedAt)
 	}
 
 	// Test GetAccountByEmail
-	loadedByEmail, err := db.GetAccountByEmail("tidb_driver@test.com")
+	loadedByEmail, err := db.GetAccountByEmail("postgres_driver@test.com")
 	if err != nil {
-		t.Fatalf("GetAccountByEmail failed with TiDB string/blob time: %v", err)
+		t.Fatalf("GetAccountByEmail failed with Aiven PostgreSQL string/blob time: %v", err)
 	}
 	if loadedByEmail.ID != acc.ID {
 		t.Errorf("GetAccountByEmail ID mismatch: expected %s, got %s", acc.ID, loadedByEmail.ID)
 	}
 
-	// Test ListAccounts (trực tiếp tái hiện và khắc phục lỗi TiDB "sql: Scan error on column index 13, name created_at")
+	// Test ListAccounts (trực tiếp tái hiện và khắc phục lỗi Aiven PostgreSQL "sql: Scan error on column index 13, name created_at")
 	accList, err := db.ListAccounts()
 	if err != nil {
-		t.Fatalf("ListAccounts failed with TiDB string/blob time: %v", err)
+		t.Fatalf("ListAccounts failed with Aiven PostgreSQL string/blob time: %v", err)
 	}
 	if len(accList) == 0 {
 		t.Fatalf("ListAccounts returned 0 accounts")
@@ -555,7 +558,7 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	_, err = db.SQLDB().Exec("UPDATE cloudpool_users SET locked_until = ?, created_at = ?, updated_at = ? WHERE id = 'user_admin'",
 		"2026-09-30 09:30:00", "2026-09-30 08:00:00", "2026-09-30 08:30:00")
 	if err != nil {
-		t.Fatalf("Failed to simulate TiDB string time in users: %v", err)
+		t.Fatalf("Failed to simulate Aiven PostgreSQL string time in users: %v", err)
 	}
 
 	userByUname, err := db.GetUserByUsername("admin")
@@ -585,8 +588,8 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	// 3. Kiểm tra OTP scan (ListFileOTPs, VerifyOTPOnly, VerifyAndBurnOTP)
 	futureExp := time.Now().Add(1 * time.Hour)
 	otp := &models.FileAccessOTP{
-		ID:           "otp_tidb_1",
-		FileID:       "file_tidb_test",
+		ID:           "otp_postgres_1",
+		FileID:       "file_postgres_test",
 		FileName:     "document.pdf",
 		TargetUserID: "all",
 		OTPCode:      "654321",
@@ -615,15 +618,15 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 		t.Fatalf("ListFileOTPs returned 0 items")
 	}
 
-	validOTP, err := db.VerifyOTPOnly("file_tidb_test", "any_user", "654321")
+	validOTP, err := db.VerifyOTPOnly("file_postgres_test", "any_user", "654321")
 	if err != nil || !validOTP {
 		t.Fatalf("VerifyOTPOnly failed: %v", err)
 	}
 
 	// 4. Kiểm tra Access Request scan (ListFileAccessRequests)
 	req := &models.FileAccessRequest{
-		ID:              "req_tidb_1",
-		FileID:          "file_tidb_test",
+		ID:              "req_postgres_1",
+		FileID:          "file_postgres_test",
 		FileName:        "document.pdf",
 		UserID:          "child_user_1",
 		Username:        "child",
@@ -651,8 +654,8 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 
 	// 5. Kiểm tra Public Share scan (GetPublicShare, ListPublicShares)
 	share := &models.PublicShare{
-		ID:            "sh_tidb_test",
-		FileID:        "file_tidb_test",
+		ID:            "sh_postgres_test",
+		FileID:        "file_postgres_test",
 		CreatedBy:     "user_admin",
 		MaxDownloads:  10,
 		DownloadCount: 0,
@@ -686,7 +689,7 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 
 	// 6. Kiểm tra Activity Log & Login Session scan
 	actLog := &models.ActivityLog{
-		ID:        "log_tidb_1",
+		ID:        "log_postgres_1",
 		UserID:    "user_admin",
 		Username:  "admin",
 		Action:    "TEST",
@@ -711,7 +714,7 @@ func TestTiDBByteSliceScanCompatibility(t *testing.T) {
 	}
 
 	loginSess := &models.LoginSession{
-		ID:        "sess_tidb_1",
+		ID:        "sess_postgres_1",
 		UserID:    "user_admin",
 		Username:  "admin",
 		IPAddress: "127.0.0.1",

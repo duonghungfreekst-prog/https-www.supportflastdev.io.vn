@@ -20,7 +20,6 @@ import (
 
 // DefaultDriverName driver mặc định là Aiven PostgreSQL
 const DefaultDriverName = "postgres"
-const DefaultTiDBDriverName = "postgres"
 
 // Hằng số tài khoản quản trị viên hệ thống khởi tạo chuẩn
 const (
@@ -300,21 +299,21 @@ type SystemRelease struct {
 }
 
 
-// ResolveDBPath đã loại bỏ — hệ thống chỉ sử dụng TiDB Cloud
+// ResolveDBPath đã loại bỏ — hệ thống chỉ sử dụng Aiven PostgreSQL Cloud
 
-// isMySQLOrTiDB kiểm tra xem driver hiện hành, kết nối db hoặc biến môi trường DB_DRIVER có phải là tidb hoặc mysql hay không (Lock-free)
-func isMySQLOrTiDB(db ...*sql.DB) bool {
+// isMySQL kiểm tra xem driver hiện hành, kết nối db hoặc biến môi trường DB_DRIVER có phải là postgres hoặc mysql hay không (Lock-free)
+func isMySQL(db ...*sql.DB) bool {
 	if len(db) > 0 && db[0] != nil {
 		driverType := strings.ToLower(fmt.Sprintf("%T", db[0].Driver()))
 		if strings.Contains(driverType, "sqlite") {
 			return false
 		}
-		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
+		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "postgres") {
 			return true
 		}
 	}
 	drv := ActiveDriver()
-	return drv == "tidb" || drv == "mysql"
+	return drv == "postgres" || drv == "mysql"
 }
 
 // IsPostgres kiểm tra xem driver hiện hành có phải là Aiven PostgreSQL hay không
@@ -329,7 +328,7 @@ func IsPostgres(db ...*sql.DB) bool {
 	return drv == "postgres" || drv == "postgresql" || drv == "aiven"
 }
 
-// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "tidb") (Lock-free)
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "postgres") (Lock-free)
 func ActiveDriver() string {
 	if v, ok := activeDriver.Load().(string); ok && v != "" {
 		return v
@@ -392,7 +391,7 @@ func GetDB() *sql.DB {
 	}
 	dbMutex.RUnlock()
 
-	// Tự động khởi tạo kết nối dựa theo DB_DRIVER (SQLite hoặc TiDB/MySQL)
+	// Tự động khởi tạo kết nối dựa theo DB_DRIVER (SQLite hoặc PostgreSQL/SQLite)
 	db, err := InitDB()
 	if err != nil {
 		log.Printf("[ENGINE] [DATABASE] [ERROR] Failed to auto-initialize DB in GetDB: %v", err)
@@ -401,7 +400,7 @@ func GetDB() *sql.DB {
 	return db
 }
 
-// CheckpointWAL không áp dụng cho TiDB Cloud — giữ lại để tương thích API
+// CheckpointWAL không áp dụng cho Aiven PostgreSQL Cloud — giữ lại để tương thích API
 func CheckpointWAL() error {
 	return nil
 }
@@ -420,9 +419,8 @@ func CloseDB() error {
 	}
 	activeDriver.Store("")
 
-	// Đóng đồng thời instance PostgreSQL hoặc TiDB nếu đang mở độc lập
+	// Đóng đồng thời instance PostgreSQL hoặc Aiven PostgreSQL nếu đang mở độc lập
 	_ = ClosePostgres()
-	_ = CloseTiDB()
 	return lastErr
 }
 
@@ -430,7 +428,7 @@ func insertIgnoreClause(db ...*sql.DB) string {
 	if IsPostgres(db...) {
 		return "INSERT INTO"
 	}
-	if isMySQLOrTiDB(db...) {
+	if isMySQL(db...) {
 		return "INSERT IGNORE INTO"
 	}
 	return "INSERT OR IGNORE INTO"
@@ -439,7 +437,7 @@ func insertIgnoreClause(db ...*sql.DB) string {
 // SeedInitialData kiểm tra bảng users. Nếu rỗng, tạo sẵn tài khoản Admin chuẩn:
 // username='admin', email='admin@supportflastdev.io.vn', password_hash (BCrypt cost 12),
 // role='admin', display_name='Quản Trị Viên Hệ Thống'.
-// Hỗ trợ đồng nhất cả SQLite và TiDB/MySQL.
+// Hỗ trợ đồng nhất cả SQLite và PostgreSQL/SQLite.
 // TUYỆT ĐỐI KHÔNG seed app rác hoặc review giả lập (Tuân thủ nghiêm ngặt Rule 9.1).
 func SeedInitialData(db *sql.DB, dataDir ...string) error {
 	if db == nil {
@@ -458,7 +456,7 @@ func SeedInitialData(db *sql.DB, dataDir ...string) error {
 		return fmt.Errorf("failed to query users count: %w", err)
 	}
 
-	// Kiểm tra trước khi chèn tài khoản admin để tương thích 100% cả SQLite lẫn TiDB MySQL (tránh duplicate key)
+	// Kiểm tra trước khi chèn tài khoản admin để tương thích 100% cả SQLite lẫn PostgreSQL (tránh duplicate key)
 	var adminExists int
 	_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ? OR username = ?", DefaultAdminID, DefaultAdminUsername).Scan(&adminExists)
 	if adminExists > 0 {
@@ -1014,7 +1012,7 @@ func generateLogID(prefix string, seq *uint64) string {
 
 // RecordAuditLog lưu vết hành động bảo mật vào bảng audit_logs bằng Prepared Statement chống SQL Injection tuyệt đối
 // Hỗ trợ lưu vết: đăng nhập, đổi mật khẩu, đổi mã PIN, truy cập Honeypot, thay đổi cấu hình
-// Hoạt động đồng nhất cho cả SQLite và TiDB/MySQL
+// Hoạt động đồng nhất cho cả SQLite và PostgreSQL/SQLite
 func RecordAuditLog(userID, action, ipAddress, userAgent, details string) error {
 	db := GetDB()
 	if db == nil {
@@ -1152,7 +1150,7 @@ func GetAuditLogsByAction(action string, limit, offset int) ([]AuditLog, error) 
 }
 
 // RecordSecurityEvent lưu trữ sự kiện đe dọa an ninh, IP bị chặn và thời gian hết hạn bằng Prepared Statement
-// Hoạt động đồng nhất cho cả SQLite và TiDB/MySQL
+// Hoạt động đồng nhất cho cả SQLite và PostgreSQL/SQLite
 func RecordSecurityEvent(eventType, ipAddress, severity, details string, blockedUntil *time.Time) error {
 	db := GetDB()
 	if db == nil {
@@ -1191,7 +1189,7 @@ func RecordSecurityEvent(eventType, ipAddress, severity, details string, blocked
 	return nil
 }
 
-// SaveSecurityEvent lưu trữ sự kiện an ninh và phòng thủ (bí danh đồng nhất của RecordSecurityEvent hỗ trợ cả SQLite và TiDB/MySQL)
+// SaveSecurityEvent lưu trữ sự kiện an ninh và phòng thủ (bí danh đồng nhất của RecordSecurityEvent hỗ trợ cả SQLite và PostgreSQL/SQLite)
 func SaveSecurityEvent(eventType, ipAddress, severity, details string, blockedUntil *time.Time) error {
 	return RecordSecurityEvent(eventType, ipAddress, severity, details, blockedUntil)
 }
@@ -1244,7 +1242,7 @@ func GetSecurityEvents(limit, offset int) ([]SecurityEvent, error) {
 }
 
 // IsIPBlocked kiểm tra xem địa chỉ IP có đang bị chặn trong bảng security_events hay không bằng Prepared Statement
-// Tương thích đồng nhất cho cả SQLite và TiDB/MySQL
+// Tương thích đồng nhất cho cả SQLite và PostgreSQL/SQLite
 func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 	db := GetDB()
 	if db == nil {
@@ -1296,7 +1294,7 @@ func IsIPBlocked(ipAddress string) (bool, time.Time, error) {
 	return true, t, nil
 }
 
-// RecordRevokedToken lưu trữ token hash đã bị thu hồi vào CSDL SQLite / TiDB
+// RecordRevokedToken lưu trữ token hash đã bị thu hồi vào CSDL SQLite / Aiven PostgreSQL
 func RecordRevokedToken(tokenHash string, expiresAt time.Time) error {
 	db := GetDB()
 	if db == nil {
@@ -1306,7 +1304,7 @@ func RecordRevokedToken(tokenHash string, expiresAt time.Time) error {
 	nowStr := time.Now().Format(time.RFC3339)
 
 	var query string
-	if ActiveDriver() == "tidb" || ActiveDriver() == "mysql" {
+	if ActiveDriver() == "postgres" || ActiveDriver() == "mysql" {
 		query = `
 			INSERT INTO revoked_tokens (token_hash, expires_at, revoked_at)
 			VALUES (?, ?, ?)

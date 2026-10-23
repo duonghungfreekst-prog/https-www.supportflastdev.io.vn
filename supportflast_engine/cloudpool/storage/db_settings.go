@@ -68,7 +68,7 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 	} else {
 		// Thêm mới hoàn toàn
 		var query string
-		if s.IsMySQLOrTiDB() {
+		if s.IsMySQL() {
 			query = `INSERT INTO accounts (id, email, email_hash, name, name_hash, avatar_url, auth_type, credentials_json, token_json, root_folder_id, total_quota_bytes, used_quota_bytes, free_quota_bytes, status, last_error, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
@@ -678,7 +678,7 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 
 	for k, v := range pairs {
 		var q string
-		if s.IsMySQLOrTiDB() {
+		if s.IsMySQL() {
 			q = "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)"
 		} else {
 			q = "INSERT INTO settings (`key`, `value`) VALUES (?, ?) ON CONFLICT(`key`) DO UPDATE SET `value`=excluded.value"
@@ -705,7 +705,7 @@ func (s *DB) getStatsFromDB() (*models.StorageStats, error) {
 
 	// Tối ưu hóa triệt để (Query Optimizer):
 	// Gộp toàn bộ 5 truy vấn riêng lẻ thành 1 câu truy vấn duy nhất (Single Round-Trip),
-	// loại bỏ hoàn toàn độ trễ mạng tích lũy (5 x 50ms = 250ms -> 1 x 50ms) tới TiDB Cloud Singapore.
+	// loại bỏ hoàn toàn độ trễ mạng tích lũy (5 x 50ms = 250ms -> 1 x 50ms) tới Aiven PostgreSQL Cloud Singapore.
 	query := `SELECT 
 		COALESCE((SELECT COUNT(*) FROM accounts), 0),
 		COALESCE((SELECT SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) FROM accounts), 0),
@@ -983,7 +983,7 @@ func (s *DB) GetDatabaseTables() ([]TableInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		rows, err := s.db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' ORDER BY table_name ASC")
 		if err != nil {
 			return nil, err
@@ -1167,7 +1167,7 @@ func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 func (s *DB) OptimizeDatabase() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		return nil
 	}
 	_, err := s.db.Exec("VACUUM; PRAGMA optimize;")
@@ -1179,7 +1179,7 @@ func (s *DB) OptimizeDatabase() error {
 func (s *DB) CheckDatabaseIntegrity() (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		var pingCheck int = 1
 		err := s.db.QueryRow("SELECT 1;").Scan(&pingCheck)
 		if err != nil {
@@ -1195,8 +1195,8 @@ func (s *DB) CheckDatabaseIntegrity() (string, error) {
 
 
 func (s *DB) BackupDatabase(destPath string) error {
-	if s.IsMySQLOrTiDB() {
-		return fmt.Errorf("sao lưu database qua VACUUM INTO chỉ khả dụng trên SQLite (đối với TiDB vui lòng dùng TiDB Backup & Restore BR hoặc mysqldump)")
+	if s.IsMySQL() {
+		return fmt.Errorf("sao lưu database qua VACUUM INTO chỉ khả dụng trên SQLite (đối với Aiven PostgreSQL vui lòng dùng Aiven PostgreSQL Backup & Restore BR hoặc mysqldump)")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1208,8 +1208,8 @@ func (s *DB) BackupDatabase(destPath string) error {
 
 
 func (s *DB) StartAutoBackup() {
-	if s.IsMySQLOrTiDB() {
-		log.Println("[ENGINE] [STORAGE] TiDB/MySQL driver detected: local auto-backup skipped (managed by cloud service)")
+	if s.IsMySQL() {
+		log.Println("[ENGINE] [STORAGE] PostgreSQL/MySQL driver detected: local auto-backup skipped (managed by cloud service)")
 		return
 	}
 	go func() {
@@ -1275,6 +1275,6 @@ func (s *DB) StartAutoBackup() {
 // Tuân thủ Quy chế PHAN 0, PHAN 1.5, PHAN 3.5, PHAN 7.1
 // =============================================================================
 
-// EnsureTiDBCloudPoolDataReady kiểm tra tính sẵn sàng của các bảng accounts, virtual_files,
-// settings khi khởi động TiDB Cloud. Nếu thiếu cấu hình mặc định (master passphrase, chunk size,
+// EnsureAiven PostgreSQLCloudPoolDataReady kiểm tra tính sẵn sàng của các bảng accounts, virtual_files,
+// settings khi khởi động Aiven PostgreSQL Cloud. Nếu thiếu cấu hình mặc định (master passphrase, chunk size,
 // strategy...) hoặc bảng rỗng, tự động khởi tạo an toàn (seed idempotent / auto-sync).

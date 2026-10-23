@@ -68,12 +68,12 @@
     {
       "id": "rel-2.6.0",
       "version": "v2.6.0",
-      "title": "Nâng Cấp Toàn Diện Kiến Trúc Polyglot TiDB Cloud & Anycast CDN",
+      "title": "Nâng Cấp Toàn Diện Kiến Trúc Polyglot Aiven PostgreSQL Cloud & Anycast CDN",
       "date": "2026-10-03",
       "badge": "Mới Nhất",
       "type": "feat",
       "changes": [
-        "[feat] Tích hợp TiDB Cloud Serverless AP-Southeast-1 với cơ chế Auto-Fallback sang SQLite dự phòng",
+        "[feat] Tích hợp Aiven PostgreSQL Cloud Cluster với cơ chế Auto-Fallback sang SQLite dự phòng",
         "[feat] Đại tu giao diện Cyber Glassmorphism với HUD Telemetry, Tech Tree Timeline và Bento Rating Center",
         "[security] Triển khai bộ bảo mật đa tầng: IP Jail, Multi-Tier Rate Limit và Zero-Trust Signed Commits",
         "[perf] Tối ưu hóa bộ nhớ Go Monolith GOMEMLIMIT=384MiB chống OOM trên Render Cloud Container",

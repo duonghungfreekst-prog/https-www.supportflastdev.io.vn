@@ -1273,7 +1273,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-			// Ghi nhận trừ Quota trực tiếp vào TiDB Cloud và gửi Live Telemetry lên Web (chỉ khi là request AI, không trừ quota cho request xem quota)
+			// Ghi nhận trừ Quota trực tiếp vào Aiven PostgreSQL Cloud và gửi Live Telemetry lên Web (chỉ khi là request AI, không trừ quota cho request xem quota)
 			if !isQuotaReq {
 				ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
 			}
@@ -1525,7 +1525,7 @@ func GetActiveClientKey(db *sql.DB) string {
 
 		"config.json",
 
-		filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0", "config.json"),
+		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "config.json"),
 
 	}
 
@@ -1679,7 +1679,7 @@ func GetWebServerURL() string {
 
 		"config.json",
 
-		filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0", "config.json"),
+		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "config.json"),
 
 	}
 
@@ -2330,7 +2330,7 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 
 
-	// Cập nhật CSDL TiDB Cloud
+	// Cập nhật CSDL Aiven PostgreSQL Cloud
 
 	var dataMap map[string]interface{}
 

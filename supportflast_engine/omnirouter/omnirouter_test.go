@@ -661,7 +661,7 @@ func TestClientTelemetryAndQuotaReport(t *testing.T) {
 		t.Fatalf("POST /api/v1/client/report thất bại: %d - %s", recReport.Code, recReport.Body.String())
 	}
 
-	time.Sleep(50 * time.Millisecond) // chờ async ghi nhận vào SQLite/TiDB
+	time.Sleep(50 * time.Millisecond) // chờ async ghi nhận vào SQLite/Aiven PostgreSQL
 
 	// 5. P1 Security: Client report chỉ là telemetry/audit log, KHÔNG làm tăng used_requests của key
 	var usedReqs int64

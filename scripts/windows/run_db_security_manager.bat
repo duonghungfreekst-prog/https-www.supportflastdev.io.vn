@@ -12,8 +12,8 @@ echo ===========================================================================
 echo.
 echo   [1] Kiểm toán an ninh CSDL toàn diện (Security Audit)
 echo   [2] Sao lưu 3 tầng chống mất dữ liệu (Backup lên Google Drive có Timestamp)
-echo   [3] Đồng bộ toàn diện 18 bảng lên TiDB Cloud Serverless (Sync TiDB)
-echo   [4] Chạy toàn bộ quy trình chuẩn (Audit -^> Sync TiDB -^> Backup Google Drive)
+echo   [3] Đồng bộ toàn diện 18 bảng lên Aiven PostgreSQL Cloud Cluster (Sync Aiven Postgres)
+echo   [4] Chạy toàn bộ quy trình chuẩn (Audit -^> Sync Aiven Postgres -^> Backup Google Drive)
 echo   [5] Mở tài liệu Quy Trình Chuẩn (QUY_TRINH_QUAN_LY_DATABASE_BAO_MAT.md)
 echo   [0] Thoát
 echo.
@@ -48,7 +48,7 @@ goto MENU
 
 :SYNC
 cls
-echo [INFO] Đang đồng bộ toàn diện dữ liệu lên TiDB Cloud...
+echo [INFO] Đang đồng bộ toàn diện dữ liệu lên Aiven PostgreSQL Cloud...
 python tools\db_security_manager.py sync
 echo.
 pause

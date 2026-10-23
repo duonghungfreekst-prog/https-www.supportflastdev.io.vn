@@ -63,9 +63,9 @@ func safeRegisterHandler(mux *http.ServeMux, pattern string, handler http.Handle
 }
 
 // RegisterOmniRouterRoutes Ä‘Äƒng kÃ½ toÃ n bá»™ routes cá»§a 9Router vÃ o ServeMux cá»§a há»‡ thá»‘ng
-func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir string) {
+func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isCloudDB bool, uiDir string) {
 	// 1. Khá»Ÿi táº¡o cáº¥u trÃºc lÆ°u trá»¯ báº£ng
-	if err := InitStorage(db, isTiDB); err != nil {
+	if err := InitStorage(db, isCloudDB); err != nil {
 		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khá»Ÿi táº¡o báº£ng OmniRouter: %v", err)
 	}
 	SetSkillsDB(db)
@@ -82,7 +82,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/health", HandleHealth)
 	safeRegister(mux, "/api/router/health", HandleHealth)
 
-	// 4.1 CÃ i Ä‘áº·t há»‡ thá»‘ng & CSDL TiDB Cloud
+	// 4.1 CÃ i Ä‘áº·t há»‡ thá»‘ng & CSDL Aiven PostgreSQL Cloud
 	settingsHandler := HandleSettings(db)
 	safeRegister(mux, "/api/settings", settingsHandler)
 	safeRegister(mux, "/api/settings/", settingsHandler)

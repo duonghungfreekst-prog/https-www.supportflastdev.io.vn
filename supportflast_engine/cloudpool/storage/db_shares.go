@@ -260,7 +260,7 @@ func (s *DB) GetAllFilesInFolderTree(rootFolderID string) ([]FileInTree, error) 
 	defer s.mu.RUnlock()
 
 	var concatExpr string
-	if s.IsMySQLOrTiDB() {
+	if s.IsMySQL() {
 		concatExpr = "CONCAT(ft.rel_path, '/', vf.name)"
 	} else {
 		concatExpr = "ft.rel_path || '/' || vf.name"

@@ -400,7 +400,7 @@ func CreateReviewHandler(w http.ResponseWriter, r *http.Request) {
 		appIDVal = cleanAppID
 	}
 
-	// 5. Lưu vào cơ sở dữ liệu (SQLite hoặc TiDB Cloud) bảng 'reviews'
+	// 5. Lưu vào cơ sở dữ liệu (SQLite hoặc Aiven PostgreSQL Cloud) bảng 'reviews'
 	db := database.GetDB()
 	if db == nil {
 		log.Printf("[ENGINE] [REVIEWS] [ERROR] Không thể kết nối cơ sở dữ liệu để lưu đánh giá")
@@ -408,7 +408,7 @@ func CreateReviewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Kiểm tra trước khi chèn để tương thích 100% cả SQLite lẫn TiDB MySQL (tránh lỗi trùng lặp key / idempotent)
+	// Kiểm tra trước khi chèn để tương thích 100% cả SQLite lẫn PostgreSQL (tránh lỗi trùng lặp key / idempotent)
 	var count int
 	_ = db.QueryRowContext(r.Context(), "SELECT COUNT(*) FROM reviews WHERE id = ?", reviewID).Scan(&count)
 	if count == 0 {

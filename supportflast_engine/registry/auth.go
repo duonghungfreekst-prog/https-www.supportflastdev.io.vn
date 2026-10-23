@@ -392,7 +392,7 @@ func IssueRS256Token(u User, duration time.Duration) (string, error) {
 }
 
 // RevokeToken đưa token vào danh sách bị thu hồi (khi người dùng đăng xuất)
-// Lưu đồng thời trên bộ nhớ RAM và lưu trữ bền vững vào CSDL SQLite / TiDB
+// Lưu đồng thời trên bộ nhớ RAM và lưu trữ bền vững vào CSDL SQLite / Aiven PostgreSQL
 func RevokeToken(token string) {
 	clean := strings.TrimSpace(token)
 	if clean == "" {
@@ -409,7 +409,7 @@ func RevokeToken(token string) {
 	_ = database.RecordRevokedToken(tokenHash, expiresAt)
 }
 
-// IsTokenRevoked kiểm tra xem token đã bị thu hồi hay chưa (RAM L1 cache trước, SQLite/TiDB sau)
+// IsTokenRevoked kiểm tra xem token đã bị thu hồi hay chưa (RAM L1 cache trước, SQLite/Aiven PostgreSQL sau)
 func IsTokenRevoked(token string) bool {
 	clean := strings.TrimSpace(token)
 	if clean == "" {

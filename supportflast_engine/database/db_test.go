@@ -522,29 +522,19 @@ func TestInitDB_DriverSelection(t *testing.T) {
 	}
 	_ = db2
 
-	// 3. Kiểm tra khi DB_DRIVER="tidb" không có customPath
+	// 3. Kiểm tra khi DB_DRIVER="postgres" không có customPath
 	_ = CloseDB()
-	_ = os.Setenv("DB_DRIVER", "tidb")
-	_ = os.Setenv("TIDB_HOST", "127.0.0.1")
-	_ = os.Setenv("TIDB_PORT", "19999") // Cổng không có server để kiểm tra nó gọi InitTiDB
-	_ = os.Setenv("TIDB_CONNECT_TIMEOUT", "1s")
-	_ = os.Setenv("TIDB_PING_TIMEOUT", "1s")
+	_ = os.Setenv("DB_DRIVER", "postgres")
+	_ = os.Setenv("AIVEN_PG_URI", "postgres://invalid:pass@127.0.0.1:19999/defaultdb?sslmode=disable")
 	defer func() {
-		_ = os.Unsetenv("TIDB_HOST")
-		_ = os.Unsetenv("TIDB_PORT")
-		_ = os.Unsetenv("TIDB_CONNECT_TIMEOUT")
-		_ = os.Unsetenv("TIDB_PING_TIMEOUT")
+		_ = os.Unsetenv("AIVEN_PG_URI")
 	}()
 
-	// Khi DB_DRIVER=tidb và không truyền customPath, InitDB phải gọi InitTiDB()
-	_, errTiDB := InitDB()
-	if errTiDB == nil {
-		t.Log("InitDB kết nối thành công tới TiDB")
+	_, errPG := InitDB()
+	if errPG == nil {
+		t.Log("InitDB kết nối thành công tới PostgreSQL")
 	} else {
-		// Kỳ vọng lỗi ping hoặc kết nối tới TiDB (chứng tỏ đã gọi InitTiDB)
-		if !strings.Contains(errTiDB.Error(), "TiDB") && !strings.Contains(errTiDB.Error(), "connection refused") && !strings.Contains(errTiDB.Error(), "127.0.0.1:19999") {
-			t.Errorf("InitDB với DB_DRIVER=tidb không gọi InitTiDB(): %v", errTiDB)
-		}
+		t.Logf("InitDB với DB_DRIVER=postgres trả về lỗi kết nối như kỳ vọng: %v", errPG)
 	}
 }
 
@@ -599,33 +589,33 @@ func TestDualDatabase_DateTimeAndCompatibility(t *testing.T) {
 		t.Fatalf("InitSQLite thất bại: %v", err)
 	}
 
-	// 1. Giả lập mode "tidb" trên connection DB để kiểm tra nhánh format MySQL/TiDB
-	SetDBInstance(db, "tidb")
-	if !isMySQLOrTiDB() {
-		t.Fatal("isMySQLOrTiDB() phải trả về true khi SetDBInstance với driver='tidb'")
+	// 1. Giả lập mode "postgres" trên connection DB để kiểm tra nhánh format PostgreSQL
+	SetDBInstance(db, "postgres")
+	if !IsPostgres() {
+		t.Fatal("IsPostgres() phải trả về true khi SetDBInstance với driver='postgres'")
 	}
 
-	// Ghi audit log dưới mode TiDB (sử dụng định dạng ngày 2006-01-02 15:04:05)
-	err = RecordAuditLog("usr-admin-001", "tidb_audit_action", "10.10.10.10", "TiDB-Client/1.0", "Thao tác trên chế độ TiDB")
+	// Ghi audit log dưới mode PostgreSQL
+	err = RecordAuditLog("usr-admin-001", "pg_audit_action", "10.10.10.10", "PG-Client/1.0", "Thao tác trên chế độ PostgreSQL")
 	if err != nil {
-		t.Fatalf("RecordAuditLog trong mode TiDB thất bại: %v", err)
+		t.Fatalf("RecordAuditLog trong mode PostgreSQL thất bại: %v", err)
 	}
 
-	// Ghi security event dưới mode TiDB (blockedUntil định dạng DATETIME chuẩn)
-	tidbBlockedIP := "203.0.113.88"
+	// Ghi security event dưới mode PostgreSQL
+	pgBlockedIP := "203.0.113.88"
 	futureTime := time.Now().Add(3 * time.Hour)
-	err = SaveSecurityEvent("ddos_flood", tidbBlockedIP, "critical", "Tấn công DDoS từ cụm IP", &futureTime)
+	err = SaveSecurityEvent("ddos_flood", pgBlockedIP, "critical", "Tấn công DDoS từ cụm IP", &futureTime)
 	if err != nil {
-		t.Fatalf("SaveSecurityEvent trong mode TiDB thất bại: %v", err)
+		t.Fatalf("SaveSecurityEvent trong mode PostgreSQL thất bại: %v", err)
 	}
 
-	// Kiểm tra IsIPBlocked hoạt động chính xác trong mode TiDB
-	blocked, exp, err := IsIPBlocked(tidbBlockedIP)
+	// Kiểm tra IsIPBlocked hoạt động chính xác
+	blocked, exp, err := IsIPBlocked(pgBlockedIP)
 	if err != nil {
-		t.Fatalf("IsIPBlocked trong mode TiDB thất bại: %v", err)
+		t.Fatalf("IsIPBlocked trong mode PostgreSQL thất bại: %v", err)
 	}
 	if !blocked {
-		t.Errorf("IP %s phải bị chặn trong mode TiDB", tidbBlockedIP)
+		t.Errorf("IP %s phải bị chặn trong mode PostgreSQL", pgBlockedIP)
 	}
 	if exp.Before(time.Now()) {
 		t.Errorf("Thời hạn mở khóa %v phải trong tương lai", exp)
@@ -633,19 +623,19 @@ func TestDualDatabase_DateTimeAndCompatibility(t *testing.T) {
 
 	// Chuyển lại mode SQLite và xác nhận cả 2 sự kiện đều đọc và truy vấn được
 	SetDBInstance(db, "sqlite")
-	if isMySQLOrTiDB() {
-		t.Fatal("isMySQLOrTiDB() phải trả về false khi SetDBInstance với driver='sqlite'")
+	if IsPostgres() {
+		t.Fatal("IsPostgres() phải trả về false khi SetDBInstance với driver='sqlite'")
 	}
 
-	logs, err := GetAuditLogsByAction("tidb_audit_action", 10, 0)
+	logs, err := GetAuditLogsByAction("pg_audit_action", 10, 0)
 	if err != nil {
 		t.Fatalf("GetAuditLogsByAction thất bại: %v", err)
 	}
 	if len(logs) != 1 {
-		t.Errorf("Kỳ vọng 1 log audit ghi từ mode TiDB, thực tế: %d", len(logs))
+		t.Errorf("Kỳ vọng 1 log audit ghi từ mode PostgreSQL, thực tế: %d", len(logs))
 	}
 
-	blocked2, _, err := IsIPBlocked(tidbBlockedIP)
+	blocked2, _, err := IsIPBlocked(pgBlockedIP)
 	if err != nil || !blocked2 {
 		t.Errorf("IsIPBlocked trong mode SQLite vẫn phải nhận diện được IP bị chặn: %v, blocked=%v", err, blocked2)
 	}

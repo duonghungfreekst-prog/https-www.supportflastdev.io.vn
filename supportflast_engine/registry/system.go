@@ -369,7 +369,7 @@ func SaveReleaseToDB(rel ReleaseItem, buildHash string) error {
 	notesStr := string(notesBytes)
 
 	var query string
-	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+	if database.ActiveDriver() == "postgres" || database.ActiveDriver() == "mysql" {
 		query = `
 			INSERT INTO system_releases (
 				version, title, date, build_hash, notes, published_by

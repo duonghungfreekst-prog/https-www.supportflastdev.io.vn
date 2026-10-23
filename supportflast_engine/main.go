@@ -126,7 +126,7 @@ var fallbackAgents = []SubagentMeta{
 	},
 	{
 		ID:          "agent_storage",
-		Name:        "Storage & TiDB Cloud Optimizer",
+		Name:        "Storage & Cloud DB Optimizer",
 		Color:       "#118AB2",
 		Description: "Quản lý bộ nhớ Flash máy, kết nối Cloud DB Serverless và dọn dẹp cache rác chống đầy bộ nhớ",
 		Status:      "online",
@@ -163,7 +163,7 @@ func dispatchInternalMobileSubagent(payload ChatPayload) map[string]interface{} 
 			agentID = "agent_mobile"
 		case strings.Contains(queryLower, "wi-fi") || strings.Contains(queryLower, "wifi") || strings.Contains(queryLower, "tunnel") || strings.Contains(queryLower, "cloudflare") || strings.Contains(queryLower, "4g"):
 			agentID = "agent_network"
-		case strings.Contains(queryLower, "bộ nhớ") || strings.Contains(queryLower, "dung lượng") || strings.Contains(queryLower, "tidb") || strings.Contains(queryLower, "db") || strings.Contains(queryLower, "dọn dẹp"):
+		case strings.Contains(queryLower, "bộ nhớ") || strings.Contains(queryLower, "dung lượng") || strings.Contains(queryLower, "postgres") || strings.Contains(queryLower, "db") || strings.Contains(queryLower, "dọn dẹp"):
 			agentID = "agent_storage"
 		case strings.Contains(queryLower, "benchmark") || strings.Contains(queryLower, "hiệu năng") || strings.Contains(queryLower, "qps") || strings.Contains(queryLower, "latency") || strings.Contains(queryLower, "tải"):
 			agentID = "agent_analytics"
@@ -201,8 +201,8 @@ func dispatchInternalMobileSubagent(payload ChatPayload) map[string]interface{} 
 			"- Tối ưu băng thông: Bật nén HTTP Gzip giúp tiết kiệm 70% dung lượng data di động 4G/5G."
 		meta["network_mode"] = "Wi-Fi + Cloudflare Tunnel Ready"
 	case "agent_storage":
-		responseText = "**[Tối Ưu Bộ Nhớ Lưu Trữ & TiDB Cloud - Subagent Storage On-Device]**\n" +
-			"- Cơ sở dữ liệu: TiDB Cloud Serverless siêu tốc.\n" +
+		responseText = "**[Tối Ưu Bộ Nhớ Lưu Trữ & Cloud Database - Subagent Storage On-Device]**\n" +
+			"- Cơ sở dữ liệu: Aiven PostgreSQL Cloud Cluster siêu tốc.\n" +
 			"- Bộ nhớ đệm DB: Giới hạn 2MB cache, kết nối MySQL tối ưu.\n" +
 			"- Dọn dẹp cache: Cơ chế giải phóng file tạm hoạt động trơn tru."
 		meta["storage_health"] = "Optimal"
@@ -392,7 +392,7 @@ func HandleHealthCheck(w http.ResponseWriter, r *http.Request, autoHTTPSEnabled 
 	systemStatus := "healthy"
 
 	activeDriver := database.ActiveDriver()
-	isFallback := (strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER"))) == "tidb" && activeDriver != "tidb")
+	isFallback := (strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER"))) == "postgres" && activeDriver != "postgres")
 
 	if db == nil {
 		systemStatus = "degraded"
@@ -602,8 +602,8 @@ func main() {
 			"timestamp":          time.Now().Format(time.RFC3339),
 		})
 	})
-	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
-		log.Printf("[ENGINE] [DATABASE] TiDB Cloud ready at '%s:%s/%s' (TLS=1.2+, Engine=TiKV)", os.Getenv("TIDB_HOST"), os.Getenv("TIDB_PORT"), os.Getenv("TIDB_DATABASE"))
+	if database.ActiveDriver() == "postgres" {
+		log.Printf("[ENGINE] [DATABASE] Aiven PostgreSQL Cloud ready at '%s'", database.GetPostgresURI())
 	} else {
 		log.Printf("[ENGINE] [DATABASE] DB ready at '%s'", dbPath)
 	}
@@ -945,7 +945,7 @@ func main() {
 	mux.HandleFunc("/api/stats/", cloudpoolApi.StatsHandler)
 	mux.HandleFunc("/api/shares", cloudpoolApi.SharesHandler)
 	mux.HandleFunc("/api/shares/", cloudpoolApi.SharesHandler)
-	// SQL Studio đã bị gỡ bỏ do chuyển sang TiDB
+	// SQL Studio đã bị gỡ bỏ
 	// mux.HandleFunc("/api/sql", cloudpoolApi.SQLStudioHandler)
 	// mux.HandleFunc("/api/sql/", cloudpoolApi.SQLStudioHandler)
 	mux.HandleFunc("/api/settings", cloudpoolApi.SettingsHandler)
@@ -969,8 +969,8 @@ func main() {
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
 
-	// 4.4. Kích hoạt OmniRouter / 9Router Master Gateway & Đồng bộ TiDB Cloud
-	omnirouter.RegisterOmniRouterRoutes(mux, database.GetDB(), database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql", uiDir)
+	// 4.4. Kích hoạt OmniRouter / 9Router Master Gateway & Đồng bộ Cloud Database
+	omnirouter.RegisterOmniRouterRoutes(mux, database.GetDB(), database.ActiveDriver() == "postgres", uiDir)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path

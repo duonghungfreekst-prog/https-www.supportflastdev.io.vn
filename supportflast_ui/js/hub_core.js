@@ -2106,7 +2106,7 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // 4. Lưu thay đổi / thêm ứng dụng vào TiDB Cloud qua API Go Engine
+        // 4. Lưu thay đổi / thêm ứng dụng vào Aiven PostgreSQL Cloud qua API Go Engine
         async function saveAppEditorChanges(event) {
             event.preventDefault();
             const id = document.getElementById('app-edit-id').value.trim();
@@ -2125,7 +2125,7 @@
 
             if (saveBtn) {
                 saveBtn.disabled = true;
-                saveBtn.innerHTML = '<span>⏳</span> <span>Đang lưu vào CSDL TiDB Cloud...</span>';
+                saveBtn.innerHTML = '<span>⏳</span> <span>Đang lưu vào CSDL Aiven PostgreSQL...</span>';
             }
 
             try {
@@ -2225,7 +2225,7 @@
                     }
 
                     closeAppEditorModal();
-                    alert(`✅ Thành công! Đã lưu cập nhật ứng dụng '${name}' vào CSDL TiDB Cloud.`);
+                    alert(`✅ Thành công! Đã lưu cập nhật ứng dụng '${name}' vào CSDL Aiven PostgreSQL.`);
                 } else {
                     if (errEl) {
                         errEl.textContent = data.error || 'Lưu cập nhật thất bại. Vui lòng kiểm tra quyền quản trị.';
@@ -2245,9 +2245,9 @@
             }
         }
 
-        // 5. Xoá ứng dụng khỏi kho và CSDL TiDB Cloud
+        // 5. Xoá ứng dụng khỏi kho và CSDL Aiven PostgreSQL
         async function confirmDeleteApp(appId, appName) {
-            const confirmMsg = `Bạn có chắc chắn muốn XÓA ứng dụng '${appName}' (${appId}) khỏi kho không?\n\nThao tác này sẽ xóa ứng dụng khỏi cơ sở dữ liệu TiDB Cloud vĩnh viễn.`;
+            const confirmMsg = `Bạn có chắc chắn muốn XÓA ứng dụng '${appName}' (${appId}) khỏi kho không?\n\nThao tác này sẽ xóa ứng dụng khỏi cơ sở dữ liệu Aiven PostgreSQL Cloud vĩnh viễn.`;
             if (!confirm(confirmMsg)) return;
 
             try {
@@ -3692,7 +3692,7 @@ function renderCyberRadarEmptyState(options) {
                 author_name: "Phạm Đức Thắng",
                 author_role: "Trưởng Nhóm DevOps & Cloud Architect",
                 stars: 5,
-                text: "Kiến trúc Go Monolith kết hợp Rust Core FFI và TiDB Cloud Serverless cực kỳ tối ưu, zero memory leak và thời gian đáp ứng API dưới 5ms. Rất khuyên dùng cho các doanh nghiệp cần hạ tầng bảo mật cao.",
+                text: "Kiến trúc Go Monolith kết hợp Rust Core FFI và Aiven PostgreSQL Cloud Cluster cực kỳ tối ưu, zero memory leak và thời gian đáp ứng API dưới 5ms. Rất khuyên dùng cho các doanh nghiệp cần hạ tầng bảo mật cao.",
                 created_at: "2026-10-02 09:45:00"
             },
             {
@@ -4004,12 +4004,12 @@ function renderCyberRadarEmptyState(options) {
             {
                 id: "rel-2.6.0",
                 version: "v2.6.0",
-                title: "Nâng Cấp Toàn Diện Kiến Trúc Polyglot TiDB Cloud & Anycast CDN",
+                title: "Nâng Cấp Toàn Diện Kiến Trúc Polyglot Aiven PostgreSQL Cloud & Anycast CDN",
                 date: "2026-10-03",
                 badge: "Mới Nhất",
                 type: "feat",
                 changes: [
-                    "[feat] Tích hợp TiDB Cloud Serverless AP-Southeast-1 với cơ chế Auto-Fallback sang SQLite dự phòng",
+                    "[feat] Tích hợp Aiven PostgreSQL Cloud Cluster với cơ chế Auto-Fallback sang SQLite dự phòng",
                     "[feat] Đại tu giao diện Cyber Glassmorphism với HUD Telemetry, Tech Tree Timeline và Bento Rating Center",
                     "[security] Triển khai bộ bảo mật đa tầng: IP Jail, Multi-Tier Rate Limit và Zero-Trust Signed Commits",
                     "[perf] Tối ưu hóa bộ nhớ Go Monolith GOMEMLIMIT=384MiB chống OOM trên Render Cloud Container",

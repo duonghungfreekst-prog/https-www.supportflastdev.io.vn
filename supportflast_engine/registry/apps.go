@@ -284,7 +284,7 @@ func SaveApp(a AppItem) error {
 	}
 
 	var query string
-	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+	if database.ActiveDriver() == "postgres" || database.ActiveDriver() == "mysql" {
 		query = `
 			INSERT INTO apps (
 				id, name, version, platform, category, ` + "`desc`" + `, file_name,
@@ -354,7 +354,7 @@ func SaveApp(a AppItem) error {
 	return err
 }
 
-// SaveApps ghi đè hoặc cập nhật danh sách ứng dụng vào bảng apps của SQLite hoặc TiDB qua Prepared Statement trong Transaction
+// SaveApps ghi đè hoặc cập nhật danh sách ứng dụng vào bảng apps của SQLite hoặc Aiven PostgreSQL qua Prepared Statement trong Transaction
 func SaveApps(apps []AppItem) error {
 	db := database.GetDB()
 	if db == nil {
@@ -368,7 +368,7 @@ func SaveApps(apps []AppItem) error {
 	defer tx.Rollback()
 
 	var query string
-	if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+	if database.ActiveDriver() == "postgres" || database.ActiveDriver() == "mysql" {
 		query = `
 			INSERT INTO apps (
 				id, name, version, platform, category, ` + "`desc`" + `, file_name,
@@ -450,7 +450,7 @@ func SaveApps(apps []AppItem) error {
 	return nil
 }
 
-// LoadKeys tải danh sách API Keys kết hợp từ TiDB Cloud và keys.json
+// LoadKeys tải danh sách API Keys kết hợp từ Aiven PostgreSQL Cloud và keys.json
 func LoadKeys() []KeyItem {
 	keysMutex.RLock()
 	defer keysMutex.RUnlock()
@@ -473,7 +473,7 @@ func LoadKeys() []KeyItem {
 		}
 	}
 
-	// 2. Nạp từ CSDL TiDB Cloud trung tâm
+	// 2. Nạp từ CSDL Aiven PostgreSQL Cloud trung tâm
 	if db := database.GetDB(); db != nil {
 		rows, err := db.Query("SELECT id, name, prefix, status, created_at, permissions FROM api_keys ORDER BY created_at DESC")
 		if err == nil {
@@ -562,7 +562,7 @@ func VerifyAPIKey(token string) bool {
 		}
 	}
 
-	// Fallback kiểm tra hash SHA-256 trong CSDL TiDB Cloud
+	// Fallback kiểm tra hash SHA-256 trong CSDL Aiven PostgreSQL Cloud
 	if db := database.GetDB(); db != nil {
 		h := sha256.Sum256([]byte(token))
 		hashHex := hex.EncodeToString(h[:])
@@ -660,12 +660,12 @@ func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 	keys := append(validKeys, item)
 	SaveKeys(keys)
 
-	// Đồng bộ khóa API mới vào CSDL (hỗ trợ cả SQLite và TiDB)
+	// Đồng bộ khóa API mới vào CSDL (hỗ trợ cả SQLite và Aiven PostgreSQL)
 	if db := database.GetDB(); db != nil {
 		h := sha256.Sum256([]byte(item.Key))
 		hashHex := hex.EncodeToString(h[:])
 		permsJSON, _ := json.Marshal(item.Permissions)
-		if database.ActiveDriver() == "tidb" || database.ActiveDriver() == "mysql" {
+		if database.ActiveDriver() == "postgres" || database.ActiveDriver() == "mysql" {
 			_, err := db.Exec(`
 				INSERT INTO api_keys (id, name, key_hash, prefix, status, permissions, created_at)
 				VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -673,7 +673,7 @@ func GenerateNewKey(name string, daysValid int) (KeyItem, error) {
 				item.ID, item.Name, hashHex, item.Prefix, item.Status, string(permsJSON), time.Now(),
 			)
 			if err != nil {
-				log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào TiDB thất bại: %v", err)
+				log.Printf("[ENGINE] [DATABASE] [WARN] Đồng bộ API key mới vào Aiven PostgreSQL thất bại: %v", err)
 			}
 		} else {
 			_, err := db.Exec(`
@@ -1083,8 +1083,8 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request) {
 			err = nil
 		case "APP-ROUTER":
 			targetApp = AppItem{
-				ID: "APP-ROUTER", Name: "OmniRouter AI Gateway (TiDB Edition)", Version: "2.9.0",
-				FileName: "APP-ROUTER_OmniRouter_TiDB_v2.9.0_FullPackage.zip", SizeFormatted: "125.7 MB",
+				ID: "APP-ROUTER", Name: "ModelRouter 9 AI Gateway (Aiven PostgreSQL Edition)", Version: "2.9.0",
+				FileName: "APP-ROUTER_ModelRouter9_v2.9.0_FullPackage.zip", SizeFormatted: "125.7 MB",
 			}
 			err = nil
 		}
@@ -1559,7 +1559,7 @@ func RevokeKey(id string) error {
 	}
 	_ = SaveKeys(updated)
 
-	// Cập nhật trạng thái thu hồi trong TiDB Cloud
+	// Cập nhật trạng thái thu hồi trong Aiven PostgreSQL Cloud
 	if db := database.GetDB(); db != nil {
 		res, err := db.Exec("UPDATE api_keys SET status = 'revoked' WHERE id = ? OR prefix = ?", id, id)
 		if err == nil {

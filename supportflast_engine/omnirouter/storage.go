@@ -22,15 +22,15 @@ var (
 	providerCache   []ProviderConnection
 )
 
-// InitStorage khởi tạo các bảng CSDL cho OmniRouter trên TiDB hoặc SQLite
-func InitStorage(db *sql.DB, isTiDB bool) error {
+// InitStorage khởi tạo các bảng CSDL cho OmniRouter trên Aiven PostgreSQL hoặc SQLite
+func InitStorage(db *sql.DB, isCloudDB bool) error {
 	if db == nil {
 		log.Printf("[ENGINE] [STORAGE] [WARN] db là nil, bỏ qua InitStorage (chế độ in-memory cache)")
 		return nil
 	}
 	var queries []string
 
-	if isTiDB {
+	if isCloudDB {
 		queries = []string{
 			`CREATE TABLE IF NOT EXISTS omni_providers (
 				id VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -203,7 +203,7 @@ func InitStorage(db *sql.DB, isTiDB bool) error {
 
 	// Tự động thêm cột mới nếu bảng omni_client_keys đã được tạo từ trước (Migration an toàn không gián đoạn)
 	var alterCols []string
-	if isTiDB {
+	if isCloudDB {
 		alterCols = []string{
 			"ALTER TABLE omni_client_keys ADD COLUMN quota_limit BIGINT DEFAULT 0",
 			"ALTER TABLE omni_client_keys ADD COLUMN expires_at VARCHAR(64) DEFAULT ''",
@@ -781,7 +781,7 @@ func SaveProvider(db *sql.DB, p *ProviderConnection) error {
 	}
 	p.UpdatedAt = now
 
-	// 1. Thử cú pháp MySQL / TiDB (ON DUPLICATE KEY UPDATE)
+	// 1. Thử cú pháp MySQL / Aiven PostgreSQL (ON DUPLICATE KEY UPDATE)
 	_, err := db.Exec(`
 		INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -840,7 +840,7 @@ func GetOmniKV(db *sql.DB, scope, keyName string) (string, error) {
 
 // SetOmniKV lưu giá trị cấu hình vào bảng omni_kv (UPSERT)
 func SetOmniKV(db *sql.DB, scope, keyName, valData string) error {
-	// Dùng REPLACE INTO tương thích cả MySQL/TiDB và SQLite
+	// Dùng REPLACE INTO tương thích cả MySQL/Aiven PostgreSQL và SQLite
 	_, err := db.Exec("REPLACE INTO omni_kv (scope, key_name, val_data) VALUES (?, ?, ?)", scope, keyName, valData)
 	return err
 }

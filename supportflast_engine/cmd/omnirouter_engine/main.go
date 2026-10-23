@@ -40,7 +40,7 @@ func main() {
 	fmt.Println("    OMNIROUTER / SUPPORTFLAST AI GATEWAY - AIVEN POSTGRESQL EDITION  ")
 	fmt.Println("=====================================================================")
 	log.Printf("[ENGINE] Khởi động OmniRouter Engine v3.0.0 (PID: %d)", os.Getpid())
-	log.Printf("[ENGINE] [CSDL] BỎ HOÀN TOÀN TIDB - KẾT NỐI 100%% VÀO AIVEN POSTGRESQL")
+	log.Printf("[ENGINE] [CSDL] KẾT NỐI TRỰC TIẾP 100%% VÀO AIVEN POSTGRESQL CLUSTER")
 
 	// 1. Kết nối cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster
 	db, err := database.OpenPostgresConnection()

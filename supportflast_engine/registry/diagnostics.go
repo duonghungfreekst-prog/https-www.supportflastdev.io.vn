@@ -49,12 +49,12 @@ type WritePermissionsCheckResult struct {
 	Message    string               `json:"message"`
 }
 
-// DatabaseCheckResult kết quả kiểm tra CSDL (SQLite hoặc TiDB Cloud)
+// DatabaseCheckResult kết quả kiểm tra CSDL (SQLite hoặc Aiven PostgreSQL Cloud)
 type DatabaseCheckResult struct {
 	Status             string `json:"status"` // ok, warning, error
 	Title              string `json:"title"`
 	Connected          bool   `json:"connected"`
-	Driver             string `json:"driver,omitempty"` // tidb, sqlite
+	Driver             string `json:"driver,omitempty"` // postgres, sqlite
 	DBPath             string `json:"db_path"`
 	JournalMode        string `json:"journal_mode"`
 	WALModeActive      bool   `json:"wal_mode_active"`
@@ -243,15 +243,15 @@ func checkWritePermission(dirPath string) (bool, string) {
 	return true, "Có quyền Đọc/Ghi (Read/Write) hoàn toàn hợp lệ"
 }
 
-// isTiDBOrMySQL xác định xem hệ thống đang cấu hình hoặc kết nối tới TiDB Cloud/MySQL hay SQLite.
+// isPostgres xác định xem hệ thống đang cấu hình hoặc kết nối tới Aiven PostgreSQL Cloud/MySQL hay SQLite.
 // Đọc driver thực tế từ database.ActiveDriver() thay vì ưu tiên os.Getenv("DB_DRIVER").
-// Nếu database.ActiveDriver() == "sqlite", trả về false ngay cả khi biến môi trường là "tidb" (chế độ fallback).
-func isTiDBOrMySQL(db *sql.DB) bool {
+// Nếu database.ActiveDriver() == "sqlite", trả về false ngay cả khi biến môi trường là "postgres" (chế độ fallback).
+func isPostgres(db *sql.DB) bool {
 	active := database.ActiveDriver()
 	if active == "sqlite" {
 		return false
 	}
-	if active == "tidb" || active == "mysql" {
+	if active == "postgres" || active == "mysql" {
 		return true
 	}
 	if db != nil {
@@ -259,7 +259,7 @@ func isTiDBOrMySQL(db *sql.DB) bool {
 		if strings.Contains(driverType, "sqlite") {
 			return false
 		}
-		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "tidb") {
+		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "postgres") {
 			return true
 		}
 	}
@@ -267,26 +267,26 @@ func isTiDBOrMySQL(db *sql.DB) bool {
 	if driverEnv == "sqlite" || driverEnv == "sqlite3" {
 		return false
 	}
-	if driverEnv == "tidb" || driverEnv == "mysql" {
+	if driverEnv == "postgres" || driverEnv == "mysql" {
 		return true
 	}
-	if strings.TrimSpace(os.Getenv("TIDB_HOST")) != "" && driverEnv != "sqlite" {
+	if strings.TrimSpace(os.Getenv("PG_HOST")) != "" && driverEnv != "sqlite" {
 		return true
 	}
 	return false
 }
 
-// resolveTiDBEndpoint tạo chuỗi định danh máy chủ TiDB/MySQL an toàn không lộ mật khẩu (Rule 3.2 & 3.5)
-func resolveTiDBEndpoint() string {
-	host := strings.TrimSpace(os.Getenv("TIDB_HOST"))
+// resolvePostgresEndpoint tạo chuỗi định danh máy chủ PostgreSQL/SQLite an toàn không lộ mật khẩu (Rule 3.2 & 3.5)
+func resolvePostgresEndpoint() string {
+	host := strings.TrimSpace(os.Getenv("PG_HOST"))
 	if host == "" {
 		host = strings.TrimSpace(os.Getenv("DB_HOST"))
 	}
 	if host == "" {
-		host = "gateway01.ap-southeast-1.prod.aws.tidbcloud.com"
+		host = "supportflast-postgres.aivencloud.com"
 	}
 
-	port := strings.TrimSpace(os.Getenv("TIDB_PORT"))
+	port := strings.TrimSpace(os.Getenv("PG_PORT"))
 	if port == "" {
 		port = strings.TrimSpace(os.Getenv("DB_PORT"))
 	}
@@ -294,7 +294,7 @@ func resolveTiDBEndpoint() string {
 		port = "4000"
 	}
 
-	dbName := strings.TrimSpace(os.Getenv("TIDB_DATABASE"))
+	dbName := strings.TrimSpace(os.Getenv("PG_DATABASE"))
 	if dbName == "" {
 		dbName = strings.TrimSpace(os.Getenv("DB_NAME"))
 	}
@@ -351,16 +351,16 @@ func PerformDiagnostics() DiagnosticsResponse {
 		Message:    writeMsg,
 	}
 
-	// 2. Kiểm tra CSDL (Hỗ trợ kép: TiDB Cloud Serverless & SQLite)
+	// 2. Kiểm tra CSDL (Hỗ trợ kép: Aiven PostgreSQL Cloud Cluster & SQLite)
 	db := database.GetDB()
-	isTiDB := isTiDBOrMySQL(db)
+	isPG := isPostgres(db)
 	var dbCheck DatabaseCheckResult
 
-	if isTiDB {
+	if isPG {
 		dbCheck = DatabaseCheckResult{
-			Title:              "Cơ Sở Dữ Liệu TiDB Cloud (Database Engine)",
-			Driver:             "tidb",
-			DBPath:             resolveTiDBEndpoint(),
+			Title:              "Cơ Sở Dữ Liệu Aiven PostgreSQL Cloud (Database Engine)",
+			Driver:             "postgres",
+			DBPath:             resolvePostgresEndpoint(),
 			JournalMode:        "distributed_raft",
 			WALModeActive:      true,
 			ForeignKeysEnabled: true,
@@ -368,25 +368,25 @@ func PerformDiagnostics() DiagnosticsResponse {
 		if db == nil {
 			dbCheck.Status = "error"
 			dbCheck.Connected = false
-			dbCheck.Message = "Không thể kết nối hoặc khởi tạo CSDL TiDB Cloud hệ thống"
+			dbCheck.Message = "Không thể kết nối hoặc khởi tạo CSDL Aiven PostgreSQL Cloud hệ thống"
 		} else {
 			dbCheck.Connected = true
 			if err := db.Ping(); err != nil {
 				dbCheck.Status = "error"
 				dbCheck.Connected = false
-				dbCheck.Message = fmt.Sprintf("Ping CSDL TiDB Cloud thất bại: %v", err)
+				dbCheck.Message = fmt.Sprintf("Ping CSDL Aiven PostgreSQL Cloud thất bại: %v", err)
 			} else {
-				// Đếm số lượng bảng hệ thống trên TiDB Cloud (truy vấn chuẩn ANSI information_schema)
+				// Đếm số lượng bảng hệ thống trên Aiven PostgreSQL Cloud (truy vấn chuẩn ANSI information_schema)
 				var tableCount int
 				errQuery := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()").Scan(&tableCount)
 				if errQuery != nil {
-					log.Printf("[ENGINE] [DIAGNOSTICS] [WARN] Đếm bảng TiDB thất bại: %v", errQuery)
+					log.Printf("[ENGINE] [DIAGNOSTICS] [WARN] Đếm bảng Aiven PostgreSQL thất bại: %v", errQuery)
 					dbCheck.Status = "warning"
-					dbCheck.Message = fmt.Sprintf("Kết nối TiDB Cloud thành công nhưng không thể đọc danh sách bảng: %v", errQuery)
+					dbCheck.Message = fmt.Sprintf("Kết nối Aiven PostgreSQL Cloud thành công nhưng không thể đọc danh sách bảng: %v", errQuery)
 				} else {
 					dbCheck.TotalTables = tableCount
 					dbCheck.Status = "ok"
-					dbCheck.Message = fmt.Sprintf("CSDL TiDB Cloud hoạt động tối ưu: Phân tán Multi-Raft Cloud-Native (%d bảng)", tableCount)
+					dbCheck.Message = fmt.Sprintf("CSDL Aiven PostgreSQL Cloud hoạt động tối ưu: Phân tán Multi-Raft Cloud-Native (%d bảng)", tableCount)
 				}
 			}
 		}

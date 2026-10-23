@@ -208,14 +208,14 @@ func findCaFiles(baseDir string) (string, string) {
 		filepath.Join(baseDir, "data", "mitm", "rootCA.crt"),
 		filepath.Join(baseDir, "mitm", "rootCA.crt"),
 		filepath.Join(".", "data", "mitm", "rootCA.crt"),
-		filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0", "data", "mitm", "rootCA.crt"),
+		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "data", "mitm", "rootCA.crt"),
 		"rootCA.crt",
 	}
 	candKeys := []string{
 		filepath.Join(baseDir, "data", "mitm", "rootCA.key"),
 		filepath.Join(baseDir, "mitm", "rootCA.key"),
 		filepath.Join(".", "data", "mitm", "rootCA.key"),
-		filepath.Join("storage", "packages", "APP-ROUTER_OmniRouter_TiDB_v2.9.0", "data", "mitm", "rootCA.key"),
+		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "data", "mitm", "rootCA.key"),
 		"rootCA.key",
 	}
 	var certPath, keyPath string
@@ -610,7 +610,7 @@ func HandleMitmStatus(db *sql.DB, handler http.Handler, baseDir string) http.Han
 				"certTrusted":     true,
 				"dnsStatus":       dnsStatus,
 				"gateway_status":  "online",
-				"cloud_provider":  "Render + TiDB Serverless",
+				"cloud_provider":  "Render + Aiven PostgreSQL Cloud",
 				"version":         "v2.8.5-production",
 				"active_accounts": len(activeProviders),
 				"dns_redirection": true,
