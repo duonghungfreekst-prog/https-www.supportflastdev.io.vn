@@ -132,7 +132,6 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		"gemini-3.8-flash-high":    true,
 		"gemini-3.8-flash-medium":  true,
 		"gemini-3.8-flash-low":     true,
-		"gemini-pro-agent":         true,
 		"gemini-3.7-flash-high":    true,
 		"gemini-3.7-flash-medium":  true,
 		"gemini-3.7-flash-low":     true,
@@ -146,7 +145,6 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		"claude-sonnet-4-6":        true,
 		"claude-opus-4-6-thinking": true,
 		"gpt-oss-120b-medium":      true,
-		"4-argon":                  true,
 	}
 	if knownValidModels[lowerNorm] {
 		// Model đã hợp lệ (ví dụ: do user alias mapping từ UI) → giữ nguyên 100%
@@ -165,9 +163,9 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 	case strings.Contains(lowerNorm, "3.1-pro") || strings.Contains(lowerNorm, "pro-high"):
 		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
-		normPrimary = "gemini-pro-agent"
+		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "argon"):
-		normPrimary = "4-argon"
+		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "flash"):
 		normPrimary = "gemini-3.8-flash-high"
 	default:

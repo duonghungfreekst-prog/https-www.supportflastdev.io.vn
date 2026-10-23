@@ -784,7 +784,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-flash"), []byte("gemini-3.8-flash-high"))
 
-				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-pro-agent"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-2.5-pro"), []byte("gemini-3.8-flash-high"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-pro-agent"), []byte("gemini-3.8-flash-high"))
+				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("4-argon"), []byte("gemini-3.8-flash-high"))
 
 				finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("gemini-1.5-pro"), []byte("gemini-pro-agent"))
 
@@ -834,7 +836,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-flash", "gemini-3.8-flash-high")
 
-				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-pro", "gemini-pro-agent")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-2.5-pro", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-pro-agent", "gemini-3.8-flash-high")
+				upstreamURL = strings.ReplaceAll(upstreamURL, "4-argon", "gemini-3.8-flash-high")
 
 				upstreamURL = strings.ReplaceAll(upstreamURL, "gemini-1.5-pro", "gemini-pro-agent")
 
@@ -1392,7 +1396,6 @@ func sanitizeAndUpgradeModel(model string) string {
 		"gemini-3.8-flash-high":    true,
 		"gemini-3.8-flash-medium":  true,
 		"gemini-3.8-flash-low":     true,
-		"gemini-pro-agent":         true,
 		"gemini-3.7-flash-high":    true,
 		"gemini-3.7-flash-medium":  true,
 		"gemini-3.7-flash-low":     true,
@@ -1406,7 +1409,6 @@ func sanitizeAndUpgradeModel(model string) string {
 		"claude-sonnet-4-6":        true,
 		"claude-opus-4-6-thinking": true,
 		"gpt-oss-120b-medium":      true,
-		"4-argon":                  true,
 	}
 	if validModels[mLower] {
 		return mLower
@@ -1433,7 +1435,7 @@ func sanitizeAndUpgradeModel(model string) string {
 
 	if strings.Contains(mLower, "pro-agent") || strings.Contains(mLower, "2.5-pro") || strings.Contains(mLower, "1.5-pro") {
 
-		return "gemini-pro-agent"
+		return "gemini-3.8-flash-high"
 
 	}
 
@@ -1444,7 +1446,7 @@ func sanitizeAndUpgradeModel(model string) string {
 
 	if strings.Contains(mLower, "argon") {
 
-		return "4-argon"
+		return "gemini-3.8-flash-high"
 
 	}
 
