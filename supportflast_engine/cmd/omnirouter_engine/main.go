@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"context"
@@ -113,14 +113,12 @@ func main() {
 		mux.Handle(pattern, handler)
 	}
 
-	// Phục vụ file giao diện HTML trực tiếp cho Desktop App WebView2 và Browser
-	serveHTML := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		http.ServeFile(w, r, htmlCandidate)
-	}
-	safeRegister("/nexusroute_ai_next_gen_gateway.html", serveHTML)
-	safeRegister("/index.html", serveHTML)
+	safeRegister("/nexusroute_ai_next_gen_gateway.html", func(w http.ResponseWriter, r *http.Request) {
+		omnirouter.HandleV1Base(w, r)
+	})
+	safeRegister("/index.html", func(w http.ResponseWriter, r *http.Request) {
+		omnirouter.HandleV1Base(w, r)
+	})
 
 	// Phục vụ logo và tài nguyên ảnh
 	appPngCandidate := filepath.Join(baseDir, "app.png")
@@ -173,18 +171,10 @@ func main() {
 		}
 	}
 
-	// Route gốc fallback về trang giao diện nếu không khớp route API
+	// Route gốc: Khi truy cập cổng 20128 từ trình duyệt Web, ẩn toàn bộ nội dung, chỉ phục vụ hình nền Web App sạch
 	safeRegister("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" || r.URL.Path == "" {
-			serveHTML(w, r)
-			return
-		}
-		if r.URL.Path == "/v1" || r.URL.Path == "/v1/" || r.URL.Path == "/api/v1" || r.URL.Path == "/api/v1/" {
+		if r.URL.Path == "/" || r.URL.Path == "" || r.URL.Path == "/v1" || r.URL.Path == "/v1/" || r.URL.Path == "/api/v1" || r.URL.Path == "/api/v1/" {
 			omnirouter.HandleV1Base(w, r)
-			return
-		}
-		if r.URL.Path == "/" {
-			serveHTML(w, r)
 			return
 		}
 		// Thử tìm file tĩnh tương ứng trong baseDir
