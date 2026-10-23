@@ -865,6 +865,15 @@
     html.desktop-mode #sidebar-gateway-card {
       display: none !important;
     }
+    html.desktop-mode #cli-tool-guide-box,
+    html.desktop-mode a[href="/storage/"] {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
     html.desktop-mode #sidebar-web-footer {
       display: flex !important;
       visibility: visible !important;
@@ -996,11 +1005,7 @@
         <span>Trang Chủ Web</span>
       </a>
 
-      <!-- Nút Chuyển Sang Kho Lưu Trữ Multi-Drive SupportFlast -->
-      <a href="/storage/" class="flex items-center gap-1 px-2.5 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/25 border border-blue-500/30 hover:border-blue-400/60 text-blue-300 hover:text-white text-[11px] font-mono font-medium transition-all duration-200 cursor-pointer no-underline shadow-[0_0_8px_rgba(59,130,246,0.15)]" title="Chuyển sang Kho Lưu Trữ Multi-Drive SupportFlast">
-        <span>📁</span>
-        <span>Kho Lưu Trữ</span>
-      </a>
+      
 
       <!-- Cụm nút điều khiển cửa sổ WPF thu nhỏ, phóng to, đóng -->
       <div class="flex items-center gap-1">
@@ -2351,77 +2356,7 @@
 
 
 
-            <!-- Khung Lệnh Tương Tác Chi Tiết -->
-
-            <div id="cli-tool-guide-box" class="p-4 rounded-2xl bg-black/70 border border-cyan-500/30 space-y-3 transition-all">
-
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
-
-                <div class="flex items-center gap-3">
-
-                  <div id="cli-guide-icon-container" class="w-8 h-8 rounded-lg bg-orange-950/50 border border-orange-500/40 flex items-center justify-center p-1 flex-shrink-0">
-
-                    <img id="cli-guide-icon" src="providers/claude.png" class="w-full h-full object-contain" />
-
-                  </div>
-
-                  <div>
-
-                    <h4 id="cli-guide-title" class="text-sm font-bold text-white">Claude Code (Anthropic Official CLI)</h4>
-
-                    <p id="cli-guide-desc" class="text-xs text-slate-400">Agent lập trình tự trị chính thức từ Anthropic chạy trên Terminal.</p>
-
-                  </div>
-
-                </div>
-
-                <span id="cli-guide-env-tag" class="self-start sm:self-auto px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">ANTHROPIC_BASE_URL</span>
-
-              </div>
-
-
-
-              <!-- Thanh chọn môi trường Terminal -->
-
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-
-                <div class="flex items-center gap-1.5 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-mono self-start">
-
-                  <button type="button" onclick="setCliShellTab('powershell')" id="tab-shell-powershell" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 transition-all cursor-pointer">PowerShell (Windows)</button>
-
-                  <button type="button" onclick="setCliShellTab('cmd')" id="tab-shell-cmd" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer">CMD</button>
-
-                  <button type="button" onclick="setCliShellTab('bash')" id="tab-shell-bash" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer">Bash / Linux / Mac</button>
-
-                </div>
-
-                <button type="button" onclick="copyCliCommandSnippet()" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-
-                  <span>📋 Sao Chép Lệnh Chạy</span>
-
-                </button>
-
-              </div>
-
-
-
-              <!-- Lệnh code -->
-
-              <div class="p-3 rounded-xl bg-black/90 border border-white/10 font-mono text-xs text-emerald-400 overflow-x-auto flex items-center justify-between">
-
-                <code id="cli-guide-command" class="select-all break-all">$env:ANTHROPIC_BASE_URL="http://127.0.0.1:20128/v1"; $env:ANTHROPIC_API_KEY="sk-nx-live-internal"; claude</code>
-
-              </div>
-
             </div>
-
-          </div>
-
-
-
-        </div>
 
 
 
