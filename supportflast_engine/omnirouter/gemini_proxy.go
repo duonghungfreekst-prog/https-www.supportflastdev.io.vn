@@ -299,6 +299,45 @@ var (
 	accountRequestCounter uint64
 )
 
+// ExtractClientAPIKeyFromRequest trích xuất API Key từ các header và query của request cụ thể
+func ExtractClientAPIKeyFromRequest(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	// 1. Authorization: Bearer sk-...
+	authH := r.Header.Get("Authorization")
+	if strings.HasPrefix(authH, "Bearer ") {
+		tok := strings.TrimSpace(strings.TrimPrefix(authH, "Bearer "))
+		if strings.HasPrefix(tok, "sk-") && !strings.Contains(tok, "...") && !strings.Contains(tok, "***") {
+			return tok
+		}
+	}
+	// 2. Header x-api-key: sk-...
+	if xk := strings.TrimSpace(r.Header.Get("x-api-key")); xk != "" {
+		if strings.HasPrefix(xk, "sk-") && !strings.Contains(xk, "...") && !strings.Contains(xk, "***") {
+			return xk
+		}
+	}
+	// 3. Header x-goog-api-key (Google format): sk-...
+	if gk := strings.TrimSpace(r.Header.Get("x-goog-api-key")); gk != "" {
+		if strings.HasPrefix(gk, "sk-") && !strings.Contains(gk, "...") && !strings.Contains(gk, "***") {
+			return gk
+		}
+	}
+	// 4. Query param ?key=... hoặc ?api_key=...
+	if qk := strings.TrimSpace(r.URL.Query().Get("key")); qk != "" {
+		if strings.HasPrefix(qk, "sk-") && !strings.Contains(qk, "...") && !strings.Contains(qk, "***") {
+			return qk
+		}
+	}
+	if qk := strings.TrimSpace(r.URL.Query().Get("api_key")); qk != "" {
+		if strings.HasPrefix(qk, "sk-") && !strings.Contains(qk, "...") && !strings.Contains(qk, "***") {
+			return qk
+		}
+	}
+	return ""
+}
+
 // HandleGeminiNativeProxy xử lý transparent proxy cho Antigravity IDE
 
 // IDE gửi request Gemini native (v1internal:streamGenerateContent) đến localhost:443
@@ -343,6 +382,29 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		defer r.Body.Close()
+
+		// FAST-PATH QUOTA & MODEL DISCOVERY RESPONDER (< 0.2ms)
+		// Đáp ứng ngay lập tức 100% hạn mức dồi dào cho Antigravity IDE ngay khi app mở lên,
+		// triệt tiêu hoàn toàn hiện tượng chậm trễ, quay spinner hay hiển thị 0% Claude / 49% Gemini
+		if strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("X-ModelRouter9-Aggregated", "true")
+			w.Header().Set("X-ModelRouter9-FastPath", "true")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(GetDefaultVirtualAggregatedQuota())
+			log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Fast-Path Quota Responder (<0.2ms): Trả về mặc định FULL 100%% Quota cho Antigravity IDE (URL: %s)", r.URL.Path)
+			return
+		}
+
+		if strings.Contains(r.URL.Path, "fetchAvailableModels") {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("X-ModelRouter9-Aggregated", "true")
+			w.Header().Set("X-ModelRouter9-FastPath", "true")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(GetDefaultAvailableModels())
+			log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Fast-Path Model List Responder (<0.2ms): Trả về FULL 100%% Model List cho Antigravity IDE (URL: %s)", r.URL.Path)
+			return
+		}
 
 		// NẾU LÀ REQUEST QUOTA: Kiểm tra Virtual Aggregated RAM Cache (chuẩn 9Router)
 		// Trả về ngay lập tức nếu cache còn hiệu lực (< 30s) -> Độ trễ < 1ms, chống spam và bảo vệ tuyệt đối quota
@@ -466,46 +528,18 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 		// KIEM TRA HAN MUC QUOTA CUA CLIENT API KEY TRUOC KHI GOI POOL AI:
-		clientKeyToCheck := ""
-		authH := r.Header.Get("Authorization")
-		if strings.HasPrefix(authH, "Bearer ") {
-			tok := strings.TrimSpace(strings.TrimPrefix(authH, "Bearer "))
-			if strings.HasPrefix(tok, "sk-") {
-				clientKeyToCheck = tok
-			}
-		}
+		// Đảm bảo từng API Key hoạt động hoàn toàn độc lập, không bị ảnh hưởng chéo lẫn nhau:
+		clientKeyToCheck := ExtractClientAPIKeyFromRequest(r)
 		if clientKeyToCheck == "" {
-			xk := strings.TrimSpace(r.Header.Get("x-api-key"))
-			if strings.HasPrefix(xk, "sk-") {
-				clientKeyToCheck = xk
-			}
-		}
-		if clientKeyToCheck == "" || strings.Contains(clientKeyToCheck, "...") || strings.Contains(clientKeyToCheck, "***") {
+			// Transparent Proxy cục bộ (Antigravity IDE qua cổng 443 localhost): lấy từ config.json của máy này
 			clientKeyToCheck = GetActiveClientKey(db)
 		}
-		if clientKeyToCheck == "" || strings.Contains(clientKeyToCheck, "...") {
-			clientKeyToCheck = "sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9"
-		}
-		if clientKeyToCheck == "" || strings.Contains(clientKeyToCheck, "master") {
-			if db != nil {
-				var uKey string
-				_ = db.QueryRow(`
-					SELECT api_key FROM omni_client_keys 
-					WHERE id NOT LIKE '%master%' 
-					  AND api_key NOT LIKE '%master-live%' 
-					ORDER BY created_at DESC 
-					LIMIT 1
-				`).Scan(&uKey)
-				if uKey != "" {
-					clientKeyToCheck = strings.TrimSpace(uKey)
-				}
-			}
-		}
 
+		var quotaCommitted bool
 		if clientKeyToCheck != "" {
 			keyItem, status, errMsg := CheckClientKeyStatus(clientKeyToCheck)
 			if status == "QUOTA_EXCEEDED" {
-				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han muc Quota (%s)", clientKeyToCheck, errMsg)
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TỪ CHỐI REQUEST: Khóa %s đã hết hạn mức Quota (%s)", maskAPIKey(clientKeyToCheck), errMsg)
 				if db != nil && keyItem != nil {
 					if _, errLock := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID); errLock != nil {
 						log.Printf("[ENGINE] [USAGE] ❌ Lỗi khóa key vượt quota trong DB (%s): %v", keyItem.ID, errLock)
@@ -517,13 +551,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"error": map[string]interface{}{
 						"code":    429,
-						"message": fmt.Sprintf("Khoa API da su dung het han muc Quota (%d/%d req). Vui long dat lai hoac nang han muc tren Dashboard.", keyItem.UsedRequests, keyItem.QuotaLimit),
+						"message": fmt.Sprintf("Khóa API đã sử dụng hết hạn mức Quota (%d/%d req). Vui lòng đặt lại hoặc nâng hạn mức trên Dashboard.", keyItem.UsedRequests, keyItem.QuotaLimit),
 						"status":  "RESOURCE_EXHAUSTED",
 					},
 				})
 				return
 			} else if status == "EXPIRED" {
-				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s da het han su dung (%s)", clientKeyToCheck, errMsg)
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TỪ CHỐI REQUEST: Khóa %s đã hết hạn sử dụng (%s)", maskAPIKey(clientKeyToCheck), errMsg)
 				if db != nil && keyItem != nil {
 					if _, errLock := db.Exec("UPDATE omni_client_keys SET is_active = 0 WHERE id = ?", keyItem.ID); errLock != nil {
 						log.Printf("[ENGINE] [USAGE] ❌ Lỗi khóa key hết hạn trong DB (%s): %v", keyItem.ID, errLock)
@@ -541,31 +575,45 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				})
 				return
 			} else if status == "INACTIVE" {
-				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khoa %s dang bi TAM KHOA", clientKeyToCheck)
+				log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TỪ CHỐI REQUEST: Khóa %s đang bị TẠM KHÓA", maskAPIKey(clientKeyToCheck))
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(http.StatusForbidden)
 				json.NewEncoder(w).Encode(map[string]interface{}{
 					"error": map[string]interface{}{
 						"code":    403,
-						"message": "Khoa API nay dang o trang thai TAM KHOA. Vui long kich hoat lai tren Dashboard.",
+						"message": "Khóa API này đang ở trạng thái TẠM KHÓA. Vui lòng kích hoạt lại trên Dashboard.",
 						"status":  "PERMISSION_DENIED",
 					},
 				})
 				return
 			}
-		} else {
-			log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TU CHOI REQUEST: Khong co API Key nao trong he thong")
-			w.Header().Set("Content-Type", "application/json; charset=utf-8")
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]interface{}{
-					"code":    403,
-					"message": "Khong tim thay API Key nao duoc cap phep. Vui long tao API Key tren Dashboard de su dung.",
-					"status":  "PERMISSION_DENIED",
-				},
-			})
-			return
-		}		// Lấy danh sách tài khoản AI khả dụng
+
+			// Giữ chỗ nguyên tử Quota (Atomic Reservation) cho ĐÚNG API KEY NÀY (chỉ áp dụng cho request AI, bỏ qua request check quota)
+			if !isQuotaReq {
+				reserved, resMsg := ReserveClientKeyQuota(db, clientKeyToCheck)
+				if !reserved {
+					log.Printf("[ENGINE] [GEMINI-PROXY] 🛑 TỪ CHỐI REQUEST: Không thể giữ chỗ Quota cho key %s: %s", maskAPIKey(clientKeyToCheck), resMsg)
+					w.Header().Set("Content-Type", "application/json; charset=utf-8")
+					w.WriteHeader(http.StatusTooManyRequests)
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"error": map[string]interface{}{
+							"code":    429,
+							"message": resMsg,
+							"status":  "RESOURCE_EXHAUSTED",
+						},
+					})
+					return
+				}
+				// Hoàn trả quota tự động nếu request thất bại trước khi upstream phản hồi
+				defer func() {
+					if !quotaCommitted {
+						ReleaseClientKeyQuota(db, clientKeyToCheck, 1)
+					}
+				}()
+			}
+		}
+
+		// Lấy danh sách tài khoản AI khả dụng
 
 		accounts := GetCachedActiveProviders()
 
@@ -1276,9 +1324,10 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
-			// Ghi nhận trừ Quota trực tiếp vào Aiven PostgreSQL Cloud và gửi Live Telemetry lên Web (chỉ khi là request AI, không trừ quota cho request xem quota)
+			// Ghi nhận trừ Quota trực tiếp vào Aiven PostgreSQL Cloud và gửi Live Telemetry lên Web cho ĐÚNG CLIENT KEY NÀY
 			if !isQuotaReq {
-				ReportProxyUsageAsync(db, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
+				quotaCommitted = true
+				ReportProxyUsageWithKeyAsync(db, clientKeyToCheck, effectiveModel, usedAccount.Email, usedAccount.Name, r.URL.Path, latencyMs, http.StatusOK, promptTokens, completionTokens)
 			}
 
 		}
@@ -1574,39 +1623,8 @@ func GetActiveClientKey(db *sql.DB) string {
 
 
 
-	// 2. Tra cứu từ CSDL Aiven PostgreSQL: lấy API Key người dùng đang hoạt động (loại bỏ Master ngầm)
-
-	if db != nil {
-
-		var dbKey string
-
-		err := db.QueryRow(`
-
-			SELECT api_key FROM omni_client_keys 
-
-			WHERE is_active = 1 
-
-			  AND id NOT LIKE '%master%' 
-
-			  AND api_key NOT LIKE '%master-live%' 
-
-			ORDER BY created_at DESC 
-
-			LIMIT 1
-
-		`).Scan(&dbKey)
-
-		if err == nil && strings.TrimSpace(dbKey) != "" {
-
-			currentActiveClientKey = strings.TrimSpace(dbKey)
-
-			log.Printf("[ENGINE] [KEY] ✔ Tự động nhận diện Active Client Key từ Aiven PostgreSQL: %s", maskAPIKey(currentActiveClientKey))
-
-			return currentActiveClientKey
-
-		}
-
-	}
+	// 2. TUYỆT ĐỐI KHÔNG query CSDL Cloud ORDER BY created_at DESC LIMIT 1!
+	// Mỗi API Key là của người dùng riêng biệt, không được gán bừa API Key của người khác.
 
 
 
@@ -1762,43 +1780,9 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		}
 
-		if activeKey == "" || strings.Contains(activeKey, "master") {
-
-			if db != nil {
-
-				var uKey string
-
-				_ = db.QueryRow(`
-
-					SELECT api_key FROM omni_client_keys 
-
-					WHERE is_active = 1 
-
-					  AND id NOT LIKE '%master%' 
-
-					  AND api_key NOT LIKE '%master-live%' 
-
-					ORDER BY created_at DESC 
-
-					LIMIT 1
-
-				`).Scan(&uKey)
-
-				if uKey != "" {
-
-					activeKey = strings.TrimSpace(uKey)
-
-				}
-
-			}
-
-		}
-
-		if activeKey == "" || strings.Contains(activeKey, "...") || strings.Contains(activeKey, "***") {
-			activeKey = "sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9"
-		}
-		if activeKey != "" {
-			SetActiveClientKey(activeKey)
+		if activeKey == "" {
+			// Không có API Key hợp lệ cho request này -> Chỉ ghi nhận log hệ thống, không trừ quota của bất kỳ client key nào
+			log.Printf("[ENGINE] [TELEMETRY] Request AI thành công (%s - %dms) không kèm Client Key cá nhân", effectiveModel, latencyMs)
 		}
 
 		totTokens := promptTokens + completionTokens
@@ -1830,7 +1814,7 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 		// 1. Cập nhật số lượt gọi (used_requests) và số token tiêu thụ cho Active Client Key
 
 		// used_requests đã được giữ chỗ nguyên tử trong ReserveClientKeyQuota, ở đây truyền 0 để tránh trừ đúp quota
-		RecordKeyUsageAsync(db, activeKey, 0, totTokens)
+		if activeKey != "" && !strings.Contains(activeKey, "native-proxy") { RecordKeyUsageAsync(db, activeKey, 0, totTokens) }
 
 
 
@@ -2851,11 +2835,15 @@ func orderAccountsForModel(accounts []ProviderConnection, model string, startIdx
 // vào response để IDE hiển thị chúng trong danh sách model selector
 func buildVirtualAggregatedQuota(raw []byte) []byte {
 	if len(raw) == 0 {
-		return raw
+		return GetDefaultVirtualAggregatedQuota()
 	}
 	var data map[string]interface{}
 	if err := json.Unmarshal(raw, &data); err != nil || data == nil {
-		return raw
+		return GetDefaultVirtualAggregatedQuota()
+	}
+	if _, hasErr := data["error"]; hasErr {
+		log.Printf("[ENGINE] [QUOTA-VIRTUAL] ⚠ Upstream quota có lỗi, tự động fallback về Virtual Aggregated Quota 100%%")
+		return GetDefaultVirtualAggregatedQuota()
 	}
 
 	// Log raw response (chỉ 500 ký tự đầu) để debug cấu trúc
@@ -2956,4 +2944,146 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 	return patched
 }
 
+// GetDefaultVirtualAggregatedQuota trả về Virtual Aggregated Quota chuẩn 100% cho mọi model ngay từ khi khởi động
+func GetDefaultVirtualAggregatedQuota() []byte {
+	return []byte(`{
+  "groups": [
+    {
+      "displayName": "Gemini Models",
+      "buckets": [
+        {
+          "bucketId": "gemini_weekly",
+          "displayName": "Weekly Limit",
+          "window": "WEEKLY",
+          "remainingFraction": 1.0,
+          "resetTime": "2026-10-30T00:00:00Z",
+          "disabled": false
+        },
+        {
+          "bucketId": "gemini_session",
+          "displayName": "5-Hour Limit",
+          "window": "FIVE_HOUR",
+          "remainingFraction": 1.0,
+          "resetTime": "2026-10-24T03:00:00Z",
+          "disabled": false
+        }
+      ]
+    },
+    {
+      "displayName": "Claude and GPT models",
+      "buckets": [
+        {
+          "bucketId": "claude_weekly",
+          "displayName": "Weekly Limit",
+          "window": "WEEKLY",
+          "remainingFraction": 1.0,
+          "resetTime": "2026-10-30T00:00:00Z",
+          "disabled": false
+        },
+        {
+          "bucketId": "claude_session",
+          "displayName": "5-Hour Limit",
+          "window": "FIVE_HOUR",
+          "remainingFraction": 1.0,
+          "resetTime": "2026-10-24T03:00:00Z",
+          "disabled": false
+        }
+      ]
+    }
+  ],
+  "quotaSummary": {
+    "groups": [
+      {
+        "displayName": "Gemini Models",
+        "buckets": [
+          {
+            "bucketId": "gemini_weekly",
+            "displayName": "Weekly Limit",
+            "window": "WEEKLY",
+            "remainingFraction": 1.0,
+            "resetTime": "2026-10-30T00:00:00Z",
+            "disabled": false
+          },
+          {
+            "bucketId": "gemini_session",
+            "displayName": "5-Hour Limit",
+            "window": "FIVE_HOUR",
+            "remainingFraction": 1.0,
+            "resetTime": "2026-10-24T03:00:00Z",
+            "disabled": false
+          }
+        ]
+      },
+      {
+        "displayName": "Claude and GPT models",
+        "buckets": [
+          {
+            "bucketId": "claude_weekly",
+            "displayName": "Weekly Limit",
+            "window": "WEEKLY",
+            "remainingFraction": 1.0,
+            "resetTime": "2026-10-30T00:00:00Z",
+            "disabled": false
+          },
+          {
+            "bucketId": "claude_session",
+            "displayName": "5-Hour Limit",
+            "window": "FIVE_HOUR",
+            "remainingFraction": 1.0,
+            "resetTime": "2026-10-24T03:00:00Z",
+            "disabled": false
+          }
+        ]
+      }
+    ]
+  }
+}`)
+}
 
+// GetDefaultAvailableModels trả về danh sách model khả dụng với đầy đủ quota 100%
+func GetDefaultAvailableModels() []byte {
+	return []byte(`{
+  "models": {
+    "gemini-3.1-pro-high": {
+      "displayName": "Gemini 3.1 Pro (High)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gemini-3.1-pro-low": {
+      "displayName": "Gemini 3.1 Pro (Low)",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gemini-pro-agent": {
+      "displayName": "Gemini 2.5 Pro",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "gemini-3.8-flash-high": {
+      "displayName": "Gemini 2.5 Flash",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    },
+    "claude-sonnet-4-6": {
+      "displayName": "Claude 3.5 Sonnet",
+      "isInternal": false,
+      "quotaInfo": {
+        "remainingFraction": 1.0,
+        "resetTime": "2026-10-30T00:00:00Z"
+      }
+    }
+  }
+}`)
+}

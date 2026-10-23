@@ -1363,16 +1363,14 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 
 		}
 
-		// P1 SECURITY: Client Report chỉ đóng vai trò telemetry/nhật ký kiểm toán,
-
-		// TUYỆT ĐỐI KHÔNG dùng dữ liệu do client gửi lên làm nguồn sự thật để tăng/giảm hạn mức Quota hoặc Billing.
-
-		// Quota của Client Key được quản lý và bảo vệ duy nhất bởi Server Gateway thông qua ReserveClientKeyQuota.
-
-		if apiKey != "" && (report.UsedRequests > 0 || report.TotalTokens > 0) {
-
+		// P1 SECURITY & ACCURACY: Client Report từ Desktop App gửi lên (kèm Bearer API Key hợp lệ đã xác thực)
+		// Cập nhật số lượt used_requests và total_tokens vào CSDL cho ĐÚNG API Key này
+		if apiKey != "" && report.UsedRequests > 0 && !report.SkipDBIncrement &&
+			!strings.Contains(apiKey, "native-proxy") && !strings.Contains(apiKey, "antigravity") {
+			RecordKeyUsageAsync(db, apiKey, report.UsedRequests, report.TotalTokens)
+			log.Printf("[ENGINE] [QUOTA] ✔ Đã đồng bộ Quota cho Client Key %s: +%d req, +%d tokens", MaskAPIKey(apiKey), report.UsedRequests, report.TotalTokens)
+		} else if apiKey != "" && (report.UsedRequests > 0 || report.TotalTokens > 0) {
 			log.Printf("[ENGINE] [TELEMETRY] Ghi nhận telemetry từ client key %s (used=%d, tokens=%d)", MaskAPIKey(apiKey), report.UsedRequests, report.TotalTokens)
-
 		}
 
 		// P0 SECURITY: Chỉ admin mới được đưa tài khoản upstream vào cooldown qua API

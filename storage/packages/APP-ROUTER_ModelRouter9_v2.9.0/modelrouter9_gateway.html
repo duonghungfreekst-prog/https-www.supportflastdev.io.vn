@@ -10497,15 +10497,54 @@
             const rawActive = isConnActive(k);
             const isAct = rawActive && !isQuotaExceeded && !isExpired;
 
-            let quotaDisplay = 'Không giới hạn';
-            if (qLimit > 0) {
+            let quotaDisplay = '';
+            if (qLimit <= 0) {
+              quotaDisplay = `
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">∞ KHÔNG GIỚI HẠN</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono">Đã dùng: <strong class="text-cyan-300 font-bold">${uReq.toLocaleString('vi-VN')}</strong> req</div>
+                </div>
+              `;
+            } else {
+              const rem = Math.max(0, qLimit - uReq);
+              const remPct = Math.max(0, Math.min(100, Math.round(((qLimit - uReq) / qLimit) * 1000) / 10));
+              let barColor = 'bg-cyan-400';
+              let textColor = 'text-cyan-300';
+              if (isQuotaExceeded) {
+                barColor = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+                textColor = 'text-rose-400 font-bold';
+              } else if (remPct <= 5) {
+                barColor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]';
+                textColor = 'text-red-400 font-bold';
+              } else if (remPct <= 25) {
+                barColor = 'bg-rose-400';
+                textColor = 'text-rose-300';
+              } else if (remPct <= 70) {
+                barColor = 'bg-amber-400';
+                textColor = 'text-amber-300';
+              }
+
+              let badgeHtml = '';
               if (isQuotaExceeded) {
                 const over = uReq - qLimit;
-                quotaDisplay = `<span class="text-rose-400 font-bold">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold ml-1">VƯỢT ${over.toLocaleString('vi-VN')}</span>`;
+                badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">VƯỢT ${over.toLocaleString('vi-VN')}</span>`;
               } else {
-                const rem = qLimit - uReq;
-                quotaDisplay = `<span class="text-cyan-300">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="text-slate-500 text-[10px] font-sans ml-1">(còn ${rem.toLocaleString('vi-VN')})</span>`;
+                badgeHtml = `<span class="text-[10px] text-slate-400 font-sans font-normal">(còn ${rem.toLocaleString('vi-VN')} req • ${remPct.toFixed(1)}%)</span>`;
               }
+
+              quotaDisplay = `
+                <div class="space-y-1 min-w-[210px] max-w-[280px]">
+                  <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="${textColor}">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span>
+                    ${badgeHtml}
+                  </div>
+                  <div class="w-full h-1.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/5 my-1">
+                    <div class="h-full rounded-full transition-all duration-500 ${barColor}" style="width: ${remPct}%"></div>
+                  </div>
+                </div>
+              `;
             }
 
             let statusBadge = '';
@@ -10547,6 +10586,7 @@
               </td>
               <td class="py-3.5 px-3 text-right space-x-2 font-mono">
                 ${actionBtn}
+                ${qLimit > 0 ? `<button onclick="resetApiKeyQuota('${k.id}')" class="text-amber-400 hover:text-amber-300 hover:underline text-xs" title="Đặt lại số lượt sử dụng về 0">Reset</button>` : ''}
                 <button onclick="copyToClipboard('${k.key || shortKey}')" class="text-cyan-400 hover:underline">Sao chép</button>
                 <button onclick="revokeKeyLive('${k.id}')" class="text-red-400 hover:underline">Xóa</button>
               </td>
