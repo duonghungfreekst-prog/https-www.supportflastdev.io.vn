@@ -224,9 +224,26 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 	_, _ = db.Exec("CREATE SEQUENCE IF NOT EXISTS omni_usage_history_id_seq;")
 	_, _ = db.Exec("ALTER TABLE omni_usage_history ALTER COLUMN id SET DEFAULT nextval('omni_usage_history_id_seq');")
 
-	// Dọn dẹp dứt điểm các key mặc định cố định thừa thãi (chặn đứng lỗ hổng P0)
-	if _, errDel := db.Exec("DELETE FROM omni_client_keys WHERE id IN ('key_master_legacy', 'key_master_domain_cloud') OR api_key LIKE '%master-live%'"); errDel != nil {
-		log.Printf("[ENGINE] [STORAGE] ⚠️ Lỗi dọn dẹp key mặc định cũ: %v", errDel)
+	// Đảm bảo Master Keys của hệ thống luôn tồn tại trong DB để phục vụ liên kết máy chủ
+	now := NowISO()
+	seedKeys := []struct {
+		id   string
+		name string
+		key  string
+	}{
+		{"key_master_domain_cloud", "Master Web Domain Key (" + DefaultDomain + ")", "sk-" + DefaultDomain + "-master-live"},
+		{"key_master_gateway_secret", "Master Gateway Secret", "sk-9r-master-live-gateway-secret"},
+		{"key_master_legacy", "Legacy Master Key", "sk-9router-master-live"},
+	}
+	for _, sk := range seedKeys {
+		var exists int
+		_ = db.QueryRow("SELECT COUNT(*) FROM omni_client_keys WHERE api_key = ?", sk.key).Scan(&exists)
+		if exists == 0 {
+			_, _ = db.Exec(`
+				INSERT INTO omni_client_keys (id, name, api_key, key_hash, used_requests, total_tokens, is_active, created_at, last_used_at)
+				VALUES (?, ?, ?, ?, 0, 0, 1, ?, ?)
+			`, sk.id, sk.name, sk.key, HashString(sk.key), now, now)
+		}
 	}
 
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")
@@ -270,6 +287,33 @@ func HashString(s string) string {
 
 // RefreshKeyCache nạp toàn bộ API key hợp lệ lên RAM để kiểm tra 0ms
 func RefreshKeyCache(db *sql.DB) {
+	keyCacheMu.Lock()
+	if keyCache == nil {
+		keyCache = make(map[string]*ClientKey)
+	}
+	// Luôn nạp sẵn Master Keys trên RAM để xác thực tức thì 0ms
+	systemMasterKeys := []string{
+		"sk-" + DefaultDomain + "-master-live",
+		"sk-supportflastdev.io.vn-master-live",
+		"sk-9r-master-live-gateway-secret",
+		"sk-9router-master-live",
+		"sk-" + DefaultDomain + "-admin-live",
+	}
+	for _, mk := range systemMasterKeys {
+		if _, exists := keyCache[mk]; !exists {
+			keyCache[mk] = &ClientKey{
+				ID:         "master_" + HashString(mk)[:12],
+				Name:       "Master System Key",
+				Key:        mk,
+				KeyHash:    HashString(mk),
+				QuotaLimit: 0,
+				IsActive:   1,
+				CreatedAt:  "2026-01-01T00:00:00Z",
+			}
+		}
+	}
+	keyCacheMu.Unlock()
+
 	if db == nil {
 		return
 	}

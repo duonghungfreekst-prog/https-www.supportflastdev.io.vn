@@ -2138,3 +2138,72 @@ func TestSecureCORSOAuth(t *testing.T) {
 		}
 	})
 }
+
+
+// TestServerLinkAuthentication kiểm tra liên kết giữa Desktop App, Antigravity IDE và Server Chủ
+func TestServerLinkAuthentication(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	mux := http.NewServeMux()
+	RegisterOmniRouterRoutes(mux, db, false, ".")
+
+	// 1. GET /api/router/providers với sk-supportflastdev.io.vn-master-live -> HTTP 200 OK
+	t.Run("GET /api/router/providers với master domain key -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		req.Header.Set("Authorization", "Bearer sk-supportflastdev.io.vn-master-live")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 cho master domain key, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	// 2. GET /api/router/providers với sk-9r-master-live-gateway-secret -> HTTP 200 OK
+	t.Run("GET /api/router/providers với gateway secret key -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		req.Header.Set("Authorization", "Bearer sk-9r-master-live-gateway-secret")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 cho gateway secret key, nhận: %d", rec.Code)
+		}
+	})
+
+	// 3. GET /api/router/providers với Client Key sk-9r-... do web cấp -> HTTP 200 OK
+	t.Run("GET /api/router/providers với client key hợp lệ -> 200", func(t *testing.T) {
+		clientKey, err := CreateNewClientKey(db, "Test-Desktop-User")
+		if err != nil {
+			t.Fatalf("CreateNewClientKey thất bại: %v", err)
+		}
+		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+		req.Header.Set("Authorization", "Bearer " + clientKey.Key)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 cho client key hợp lệ, nhận: %d (body: %s)", rec.Code, rec.Body.String())
+		}
+	})
+
+	// 4. GET /api/usage/stats (Endpoint kiểm tra kết nối từ Desktop App) -> HTTP 200 OK
+	t.Run("GET /api/usage/stats -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/usage/stats", nil)
+		req.Header.Set("Authorization", "Bearer sk-supportflastdev.io.vn-master-live")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 cho /api/usage/stats, nhận: %d", rec.Code)
+		}
+	})
+
+	// 5. GET /api/quotas với x-api-key -> HTTP 200 OK
+	t.Run("GET /api/quotas với x-api-key -> 200", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/quotas", nil)
+		req.Header.Set("x-api-key", "sk-supportflastdev.io.vn-master-live")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 cho /api/quotas, nhận: %d", rec.Code)
+		}
+	})
+}

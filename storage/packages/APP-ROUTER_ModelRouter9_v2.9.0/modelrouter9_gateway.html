@@ -870,6 +870,8 @@
       margin: 0 !important;
       padding: 0 !important;
     }
+    html.desktop-mode #btn-nav-home-web,
+    html.desktop-mode a[href="/"],
     html.desktop-mode #sidebar-web-footer,
     html.desktop-mode #sidebar-admin-session-box {
       display: none !important;
@@ -989,7 +991,7 @@
     <!-- Nút điều hướng cùng nền tảng & Điều khiển cửa sổ -->
     <div class="flex items-center gap-2">
       <!-- Nút Quay Lại Cổng Trang Chủ Web SupportFlast -->
-      <a href="/" class="flex items-center gap-1 px-2.5 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 text-cyan-300 hover:text-white text-[11px] font-mono font-medium transition-all duration-200 cursor-pointer no-underline shadow-[0_0_8px_rgba(6,182,212,0.15)]" title="Quay lại Cổng Trang Chủ SupportFlast.dev">
+      <a href="/" id="btn-nav-home-web" class="web-only-inline flex items-center gap-1 px-2.5 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/30 hover:border-cyan-400/60 text-cyan-300 hover:text-white text-[11px] font-mono font-medium transition-all duration-200 cursor-pointer no-underline shadow-[0_0_8px_rgba(6,182,212,0.15)]" title="Quay lại Cổng Trang Chủ SupportFlast.dev">
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
         <span>Trang Chủ Web</span>
       </a>
@@ -8999,6 +9001,10 @@
       if (apiSec) apiSec.style.removeProperty('display');
       const breadcrumbSub = document.getElementById('breadcrumb-sub');
       if (breadcrumbSub) breadcrumbSub.textContent = 'ModelRouter9 AI Gateway';
+      const homeBtn = document.getElementById('btn-nav-home-web');
+      if (homeBtn) homeBtn.style.setProperty('display', 'none', 'important');
+      const homeLink = document.querySelector('a[href="/"]');
+      if (homeLink) homeLink.style.setProperty('display', 'none', 'important');
       const webFooter = document.getElementById('sidebar-web-footer');
       if (webFooter) webFooter.style.setProperty('display', 'none', 'important');
       const adminSessionBox = document.getElementById('sidebar-admin-session-box');

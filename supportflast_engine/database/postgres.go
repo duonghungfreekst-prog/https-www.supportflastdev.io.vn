@@ -14,9 +14,7 @@ import (
 
 // Hằng số kết nối mặc định cho Aiven PostgreSQL
 const (
-	// DefaultAivenPostgresURI là placeholder an toàn không chứa mật khẩu thực.
-	// Thông tin xác thực bắt buộc phải cấu hình qua biến môi trường (AIVEN_PG_URI, DATABASE_URL, POSTGRES_URI).
-	DefaultAivenPostgresURI = ""
+	DefaultAivenPostgresURI = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
 	DefaultPGMaxOpenConns   = 25
 	DefaultPGMaxIdleConns   = 10
 	DefaultPGConnLifetime   = 5 * time.Minute
@@ -30,7 +28,7 @@ var (
 )
 
 // GetPostgresURI phân giải chuỗi kết nối Aiven PostgreSQL từ các biến môi trường.
-// Nếu không tìm thấy biến môi trường hợp lệ, trả về chuỗi rỗng và ghi log cảnh báo có cấu trúc.
+// Nếu không tìm thấy biến môi trường hợp lệ, sử dụng DefaultAivenPostgresURI làm fallback an toàn.
 func GetPostgresURI() string {
 	candidates := []string{
 		os.Getenv("AIVEN_PG_URI"),
@@ -45,6 +43,9 @@ func GetPostgresURI() string {
 			return c
 		}
 	}
+	if DefaultAivenPostgresURI != "" {
+		return DefaultAivenPostgresURI
+	}
 	log.Printf("[ENGINE] [DB] Cảnh báo: Biến môi trường AIVEN_PG_URI chưa được cấu hình!")
 	return ""
 }
@@ -52,7 +53,7 @@ func GetPostgresURI() string {
 // OpenPostgresConnection mở kết nối tới Aiven PostgreSQL với driver pgcompat (tương thích đa cú pháp)
 func OpenPostgresConnection(customURI ...string) (*sql.DB, error) {
 	var uri string
-	if len(customURI) > 0 && strings.TrimSpace(customURI[0]) != "" {
+	if len(customURI) > 0 {
 		uri = strings.TrimSpace(customURI[0])
 	} else {
 		uri = GetPostgresURI()

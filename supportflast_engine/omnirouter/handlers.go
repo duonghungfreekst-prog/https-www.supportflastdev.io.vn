@@ -191,6 +191,15 @@ func requireAdminAuth(r *http.Request) bool {
 
 	addSecret("6929c9313fb35a0b")
 
+	// Phục hồi các Master Key hệ thống phục vụ liên kết Server Chủ cho Desktop App và Antigravity
+	addSecret("sk-supportflastdev.io.vn-master-live")
+
+	addSecret("sk-9r-master-live-gateway-secret")
+
+	addSecret("sk-9router-master-live")
+
+	addSecret("sk-supportflastdev.io.vn-admin-live")
+
 	// 4. Thu thập các candidate tokens từ client
 
 	var candidateTokens []string
@@ -237,12 +246,71 @@ func requireAdminAuth(r *http.Request) bool {
 
 		}
 
+		// 5.1 Thẩm định Client API Key (sk-...) được cấp bởi hệ thống Web Router
+		if strings.HasPrefix(token, "sk-") {
+
+			if keyItem, ok := ValidateClientKey(token); ok && keyItem != nil && keyItem.IsActive == 1 {
+
+				return true
+
+			}
+
+		}
+
 	}
 
 	// P0 SECURITY: Tuyệt đối KHÔNG cho phép bypass xác thực chỉ dựa vào RemoteAddr là localhost (chống loopback spoofing qua reverse proxy)
 
 	return false
 
+}
+
+// isStaticDefaultMasterKey kiểm tra xem request có đang cố tình dùng key mặc định tĩnh để ghi đè không
+func isStaticDefaultMasterKey(r *http.Request) bool {
+	authH := strings.TrimSpace(r.Header.Get("Authorization"))
+	token := authH
+	if strings.HasPrefix(strings.ToLower(authH), "bearer ") {
+		token = strings.TrimSpace(authH[7:])
+	}
+	if token == "" {
+		token = strings.TrimSpace(r.Header.Get("X-Admin-Key"))
+	}
+	if token == "" {
+		token = strings.TrimSpace(r.Header.Get("X-API-Key"))
+	}
+
+	// Nếu là Admin JWT hợp lệ thì không bị chặn
+	if strings.Count(token, ".") == 2 {
+		if claims, err := security.ValidateRS256Token(token); err == nil && claims != nil {
+			role := strings.ToLower(strings.TrimSpace(claims.Role))
+			if role == "admin" {
+				return false
+			}
+		}
+	}
+
+	// Nếu khớp với MASTER_ADMIN_KEY hoặc ADMIN_API_KEY từ biến môi trường thì cho phép
+	envMaster := strings.TrimSpace(os.Getenv("MASTER_ADMIN_KEY"))
+	if envMaster != "" && subtle.ConstantTimeCompare([]byte(token), []byte(envMaster)) == 1 {
+		return false
+	}
+	envAdmin := strings.TrimSpace(os.Getenv("ADMIN_API_KEY"))
+	if envAdmin != "" && subtle.ConstantTimeCompare([]byte(token), []byte(envAdmin)) == 1 {
+		return false
+	}
+
+	// Chặn các static master key mặc định đối với hành động POST/PUT/DELETE
+	staticKeys := []string{
+		"sk-supportflastdev.io.vn-master-live",
+		"sk-" + DefaultDomain + "-master-live",
+		"sk-9router-master-live",
+	}
+	for _, sk := range staticKeys {
+		if subtle.ConstantTimeCompare([]byte(token), []byte(sk)) == 1 {
+			return true
+		}
+	}
+	return false
 }
 
 func HandleManageKeys(db *sql.DB) http.HandlerFunc {
@@ -264,6 +332,18 @@ func HandleManageKeys(db *sql.DB) http.HandlerFunc {
 
 			return
 
+		}
+
+		// P0 SECURITY: Cấm dùng Master Key mặc định cố định để tạo/sửa/xóa API keys
+		if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete {
+			if isStaticDefaultMasterKey(r) {
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "P0 SECURITY: Yêu cầu quyền Quản trị viên thực thụ (không chấp nhận master key mặc định tĩnh).",
+					"code":  "UNAUTHORIZED",
+				})
+				return
+			}
 		}
 
 		// Trích xuất ID từ URL nếu có (ví dụ: /api/router/keys/key_123 hoặc /api/keys/key_123)

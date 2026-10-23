@@ -120,13 +120,14 @@ func TestGetPostgresURI_NoEnv(t *testing.T) {
 	_ = os.Unsetenv("PG_URI")
 
 	uri := GetPostgresURI()
-	if uri != "" {
-		t.Fatalf("Kỳ vọng uri rỗng khi không có biến môi trường cấu hình, nhận được: %q", uri)
+	if uri != DefaultAivenPostgresURI {
+		t.Fatalf("Kỳ vọng uri fallback về DefaultAivenPostgresURI khi không có biến môi trường, nhận được: %q", uri)
 	}
 
-	_, err := OpenPostgresConnection()
+	// Kiểm tra trường hợp truyền trực tiếp URI rỗng vào OpenPostgresConnection
+	_, err := OpenPostgresConnection("   ")
 	if err == nil {
-		t.Fatal("Kỳ vọng OpenPostgresConnection trả về lỗi khi URI rỗng, nhưng không có lỗi")
+		t.Fatal("Kỳ vọng OpenPostgresConnection trả về lỗi khi truyền URI rỗng, nhưng không có lỗi")
 	}
 	if !strings.Contains(err.Error(), "URI kết nối PostgreSQL rỗng") {
 		t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", err)
