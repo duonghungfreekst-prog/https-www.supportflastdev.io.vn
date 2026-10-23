@@ -844,6 +844,12 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				upstreamURL = strings.ReplaceAll(upstreamURL, "claude-3-7-sonnet", "claude-sonnet-4-6")
 
+				if tierModel != "" && model != "" && model != tierModel {
+					upstreamURL = strings.ReplaceAll(upstreamURL, model, tierModel)
+					upstreamURL = strings.ReplaceAll(upstreamURL, url.PathEscape(model), url.PathEscape(tierModel))
+					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("\""+model+"\""), []byte("\""+tierModel+"\""))
+				}
+
 
 
 				// Tạo request mới với finalBodyBytes
@@ -1006,7 +1012,11 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 				if rResp.StatusCode == http.StatusTooManyRequests {
-
+					var errSnippet string
+					if rResp.Body != nil {
+						eb, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
+						errSnippet = string(eb)
+					}
 					rResp.Body.Close()
 
 					accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
@@ -1017,12 +1027,16 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					ideQuotaCache = make(map[string]*CachedIDEQuotaResponse)
 					ideQuotaCacheLock.Unlock()
 
-					lastErr = fmt.Errorf("rate limited (429) on %s for model %s", acc.Name, tierModel)
+					lastErr = fmt.Errorf("rate limited (429) on %s for model %s: %s", acc.Name, tierModel, errSnippet)
+					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Rate limited (429) trên %s cho model %s (%s)", acc.Name, tierModel, errSnippet)
 
-					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Rate limited (429) trên %s cho model %s, chuyển tài khoản tiếp...", acc.Name, tierModel)
+					// Fast-Cascade chuyển ngay sang Tier tiếp theo (ví dụ Sonnet) nếu model gặp giới hạn Quota/Subscription cá nhân
+					if len(modelTiers) > tierIdx+1 && (strings.Contains(tierModel, "opus") || strings.Contains(errSnippet, "quota") || strings.Contains(errSnippet, "subscription") || strings.Contains(errSnippet, "Individual")) {
+						log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Rate limit/Quota trên %s. Kích hoạt Fast-Cascade chuyển ngay sang Tier tiếp theo: %s", tierModel, modelTiers[tierIdx+1])
+						break
+					}
 
 					continue
-
 				}
 
 
@@ -1081,12 +1095,22 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 
 
+					isSubOrQuotaLimit := strings.Contains(cleanErrStr, "Individual quota reached") ||
+						strings.Contains(cleanErrStr, "upgrade your subscription") ||
+						strings.Contains(cleanErrStr, "SUBSCRIPTION_REQUIRED") ||
+						strings.Contains(cleanErrStr, "#3501") ||
+						strings.Contains(cleanErrStr, "quota")
+
 					if strings.Contains(cleanErrStr, "SUBSCRIPTION_REQUIRED") || strings.Contains(cleanErrStr, "#3501") {
-
 						accountCooldownMap.Store(acc.ID, time.Now().Add(1*time.Hour))
-
 						log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Tài khoản thiếu subscription (#3501), tạm thời cooldown 1h")
+					}
 
+					// Fast-Cascade nếu gặp lỗi Quota/Subscription hoặc lỗi 403 trên model Opus và có tier tiếp theo
+					if len(modelTiers) > tierIdx+1 && (isSubOrQuotaLimit || (strings.Contains(tierModel, "opus") && (rResp.StatusCode == http.StatusForbidden || rResp.StatusCode == http.StatusBadRequest))) {
+						accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Minute))
+						log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Model %s yêu cầu subscription/quota đặc biệt (%s, HTTP %d). Kích hoạt Fast-Cascade chuyển ngay sang Tier tiếp theo: %s", tierModel, cleanErrStr, rResp.StatusCode, modelTiers[tierIdx+1])
+						break
 					}
 
 

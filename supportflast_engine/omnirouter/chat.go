@@ -118,6 +118,15 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 	normPrimary := reqTrim
 	lowerNorm := strings.ToLower(normPrimary)
 
+	// Đặc biệt với dòng Claude Opus (yêu cầu Google Ultra/Enterprise subscription):
+	// Nếu tài khoản không có gói Ultra, Google sẽ từ chối với lỗi "Individual quota reached / upgrade subscription".
+	// Thiết lập Cascade thông minh: Tier 1 ưu tiên Claude Opus 4.6 Thinking -> Tier 2 tự động Fallback sang Claude Sonnet 4.6 Thinking.
+	// Cùng chung dòng Claude Thinking cao cấp nhất, đảm bảo IDE luôn phản hồi mượt mà không bao giờ bị lỗi đỏ Quota.
+	if strings.Contains(lowerNorm, "opus") {
+		log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Model Opus được chỉ định: %q → Thiết lập Cascade Fallback [claude-opus-4-6-thinking, claude-sonnet-4-6]", normPrimary)
+		return []string{"claude-opus-4-6-thinking", "claude-sonnet-4-6"}
+	}
+
 	// Danh sách model hợp lệ đã được chuẩn hóa - nếu trùng khớp → KHÔNG map lại
 	knownValidModels := map[string]bool{
 		"gemini-3.8-flash-high":    true,
@@ -1044,13 +1053,20 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 					rResp.Body.Close()
 					accountCooldownMap.Store(acc.ID, time.Now().Add(30*time.Second))
 					lastErr = fmt.Errorf("rate limited (429 Quota) trên %s (%s) cho model %s", acc.Name, provider, currentTierModel)
+					if len(modelTiers) > tierIdx+1 && strings.Contains(currentTierModel, "opus") {
+						break
+					}
 					continue
 				}
 
 				if rResp.StatusCode != http.StatusOK {
 					errBody, _ := io.ReadAll(io.LimitReader(rResp.Body, 1024))
 					rResp.Body.Close()
-					lastErr = fmt.Errorf("upstream error %d trên %s (%s) cho model %s: %s", rResp.StatusCode, acc.Name, provider, currentTierModel, strings.TrimSpace(string(errBody)))
+					cleanErr := strings.TrimSpace(string(errBody))
+					lastErr = fmt.Errorf("upstream error %d trên %s (%s) cho model %s: %s", rResp.StatusCode, acc.Name, provider, currentTierModel, cleanErr)
+					if len(modelTiers) > tierIdx+1 && (strings.Contains(cleanErr, "Individual quota reached") || strings.Contains(cleanErr, "SUBSCRIPTION_REQUIRED") || strings.Contains(currentTierModel, "opus")) {
+						break
+					}
 					continue
 				}
 
