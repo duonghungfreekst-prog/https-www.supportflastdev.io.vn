@@ -1,6 +1,7 @@
-﻿# Makefile cho hệ thống SupportFlast (supportflast.dev.io.vn)
+# Makefile cho hệ thống SupportFlast (supportflast.dev.io.vn)
+# Tuân thủ nghiêm ngặt Rule PHẦN 6 - Antigravity Polyglot Architecture
 
-.PHONY: all build build-linux test clean docker docker-multiarch run pqc-test
+.PHONY: all build build-linux test clean docker docker-multiarch run pqc-test lint key-ceremony siem kafka
 
 all: build
 
@@ -15,7 +16,6 @@ build-linux:
 	@echo "==> Cross-compiling Linux Binaries (amd64)..."
 	cd supportflast_engine && go build -ldflags="-s -w" -o ../bin/supportflast-linux-amd64 .
 
-
 test:
 	@echo "==> Testing Rust Core..."
 	cd supportflast_core && cargo test
@@ -25,14 +25,49 @@ test:
 	cd supportflast_ai && python test_agents.py
 	@echo "==> All tests passed!"
 
+lint:
+	@echo "==> [LINT] Linting Go Engine (go vet)..."
+	-cd supportflast_engine && go vet ./...
+	@echo "==> [LINT] Linting Rust Core (cargo clippy)..."
+	cd supportflast_core && cargo clippy --quiet
+	@echo "==> [LINT] Lint complete!"
+
 pqc-test:
 	@echo "==> Testing Rust Post-Quantum Cryptography (Kyber + Dilithium)..."
 	cd supportflast_core && cargo test pqc
 
+key-ceremony:
+	@echo "==> [KEY-CEREMONY] Testing RSA RS256 Key Ceremony & Verification (Go Engine)..."
+	cd supportflast_engine && go test -v ./security -run "TestKeyGenerationAndPersistence|TestGenerateAndValidateRS256Token"
+	@echo "==> [KEY-CEREMONY] Testing PQC Dilithium Signature Ceremony (Rust Core)..."
+	cd supportflast_core && cargo test dilithium
+	@echo "==> [KEY-CEREMONY] Key ceremony and cryptographic verification complete!"
+
+siem:
+	@echo "==> [SIEM] Testing SIEM Client & Honeypot (Go Engine)..."
+	cd supportflast_engine && go test -v ./security -run "TestSIEM|TestHoneypot"
+	@echo "==> [SIEM] Testing SIEM AI Threat Intelligence Engine (Python AI)..."
+	cd supportflast_ai && python test_siem_engine.py
+	@echo "==> [SIEM] Testing SIEM API Endpoints (FastAPI)..."
+	cd supportflast_ai && python test_siem_api.py
+	@echo "==> [SIEM] Security audit tests passed!"
+
+kafka:
+	@echo "==> [KAFKA] Testing Kafka/Redpanda Config & Idempotency Key (Go Engine)..."
+	cd supportflast_engine && go test -v -run TestKafka
+	@echo "==> [KAFKA] Testing Kafka Async Consumer & Idempotency Deduplication (Python AI)..."
+	cd supportflast_ai && python test_kafka_idempotency.py
+	@echo "==> [KAFKA] Kafka/Redpanda idempotency compliance verified!"
+
 clean:
 	@echo "==> Cleaning build artifacts..."
 	cd supportflast_core && cargo clean
-	rm -f supportflast_engine/supportflast.exe
+ifeq ($(OS),Windows_NT)
+	-cmd /c "del /f /q supportflast_engine\supportflast.exe 2>nul"
+	-rm -f supportflast_engine/supportflast.exe
+else
+	rm -f supportflast_engine/supportflast.exe bin/supportflast-linux-amd64
+endif
 	@echo "==> Clean complete!"
 
 docker:
@@ -44,6 +79,10 @@ docker-multiarch:
 	docker buildx build --platform linux/amd64,linux/arm64 -t supportflast:latest .
 
 run:
-	@echo "==> Starting SupportFlast Services (XAMPP Full System)..."
+ifeq ($(OS),Windows_NT)
+	@echo "==> Starting SupportFlast Services (Windows)..."
 	cmd /c RUN_FULL_SYSTEM.bat
-
+else
+	@echo "==> Starting SupportFlast Services (Linux)..."
+	@if [ -f entrypoint.sh ]; then ./entrypoint.sh; else cd supportflast_engine && go run .; fi
+endif

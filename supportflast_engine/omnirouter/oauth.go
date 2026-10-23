@@ -12,16 +12,75 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"supportflast_engine/security"
 )
 
 const (
-	AntigravityClientID     = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
-	AntigravityClientSecret = "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"
-	GoogleTokenURL          = "https://oauth2.googleapis.com/token"
+	GoogleTokenURL = "https://oauth2.googleapis.com/token"
 )
+
+var (
+	// AntigravityClientID và AntigravityClientSecret lấy động từ biến môi trường (hỗ trợ tương thích ngược)
+	AntigravityClientID     string
+	AntigravityClientSecret string
+)
+
+// getOAuthClientID đọc Client ID từ biến môi trường OAUTH_CLIENT_ID hoặc ANTIGRAVITY_CLIENT_ID
+func getOAuthClientID() string {
+	cid := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_ID"))
+	if cid == "" {
+		cid = strings.TrimSpace(os.Getenv("ANTIGRAVITY_CLIENT_ID"))
+	}
+	if cid == "" && AntigravityClientID != "" {
+		cid = AntigravityClientID
+	}
+	if cid == "" {
+		log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO: OAUTH_CLIENT_ID hoặc ANTIGRAVITY_CLIENT_ID chưa được thiết lập trong biến môi trường")
+	} else {
+		AntigravityClientID = cid
+	}
+	return cid
+}
+
+// getOAuthClientSecret đọc Client Secret từ biến môi trường OAUTH_CLIENT_SECRET hoặc ANTIGRAVITY_CLIENT_SECRET
+func getOAuthClientSecret() string {
+	sec := strings.TrimSpace(os.Getenv("OAUTH_CLIENT_SECRET"))
+	if sec == "" {
+		sec = strings.TrimSpace(os.Getenv("ANTIGRAVITY_CLIENT_SECRET"))
+	}
+	if sec == "" && AntigravityClientSecret != "" {
+		sec = AntigravityClientSecret
+	}
+	if sec == "" {
+		log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO: OAUTH_CLIENT_SECRET hoặc ANTIGRAVITY_CLIENT_SECRET chưa được thiết lập trong biến môi trường")
+	} else {
+		AntigravityClientSecret = sec
+	}
+	return sec
+}
+
+// GetOAuthClientID trả về Client ID từ môi trường (phiên bản Exported)
+func GetOAuthClientID() string {
+	return getOAuthClientID()
+}
+
+// GetOAuthClientSecret trả về Client Secret từ môi trường (phiên bản Exported)
+func GetOAuthClientSecret() string {
+	return getOAuthClientSecret()
+}
+
+func init() {
+	AntigravityClientID = getOAuthClientID()
+	AntigravityClientSecret = getOAuthClientSecret()
+	if AntigravityClientID == "" || AntigravityClientSecret == "" {
+		log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO KHỞI ĐỘNG: Biến môi trường OAuth chưa được thiết lập đầy đủ (OAUTH_CLIENT_ID hoặc OAUTH_CLIENT_SECRET đang rỗng)")
+	}
+}
 
 var (
 	accountTokenMu sync.Map // connId -> *sync.Mutex
@@ -94,9 +153,14 @@ func ParseCredentialsFromMap(dataMap map[string]interface{}) *Credentials {
 
 // RefreshGoogleToken thực hiện gọi sang Google OAuth API để lấy Access Token mới
 func RefreshGoogleToken(refreshToken string) (string, time.Time, string, error) {
+	clientID := getOAuthClientID()
+	clientSecret := getOAuthClientSecret()
+	if clientID == "" || clientSecret == "" {
+		log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO: Làm mới Google OAuth Token nhưng OAUTH_CLIENT_ID hoặc OAUTH_CLIENT_SECRET chưa được cấu hình!")
+	}
 	data := url.Values{}
-	data.Set("client_id", AntigravityClientID)
-	data.Set("client_secret", AntigravityClientSecret)
+	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
 	data.Set("refresh_token", refreshToken)
 	data.Set("grant_type", "refresh_token")
 
@@ -232,13 +296,67 @@ func extractProviderFromOAuthPath(path string) string {
 	return ""
 }
 
+// isAllowedOAuthOrigin kiểm tra Origin theo quy tắc Exact Match nghiêm ngặt (Rule PHẦN 3)
+// TUYỆT ĐỐI KHÔNG dùng wildcard '*' hoặc regex pattern matching.
+func isAllowedOAuthOrigin(origin string) bool {
+	clean := strings.TrimSpace(origin)
+	clean = strings.TrimRight(clean, "/")
+	if clean == "" || clean == "*" || strings.Contains(clean, "*") {
+		return false
+	}
+
+	// 1. Whitelist mặc định cố định theo Rule PHẦN 3 & Hướng dẫn
+	defaultAllowed := map[string]bool{
+		"https://supportflastdev.io.vn":     true,
+		"https://www.supportflastdev.io.vn": true,
+		"http://127.0.0.1:20128":            true,
+		"http://localhost:20128":            true,
+	}
+	if defaultAllowed[clean] {
+		return true
+	}
+
+	// 2. Kiểm tra từ biến môi trường ALLOWED_ORIGINS (phân tách bởi dấu phẩy)
+	if envVal := os.Getenv("ALLOWED_ORIGINS"); envVal != "" {
+		for _, part := range strings.Split(envVal, ",") {
+			p := strings.TrimSpace(part)
+			p = strings.TrimRight(p, "/")
+			if p != "" && !strings.Contains(p, "*") && p == clean {
+				return true
+			}
+		}
+	}
+
+	// 3. Kiểm tra qua security package (đã đăng ký LAN IPs và domains an toàn)
+	if security.IsOriginAllowed(clean) {
+		return true
+	}
+
+	return false
+}
+
+// setSecureCORS thiết lập các header CORS an toàn tuân thủ Rule PHẦN 3 (Exact String Match, CẤM wildcard '*')
+func setSecureCORS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token, Accept, Origin")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.Header().Set("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if origin != "" {
+		if isAllowedOAuthOrigin(origin) {
+			cleanOrigin := strings.TrimRight(origin, "/")
+			w.Header().Set("Access-Control-Allow-Origin", cleanOrigin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
+	}
+}
+
 // HandleOAuthAuthorize khởi tạo phiên đăng nhập OAuth 2.0 PKCE cho Provider
 func HandleOAuthAuthorize(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+		setSecureCORS(w, r)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
@@ -267,9 +385,13 @@ func HandleOAuthAuthorize(db *sql.DB) http.HandlerFunc {
 
 		switch provider {
 		case "antigravity", "google", "gemini-cli":
+			clientID := getOAuthClientID()
+			if clientID == "" {
+				log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO: Bắt đầu luồng OAuth Google nhưng OAUTH_CLIENT_ID hoặc ANTIGRAVITY_CLIENT_ID đang bị rỗng!")
+			}
 			scopes := "openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/cloud-platform"
 			authURL := fmt.Sprintf("https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&access_type=offline&prompt=consent&state=%s",
-				AntigravityClientID,
+				clientID,
 				url.QueryEscape(redirectURI),
 				url.QueryEscape(scopes),
 				state,
@@ -314,9 +436,7 @@ func HandleOAuthAuthorize(db *sql.DB) http.HandlerFunc {
 func HandleOAuthExchange(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+		setSecureCORS(w, r)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
@@ -421,9 +541,7 @@ func HandleOAuth(db *sql.DB) http.HandlerFunc {
 		}
 
 		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+			setSecureCORS(w, r)
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -455,9 +573,14 @@ func exchangeGoogleOAuthCode(db *sql.DB, provider, code, redirectURI, codeVerifi
 }
 
 func doGoogleTokenExchange(db *sql.DB, provider, code, redirectURI, codeVerifier string) (*ProviderConnection, error) {
+	clientID := getOAuthClientID()
+	clientSecret := getOAuthClientSecret()
+	if clientID == "" || clientSecret == "" {
+		log.Println("[ENGINE] [OAUTH] ⚠️ CẢNH BÁO: Thực hiện đổi mã OAuth sang token nhưng OAUTH_CLIENT_ID hoặc OAUTH_CLIENT_SECRET chưa được cấu hình!")
+	}
 	data := url.Values{}
-	data.Set("client_id", AntigravityClientID)
-	data.Set("client_secret", AntigravityClientSecret)
+	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
 	data.Set("code", code)
 	data.Set("grant_type", "authorization_code")
 	data.Set("redirect_uri", redirectURI)
@@ -633,9 +756,7 @@ var (
 // HandleOAuthCallbackNotify nhận tín hiệu callback từ trang HTML để đồng bộ giữa Web và Local Gateway
 func HandleOAuthCallbackNotify(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+	setSecureCORS(w, r)
 
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -670,9 +791,7 @@ func HandleOAuthCallbackNotify(w http.ResponseWriter, r *http.Request) {
 // HandleOAuthPoll phục vụ kiểm tra trạng thái callback qua polling (giải quyết triệt để vấn đề mất opener hoặc cross-origin)
 func HandleOAuthPoll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+	setSecureCORS(w, r)
 
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
@@ -718,7 +837,12 @@ func HandleOAuthPoll(w http.ResponseWriter, r *http.Request) {
 // HandleOAuthCallbackHTML phục vụ trang callback HTML trả về khi hoàn tất đăng nhập Google OAuth
 func HandleOAuthCallbackHTML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	setSecureCORS(w, r)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	q := r.URL.Query()
 	code := q.Get("code")

@@ -2044,3 +2044,97 @@ func TestOAuthAndProviderManagement(t *testing.T) {
 		}
 	})
 }
+
+// TestSecureCORSOAuth kiểm tra triệt để tính an toàn của CORS cho các endpoint OAuth (Rule PHẦN 3)
+func TestSecureCORSOAuth(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Không thể mở in-memory sqlite db: %v", err)
+	}
+	defer db.Close()
+	_ = InitStorage(db, false)
+
+	// 1. Allowed origin: https://supportflastdev.io.vn
+	t.Run("Allowed Origin -> CORS headers set", func(t *testing.T) {
+		req := httptest.NewRequest("OPTIONS", "/api/oauth/antigravity/authorize", nil)
+		req.Header.Set("Origin", "https://supportflastdev.io.vn")
+		rec := httptest.NewRecorder()
+		HandleOAuth(db)(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("OPTIONS kỳ vọng 200, nhận: %d", rec.Code)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://supportflastdev.io.vn" {
+			t.Fatalf("Kỳ vọng Access-Control-Allow-Origin = https://supportflastdev.io.vn, nhận: %s", got)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+			t.Fatalf("Kỳ vọng Access-Control-Allow-Credentials = true, nhận: %s", got)
+		}
+	})
+
+	// 2. Allowed origin: http://127.0.0.1:20128
+	t.Run("Local Gateway Origin -> CORS headers set", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/oauth/poll?state=test", nil)
+		req.Header.Set("Origin", "http://127.0.0.1:20128")
+		rec := httptest.NewRecorder()
+		HandleOAuthPoll(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "http://127.0.0.1:20128" {
+			t.Fatalf("Kỳ vọng Access-Control-Allow-Origin = http://127.0.0.1:20128, nhận: %s", got)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+			t.Fatalf("Kỳ vọng Access-Control-Allow-Credentials = true, nhận: %s", got)
+		}
+	})
+
+	// 3. ALLOWED_ORIGINS env
+	t.Run("Custom ALLOWED_ORIGINS env -> Exact match allowed", func(t *testing.T) {
+		origEnv := os.Getenv("ALLOWED_ORIGINS")
+		defer os.Setenv("ALLOWED_ORIGINS", origEnv)
+		os.Setenv("ALLOWED_ORIGINS", "https://partner.supportflastdev.io.vn,https://preview.app")
+
+		req := httptest.NewRequest("POST", "/api/oauth/antigravity/exchange", nil)
+		req.Header.Set("Origin", "https://partner.supportflastdev.io.vn")
+		rec := httptest.NewRecorder()
+		HandleOAuthExchange(db)(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://partner.supportflastdev.io.vn" {
+			t.Fatalf("Kỳ vọng Access-Control-Allow-Origin = https://partner.supportflastdev.io.vn, nhận: %s", got)
+		}
+	})
+
+	// 4. Malicious / untrusted Origin -> CẤM TUYỆT ĐỐI (không set Allow-Origin)
+	t.Run("Untrusted Origin -> No CORS header", func(t *testing.T) {
+		req := httptest.NewRequest("OPTIONS", "/api/oauth/antigravity/authorize", nil)
+		req.Header.Set("Origin", "https://evil-attacker.com")
+		rec := httptest.NewRecorder()
+		HandleOAuth(db)(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+			t.Fatalf("LỖI BẢO MẬT: Origin độc hại nhận được Access-Control-Allow-Origin: %s", got)
+		}
+	})
+
+	// 5. Wildcard Origin '*' -> CẤM TUYỆT ĐỐI (không set Allow-Origin)
+	t.Run("Wildcard Origin '*' -> Rejected", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/callback?code=abc&state=123", nil)
+		req.Header.Set("Origin", "*")
+		rec := httptest.NewRecorder()
+		HandleOAuthCallbackHTML(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+			t.Fatalf("LỖI BẢO MẬT: Wildcard origin '*' nhận được Access-Control-Allow-Origin: %s", got)
+		}
+	})
+
+	// 6. No Origin header (same-origin / server-to-server) -> No Allow-Origin header
+	t.Run("No Origin header -> No Allow-Origin header", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/oauth/poll?state=none", nil)
+		rec := httptest.NewRecorder()
+		HandleOAuthPoll(rec, req)
+
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+			t.Fatalf("Kỳ vọng rỗng khi không có Origin header, nhận được: %s", got)
+		}
+	})
+}

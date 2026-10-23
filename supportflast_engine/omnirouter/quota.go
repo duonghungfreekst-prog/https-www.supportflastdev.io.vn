@@ -48,7 +48,7 @@ const (
 
 	AntigravityIdeVersion         = "2.11.0"
 
-	QuotaCacheTTL                 = 15 * time.Second
+	QuotaCacheTTL                 = 30 * time.Second
 
 )
 

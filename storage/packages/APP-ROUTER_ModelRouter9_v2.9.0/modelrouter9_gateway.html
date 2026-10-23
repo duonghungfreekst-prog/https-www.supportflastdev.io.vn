@@ -819,6 +819,18 @@
     html.web-mode .desktop-only-action { display: none !important; }
     html.web-mode .web-only-action { display: flex !important; }
 
+    /* Web Mode: Ẩn các tính năng chỉ dành cho Desktop (MITM, CLI, Media, Protocol, PxPipe, Engine Panel) */
+    html.web-mode .desktop-only-feature,
+    html.web-mode #header-gateway-badge-container {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
     /* Trên App Desktop: Ẩn các tabs phụ khi chạy trong ứng dụng Desktop theo yêu cầu */
     html.desktop-mode .desktop-hide-tab {
       display: none !important;
@@ -1061,7 +1073,7 @@
             
 
             <!-- Mục 1: MITM Proxy & CLI -->
-            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1201,7 +1213,7 @@
             </button>
 
             <!-- Mục: Media & Voice Hub -->
-            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('media')" id="btn-tab-media" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
                 <span>Media & Voice Hub</span>
@@ -1210,7 +1222,7 @@
             </button>
 
             <!-- Mục: CLI Tools & MCP -->
-            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('cli-tools')" id="btn-tab-cli-tools" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <span>CLI & MCP Tools</span>
@@ -1219,7 +1231,7 @@
             </button>
 
             <!-- Mục: Protocol Translator -->
-            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('translator')" id="btn-tab-translator" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                 <span>Protocol Translator</span>
@@ -1228,7 +1240,7 @@
             </button>
 
             <!-- Mục: PxPipe Prompt Compression -->
-            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('pxpipe')" id="btn-tab-pxpipe" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                 <span>PxPipe Compression</span>
@@ -1415,7 +1427,7 @@
 
             <span class="text-slate-400 text-xs">/</span>
 
-            <span id="breadcrumb-sub" class="text-slate-400 text-xs font-mono">127.0.0.1:20128</span>
+            <span id="breadcrumb-sub" class="text-slate-400 text-xs font-mono">supportflastdev.io.vn (Cloud Gateway)</span>
 
           </div>
 
@@ -1429,7 +1441,7 @@
 
           <!-- Công tắc BẬT/TẮT Gateway và Badge trên Header Topbar -->
 
-          <div id="header-gateway-badge-container" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300">
+          <div id="header-gateway-badge-container" class="desktop-only-feature hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)] transition-all duration-300">
 
             <span id="header-gateway-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
 
@@ -1461,7 +1473,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-mitm" class="tab-content space-y-6">
+        <div id="tab-mitm" class="tab-content desktop-only-feature space-y-6">
 
 
 
@@ -5061,7 +5073,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-media" class="tab-content space-y-6">
+        <div id="tab-media" class="tab-content desktop-only-feature space-y-6">
 
 
 
@@ -6049,7 +6061,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-cli-tools" class="tab-content space-y-6">
+        <div id="tab-cli-tools" class="tab-content desktop-only-feature space-y-6">
 
 
 
@@ -6125,7 +6137,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-translator" class="tab-content space-y-6">
+        <div id="tab-translator" class="tab-content desktop-only-feature space-y-6">
 
 
 
@@ -6269,7 +6281,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-pxpipe" class="tab-content space-y-6">
+        <div id="tab-pxpipe" class="tab-content desktop-only-feature space-y-6">
 
 
 
@@ -8103,6 +8115,11 @@
         if (isDesktop) {
           const btn = document.getElementById('btn-tab-' + t);
           if (btn && btn.classList.contains('desktop-hide-tab')) return false;
+        } else {
+          if (t === 'mitm' || t === 'media' || t === 'cli-tools' || t === 'translator' || t === 'pxpipe') return false;
+          const btn = document.getElementById('btn-tab-' + t);
+          const tabEl = document.getElementById('tab-' + t);
+          if ((btn && btn.classList.contains('desktop-only-feature')) || (tabEl && tabEl.classList.contains('desktop-only-feature'))) return false;
         }
         return true;
       };
@@ -8483,12 +8500,18 @@
       if (isDesktopEnv && (tabId === 'console' || tabId === 'logs')) {
         tabId = 'mitm';
       }
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+        tabId = 'stats';
+      }
 
       if (!tabId || !document.getElementById('tab-' + tabId)) {
         tabId = getSavedActiveTab();
       }
       if (isDesktopEnv && (tabId === 'console' || tabId === 'logs')) {
         tabId = 'mitm';
+      }
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+        tabId = 'stats';
       }
       window._currentActiveTabId = tabId;
 
@@ -8902,6 +8925,8 @@
       if (syncSec) syncSec.style.setProperty('display', 'block', 'important');
       const apiSec = document.getElementById('internal-api-keys-section');
       if (apiSec) apiSec.style.setProperty('display', 'none', 'important');
+      const breadcrumbSub = document.getElementById('breadcrumb-sub');
+      if (breadcrumbSub) breadcrumbSub.textContent = '127.0.0.1:20128';
     }
 
     // Che giấu email và thông tin tài khoản nhạy cảm (duo***@gmail.com) để bảo mật chống lộ thông tin
@@ -9363,6 +9388,12 @@
     // Cập nhật trạng thái Gateway đồng bộ trên cả Header Topbar và Sidebar Footer
 
     function updateGatewayLiveStatus(isOnline, force = false) {
+      if (!IS_DESKTOP_ENV) {
+        // Trên Web Mode: Ẩn hoàn toàn header gateway badge và không ghi đè Card Cloud tối giản
+        const headerContainer = document.getElementById('header-gateway-badge-container');
+        if (headerContainer) headerContainer.style.setProperty('display', 'none', 'important');
+        return;
+      }
 
       const boolOnline = Boolean(isOnline);
 
@@ -29721,6 +29752,7 @@
     // =========================================================================
 
     let _quotaAccountsList = [];
+    let _quotaAuthError = false;
 
     let _quotaSortExpiring = false;
 
@@ -30084,6 +30116,17 @@
 
     let _isQuotaLoading = false;
 
+    // Helper bọc timeout 4s an toàn cho mọi fetch để không bao giờ bị treo spinner
+    function fetchWithTimeoutGuard(promise, ms = 4000) {
+      let timer = null;
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Quá thời gian phản hồi (${ms}ms)`)), ms);
+      });
+      return Promise.race([promise, timeoutPromise]).finally(() => {
+        if (timer) clearTimeout(timer);
+      });
+    }
+
     // Tải toàn bộ danh sách kết nối và hạn mức thời gian thực từ Backend (Cache-First Instant Display)
     async function loadQuotaTrackerLive(force = false) {
       if (_isQuotaLoading && !force) return;
@@ -30093,7 +30136,17 @@
       if (spinEl) spinEl.classList.add('animate-spin');
 
       try {
-        const res = await apiRequest('/api/providers');
+        // Áp dụng Timeout Guard 4 giây cho API lấy danh sách providers
+        const res = await fetchWithTimeoutGuard(apiRequest('/api/providers', { timeout: 4000 }), 4000);
+
+        // Xử lý ngay trường hợp 401 Unauthorized / 403 Forbidden (chưa đăng nhập Admin trên Web)
+        if (res && (res.status === 401 || res.status === 403 || res.isAuthError || res.code === 'UNAUTHORIZED')) {
+          _quotaAuthError = true;
+          _quotaAccountsList = [];
+          renderQuotaCards();
+          return;
+        }
+
         let data = null;
         const cType = res.headers?.get('content-type') || '';
         if (cType.includes('application/json')) {
@@ -30105,11 +30158,29 @@
             data = JSON.parse(rawText);
           } catch (_) {
             if (!res.ok) {
+              if (res.status === 401 || res.status === 403) {
+                _quotaAuthError = true;
+                _quotaAccountsList = [];
+                renderQuotaCards();
+                return;
+              }
               throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
             }
           }
         }
         if (!data) data = {};
+
+        // Nếu dữ liệu JSON trả về báo lỗi 401
+        if (data.status === 401 || data.code === 'UNAUTHORIZED' || (typeof data.error === 'string' && data.error.includes('401'))) {
+          _quotaAuthError = true;
+          _quotaAccountsList = [];
+          renderQuotaCards();
+          return;
+        }
+
+        // Đã xác thực thành công
+        _quotaAuthError = false;
+
         const connections = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : []);
 
         // Lọc các kết nối tài khoản (antigravity, google, codex, oauth...)
@@ -30134,26 +30205,31 @@
         // Vẽ ngay toàn bộ thẻ tài khoản lên lưới - Loại bỏ 100% tình trạng kẹt spinner quay tròn!
         renderQuotaCards();
 
-        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (8s)
+        // 🚀 BƯỚC 2: REFRESH NGẦM TỪ GOOGLE CLOUD CODE PA API KÈM TIMEOUT GUARD (4s)
         let quotasMap = {};
         let batchLoaded = false;
 
         try {
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout 8s")), 8000));
-          const batchRes = await Promise.race([
-            apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`),
-            timeoutPromise
-          ]);
+          const batchRes = await fetchWithTimeoutGuard(
+            apiRequest(`/api/quotas/refresh-all${force ? '?force=1' : ''}`, { timeout: 4000 }),
+            4000
+          );
+
+          if (batchRes && (batchRes.status === 401 || batchRes.status === 403 || batchRes.isAuthError || batchRes.code === 'UNAUTHORIZED')) {
+            _quotaAuthError = true;
+            renderQuotaCards();
+            return;
+          }
 
           if (batchRes && batchRes.ok) {
-            const batchData = await batchRes.json();
+            const batchData = await batchRes.json().catch(() => null);
             if (batchData && (batchData.accountData || batchData.results)) {
               quotasMap = batchData.accountData || batchData.results;
               batchLoaded = true;
             }
           }
         } catch (e) {
-          console.warn("Batch quota fetch ngầm từ Google:", e.message || e);
+          console.warn("Batch quota fetch ngầm từ Google (hoặc timeout 4s):", e.message || e);
         }
 
         if (batchLoaded) {
@@ -30164,23 +30240,28 @@
           // Cập nhật lại số liệu tươi mới nhất từ Google mà không giật lag màn hình
           renderQuotaCards();
         } else if (force) {
-          // Dự phòng khi gọi ép buộc force=1: Gọi từng tài khoản nhanh
-          const fetched = await Promise.allSettled(trackable.map(async conn => {
-            try {
-              const uRes = await apiRequest(`/api/usage/${conn.id}?force=1`);
-              if (uRes.ok) {
-                const uData = await uRes.json();
-                return { conn, usage: uData };
-              }
-            } catch (err) {}
-            return { conn, usage: null };
-          }));
+          // Dự phòng khi gọi ép buộc force=1: Gọi từng tài khoản nhanh kèm timeout guard 4s
+          try {
+            const fetched = await fetchWithTimeoutGuard(
+              Promise.allSettled(trackable.map(async conn => {
+                try {
+                  const uRes = await apiRequest(`/api/usage/${conn.id}?force=1`, { timeout: 4000 });
+                  if (uRes && uRes.ok) {
+                    const uData = await uRes.json().catch(() => null);
+                    return { conn, usage: uData };
+                  }
+                } catch (err) {}
+                return { conn, usage: null };
+              })),
+              4000
+            );
 
-          _quotaAccountsList = fetched.map(r => ({
-            ...(r.value?.conn || {}),
-            usageData: r.value?.usage || null
-          }));
-          renderQuotaCards();
+            _quotaAccountsList = fetched.map(r => ({
+              ...(r.value?.conn || {}),
+              usageData: r.value?.usage || null
+            }));
+            renderQuotaCards();
+          } catch (_) {}
         }
 
         // Reset thời gian đếm ngược siêu nhanh về 15 giây
@@ -30190,12 +30271,20 @@
 
       } catch (e) {
         console.warn("Lỗi tải Quota Tracker Live:", e);
+        const msg = String(e?.message || e || '');
+        if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('xác thực')) {
+          _quotaAuthError = true;
+        }
       } finally {
         _isQuotaLoading = false;
         if (spinEl) {
           setTimeout(() => spinEl.classList.remove('animate-spin'), 300);
         }
-        renderQuotaCards();
+        try {
+          renderQuotaCards();
+        } catch (rErr) {
+          console.error("Lỗi renderQuotaCards trong finally:", rErr);
+        }
       }
     }
 
@@ -30209,145 +30298,186 @@
 
       if (!grid) return;
 
+      try {
 
+        // 0. Khi chưa đăng nhập Admin hoặc API trả về 401 Unauthorized:
+        // Hiển thị thông báo rõ ràng kèm nút "Đăng Nhập Ngay" (mở modal hoặc về trang chủ), loại bỏ hoàn toàn spinner!
+        if (_quotaAuthError) {
+          grid.innerHTML = `
+            <div class="col-span-full glass-card cyber-card-glow rounded-3xl p-8 lg:p-12 border border-amber-500/30 text-center space-y-5 relative overflow-hidden my-4 shadow-[0_0_30px_rgba(245,158,11,0.12)]">
+              <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-pulse"></div>
 
-      const filterProv = document.getElementById('quota-filter-provider')?.value || 'all';
+              <div class="w-16 h-16 rounded-2xl bg-amber-950/80 border border-amber-500/50 flex items-center justify-center mx-auto text-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.4)]">
+                <svg class="w-8 h-8 drop-shadow-[0_0_10px_#f59e0b]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
 
-      const filterStatus = document.getElementById('quota-filter-status')?.value || 'all';
+              <div class="space-y-1.5 max-w-lg mx-auto">
+                <h3 class="text-base font-bold text-white tracking-wide">Yêu Cầu Quyền Quản Trị Viên</h3>
+                <p class="text-xs text-amber-200/90 font-sans leading-relaxed">
+                  Bạn cần đăng nhập Quản Trị Viên để xem hạn mức thời gian thực.
+                </p>
+              </div>
 
-      const hiddenMap = getHiddenQuotasMap();
-
-
-
-      // 1. Lọc theo bộ lọc Toolbar
-
-      let list = _quotaAccountsList.filter(item => {
-
-        if (filterProv !== 'all' && item.provider !== filterProv) return false;
-
-        const isAct = isConnActive(item);
-
-        if (filterStatus === 'active' && !isAct) return false;
-
-        if (filterStatus === 'inactive' && isAct) return false;
-
-        if (filterStatus === 'depleted') {
-
-          return isAccountDepleted(item);
-
+              <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <a href="/" onclick="if (typeof openAdminLoginModal === 'function') { openAdminLoginModal(); return false; } else if (typeof openLoginModal === 'function') { openLoginModal(); return false; }" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold text-xs tracking-wide shadow-[0_0_16px_rgba(245,158,11,0.4)] transition-all cursor-pointer flex items-center gap-2 no-underline">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                  </svg>
+                  <span>Đăng Nhập Ngay</span>
+                </a>
+                <button onclick="loadQuotaTrackerLive(true)" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 border border-amber-500/30 text-xs font-mono transition-all cursor-pointer flex items-center gap-2">
+                  <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  <span>Thử Lại</span>
+                </button>
+              </div>
+            </div>
+          `;
+          return;
         }
 
-        return true;
+        const filterProv = document.getElementById('quota-filter-provider')?.value || 'all';
 
-      });
+        const filterStatus = document.getElementById('quota-filter-status')?.value || 'all';
+
+        const hiddenMap = getHiddenQuotasMap() || {};
 
 
 
-      // 2. Sắp xếp theo Expiring first nếu được bật
+        // 1. Lọc theo bộ lọc Toolbar
 
-      if (_quotaSortExpiring) {
+        let list = (_quotaAccountsList || []).filter(item => {
+          if (!item) return false;
 
-        list.sort((a, b) => {
+          if (filterProv !== 'all' && item.provider !== filterProv) return false;
 
-          const getEarliest = (it) => {
+          const isAct = typeof isConnActive === 'function' ? isConnActive(item) : (item.isActive !== false);
 
-            const qList = extractQuotasList(it);
+          if (filterStatus === 'active' && !isAct) return false;
 
-            let minTime = Infinity;
+          if (filterStatus === 'inactive' && isAct) return false;
 
-            qList.forEach(q => {
+          if (filterStatus === 'depleted') {
 
-              if (q.resetAt) {
+            return typeof isAccountDepleted === 'function' ? isAccountDepleted(item) : false;
 
-                const t = new Date(q.resetAt).getTime();
+          }
 
-                if (t > Date.now() && t < minTime) minTime = t;
-
-              }
-
-            });
-
-            return minTime;
-
-          };
-
-          return getEarliest(a) - getEarliest(b);
+          return true;
 
         });
 
-      }
+
+
+        // 2. Sắp xếp theo Expiring first nếu được bật
+
+        if (_quotaSortExpiring) {
+
+          list.sort((a, b) => {
+
+            const getEarliest = (it) => {
+
+              const qList = typeof extractQuotasList === 'function' ? extractQuotasList(it) : [];
+
+              let minTime = Infinity;
+
+              (qList || []).forEach(q => {
+
+                if (q && q.resetAt) {
+
+                  const t = new Date(q.resetAt).getTime();
+
+                  if (t > Date.now() && t < minTime) minTime = t;
+
+                }
+
+              });
+
+              return minTime;
+
+            };
+
+            return getEarliest(a) - getEarliest(b);
+
+          });
+
+        }
 
 
 
-      if (list.length === 0) {
+        // Empty State: Nếu mảng rỗng hoặc không có kết nối nào - Loại bỏ 100% spinner
+        if (list.length === 0) {
 
-        grid.innerHTML = `
+          grid.innerHTML = `
 
-          <div class="col-span-full glass-card cyber-card-glow rounded-3xl p-8 lg:p-12 border border-cyan-500/30 text-center space-y-5 relative overflow-hidden my-4 shadow-[0_0_30px_rgba(0,240,255,0.08)]">
+            <div class="col-span-full glass-card cyber-card-glow rounded-3xl p-8 lg:p-12 border border-cyan-500/30 text-center space-y-5 relative overflow-hidden my-4 shadow-[0_0_30px_rgba(0,240,255,0.08)]">
 
-            <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse"></div>
+              <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse"></div>
 
-            
+              
 
-            <div class="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center mx-auto text-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.4)]">
+              <div class="w-16 h-16 rounded-2xl bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center mx-auto text-cyan-400 shadow-[0_0_24px_rgba(6,182,212,0.4)]">
 
-              <svg class="w-8 h-8 drop-shadow-[0_0_10px_#00F0FF] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-8 h-8 drop-shadow-[0_0_10px_#00F0FF] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
 
-              </svg>
+                </svg>
+
+              </div>
+
+
+
+              <div class="space-y-1.5 max-w-lg mx-auto">
+
+                <h3 class="text-base font-bold text-white tracking-wide">Chưa Có Tài Khoản Kết Nối</h3>
+
+                <p class="text-xs text-slate-400 font-sans leading-relaxed">
+
+                  Chưa có tài khoản kết nối hoặc không tìm thấy dữ liệu hạn mức. Hãy kết nối tài khoản nhà cung cấp (OAuth hoặc API Key) để theo dõi thời gian thực hạn mức Token, lượt gọi và chu kỳ tự động Reset.
+
+                </p>
+
+              </div>
+
+
+
+              <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+
+                <button onclick="switchTab('providers')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs tracking-wide shadow-[0_0_16px_rgba(0,240,255,0.4)] transition-all cursor-pointer flex items-center gap-2">
+
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+
+                  <span>+ Kết Nối Tài Khoản Nhà Cung Cấp</span>
+
+                </button>
+
+                <button onclick="loadQuotaTrackerLive(true)" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 text-xs font-mono transition-all cursor-pointer flex items-center gap-2">
+
+                  <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+
+                  <span>Quét Lại Hạn Mức Ngay</span>
+
+                </button>
+
+              </div>
 
             </div>
 
+          `;
 
+          return;
 
-            <div class="space-y-1.5 max-w-lg mx-auto">
-
-              <h3 class="text-base font-bold text-white tracking-wide">Trung Tâm Giám Sát Hạn Mức Tự Động (Quota Telemetry)</h3>
-
-              <p class="text-xs text-slate-400 font-sans leading-relaxed">
-
-                Hệ thống đang sẵn sàng. Hãy kết nối tài khoản nhà cung cấp (OAuth hoặc API Key) để theo dõi thời gian thực hạn mức Token, lượt gọi và chu kỳ tự động Reset.
-
-              </p>
-
-            </div>
+        }
 
 
 
-            <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+        // 3. Render từng Card Quota
 
-              <button onclick="switchTab('providers')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-xs tracking-wide shadow-[0_0_16px_rgba(0,240,255,0.4)] transition-all cursor-pointer flex items-center gap-2">
-
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-
-                <span>+ Kết Nối Tài Khoản Nhà Cung Cấp</span>
-
-              </button>
-
-              <button onclick="loadQuotaTrackerLive(true)" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 text-xs font-mono transition-all cursor-pointer flex items-center gap-2">
-
-                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-
-                <span>Quét Lại Hạn Mức Ngay</span>
-
-              </button>
-
-            </div>
-
-          </div>
-
-        `;
-
-        return;
-
-      }
-
-
-
-      // 3. Render từng Card Quota
-
-      grid.innerHTML = list.map(item => {
+        grid.innerHTML = list.map(item => {
 
         const isAct = isConnActive(item);
 
@@ -30707,6 +30837,17 @@
 
       }).join('');
 
+      } catch (err) {
+        console.error("Lỗi bên trong renderQuotaCards:", err);
+        grid.innerHTML = `
+          <div class="col-span-full glass-card rounded-2xl p-6 border border-rose-500/30 text-center space-y-3 my-4">
+            <p class="text-xs text-rose-300 font-sans">Không thể hiển thị hạn mức lúc này. Vui lòng bấm thử lại.</p>
+            <button onclick="loadQuotaTrackerLive(true)" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-300 border border-cyan-500/30 text-xs font-mono transition-all cursor-pointer">
+              Tải Lại Dữ Liệu
+            </button>
+          </div>
+        `;
+      }
     }
 
 
@@ -33627,39 +33768,52 @@
         // 1. Cập nhật Breadcrumb phụ trên Header
         const breadcrumbSub = document.getElementById('breadcrumb-sub') || document.querySelector('#breadcrumb-title + span + span');
         if (breadcrumbSub) {
-          breadcrumbSub.textContent = (window.location.host || 'supportflastdev.io.vn') + ' (Aiven PostgreSQL)';
+          breadcrumbSub.textContent = 'supportflastdev.io.vn (Cloud Gateway)';
         }
 
-        // 2. Cập nhật Topbar Header Status
+        // 2. Ẩn hoàn toàn Topbar Header Gateway Badge & Switch
+        const headerBadgeContainer = document.getElementById('header-gateway-badge-container');
+        if (headerBadgeContainer) {
+          headerBadgeContainer.style.setProperty('display', 'none', 'important');
+        }
+
         const headerToggle = document.getElementById('header-gw-toggle-switch');
-        if (headerToggle) headerToggle.style.display = 'none';
+        if (headerToggle) headerToggle.style.setProperty('display', 'none', 'important');
 
-        const headerText = document.getElementById('header-gateway-text');
-        if (headerText) {
-          headerText.textContent = 'CLOUD ONLINE';
-          headerText.className = 'text-xs font-mono font-bold text-cyan-400';
-        }
-
-        // 3. Tối ưu Sidebar Footer: Chuyển cụm điều khiển cục bộ thành Card Aiven PostgreSQL & Tải App
+        // 3. Thay thế Sidebar Gateway Card trên Web bằng Card Cloud tối giản
         const sidebarCard = document.getElementById('sidebar-gateway-card');
         if (sidebarCard) {
           sidebarCard.innerHTML = `
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#00F0FF] animate-pulse"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
                 <div class="flex flex-col">
-                  <span class="text-xs font-bold text-white font-mono leading-tight">Aiven PostgreSQL Gateway</span>
-                  <span class="text-[10px] font-mono text-cyan-400 font-semibold">🟢 ONLINE 24/7 (Multi-AZ)</span>
+                  <div class="flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+                    </svg>
+                    <span class="text-xs font-bold text-white font-mono leading-tight">Cloud Gateway</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-emerald-400 font-semibold">🟢 Cloud Gateway Online 24/7</span>
                 </div>
               </div>
               <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">CLOUD</span>
             </div>
-            <button onclick="switchTab('endpoints')" class="w-full py-2 px-3 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>🔑</span>
-              <span>QUẢN LÝ API KEYS</span>
-            </button>
-            <div class="text-[9px] font-mono text-slate-400 text-center leading-tight">
-              Cổng Gateway chuẩn OpenAI API hoạt động 24/7 trên Cloud
+
+            <div class="space-y-1.5 pt-0.5">
+              <button onclick="switchTab('endpoints')" class="w-full py-2 px-3 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.1)]">
+                <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <span>Quản Lý API Keys</span>
+              </button>
+
+              <button onclick="logoutAdminFromRouter()" class="w-full py-1.5 px-3 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-medium text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer" title="Đăng xuất quyền quản trị">
+                <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Đăng Xuất</span>
+              </button>
             </div>
           `;
           sidebarCard.className = 'glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]';

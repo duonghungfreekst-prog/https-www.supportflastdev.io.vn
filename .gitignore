@@ -27,6 +27,19 @@ tools/cloudflare_token.txt
 config.json
 **/config.json
 
+# Credentials, OAuth Secrets & Service Accounts (Tuyệt đối KHÔNG commit)
+credentials.json
+**/credentials*.json
+client_secret*.json
+**/client_secret*.json
+service_account*.json
+**/service_account*.json
+token.json
+**/token*.json
+*.secret
+secrets.json
+**/secrets*.json
+
 # 2. Cơ sở dữ liệu & Runtime Data (Rule PHAN 1.4)
 *.db
 *.db-shm

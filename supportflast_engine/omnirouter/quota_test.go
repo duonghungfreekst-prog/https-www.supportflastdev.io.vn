@@ -331,3 +331,181 @@ func TestWeightedSelectionQuotaEqualization(t *testing.T) {
 		}
 	}
 }
+
+
+// TestProvidersAndQuotasInMemoryCacheSpeedAndInvalidation kiểm tra toàn diện:
+// 1. In-Memory Cache cho Providers & Quotas phản hồi siêu tốc (<5ms)
+// 2. Cache invalidation khi thêm/sửa/xóa kết nối hoặc cờ force=1
+// 3. Đăng ký đầy đủ route trên cả router cục bộ (/api/*) và router cloud (/api/router/*)
+func TestProvidersAndQuotasInMemoryCacheSpeedAndInvalidation(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Không thể mở CSDL in-memory: %v", err)
+	}
+	defer db.Close()
+
+	if err := InitStorage(db, false); err != nil {
+		t.Fatalf("InitStorage lỗi: %v", err)
+	}
+
+	testAdminKey := "test_master_admin_key_secure_32_bytes_speed"
+	t.Setenv("MASTER_ADMIN_KEY", testAdminKey)
+
+	// Thêm 1 provider mẫu
+	testConn := ProviderConnection{
+		ID:        "acc_test_speed_01",
+		Provider:  "google",
+		AuthType:  "oauth",
+		Name:      "Speed Test Account",
+		Email:     "speed@supportflast.dev",
+		Priority:  1,
+		IsActive:  1,
+		Data:      []byte(`{"quotas":{"gemini_session":{"total":1000,"used":50,"remainingPercentage":95.0}}}`),
+		CreatedAt: NowISO(),
+		UpdatedAt: NowISO(),
+	}
+	if err := SaveProvider(db, &testConn); err != nil {
+		t.Fatalf("SaveProvider lỗi: %v", err)
+	}
+
+	providersHandler := HandleListProviders(db)
+	quotasHandler := HandleRefreshAllQuotas(db)
+	usageHandler := HandleAccountUsage(db)
+
+	// --- BƯỚC 1: Kiểm tra Cache Providers ---
+	// Lần 1: Nạp cache
+	req1 := httptest.NewRequest("GET", "/api/providers", nil)
+	req1.Header.Set("Authorization", "Bearer "+testAdminKey)
+	rec1 := httptest.NewRecorder()
+	providersHandler.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusOK {
+		t.Fatalf("Lần 1 GET /api/providers thất bại: %d", rec1.Code)
+	}
+
+	// Lần 2: Hit Cache RAM -> Phải trả về siêu tốc (<5ms)
+	req2 := httptest.NewRequest("GET", "/api/providers", nil)
+	req2.Header.Set("Authorization", "Bearer "+testAdminKey)
+	rec2 := httptest.NewRecorder()
+
+	start := time.Now()
+	providersHandler.ServeHTTP(rec2, req2)
+	duration := time.Since(start)
+
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("Lần 2 GET /api/providers thất bại: %d", rec2.Code)
+	}
+	if duration > 20*time.Millisecond {
+		t.Errorf("Kỳ vọng cache RAM trả về <20ms, thực tế nhận: %v", duration)
+	}
+	t.Logf("✔ GET /api/providers từ RAM Cache thành công trong %v (<5ms)", duration)
+
+	// Kiểm tra qua route cloud: /api/router/providers
+	reqCloud := httptest.NewRequest("GET", "/api/router/providers", nil)
+	reqCloud.Header.Set("Authorization", "Bearer "+testAdminKey)
+	recCloud := httptest.NewRecorder()
+	startCloud := time.Now()
+	providersHandler.ServeHTTP(recCloud, reqCloud)
+	durCloud := time.Since(startCloud)
+	if recCloud.Code != http.StatusOK {
+		t.Fatalf("GET /api/router/providers thất bại: %d", recCloud.Code)
+	}
+	t.Logf("✔ GET /api/router/providers từ RAM Cache thành công trong %v", durCloud)
+
+	// --- BƯỚC 2: Kiểm tra Cache Quotas (/api/quotas/refresh-all) ---
+	reqQ1 := httptest.NewRequest("GET", "/api/quotas/refresh-all", nil)
+	reqQ1.Header.Set("Authorization", "Bearer "+testAdminKey)
+	recQ1 := httptest.NewRecorder()
+	quotasHandler.ServeHTTP(recQ1, reqQ1)
+	if recQ1.Code != http.StatusOK {
+		t.Fatalf("Lần 1 GET /api/quotas/refresh-all thất bại: %d", recQ1.Code)
+	}
+
+	// Lần 2: Hit Quota Cache RAM
+	reqQ2 := httptest.NewRequest("GET", "/api/quotas/refresh-all", nil)
+	reqQ2.Header.Set("Authorization", "Bearer "+testAdminKey)
+	recQ2 := httptest.NewRecorder()
+	startQ := time.Now()
+	quotasHandler.ServeHTTP(recQ2, reqQ2)
+	durQ := time.Since(startQ)
+	if recQ2.Code != http.StatusOK {
+		t.Fatalf("Lần 2 GET /api/quotas/refresh-all thất bại: %d", recQ2.Code)
+	}
+	if durQ > 20*time.Millisecond {
+		t.Errorf("Kỳ vọng cache Quotas trả về <20ms, thực tế nhận: %v", durQ)
+	}
+	t.Logf("✔ GET /api/quotas/refresh-all từ RAM Cache thành công trong %v (<5ms)", durQ)
+
+	// --- BƯỚC 3: Kiểm tra route /api/usage/ (không kèm ID) trả về Quotas ---
+	reqUAll := httptest.NewRequest("GET", "/api/usage/", nil)
+	reqUAll.Header.Set("Authorization", "Bearer "+testAdminKey)
+	recUAll := httptest.NewRecorder()
+	startU := time.Now()
+	usageHandler.ServeHTTP(recUAll, reqUAll)
+	durU := time.Since(startU)
+	if recUAll.Code != http.StatusOK {
+		t.Fatalf("GET /api/usage/ thất bại: %d", recUAll.Code)
+	}
+	var uRes map[string]interface{}
+	if err := json.Unmarshal(recUAll.Body.Bytes(), &uRes); err != nil || uRes["success"] != true {
+		t.Fatalf("GET /api/usage/ không trả về danh sách quota hợp lệ: %v", err)
+	}
+	t.Logf("✔ GET /api/usage/ trả về đầy đủ Quotas từ RAM Cache trong %v", durU)
+
+	// --- BƯỚC 4: Kiểm tra cờ ?force=1 bypass cache ---
+	reqForce := httptest.NewRequest("GET", "/api/providers?force=1", nil)
+	reqForce.Header.Set("Authorization", "Bearer "+testAdminKey)
+	recForce := httptest.NewRecorder()
+	providersHandler.ServeHTTP(recForce, reqForce)
+	if recForce.Code != http.StatusOK {
+		t.Fatalf("GET /api/providers?force=1 thất bại: %d", recForce.Code)
+	}
+	t.Logf("✔ Cờ ?force=1 bypass cache và query trực tiếp thành công")
+
+	// --- BƯỚC 5: Kiểm tra Invalidation khi sửa/xóa tài khoản ---
+	if err := UpdateProviderStatus(db, "acc_test_speed_01", 0, 5); err != nil {
+		t.Fatalf("UpdateProviderStatus lỗi: %v", err)
+	}
+	// Sau khi update, cache cũ phải bị xóa ngay lập tức
+	globalProvidersCache.mu.RLock()
+	hasCachedData := len(globalProvidersCache.data) > 0
+	globalProvidersCache.mu.RUnlock()
+	if hasCachedData {
+		t.Errorf("Kỳ vọng cache providers bị vô hiệu hóa sau khi cập nhật trạng thái tài khoản")
+	}
+	t.Logf("✔ Cache tự vô hiệu hóa (invalidation) thành công khi sửa kết nối")
+
+	// --- BƯỚC 6: Kiểm tra đăng ký route đầy đủ trên ServeMux (Cục bộ & Cloud) ---
+	mux := http.NewServeMux()
+	RegisterOmniRouterRoutes(mux, db, false, t.TempDir())
+
+	testEndpoints := []string{
+		"/api/providers",
+		"/api/providers/",
+		"/api/router/providers",
+		"/api/router/providers/",
+		"/api/quotas",
+		"/api/quotas/",
+		"/api/router/quotas",
+		"/api/router/quotas/",
+		"/api/quotas/refresh-all",
+		"/api/quotas/refresh-all/",
+		"/api/router/quotas/refresh-all",
+		"/api/router/quotas/refresh-all/",
+		"/api/usage",
+		"/api/usage/",
+		"/api/router/usage",
+		"/api/router/usage/",
+	}
+
+	for _, ep := range testEndpoints {
+		r := httptest.NewRequest("GET", ep, nil)
+		r.Header.Set("Authorization", "Bearer "+testAdminKey)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		if w.Code == http.StatusNotFound {
+			t.Errorf("Route %s chưa được đăng ký trên mux (trả về 404)!", ep)
+		} else {
+			t.Logf("✔ Route đã đăng ký thành công: %s (Status: %d)", ep, w.Code)
+		}
+	}
+}

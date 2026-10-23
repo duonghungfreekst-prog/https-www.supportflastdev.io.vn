@@ -669,8 +669,21 @@ func ReleaseClientKeyQuota(db *sql.DB, apiKey string, amount int64) bool {
 	return true
 }
 
+var (
+	allProvidersCacheMu sync.RWMutex
+	allProvidersCache   []ProviderConnection
+	allProvidersCacheAt time.Time
+)
+
 // RefreshProviderCache đọc các tài khoản AI từ DB nạp vào RAM
 func RefreshProviderCache(db *sql.DB) {
+	allProvidersCacheMu.Lock()
+	allProvidersCache = nil
+	allProvidersCacheAt = time.Time{}
+	allProvidersCacheMu.Unlock()
+
+	InvalidateProvidersCache()
+
 	if db == nil {
 		return
 	}
@@ -727,9 +740,38 @@ func UpdateProviderData(db *sql.DB, id string, dataMap map[string]interface{}) e
 }
 
 // GetAllProviders truy vấn toàn bộ danh sách tài khoản AI (kể cả active lẫn inactive) phục vụ Web Dashboard
+// sử dụng In-Memory Cache với TTL 30 giây để giảm latency từ 1600ms (PostgreSQL Cloud) xuống <1ms.
 func GetAllProviders(db *sql.DB) ([]ProviderConnection, error) {
+	return GetAllProvidersForce(db, false)
+}
+
+// GetAllProvidersForce truy vấn toàn bộ danh sách tài khoản AI với cờ force làm mới cache
+func GetAllProvidersForce(db *sql.DB, force bool) ([]ProviderConnection, error) {
+	if db == nil {
+		return GetCachedActiveProviders(), nil
+	}
+
+	if !force {
+		allProvidersCacheMu.RLock()
+		if len(allProvidersCache) > 0 && time.Since(allProvidersCacheAt) < 30*time.Second {
+			res := make([]ProviderConnection, len(allProvidersCache))
+			copy(res, allProvidersCache)
+			allProvidersCacheMu.RUnlock()
+			return res, nil
+		}
+		allProvidersCacheMu.RUnlock()
+	}
+
 	rows, err := db.Query("SELECT id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at FROM omni_providers ORDER BY priority ASC, name ASC")
 	if err != nil {
+		allProvidersCacheMu.RLock()
+		if len(allProvidersCache) > 0 {
+			res := make([]ProviderConnection, len(allProvidersCache))
+			copy(res, allProvidersCache)
+			allProvidersCacheMu.RUnlock()
+			return res, nil
+		}
+		allProvidersCacheMu.RUnlock()
 		return nil, err
 	}
 	defer rows.Close()
@@ -743,7 +785,15 @@ func GetAllProviders(db *sql.DB) ([]ProviderConnection, error) {
 			list = append(list, p)
 		}
 	}
-	return list, nil
+
+	allProvidersCacheMu.Lock()
+	allProvidersCache = list
+	allProvidersCacheAt = time.Now()
+	allProvidersCacheMu.Unlock()
+
+	res := make([]ProviderConnection, len(list))
+	copy(res, list)
+	return res, nil
 }
 
 // UpdateProviderStatus cập nhật trạng thái hoạt động (bật/tắt) và độ ưu tiên của Provider

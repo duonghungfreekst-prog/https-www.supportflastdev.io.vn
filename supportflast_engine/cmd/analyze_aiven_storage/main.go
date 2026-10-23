@@ -19,7 +19,7 @@ func main() {
 		uri = os.Getenv("AIVEN_PG_URI")
 	}
 	if uri == "" {
-		uri = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
+		log.Fatal("[ENGINE] [DB] Lỗi: Vui lòng cung cấp URI kết nối qua flag -uri hoặc biến môi trường AIVEN_PG_URI")
 	}
 
 	db, err := sql.Open("postgres", uri)

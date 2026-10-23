@@ -1,10 +1,15 @@
 package database
 
 import (
+	"os"
+	"strings"
 	"testing"
 )
 
 func TestPostgresConnectionAndRebind(t *testing.T) {
+	if GetPostgresURI() == "" {
+		t.Skip("Bỏ qua test do chưa cấu hình biến môi trường AIVEN_PG_URI")
+	}
 	db, err := OpenPostgresConnection()
 	if err != nil {
 		t.Fatalf("Không thể kết nối Aiven PostgreSQL: %v", err)
@@ -61,6 +66,9 @@ func TestPostgresConnectionAndRebind(t *testing.T) {
 }
 
 func TestPostgresUsageHistorySequence(t *testing.T) {
+	if GetPostgresURI() == "" {
+		t.Skip("Bỏ qua test do chưa cấu hình biến môi trường AIVEN_PG_URI")
+	}
 	db, err := OpenPostgresConnection()
 	if err != nil {
 		t.Fatalf("ERR: %v", err)
@@ -89,4 +97,56 @@ func TestPostgresUsageHistorySequence(t *testing.T) {
 
 	// Dọn dòng test
 	_, _ = db.Exec("DELETE FROM omni_usage_history WHERE connection_id = 'test_conn_reg'")
+}
+
+func TestGetPostgresURI_NoEnv(t *testing.T) {
+	oldAiven := os.Getenv("AIVEN_PG_URI")
+	oldURL := os.Getenv("DATABASE_URL")
+	oldPG := os.Getenv("POSTGRES_URI")
+	oldPGQL := os.Getenv("POSTGRESQL_URI")
+	oldPGU := os.Getenv("PG_URI")
+	defer func() {
+		_ = os.Setenv("AIVEN_PG_URI", oldAiven)
+		_ = os.Setenv("DATABASE_URL", oldURL)
+		_ = os.Setenv("POSTGRES_URI", oldPG)
+		_ = os.Setenv("POSTGRESQL_URI", oldPGQL)
+		_ = os.Setenv("PG_URI", oldPGU)
+	}()
+
+	_ = os.Unsetenv("AIVEN_PG_URI")
+	_ = os.Unsetenv("DATABASE_URL")
+	_ = os.Unsetenv("POSTGRES_URI")
+	_ = os.Unsetenv("POSTGRESQL_URI")
+	_ = os.Unsetenv("PG_URI")
+
+	uri := GetPostgresURI()
+	if uri != "" {
+		t.Fatalf("Kỳ vọng uri rỗng khi không có biến môi trường cấu hình, nhận được: %q", uri)
+	}
+
+	_, err := OpenPostgresConnection()
+	if err == nil {
+		t.Fatal("Kỳ vọng OpenPostgresConnection trả về lỗi khi URI rỗng, nhưng không có lỗi")
+	}
+	if !strings.Contains(err.Error(), "URI kết nối PostgreSQL rỗng") {
+		t.Fatalf("Thông báo lỗi không đúng kỳ vọng: %v", err)
+	}
+}
+
+func TestGetPostgresURI_WithEnv(t *testing.T) {
+	oldAiven := os.Getenv("AIVEN_PG_URI")
+	oldURL := os.Getenv("DATABASE_URL")
+	defer func() {
+		_ = os.Setenv("AIVEN_PG_URI", oldAiven)
+		_ = os.Setenv("DATABASE_URL", oldURL)
+	}()
+
+	testURI := "postgres://user:secret@localhost:5432/testdb"
+	_ = os.Setenv("AIVEN_PG_URI", testURI)
+	_ = os.Setenv("DATABASE_URL", "postgres://other:pass@localhost:5432/otherdb")
+
+	uri := GetPostgresURI()
+	if uri != testURI {
+		t.Fatalf("Kỳ vọng AIVEN_PG_URI được ưu tiên hàng đầu (%s), nhận được: %s", testURI, uri)
+	}
 }

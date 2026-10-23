@@ -4,12 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	uri := "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
+	uri := os.Getenv("AIVEN_PG_URI")
+	if uri == "" {
+		log.Fatal("[ENGINE] [DB] Lỗi: Biến môi trường AIVEN_PG_URI chưa được cấu hình")
+	}
 	db, err := sql.Open("postgres", uri)
 	if err != nil {
 		log.Fatalf("Lỗi kết nối: %v", err)
