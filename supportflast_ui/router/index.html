@@ -11548,7 +11548,7 @@
 
       try {
 
-        const appPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '20128');
+        const appPort = (window.location.port && window.location.port !== '80' && window.location.port !== '443') ? window.location.port : '20128';
 
         const redirectUri = `http://localhost:${appPort}/callback`;
 
@@ -11769,7 +11769,11 @@
 
         if (input.includes('://') || input.includes('?')) {
 
-          const urlObj = new URL(input);
+          let parseTarget = input.startsWith('http') ? input : `http://${input}`;
+          const urlObj = new URL(parseTarget);
+          if (urlObj.pathname.includes('/callback') && session) {
+            session.redirectUri = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}`;
+          }
 
           const parsedCode = urlObj.searchParams.get('code');
 
@@ -11857,7 +11861,7 @@
 
         code: code,
 
-        redirectUri: session.redirectUri || `http://localhost:${window.location.port || '20128'}/callback`,
+        redirectUri: session.redirectUri || `http://localhost:${(window.location.port && window.location.port !== '80' && window.location.port !== '443') ? window.location.port : '20128'}/callback`,
 
         codeVerifier: session.codeVerifier || null,
 

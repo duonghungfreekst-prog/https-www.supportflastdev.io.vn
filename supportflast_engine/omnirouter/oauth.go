@@ -254,7 +254,7 @@ func HandleOAuthAuthorize(db *sql.DB) http.HandlerFunc {
 		}
 
 		redirectURI := r.URL.Query().Get("redirect_uri")
-		if redirectURI == "" {
+		if redirectURI == "" || strings.Contains(redirectURI, "localhost:443") || strings.Contains(redirectURI, "127.0.0.1:443") {
 			redirectURI = "http://localhost:20128/callback"
 		}
 
@@ -429,8 +429,24 @@ func HandleOAuth(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// exchangeGoogleOAuthCode thực hiện gọi Google Token API để đổi code lấy tokens
+// exchangeGoogleOAuthCode thực hiện gọi Google Token API để đổi code lấy tokens (kèm tự động thử lại nếu redirect_uri_mismatch)
 func exchangeGoogleOAuthCode(db *sql.DB, provider, code, redirectURI, codeVerifier string) (*ProviderConnection, error) {
+	conn, err := doGoogleTokenExchange(db, provider, code, redirectURI, codeVerifier)
+	if err != nil && strings.Contains(strings.ToLower(err.Error()), "redirect_uri_mismatch") {
+		altURI := "http://localhost:20128/callback"
+		if strings.Contains(redirectURI, "20128") {
+			altURI = "http://localhost:443/callback"
+		}
+		log.Printf("[ENGINE] [OAUTH] 🔄 Phát hiện redirect_uri_mismatch, tự động thử lại với URI thay thế: %s", altURI)
+		altConn, altErr := doGoogleTokenExchange(db, provider, code, altURI, codeVerifier)
+		if altErr == nil {
+			return altConn, nil
+		}
+	}
+	return conn, err
+}
+
+func doGoogleTokenExchange(db *sql.DB, provider, code, redirectURI, codeVerifier string) (*ProviderConnection, error) {
 	data := url.Values{}
 	data.Set("client_id", AntigravityClientID)
 	data.Set("client_secret", AntigravityClientSecret)
