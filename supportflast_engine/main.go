@@ -975,6 +975,14 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
+		// Neu nguoi dung truy cap truc tiep goc http://127.0.0.1:20128 hoac http://localhost:20128, tu dong chuyen huong ve /router/
+		if path == "/" || path == "" {
+			if strings.Contains(r.Host, "20128") || strings.Contains(r.Host, "20127") {
+				http.Redirect(w, r, "/router/", http.StatusFound)
+				return
+			}
+		}
+
 		// Chặn hoàn toàn truy cập web vào thư mục desktop WPF và mã nguồn C#
 		cleanPath := strings.ToLower(filepath.ToSlash(filepath.Clean(path)))
 		if strings.HasPrefix(cleanPath, "/wpf") || strings.HasPrefix(cleanPath, "wpf") ||
