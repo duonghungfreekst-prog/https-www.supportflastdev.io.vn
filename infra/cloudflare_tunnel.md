@@ -152,12 +152,11 @@ credentials-file: /root/.cloudflared/12345678-abcd-ef01-2345-6789abcdef01.json
 protocol: quic
 
 ingress:
-  # 1. Domain chính trỏ về Nginx Reverse Proxy (Port 80 hoặc 443 nội bộ)
+  # 1. Domain chính trỏ về Nginx Reverse Proxy (Port 80 nội bộ)
   - hostname: supportflastdev.io.vn
     service: http://127.0.0.1:80
     originRequest:
       connectTimeout: 30s
-      noTLSVerify: true
       tcpKeepAlive: 60s
 
   # 2. Subdomain WWW trỏ về Nginx Reverse Proxy
@@ -165,7 +164,6 @@ ingress:
     service: http://127.0.0.1:80
     originRequest:
       connectTimeout: 30s
-      noTLSVerify: true
       tcpKeepAlive: 60s
 
   # 3. Kết nối trực tiếp Go Engine (Tùy chọn debug nội bộ)

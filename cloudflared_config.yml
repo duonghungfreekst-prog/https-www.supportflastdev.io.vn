@@ -1,40 +1,36 @@
 # ==============================================================================
-# Cloudflare Tunnel Configuration cho domain: supportflastdev.io.vn
+# Cloudflare Tunnel Configuration Template
 # ==============================================================================
-# Sử dụng khi chạy máy chủ tại nhà hoặc máy tính Windows không có IP Tĩnh.
-# Cloudflare sẽ tự động cấp chứng chỉ SSL và bảo vệ chống tấn công DDoS.
-#
-# Các bước thiết lập nhanh:
-# 1. Tải cloudflared: Đã có sẵn tại f:\supportflast.dev\tools\cloudflared.exe (đã add PATH)
-# 2. Đăng nhập: cloudflared tunnel login
-# 3. Tạo tunnel: cloudflared tunnel create supportflast-tunnel
-# 4. Trỏ DNS: cloudflared tunnel route dns supportflast-tunnel supportflastdev.io.vn
-# 5. Khởi chạy: cloudflared tunnel run supportflast-tunnel
+# Tệp mẫu cấu hình Cloudflare Tunnel cho nhà phát triển tự host.
+# Hướng dẫn thiết lập:
+#   1. Đăng nhập Cloudflare: cloudflared tunnel login
+#   2. Tạo tunnel: cloudflared tunnel create <ten-tunnel-cua-ban>
+#   3. Trỏ DNS: cloudflared tunnel route dns <ten-tunnel> <ten-mien-cua-ban>
+#   4. Khởi chạy: cloudflared tunnel run <ten-tunnel>
 # ==============================================================================
 
-tunnel: 9ec29b1f-0de7-420e-acd1-ed6ca8c745e5
-credentials-file: C:\Users\Administrator\.cloudflared\9ec29b1f-0de7-420e-acd1-ed6ca8c745e5.json
+# Thay thế bằng Tunnel UUID và tệp xác thực JSON của riêng bạn (được tạo ở bước 2)
+tunnel: YOUR_TUNNEL_UUID_HERE
+credentials-file: ~/.cloudflared/YOUR_TUNNEL_UUID_HERE.json
 
 ingress:
-  # 1. Trỏ domain chính về cổng 8080 (Go Gateway Engine + UI)
+  # 1. Định tuyến domain chính về cổng 8080 của SupportFlast Go Engine
   - hostname: supportflastdev.io.vn
     service: http://127.0.0.1:8080
     originRequest:
       connectTimeout: 30s
-      noTLSVerify: true
       tcpKeepAlive: 60s
 
-  # 2. Trỏ subdomain www về cổng 8080
+  # 2. Định tuyến subdomain www về cổng 8080
   - hostname: www.supportflastdev.io.vn
     service: http://127.0.0.1:8080
     originRequest:
       connectTimeout: 30s
-      noTLSVerify: true
       tcpKeepAlive: 60s
 
-  # 3. Trỏ subdomain api (tùy chọn) về Go Engine trực tiếp
+  # 3. Định tuyến subdomain api về cổng 8080
   - hostname: api.supportflastdev.io.vn
     service: http://127.0.0.1:8080
 
-  # 4. Fallback mặc định
+  # 4. Quy tắc Fallback bắt buộc của Cloudflare Tunnel
   - service: http_status:404
