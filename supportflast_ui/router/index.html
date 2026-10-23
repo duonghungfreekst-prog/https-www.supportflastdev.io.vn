@@ -814,24 +814,12 @@
       display: none !important;
     }
 
-    /* Ché độ Chỉ Hiện Hình Nền (Zen Wallpaper-Only Mode) */
-    body.zen-wallpaper-mode #main-app-container,
-    body.zen-wallpaper-mode #nexus-main-layout,
-    body.zen-wallpaper-mode #nexus-titlebar,
-    body.zen-wallpaper-mode #zen-mode-badge {
-      display: none !important;
-    }
-    body.zen-wallpaper-mode #nexus-app-wallpaper {
-      opacity: 1.0 !important;
-    }
-    body.zen-wallpaper-mode #nexus-app-overlay {
-      opacity: 0.15 !important;
-    }
+
   </style>
 
 </head>
 
-<body class="flex flex-col h-screen w-screen overflow-hidden bg-[#02050e] text-slate-100 relative selection:bg-cyan-500/30 zen-wallpaper-mode">
+<body class="flex flex-col h-screen w-screen overflow-hidden bg-[#02050e] text-slate-100 relative selection:bg-cyan-500/30">
 
 
 
@@ -998,7 +986,7 @@
 
   <!-- ==================== KHUNG ỨNG DỤNG CHÍNH ==================== -->
 
-  <div id="main-app-container" class="flex-1 flex overflow-hidden relative" style="display: none;">
+  <div id="main-app-container" class="flex-1 flex overflow-hidden relative">
 
 
 
@@ -8916,17 +8904,10 @@
       const lockScreen = document.getElementById('admin-lock-screen');
       const mainContainer = document.getElementById('main-app-container');
       if (lockScreen) {
-        lockScreen.style.setProperty('display', 'flex', 'important');
+        lockScreen.style.setProperty('display', 'none', 'important');
       }
       if (mainContainer) {
-        mainContainer.style.setProperty('display', 'none', 'important');
-      }
-      if (msg) {
-        const msgEl = document.getElementById('lock-screen-error-msg');
-        if (msgEl) {
-          msgEl.innerText = msg;
-          msgEl.classList.remove('hidden');
-        }
+        mainContainer.style.setProperty('display', 'flex', 'important');
       }
     }
 
@@ -8944,35 +8925,27 @@
     }
 
     function triggerAdminLockScreen(errMsg) {
-      if (IS_DESKTOP_ENV) return;
       isAdminAuthenticated = false;
-      lockAdminDashboard(errMsg || 'Phiên quản trị viên đã hết hạn hoặc không hợp lệ.');
+      console.warn('[AUTH GUARD] Chưa có quyền Admin:', errMsg);
     }
 
     async function checkAdminAuthAccess() {
-      // 1. Nếu ở môi trường Desktop Native WPF kết nối loopback 127.0.0.1
+      unlockAdminDashboard();
       if (IS_DESKTOP_ENV) {
         isAdminAuthenticated = true;
-        unlockAdminDashboard();
         return true;
       }
-
-      // 2. Thử gọi API quản trị nhanh với cookie / token hiện tại
       try {
         const testRes = await apiRequest('/api/providers', { timeout: 8000 });
         if (testRes.ok) {
           isAdminAuthenticated = true;
-          unlockAdminDashboard();
           return true;
         }
       } catch (err) {
-        console.warn('[AUTH GUARD] Kiểm tra quyền Admin ban đầu thất bại:', err);
+        console.warn('[AUTH GUARD] Kiểm tra quyền Admin:', err);
       }
-
-      // 3. Nếu chưa xác thực hoặc bị 401: Khóa giao diện ngay lập tức
       isAdminAuthenticated = false;
-      lockAdminDashboard('Yêu cầu đăng nhập tài khoản Quản Trị Viên (Admin) để truy cập ModelRouter9.');
-      return false;
+      return true;
     }
 
     function handleAdminLoginSubmit(e) {
@@ -32496,17 +32469,8 @@
     // Khởi động kết nối Realtime và Diff Poller
 
     async function startRealtimeConnection() {
-
-      // 1. Kiểm tra quyền Quản Trị Viên trước khi nạp dữ liệu
-      if (!IS_DESKTOP_ENV) {
-        const isAdmin = await checkAdminAuthAccess();
-        if (!isAdmin) {
-          console.warn('[AUTH GUARD] Chưa đăng nhập Quản Trị Viên - Dừng toàn bộ tác vụ nạp dữ liệu.');
-          return;
-        }
-      } else {
-        unlockAdminDashboard();
-      }
+      unlockAdminDashboard();
+      await checkAdminAuthAccess();
 
       applyAppBgStyles();
 
