@@ -103,6 +103,8 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	oauthHandler := HandleOAuth(db)
 	safeRegister(mux, "/api/oauth/", oauthHandler)
 	safeRegister(mux, "/api/router/oauth/", oauthHandler)
+	safeRegister(mux, "/api/oauth/poll", HandleOAuthPoll)
+	safeRegister(mux, "/api/router/oauth/poll", HandleOAuthPoll)
 	safeRegister(mux, "/callback", HandleOAuthCallbackHTML)
 	safeRegister(mux, "/callback/", HandleOAuthCallbackHTML)
 

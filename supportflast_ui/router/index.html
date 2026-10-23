@@ -6951,11 +6951,11 @@
 
         <!-- VÙNG 1: AUTO POPUP AUTHORIZATION WITH SPINNER -->
 
-        <div class="flex items-center justify-between px-3.5 py-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 text-cyan-200">
+        <div id="oauth-spinner-bar" class="flex items-center justify-between px-3.5 py-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 text-cyan-200">
 
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 min-w-0">
 
-            <svg class="animate-spin h-4 w-4 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg id="oauth-spinner-icon" class="animate-spin h-4 w-4 text-cyan-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 
@@ -6963,11 +6963,11 @@
 
             </svg>
 
-            <span class="text-xs font-medium font-sans">Waiting for popup authorization…</span>
+            <span id="oauth-waiting-text" class="text-xs font-medium font-sans truncate">Waiting for popup authorization…</span>
 
           </div>
 
-          <button type="button" onclick="reopenOAuthPopup()" class="text-[11px] font-sans text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer flex items-center gap-1">
+          <button type="button" onclick="reopenOAuthPopup()" class="text-[11px] font-sans text-cyan-400 hover:text-cyan-300 hover:underline cursor-pointer flex items-center gap-1 flex-shrink-0">
 
             <span>🌐</span> Mở lại Popup
 
@@ -7021,19 +7021,39 @@
 
         <div class="space-y-1.5">
 
-          <p class="text-xs font-semibold text-slate-200 font-sans">
+          <div class="flex items-center justify-between">
 
-            Step 2: Paste the callback URL here
+            <p class="text-xs font-semibold text-slate-200 font-sans">
 
-          </p>
+              Step 2: Paste the callback URL here
+
+            </p>
+
+            <button type="button" onclick="pasteOAuthCallbackFromClipboard()" class="text-[11px] font-sans text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold">
+
+              <span>📋 Dán từ Clipboard</span>
+
+            </button>
+
+          </div>
 
           <p class="text-[11px] text-slate-400 font-sans">
 
-            After authorization, copy the full URL from your browser.
+            Nếu tab bên kia đã xác thực xong, sao chép URL dán vào đây (hoặc bấm Dán từ Clipboard).
 
           </p>
 
-          <input type="text" id="oauth-callback-url-input" oninput="onOAuthCallbackInputChanged()" placeholder="http://localhost:20128/callback?code=..." class="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-500/60">
+          <div class="flex gap-2">
+
+            <input type="text" id="oauth-callback-url-input" oninput="onOAuthCallbackInputChanged()" onpaste="setTimeout(onOAuthCallbackInputChanged, 100)" placeholder="http://localhost:20128/callback?code=..." class="flex-1 px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-500/60">
+
+            <button type="button" onclick="pasteOAuthCallbackFromClipboard()" class="px-3 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-sans text-xs font-bold border border-cyan-500/30 cursor-pointer transition-all flex items-center gap-1">
+
+              <span>Dán</span>
+
+            </button>
+
+          </div>
 
         </div>
 
@@ -11843,6 +11863,52 @@
 
         attachOAuthCallbackListeners(providerId);
 
+        // KÍCH HOẠT VÒNG LẶP BACKEND POLLING (Khắc phục 100% tình trạng mất opener hoặc cross-origin)
+        if (window._oauthPollInterval) clearInterval(window._oauthPollInterval);
+        const targetState = data.state;
+        let pollCount = 0;
+        const maxPolls = 120; // 120 x 1.5s = 3 phút
+        const spinnerText = document.getElementById('oauth-waiting-text');
+        const spinnerIcon = document.getElementById('oauth-spinner-icon');
+        if (spinnerText) spinnerText.textContent = 'Waiting for popup authorization…';
+        if (spinnerIcon && !spinnerIcon.classList.contains('animate-spin')) spinnerIcon.classList.add('animate-spin');
+
+        window._oauthPollInterval = setInterval(async () => {
+          if (window._oauthCallbackProcessed) {
+            clearInterval(window._oauthPollInterval);
+            return;
+          }
+          pollCount++;
+
+          // Sau 8 giây cập nhật text hướng dẫn để người dùng không cảm thấy bị xoay lâu
+          if (pollCount === 5 && spinnerText && !window._oauthCallbackProcessed) {
+            spinnerText.textContent = 'Đang đợi phản hồi từ Google... (hoặc dán URL vào Step 2)';
+          }
+
+          if (pollCount > maxPolls) {
+            clearInterval(window._oauthPollInterval);
+            if (spinnerText) {
+              spinnerText.innerHTML = '⚠️ Quá thời gian chờ tự động. Hãy dán URL ở tab xác thực vào Step 2.';
+            }
+            return;
+          }
+
+          if (targetState) {
+            try {
+              const pollRes = await apiRequest(`/api/oauth/poll?state=${encodeURIComponent(targetState)}`);
+              if (pollRes.ok) {
+                const pollData = await pollRes.json();
+                if (pollData && pollData.success && (pollData.code || pollData.token)) {
+                  clearInterval(window._oauthPollInterval);
+                  if (spinnerText) spinnerText.textContent = '✔ Đã nhận kết quả xác thực! Đang hoàn tất kết nối...';
+                  if (spinnerIcon) spinnerIcon.classList.remove('animate-spin');
+                  exchangeOAuthToken(providerId, pollData.token || pollData.code, pollData.state || targetState);
+                }
+              }
+            } catch (_) {}
+          }
+        }, 1500);
+
 
 
       } catch (err) {
@@ -11925,18 +11991,53 @@
 
 
 
-    // Kiểm tra ô dán URL Callback ở Step 2
+    // Tự động đọc và dán liên kết Callback từ Clipboard
+    async function pasteOAuthCallbackFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          const input = document.getElementById('oauth-callback-url-input');
+          if (input) {
+            input.value = text.trim();
+            onOAuthCallbackInputChanged();
+            showToastNotification('Đã dán liên kết callback từ bộ nhớ tạm!');
+            setTimeout(() => {
+              submitOAuthCallbackManually();
+            }, 250);
+          }
+        } else {
+          showToastNotification('Bộ nhớ tạm đang trống!', true);
+        }
+      } catch (e) {
+        showToastNotification('Hãy nhấn Ctrl+V trực tiếp vào ô Step 2', true);
+      }
+    }
 
+    // Kiểm tra ô dán URL Callback ở Step 2
     function onOAuthCallbackInputChanged() {
 
       const input = document.getElementById('oauth-callback-url-input');
 
       const btn = document.getElementById('oauth-connect-btn');
 
+      const val = input ? input.value.trim() : '';
+
       if (btn) {
 
-        btn.disabled = !(input && input.value.trim().length > 0);
+        btn.disabled = val.length === 0;
 
+      }
+
+      // Tự động hoàn tất kết nối khi nhận diện URL hợp lệ
+      if (val && (val.includes('code=') || val.includes('/callback'))) {
+        if (!window._oauthAutoSubmitting) {
+          window._oauthAutoSubmitting = true;
+          setTimeout(() => {
+            submitOAuthCallbackManually().finally(() => {
+              window._oauthAutoSubmitting = false;
+            });
+          }, 300);
+        }
       }
 
     }
@@ -12032,6 +12133,12 @@
       if (window._oauthCallbackProcessed) return;
 
       window._oauthCallbackProcessed = true;
+
+      if (window._oauthPollInterval) clearInterval(window._oauthPollInterval);
+      const spinnerText = document.getElementById('oauth-waiting-text');
+      const spinnerIcon = document.getElementById('oauth-spinner-icon');
+      if (spinnerText) spinnerText.textContent = '✔ Đã nhận mã xác thực! Đang hoàn tất kết nối...';
+      if (spinnerIcon) spinnerIcon.classList.remove('animate-spin');
 
 
 

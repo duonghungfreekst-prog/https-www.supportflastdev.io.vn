@@ -411,6 +411,10 @@ func HandleOAuth(db *sql.DB) http.HandlerFunc {
 			exchHandler(w, r)
 			return
 		}
+		if strings.HasSuffix(path, "/poll") || strings.HasSuffix(path, "/check-callback") {
+			HandleOAuthPoll(w, r)
+			return
+		}
 
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -608,14 +612,101 @@ func fetchGoogleUserEmail(accessToken string) string {
 	return ""
 }
 
+// OAuthPendingCallback lưu tạm kết quả callback trong RAM để Frontend polling an toàn 100%
+type OAuthPendingCallback struct {
+	Code      string    `json:"code"`
+	Token     string    `json:"token"`
+	State     string    `json:"state"`
+	Error     string    `json:"error"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+var (
+	pendingOAuthCallbacksMu sync.RWMutex
+	pendingOAuthCallbacks   = make(map[string]*OAuthPendingCallback)
+)
+
+// HandleOAuthPoll phục vụ kiểm tra trạng thái callback qua polling (giải quyết triệt để vấn đề mất opener hoặc cross-origin)
+func HandleOAuthPoll(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	state := strings.TrimSpace(r.URL.Query().Get("state"))
+	if state == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Missing state query param"})
+		return
+	}
+
+	pendingOAuthCallbacksMu.Lock()
+	defer pendingOAuthCallbacksMu.Unlock()
+
+	// Tự động dọn dẹp các state quá 10 phút
+	now := time.Now()
+	for k, v := range pendingOAuthCallbacks {
+		if now.Sub(v.CreatedAt) > 10*time.Minute {
+			delete(pendingOAuthCallbacks, k)
+		}
+	}
+
+	if cb, exists := pendingOAuthCallbacks[state]; exists {
+		delete(pendingOAuthCallbacks, state) // Consume một lần
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"code":    cb.Code,
+			"token":   cb.Token,
+			"state":   cb.State,
+			"error":   cb.Error,
+		})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": false,
+		"waiting": true,
+	})
+}
+
 // HandleOAuthCallbackHTML phục vụ trang callback HTML trả về khi hoàn tất đăng nhập Google OAuth
 func HandleOAuthCallbackHTML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	q := r.URL.Query()
+	code := q.Get("code")
+	state := q.Get("state")
+	token := q.Get("token")
+	errStr := q.Get("error")
+	if errStr == "" {
+		errStr = q.Get("error_description")
+	}
+
+	// 1. Lưu ngay vào in-memory map để frontend polling lập tức nhận diện
+	if state != "" && (code != "" || token != "" || errStr != "") {
+		pendingOAuthCallbacksMu.Lock()
+		pendingOAuthCallbacks[state] = &OAuthPendingCallback{
+			Code:      code,
+			Token:     token,
+			State:     state,
+			Error:     errStr,
+			CreatedAt: time.Now(),
+		}
+		pendingOAuthCallbacksMu.Unlock()
+		log.Printf("[ENGINE] [OAUTH] ✔ Đã nhận và lưu callback vào RAM cho state='%s' (code=%s)", state, MaskAPIKey(code))
+	}
+
 	html := `<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>OAuth Callback - ModelRouter9</title>
+  <title>Xác thực thành công - ModelRouter9</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -625,44 +716,95 @@ func HandleOAuthCallbackHTML(w http.ResponseWriter, r *http.Request) {
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
       padding: 16px;
       box-sizing: border-box;
     }
     .card {
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.95);
       border: 1px solid rgba(6, 182, 212, 0.4);
       border-radius: 20px;
       padding: 32px 24px;
       text-align: center;
-      max-width: 420px;
+      max-width: 460px;
       width: 100%;
       box-shadow: 0 0 50px rgba(6, 182, 212, 0.25);
     }
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid rgba(6, 182, 212, 0.2);
-      border-top-color: #06b6d4;
+    .icon-box {
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 20px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 2px solid #10b981;
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: bold;
+      margin: 0 auto 16px;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    h2 { margin: 0 0 8px; font-size: 18px; color: #fff; }
-    p { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.5; }
-    .status { margin-top: 16px; font-size: 11px; font-family: monospace; color: #22d3ee; }
+    h2 { margin: 0 0 8px; font-size: 20px; color: #fff; font-weight: 700; }
+    p { margin: 0 0 16px; font-size: 13px; color: #94a3b8; line-height: 1.5; }
+    .status { margin-bottom: 16px; font-size: 12px; font-family: monospace; color: #22d3ee; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .btn {
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    .btn-primary { background: #06b6d4; color: #020617; }
+    .btn-primary:hover { background: #22d3ee; }
+    .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+    .url-box {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      word-break: break-all;
+      margin: 12px 0;
+      text-align: left;
+      user-select: all;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="spinner"></div>
+    <div class="icon-box">✓</div>
     <h2>Xác thực tài khoản thành công!</h2>
-    <p>Đang hoàn tất đồng bộ kết nối vào ModelRouter9. Cửa sổ này sẽ tự động đóng lại trong giây lát...</p>
-    <div class="status" id="status-text">Đang phát tín hiệu callback...</div>
+    <p>Đã nhận mã xác thực từ Google. Hệ thống đang tự động đồng bộ kết nối vào ModelRouter9 qua backend.</p>
+    <div class="status" id="status-text">✔ Tín hiệu callback đã được lưu vào máy chủ Gateway!</div>
+    
+    <div class="url-box" id="url-preview">Đang nạp liên kết callback...</div>
+
+    <div class="btn-group">
+      <button type="button" class="btn btn-primary" id="copy-btn" onclick="copyCallbackUrl()">
+        <span>📋 Sao chép liên kết Callback URL</span>
+      </button>
+      <a href="https://supportflastdev.io.vn/router/?v=2.8.5#providers" class="btn btn-secondary" id="return-btn">
+        <span>Quay về trang ModelRouter9 ↗</span>
+      </a>
+    </div>
   </div>
   <script>
+    const fullUrl = window.location.href;
+    const urlPreview = document.getElementById('url-preview');
+    if (urlPreview) urlPreview.textContent = fullUrl;
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const state = params.get('state');
@@ -685,12 +827,26 @@ func HandleOAuthCallbackHTML(w http.ResponseWriter, r *http.Request) {
       localStorage.setItem('oauth_callback', JSON.stringify(payload));
     } catch (e) {}
 
-    const statusEl = document.getElementById('status-text');
-    if (statusEl) statusEl.textContent = '✔ Đã gửi tín hiệu callback thành công!';
+    function copyCallbackUrl() {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        const btn = document.getElementById('copy-btn');
+        if (btn) btn.innerHTML = '<span>✓ Đã sao chép! Dán vào ô Step 2 ở trang chính</span>';
+      }).catch(() => {
+        alert('Đã chọn URL, bạn có thể nhấn Ctrl+C để sao chép.');
+      });
+    }
 
+    // Tự động sao chép vào clipboard nếu được phép
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullUrl).catch(() => {});
+      }
+    } catch (_) {}
+
+    // Thử đóng tab sau 2.5s nếu là popup window
     setTimeout(() => {
       try { window.close(); } catch (_) {}
-    }, 1200);
+    }, 2500);
   </script>
 </body>
 </html>`
