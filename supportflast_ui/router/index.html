@@ -860,13 +860,6 @@
       padding: 0 !important;
       border: none !important;
     }
-
-    /* Trên App Desktop: Ẩn các tabs phụ khi chạy trong ứng dụng Desktop theo yêu cầu */
-    html.desktop-mode .desktop-hide-tab {
-      display: none !important;
-    }
-
-
   </style>
 
 </head>
@@ -1102,7 +1095,43 @@
 
             
 
-            <!-- Mục 1: MITM Proxy & CLI -->
+            <!-- Mục 1: Thống kê lưu lượng & Live Topology (MÀN HÌNH CHÍNH MẶC ĐỊNH) -->
+            <button onclick="switchTab('stats')" id="btn-tab-stats" class="nav-btn active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Live Topology & Thống Kê</span>
+              </div>
+              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục 2: Nhà cung cấp -->
+            <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <span>Nhà Cung Cấp</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">129 Hub</span>
+                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+              </div>
+            </button>
+
+            <!-- Mục 3: Theo dõi hạn mức -->
+            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Theo Dõi Hạn Mức</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
+            </button>
+
+            <!-- Mục 4: MITM Proxy & CLI (Dành cho máy trạm Desktop) -->
             <button onclick="switchTab('mitm')" id="btn-tab-mitm" class="nav-btn desktop-only-feature w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1113,7 +1142,7 @@
               <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
             </button>
 
-            <!-- Mục 2: Endpoint & Key -->
+            <!-- Mục 5: Endpoint & Key -->
             <button onclick="switchTab('endpoints')" id="btn-tab-endpoints" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1128,55 +1157,8 @@
               </div>
             </button>
 
-            <!-- Mục 3: Nhà cung cấp -->
-            <button onclick="switchTab('providers')" id="btn-tab-providers" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <span>Nhà Cung Cấp</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/60 text-cyan-300 border border-cyan-800/40">129 Hub</span>
-                <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-              </div>
-            </button>
-
-            <!-- Mục 4: Vision Optimizer (Nén Ảnh) -->
-            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>Vision Optimizer</span>
-              </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục 5: Thống kê lưu lượng & Live Topology (MÀN HÌNH CHÍNH MẶC ĐỊNH TRÊN WEB) -->
-            <button onclick="switchTab('stats')" id="btn-tab-stats" class="nav-btn desktop-hide-tab active-tab w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.3)]">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span>Live Topology & Thống Kê</span>
-              </div>
-              <span class="tab-indicator w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục 6: Theo dõi hạn mức -->
-            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Theo Dõi Hạn Mức</span>
-              </div>
-              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
-            </button>
-
-            <!-- Mục 7: Token Optimizer (badge -38%) -->
-            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <!-- Mục 6: Token Optimizer (badge -38%) -->
+            <button onclick="switchTab('optimizer')" id="btn-tab-optimizer" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -1187,6 +1169,17 @@
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">-38%</span>
                 <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
               </div>
+            </button>
+
+            <!-- Mục 7: Vision Optimizer (Nén Ảnh) -->
+            <button onclick="switchTab('combo')" id="btn-tab-combo" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-purple-400 group-hover:text-purple-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Vision Optimizer</span>
+              </div>
+              <span class="tab-indicator hidden w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_#00F0FF] animate-ping flex-shrink-0"></span>
             </button>
 
           </div>
@@ -1203,7 +1196,7 @@
           <div class="space-y-1">
 
             <!-- Mục: Proxy Pools IP -->
-            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('proxies')" id="btn-tab-proxies" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
@@ -1231,8 +1224,8 @@
               </div>
             </button>
 
-            <!-- Mục: Nhật ký Console (Stream logs) - Ẩn hoàn toàn trên bản App Desktop theo yêu cầu bảo mật -->
-            <button onclick="switchTab('console')" id="btn-tab-console" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <!-- Mục: Nhật ký Console (Stream logs) -->
+            <button onclick="switchTab('console')" id="btn-tab-console" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1279,7 +1272,7 @@
             </button>
 
             <!-- Mục: Cài đặt hệ thống -->
-            <button onclick="switchTab('settings')" id="btn-tab-settings" class="nav-btn desktop-hide-tab w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
+            <button onclick="switchTab('settings')" id="btn-tab-settings" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -5449,7 +5442,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-console" class="tab-content desktop-hide-tab space-y-4">
+        <div id="tab-console" class="tab-content space-y-4">
 
 
 
@@ -8115,10 +8108,7 @@
 
       const isValidTab = (t) => {
         if (!t || !document.getElementById('tab-' + t)) return false;
-        if (isDesktop) {
-          const btn = document.getElementById('btn-tab-' + t);
-          if (btn && btn.classList.contains('desktop-hide-tab')) return false;
-        } else {
+        if (!isDesktop) {
           if (t === 'mitm' || t === 'media' || t === 'cli-tools' || t === 'translator' || t === 'pxpipe') return false;
           const btn = document.getElementById('btn-tab-' + t);
           const tabEl = document.getElementById('tab-' + t);
@@ -8163,7 +8153,7 @@
         }
       } catch (_) {}
 
-      return isDesktop ? 'mitm' : 'stats';
+      return 'stats';
     }
 
     // =========================================================================
@@ -8500,18 +8490,12 @@
     function switchTab(tabId) {
       const isDesktopEnv = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
                            (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
-      if (isDesktopEnv && (tabId === 'console' || tabId === 'logs')) {
-        tabId = 'mitm';
-      }
       if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
         tabId = 'stats';
       }
 
       if (!tabId || !document.getElementById('tab-' + tabId)) {
-        tabId = getSavedActiveTab();
-      }
-      if (isDesktopEnv && (tabId === 'console' || tabId === 'logs')) {
-        tabId = 'mitm';
+        tabId = getSavedActiveTab() || 'stats';
       }
       if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
         tabId = 'stats';
