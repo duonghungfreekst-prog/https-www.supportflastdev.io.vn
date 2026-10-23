@@ -16,7 +16,7 @@
     ],
     "desc": "Trace và phân tích toàn bộ cây cú pháp Abstract Syntax Tree, đồ thị tham chiếu hàm/class trước khi sửa đổi mã nguồn.",
     "features": "Phân tích AST đa ngôn ngữ, Semantic Code Search, Trích xuất đồ thị phụ thuộc (Dependency Graph), Bảo toàn cấu trúc mã.",
-    "models": "Gemini 3.1 Pro High, Claude Sonnet 4.6 (Thinking)",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Native System Skill (Read/AST)",
     "prompt": "Dùng kỹ năng ast-navigation để phân tích toàn bộ các hàm gọi đến UserService trong thư mục src/ và vẽ đồ thị phụ thuộc."
   },
@@ -36,7 +36,7 @@
     ],
     "desc": "Vòng lặp tự động chạy kiểm thử terminal -> đọc mã lỗi -> truy vết nguyên nhân gốc rễ -> tự sửa lỗi mã nguồn (tối đa 3 vòng lặp).",
     "features": "Tự động bắt stderr/stdout, Regex phân tích stack trace, Tự động sửa syntax error, Kiểm tra lại trạng thái sau khi vá.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Terminal Execution Engine",
     "prompt": "Chạy make test, nếu có lỗi hãy tự động đọc stacktrace và vá lỗi trực tiếp cho đến khi toàn bộ unit test đều pass."
   },
@@ -55,7 +55,7 @@
     ],
     "desc": "Chỉnh sửa tệp cục bộ chính xác tuyệt đối từng dòng mã, không làm xáo trộn thụt lề, khoảng trắng hay viết lại file lớn.",
     "features": "Chỉnh sửa theo khối ngữ cảnh (context-aware replacement), Giữ nguyên comment và docstring, Kiểm soát diff tối thiểu.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "File Patch Engine",
     "prompt": "Sử dụng surgical-file-editing để chèn middleware rate-limiting vào chính xác dòng 142 của server.go mà không thay đổi các hàm khác."
   },
@@ -75,7 +75,7 @@
     ],
     "desc": "Kiểm duyệt cú pháp tĩnh nghiêm ngặt, rà soát kiểu dữ liệu và đảm bảo mã nguồn hoàn thành với 0 warning và 0 error linter.",
     "features": "Tích hợp đa linter cho Go, Rust, TypeScript, Python, Tự động format mã theo chuẩn PEP8/Prettier/gofmt.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Qwen 2.5 Coder 32B",
     "endpoint": "Static Analysis Engine",
     "prompt": "Quét toàn bộ module backend bằng golangci-lint và rà soát type safety trước khi tạo bản build release."
   },
@@ -95,7 +95,7 @@
     ],
     "desc": "Chẩn đoán rò rỉ bộ nhớ RAM, phân tích snapshot đống đối tượng (Heap Snapshot), phát hiện listener treo và giải phóng buffer.",
     "features": "Phân tích heap dump, Phát hiện circular references, Audit bộ nhớ rò rỉ trong Goroutine và Node.js process.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Runtime Diagnostics",
     "prompt": "Phân tích memory usage profile của background worker và tìm ra các mảng dữ liệu lớn chưa được giải phóng sau batch job."
   },
@@ -114,7 +114,7 @@
     ],
     "desc": "Bộ phòng hộ chống mất mát dữ liệu: ngăn chặn các lệnh nguy hiểm như DROP TABLE, TRUNCATE, gsutil rm, rm -rf hoặc gcloud project delete mà không có xác nhận.",
     "features": "Tự động chặn lệnh hủy diệt, Yêu cầu xác nhận tường minh từ người dùng, Ghi log cảnh báo an toàn dữ liệu.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Security Guard Engine",
     "prompt": "Kiểm tra toàn bộ lệnh SQL và CLI sắp thực thi để đảm bảo không chứa các câu lệnh xoá trắng bảng dữ liệu hoặc bucket."
   },
@@ -133,7 +133,7 @@
     ],
     "desc": "Điều hướng toàn diện cấu trúc codebase bằng tìm kiếm ngữ nghĩa và grep chính xác, xác định nhanh vị trí biến, hàm và thư viện.",
     "features": "Lập chỉ mục biểu tượng nhanh, Tra cứu định nghĩa hàm xuyên file, Phân tích import đồ thị.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Navigation Engine",
     "prompt": "Định vị tất cả các file cấu hình CORS trong toàn bộ dự án và xuất bảng tóm tắt phạm vi áp dụng."
   },
@@ -152,7 +152,7 @@
     ],
     "desc": "Chẩn đoán và vá nóng các kỹ năng agent bị lỗi cài đặt hoặc hỏng manifest.json trong hệ thống Antigravity.",
     "features": "Sửa đổi manifest.json an toàn, Cập nhật metadata kỹ năng, Khôi phục kỹ năng hỏng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Agent Repair Tool",
     "prompt": "Kiểm tra và sửa chữa manifest của kỹ năng vừa cài đặt nếu gặp lỗi không thể tải schema."
   },
@@ -171,7 +171,7 @@
     ],
     "desc": "Đóng gói toàn bộ quy trình làm việc phức tạp đã hoàn tất thành một kỹ năng AI chuẩn SKILL.md có thể tái sử dụng ngay lập tức.",
     "features": "Trích xuất quy trình tự động, Chuẩn hoá YAML frontmatter, Xuất file SKILL.md đầy đủ tài liệu.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Skill Builder SDK",
     "prompt": "Đóng gói toàn bộ các bước kiểm thử và deploy vừa thực hiện thành một kỹ năng mới mang tên deploy-gateway-pipeline."
   },
@@ -190,7 +190,7 @@
     ],
     "desc": "Cẩm nang hướng dẫn toàn diện hệ thống Antigravity CLI, IDE, slash commands, keybindings, customizations và sidecars.",
     "features": "Tra cứu cú pháp lệnh AGY, Hướng dẫn cấu hình plugins, Danh mục slash commands.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Documentation Engine",
     "prompt": "Tra cứu hướng dẫn sử dụng slash command /plan và các tuỳ chọn cấu hình sidecar trong Antigravity IDE."
   },
@@ -210,7 +210,7 @@
     ],
     "desc": "Quản lý và nạp động các tùy biến cá nhân hoá: Skills, Rules, Plugins, Hooks và cấu hình máy chủ MCP Server.",
     "features": "Tải quy tắc workspace, Thiết lập hook khởi động phiên, Cấu hình mcp_config.json.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Customization System",
     "prompt": "Thiết lập một rule mới trong .agents/rules/ để bắt buộc mã Go tuân thủ định dạng context.WithTimeout."
   },
@@ -229,7 +229,7 @@
     ],
     "desc": "Thiết kế, xây dựng và gỡ lỗi các tác nhân AI tự hành và hệ thống đa tác nhân (multi-agent) chuyên sâu với Google Antigravity SDK.",
     "features": "Khởi tạo Agent Runner, Điều phối trạng thái tác nhân, Xử lý giao tiếp liên agent.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Antigravity Native Core",
     "prompt": "Viết đoạn mã Python sử dụng google-antigravity-sdk để tạo một tác nhân tự hành chuyên thu thập dữ liệu giá tiền tệ."
   },
@@ -248,7 +248,7 @@
     ],
     "desc": "Khởi chạy và điều phối song song tối đa 20 Subagents độc lập, phân chia khối lượng công việc khổng lồ giúp tăng tốc độ xử lý gấp 10 lần.",
     "features": "Phân bổ tác vụ bất đồng bộ, Theo dõi tiến độ thời gian thực, Tổng hợp báo cáo hợp nhất, Tự động ngắt khi xong việc.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Agent Cluster Controller",
     "prompt": "Kích hoạt 8 subagents song song để audit bảo mật đồng thời 8 microservices độc lập và tổng hợp lỗ hổng về bảng điều khiển."
   },
@@ -267,7 +267,7 @@
     ],
     "desc": "Cơ chế bắt buộc 100% Subagents duy trì mô hình Gemini 3.1 Pro High, tuyệt đối không bị hạ cấp (downgrade) về Flash khi tải nặng.",
     "features": "Bảo đảm đồng bộ siêu năng lực suy luận, Không nghẽn cổ chai logic, Duy trì ngữ cảnh chuyên sâu.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 3.1 Pro High, Claude 3.7 Sonnet",
     "endpoint": "Model Gateway Policy",
     "prompt": "Đảm bảo tất cả 5 subagents được tạo ra đều thừa hưởng 100% năng lực suy luận của Gemini 3.1 Pro High."
   },
@@ -286,7 +286,7 @@
     ],
     "desc": "Bộ nhớ dài hạn chia sẻ giữa các tác nhân thông qua đồ thị tri thức (Knowledge Graph): lưu trữ thực thể, mối quan hệ và sự kiện.",
     "features": "Truy vấn đồ thị quan hệ thực thể, Ghi nhớ quyết định kiến trúc, Đồng bộ hóa context giữa các phiên chat.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Graph Memory Server",
     "prompt": "Lưu vào đồ thị tri thức rằng bảng Users đã được phân mảnh theo cột region_id kể từ phiên bản 2.4."
   },
@@ -305,7 +305,7 @@
     ],
     "desc": "Cơ chế tự động dọn sạch 100% background tasks, kill dev server/script thử nghiệm sau khi hoàn thành, ngăn chặn nghẽn CPU/RAM.",
     "features": "Tự động rà soát tiến trình trước khi kết thúc turn, Tiêu diệt tiến trình mồ côi, Đảm bảo 0 tác vụ chạy ngầm treo vô tận.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Task Manager Daemon",
     "prompt": "Kiểm tra danh sách các tiến trình ngầm bằng manage_task(Action='list') và chấm dứt các task đã hoàn tất."
   },
@@ -324,7 +324,7 @@
     ],
     "desc": "Khung tư duy tuần tự phân tích từng bước logic, kiểm chứng giả thuyết, tự sửa sai và phân tách bài toán kiến trúc phức tạp.",
     "features": "Suy luận đa tầng, Điều chỉnh nhánh tư duy linh hoạt, Rà soát biên giải thuật trước khi code.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Sequential Engine",
     "prompt": "Áp dụng sequential-thinking để phân tích phương án di chuyển 50TB dữ liệu từ PostgreSQL sang BigQuery mà không gián đoạn dịch vụ."
   },
@@ -343,7 +343,7 @@
     ],
     "desc": "Bộ công cụ phát triển ứng dụng với Gemini API: suy luận đa phương thức, trích xuất JSON có cấu trúc (Structured Output) và Function Calling.",
     "features": "Hỗ trợ SDK Python và TypeScript mới nhất, Streaming responses, Xử lý token hiệu quả.",
-    "models": "Gemini 3.1 Pro High, Gemini 3.8 Flash High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Google GenAI SDK",
     "prompt": "Viết đoạn mã TypeScript gọi gemini-3.1-pro-high với chế độ responseSchema để trích xuất hóa đơn thành JSON."
   },
@@ -401,7 +401,7 @@
     ],
     "desc": "Quy trình bảo mật xác thực và xử lý khóa API, kiểm tra sự tồn tại của secrets mà không làm lộ dữ liệu nhạy cảm ra màn hình.",
     "features": "Mặt nạ hóa mật khẩu/token, Ngăn chặn in secrets vào log, Kiểm tra biến môi trường an toàn.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Secrets Manager",
     "prompt": "Kiểm tra xem biến môi trường GEMINI_API_KEY đã được định cấu hình chưa mà không in giá trị token ra màn hình."
   },
@@ -421,7 +421,7 @@
     ],
     "desc": "Tích hợp và lập trình giải pháp bản đồ với Google Maps Platform: định tuyến thông minh (Routing/ETA), tìm kiếm địa điểm và 3D Maps.",
     "features": "Tính toán lộ trình thân thiện môi trường, Marker clustering, Geocoding hai chiều, Custom map styling.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Google Maps SDK",
     "prompt": "Viết hàm tính khoảng cách và thời gian di chuyển dự kiến giữa 2 tọa độ GPS sử dụng Routes API v2."
   },
@@ -441,7 +441,7 @@
     ],
     "desc": "Thiết lập định hướng thẩm mỹ UI đẳng cấp: bảng màu cyberpunk/neon, hiệu ứng kính mờ (glassmorphism), typography hiện đại.",
     "features": "Bảng màu HSL tối ưu độ tương phản, Phối font Google Fonts chuẩn quốc tế, Tinh chỉnh vi mô (micro-animations).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet, GPT-4o",
     "endpoint": "Design System Tokens",
     "prompt": "Định nghĩa bảng màu Cyber Dark Mode với điểm nhấn màu Cyan #00F0FF và Amber #F59E0B cho giao diện dashboard."
   },
@@ -460,7 +460,7 @@
     ],
     "desc": "Xây dựng hệ thống design tokens hoàn chỉnh: màu sắc, khoảng cách (spacing), bo góc (radius), đổ bóng neon và thư viện thành phần tái sử dụng.",
     "features": "Tokens nhất quán, Chuẩn đặt tên atomic BEM, Hỗ trợ chuyển đổi theme sáng/tối tức thời.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet, GPT-4o",
     "endpoint": "CSS Token Registry",
     "prompt": "Tạo file tokens.css chứa đầy đủ các biến màu sắc, shadow và spacing chuẩn bị cho 12 component của hệ thống."
   },
@@ -479,7 +479,7 @@
     ],
     "desc": "Quy trình biến ý tưởng phác thảo thành mã giao diện web/app hoàn chỉnh, sống động, tương thích responsive mọi thiết bị.",
     "features": "Dựng khung HTML semantic, Viết CSS hiệu ứng sống động, Tối ưu hóa trải nghiệm người dùng tức thì.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Frontend Code Generator",
     "prompt": "Chuyển đổi ý tưởng trang quản trị Gateway với thanh điều hướng bên trái và lưới metrics sang HTML/Tailwind hoàn chỉnh."
   },
@@ -499,7 +499,7 @@
     ],
     "desc": "Đảm bảo giao diện co giãn hoàn hảo trên Mobile/Tablet/Desktop và đạt tiêu chuẩn tiếp cận người khuyết tật (WCAG 2.1 AA).",
     "features": "Thiết lập thuộc tính ARIA đầy đủ, Điều hướng bàn phím hoàn hảo, Kiểm tra độ tương phản màu chuẩn quốc tế.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet, GPT-4o",
     "endpoint": "A11y Validator",
     "prompt": "Rà soát modal chi tiết kỹ năng để đảm bảo có thể đóng bằng phím ESC và tiêu cự focus không bị rơi ra ngoài."
   },
@@ -519,7 +519,7 @@
     ],
     "desc": "Cập nhật các kỹ thuật web tiên tiến nhất: Container Queries, View Transitions API, CSS `:has()`, Scroll-driven animations và Core Web Vitals.",
     "features": "Áp dụng CSS thuần hiện đại, Tránh thư viện cồng kềnh, Tối ưu LCP và INP cho trải nghiệm mượt mà.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Web Best Practices",
     "prompt": "Sử dụng CSS View Transitions API để tạo hiệu ứng chuyển tab mượt mà không làm nhấp nháy giao diện."
   },
@@ -539,7 +539,7 @@
     ],
     "desc": "Xây dựng và đóng gói tiện ích mở rộng trình duyệt Chrome theo chuẩn Manifest V3 mới nhất, bảo đảm an toàn và hiệu năng.",
     "features": "Cấu hình Side Panel, Xử lý giao tiếp Service Worker và Content Script, Tuân thủ chính sách Chrome Web Store.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Chrome Extension Kit",
     "prompt": "Tạo tệp manifest.json theo chuẩn Manifest V3 hỗ trợ side_panel và background service worker."
   },
@@ -559,7 +559,7 @@
     ],
     "desc": "Tự động hóa trình duyệt qua giao thức Chrome DevTools Protocol (CDP): bắt gói tin mạng, kiểm tra DOM, bắt lỗi JavaScript console.",
     "features": "Kiểm tra phản hồi API, Chụp màn hình phần tử DOM, Phân tích hiệu năng tải trang tự động.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Chrome CDP Engine",
     "prompt": "Theo dõi tab Network trong Chrome DevTools để kiểm tra xem request gọi đến /api/v1/metrics có bị mã lỗi 401 không."
   },
@@ -578,7 +578,7 @@
     ],
     "desc": "Kiểm thử và đánh giá toàn diện khả năng tiếp cận của trang web theo hướng dẫn web.dev bằng Chrome DevTools MCP.",
     "features": "Đo kích thước điểm chạm (tap targets), Phát hiện thiếu nhãn ARIA, Báo cáo điểm số tiếp cận tự động.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "DevTools A11y Suite",
     "prompt": "Quét cây Accessibility Tree của trang chủ để tìm các nút bấm chưa có thuộc tính aria-label."
   },
@@ -598,7 +598,7 @@
     ],
     "desc": "Chẩn đoán và tối ưu hóa chỉ số LCP (Largest Contentful Paint) giúp màn hình chính hiển thị dưới 1.2 giây.",
     "features": "Phát hiện tài nguyên chặn hiển thị (render-blocking), Thêm gợi ý fetchpriority=\"high\", Tối ưu critical CSS.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet, Gemini 2.5 Flash",
     "endpoint": "Performance Profiler",
     "prompt": "Phân tích nguyên nhân khiến hình ảnh Hero Banner làm tăng LCP và đưa ra giải pháp nén ảnh kèm link rel=preload."
   },
@@ -617,7 +617,7 @@
     ],
     "desc": "Khắc phục sự cố kết nối giữa agent và trình duyệt Chrome headless/remote, giải quyết lỗi cổng kết nối và target sập.",
     "features": "Tự động khởi động lại cổng gỡ lỗi, Đồng bộ session trang, Khôi phục kết nối websocket CDP.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Troubleshoot Agent",
     "prompt": "Kiểm tra trạng thái cổng kết nối Chrome remote debugging và kết nối lại nếu phiên trước đó bị gián đoạn."
   },
@@ -637,7 +637,7 @@
     ],
     "desc": "Thiết kế kiến trúc ứng dụng Flutter chuẩn hóa theo phân tầng UI - Domain/Logic - Data, phân tách rõ ràng trách nhiệm mã nguồn.",
     "features": "Quản lý trạng thái bằng BLoC/Riverpod, Dependency Injection, Khử phụ thuộc chéo giữa các tầng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Flutter Engine",
     "prompt": "Xây dựng cấu trúc thư mục Flutter theo Clean Architecture gồm 3 tầng Presentation, Domain và Data cho tính năng thanh toán."
   },
@@ -657,7 +657,7 @@
     ],
     "desc": "Xây dựng layout Flutter co giãn tương thích linh hoạt giữa điện thoại màn hình nhỏ, máy tính bảng và màn hình desktop lớn.",
     "features": "Sử dụng LayoutBuilder thông minh, Tách biệt widget di động và tablet, Tránh hardcode kích thước pixel.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet, GPT-4o",
     "endpoint": "Flutter Layout Suite",
     "prompt": "Tạo Widget ResponsiveScaffold tự động hiển thị BottomNavigationBar trên điện thoại và NavigationRail trên màn hình lớn."
   },
@@ -676,7 +676,7 @@
     ],
     "desc": "Phát hiện và tự động giải quyết các lỗi bố cục kinh điển trong Flutter: RenderFlex overflowed (sọc vàng đen), chiều cao vô hạn.",
     "features": "Bọc Expanded/Flexible đúng chỗ, Xử lý SingleChildScrollView, Tối ưu constraints bố cục.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Flutter Inspector",
     "prompt": "Sửa lỗi RenderFlex overflowed by 32 pixels ở chân danh sách cuộn trong màn hình chi tiết sản phẩm."
   },
@@ -695,7 +695,7 @@
     ],
     "desc": "Cấu hình điều hướng khai báo với package `go_router`, hỗ trợ đồng bộ URL trình duyệt web, deep linking và redirect xác thực.",
     "features": "Điều hướng lồng nhau (ShellRoute), Bảo vệ tuyến đường có auth redirect, Khớp tham số động /item/:id.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "GoRouter Generator",
     "prompt": "Cấu hình GoRouter với ShellRoute để giữ nguyên thanh điều hướng đáy khi chuyển đổi giữa các tab chính."
   },
@@ -715,7 +715,7 @@
     ],
     "desc": "Tạo các model lớp Dart an toàn kiểu dữ liệu với phương thức `fromJson` và `toJson`, xử lý an toàn dữ liệu null và ép kiểu mảng.",
     "features": "Xử lý nested JSON objects, Tương thích freezed và json_serializable, Kiểm tra biên ngoại lệ khi parse.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Qwen 2.5 Coder 32B",
     "endpoint": "Dart Model Tool",
     "prompt": "Viết model Dart UserProfile với fromJson và toJson an toàn, có giá trị mặc định khi API trả về trường null."
   },
@@ -735,7 +735,7 @@
     ],
     "desc": "Lập trình kết nối mạng cho Flutter với `package:http`: xử lý GET, POST, PUT, DELETE kèm mã hóa header xác thực và timeout.",
     "features": "Đính kèm Bearer token tự động, Bắt lỗi mạng SocketException, Tự động thử lại khi mất kết nối tạm thời.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "HTTP Client Agent",
     "prompt": "Viết ApiService gửi request POST đăng nhập kèm timeout 10 giây và bắt lỗi không có mạng trên thiết bị di động."
   },
@@ -755,7 +755,7 @@
     ],
     "desc": "Thiết lập đa ngôn ngữ quốc tế cho Flutter: cấu hình l10n.yaml, các tệp từ điển .arb và tự động sinh mã AppLocalizations.",
     "features": "Hỗ trợ Tiếng Việt và Tiếng Anh song song, Format ngày giờ theo Locale, Xử lý số nhiều (plurals).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "i18n Suite",
     "prompt": "Tạo tệp app_vi.arb và app_en.arb với các khóa chuỗi cho màn hình cài đặt và tích hợp vào MaterialApp."
   },
@@ -774,7 +774,7 @@
     ],
     "desc": "Viết kịch bản kiểm thử tích hợp đầu cuối (E2E) tự động chạy ứng dụng trên máy ảo/thiết bị thật để kiểm tra toàn bộ luồng người dùng.",
     "features": "Mô phỏng thao tác vuốt chạm, Kiểm tra luồng đăng nhập tới thanh toán, Báo cáo kiểm thử tự động.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Flutter Driver Engine",
     "prompt": "Viết bài kiểm thử integration_test kiểm tra toàn bộ hành trình người dùng từ màn hình mở đầu đến khi đặt hàng thành công."
   },
@@ -793,7 +793,7 @@
     ],
     "desc": "Kiểm thử cấp độ thành phần UI (Widget Test) sử dụng WidgetTester để xác minh giao diện hiển thị đúng dữ liệu và phản hồi nút bấm.",
     "features": "Kiểm thử trạng thái loading, Mock tương tác người dùng, Xác nhận render text và icon.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Widget Test Suite",
     "prompt": "Viết widget test cho CustomButton để kiểm chứng khi bấm nút thì hàm onPressed được gọi đúng 1 lần."
   },
@@ -812,7 +812,7 @@
     ],
     "desc": "Tạo bản xem trước tương tác cho các widget thành phần độc lập trong previews.dart, giúp đánh giá UI không cần khởi động toàn app.",
     "features": "Xem trước đa kích thước màn hình, Thử nghiệm nhiều theme màu sắc, Cô lập component độc lập.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Widget Preview Engine",
     "prompt": "Thêm preview cho MetricCard với 3 trạng thái: dữ liệu bình thường, đang tải và cảnh báo lỗi."
   },
@@ -831,7 +831,7 @@
     ],
     "desc": "Viết kiểm thử đơn vị độc lập cho các hàm, thuật toán và logic nghiệp vụ của Dart bằng `package:test`.",
     "features": "Kiểm thử biên dữ liệu, Đảm bảo không phát sinh lỗi hồi quy (regression), Tổ chức test theo nhóm ngữ cảnh (group).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Dart Test Runner",
     "prompt": "Viết unit test cho hàm parseCurrencyFormat để kiểm tra các trường hợp chuỗi rỗng, số âm và số lớn."
   },
@@ -850,7 +850,7 @@
     ],
     "desc": "Bắt stack trace lỗi thời gian chạy của Dart, xác định dòng mã sập, áp dụng bản sửa lỗi và kiểm chứng bằng hot reload.",
     "features": "Truy vết dòng lệnh lỗi chính xác, Sửa lỗi NullPointerException, Xác nhận không còn crash khi chạy.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Dart Error Resolver",
     "prompt": "Đọc stack trace lỗi NoSuchMethodError vừa xảy ra trên máy ảo và sửa biến bị null trước khi gọi hàm."
   },
@@ -869,7 +869,7 @@
     ],
     "desc": "Định nghĩa và sinh mã các đối tượng mock cho các phụ thuộc bên ngoài (API, cơ sở dữ liệu) với Mockito và build_runner.",
     "features": "Mô phỏng phản hồi từ máy chủ, Kiểm tra số lần gọi hàm với verify(), Giả lập lỗi mạng theo kịch bản.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Qwen 2.5 Coder 32B",
     "endpoint": "Mockito Suite",
     "prompt": "Tạo lớp MockAuthRepository và viết kịch bản giả lập đăng nhập thất bại khi mã phản hồi là 403."
   },
@@ -888,7 +888,7 @@
     ],
     "desc": "Xây dựng các công cụ dòng lệnh (CLI utility), script tự động hóa đa nền tảng bằng Dart với mã thoát (exit code) chuẩn hóa.",
     "features": "Phân tích cờ tham số (command-line flags), Tương thích Windows/Linux/macOS, Biên dịch ra file thực thi độc lập.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Dart CLI Kit",
     "prompt": "Viết công cụ CLI bằng Dart nhận cờ --input và --output để nén hàng loạt file ảnh trong thư mục."
   },
@@ -907,7 +907,7 @@
     ],
     "desc": "Thu thập độ phủ mã nguồn (code coverage) của các bài test Dart và xuất báo cáo chuẩn LCOV để tích hợp vào CI/CD.",
     "features": "Đo độ phủ từng dòng lệnh và nhánh điều kiện, Phát hiện mã chưa được kiểm thử, Xuất file lcov.info.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Coverage Suite",
     "prompt": "Chạy toàn bộ unit test với cờ coverage và xuất báo cáo LCOV kiểm tra xem tầng Service đã đạt trên 80% chưa."
   },
@@ -926,7 +926,7 @@
     ],
     "desc": "Chạy công cụ phân tích tĩnh `dart analyze` để phát hiện cảnh báo/lỗi và tự động áp dụng `dart fix --apply` giải quyết triệt để.",
     "features": "Sửa lỗi cú pháp tự động, Kiểm tra tuân thủ quy tắc effective_dart, Đảm bảo codebase sạch đẹp.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Qwen 2.5 Coder 32B",
     "endpoint": "Dart Analyzer",
     "prompt": "Chạy dart analyze trên toàn bộ thư mục lib/ và tự động sửa các khuyến nghị deprecated bằng dart fix --apply."
   },
@@ -945,7 +945,7 @@
     ],
     "desc": "Di chuyển các câu lệnh kiểm tra `expect()` truyền thống sang thư viện `package:checks` hiện đại với cú pháp mượt mà, gợi ý lỗi rõ ràng.",
     "features": "Chuyển đổi cú pháp kiểm thử tự động, Thông báo lỗi chi tiết khi assert fail, Cải thiện trải nghiệm viết test.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Checks Migration Tool",
     "prompt": "Nâng cấp các đoạn test đang dùng expect(val, equals(expected)) sang cú pháp check(val).equals(expected)."
   },
@@ -964,7 +964,7 @@
     ],
     "desc": "Quy trình giải quyết xung đột phiên bản phụ thuộc trong pubspec.yaml khi `pub get` thất bại do không tìm được phiên bản tương thích.",
     "features": "Phân tích cây phụ thuộc dependency tree, Sử dụng dependency_overrides an toàn, Cập nhật dải phiên bản tương thích.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Pub Resolver Agent",
     "prompt": "Phân tích nguyên nhân khiến package:http bị xung đột phiên bản với google_sign_in và đề xuất cách giải quyết."
   },
@@ -983,7 +983,7 @@
     ],
     "desc": "Biên dịch và đóng gói mã nguồn C/C++ thành dynamic/static library sử dụng hệ thống Native Assets hooks mới của Dart.",
     "features": "Cấu hình build.dart và link.dart, Liên kết trực tiếp thư viện C mà không cần thao tác biên dịch thủ công phức tạp.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Native Assets Engine",
     "prompt": "Tạo cấu hình hook/build.dart để tự động biên dịch file C crypto_core.c thành native asset khi chạy ứng dụng."
   },
@@ -1002,7 +1002,7 @@
     ],
     "desc": "Tự động sinh mã ràng buộc (bindings) Dart FFI từ các tệp header C/Objective-C/Swift mà không cần phải viết tay thủ công.",
     "features": "Phân tích tệp .h tự động, Sinh struct và kiểu con trỏ tương ứng trong Dart, An toàn kiểu dữ liệu C.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "ffigen CLI Tool",
     "prompt": "Cấu hình ffigen.yaml để sinh các binding Dart cho thư viện mật mã lượng tử từ tệp pqc_kyber.h."
   },
@@ -1021,7 +1021,7 @@
     ],
     "desc": "Áp dụng biểu thức switch và khớp mẫu (pattern matching) của Dart 3 để viết mã nguồn súc tích, an toàn kiểu và loại bỏ rườm rà.",
     "features": "Phân rã cấu trúc (destructuring) records và map, Khớp mẫu exhaustiveness kiểm tra đầy đủ các trường hợp.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Pattern Matching Engine",
     "prompt": "Refactor khối lệnh if-else phức tạp phân loại trạng thái mạng sang switch expression sử dụng Dart pattern matching."
   },
@@ -1040,7 +1040,7 @@
     ],
     "desc": "Sử dụng cú pháp hàm khởi tạo chính (primary constructors) mới nhất của Dart để khởi tạo thuộc tính ngắn gọn, trực quan và sạch sẽ.",
     "features": "Loại bỏ mã lặp boilerplate, Khởi tạo danh sách initializer list súc tích.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Dart Syntax Suite",
     "prompt": "Viết lại class DataRecord sử dụng cú pháp concise primary constructor mới của Dart."
   },
@@ -1059,7 +1059,7 @@
     ],
     "desc": "Viết tài liệu và chú thích API bằng cú pháp `///` chuẩn Effective Dart: mô tả tham số, giá trị trả về và ví dụ mã minh họa.",
     "features": "Định dạng Markdown chuẩn trong doc comment, Tự động trích xuất thành trang tài liệu HTML bằng dartdoc.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.5 Sonnet",
     "endpoint": "Doc Comments Agent",
     "prompt": "Viết tài liệu doc comment chi tiết chuẩn Effective Dart cho toàn bộ các public method trong class GatewayClient."
   },
@@ -1079,7 +1079,7 @@
     ],
     "desc": "Quản lý dự án Android chuyên nghiệp qua dòng lệnh: khởi tạo dự án, quản lý máy ảo AVD, kiểm tra UI, cài đặt SDK components.",
     "features": "Chụp ảnh màn hình máy ảo tự động, Kiểm tra phân tích giao diện UI hierarchy, Quản lý thiết bị qua ADB.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Android Command Line Tool",
     "prompt": "Khởi động máy ảo Pixel_7_API_34 qua dòng lệnh android cli và kiểm tra trạng thái kết nối ADB."
   },
@@ -1098,7 +1098,7 @@
     ],
     "desc": "Chỉnh sửa tệp dự án Xcode (.pbxproj) an toàn để tích hợp Swift Packages (Firebase, Alamofire) và liên kết tài nguyên trên iOS.",
     "features": "Thêm package dependency mà không làm hỏng cấu trúc tệp PBX, Cấu hình signing profile an toàn.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "iOS Build Assistant",
     "prompt": "Thêm FirebaseCore và FirebaseFirestore Swift Package vào dự án Runner.xcodeproj trên nền tảng iOS."
   },
@@ -1118,7 +1118,7 @@
     ],
     "desc": "Tối ưu hóa truy vấn BigQuery SQL: phân vùng (partitioning), phân cụm (clustering), giảm chi phí quét dữ liệu xuống 80% và tăng tốc 5x.",
     "features": "Phân tích Execution Plan, Loại bỏ quét full-table, Chống bẫy N+1 query, Tối ưu cấu trúc JOIN.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "BigQuery Optimizer",
     "prompt": "Tối ưu câu lệnh SQL tổng hợp 1 tỷ bản ghi nhật ký bằng cách thêm phân vùng theo DATE(_PARTITIONTIME) và gom cụm theo user_id."
   },
@@ -1138,7 +1138,7 @@
     ],
     "desc": "Xây dựng mô hình học máy và AI tạo sinh ngay trong BigQuery bằng SQL: dự báo chuỗi thời gian, phát hiện điểm dị thường và nhúng Gemini.",
     "features": "Huấn luyện mô hình BQML trực tiếp, Phân tích cụm K-Means, Tích hợp ML.GENERATE_TEXT suy luận trực tiếp trong database.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "BigQuery ML Suite",
     "prompt": "Viết câu lệnh CREATE MODEL trong BigQuery sử dụng thuật toán ARIMA_PLUS để dự báo doanh số 30 ngày tiếp theo."
   },
@@ -1158,7 +1158,7 @@
     ],
     "desc": "Xử lý dữ liệu quy mô Petabyte bằng cú pháp pandas quen thuộc trên Python thông qua BigQuery DataFrames (BigFrames) chạy trực tiếp trên cloud.",
     "features": "Xử lý dữ liệu không cần kéo về RAM máy tính, Tích hợp scikit-learn API chạy phân tán, Tối ưu hóa pipeline ETL.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "BigFrames Python Engine",
     "prompt": "Viết mã Python với bigframes.pandas để tính trung bình động 7 ngày trên tập dữ liệu giao dịch 500 triệu dòng."
   },
@@ -1177,7 +1177,7 @@
     ],
     "desc": "Khám phá, cấu hình và giám sát các luồng truyền dữ liệu định kỳ tự động từ Cloud Storage, Google Ads, AWS S3 vào BigQuery.",
     "features": "Kiểm tra trạng thái transfer runs, Trích xuất cấu hình metadata pipeline, Lập lịch nhập liệu tự động.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "DTS Manager",
     "prompt": "Cấu hình một luồng Data Transfer Service định kỳ chuyển dữ liệu JSON từ Google Cloud Storage vào bảng staging mỗi 6 giờ."
   },
@@ -1197,7 +1197,7 @@
     ],
     "desc": "Thiết kế và khởi tạo đồ thị thuộc tính (Property Graph) trong BigQuery từ các bảng dữ liệu quan hệ: định nghĩa đỉnh, cạnh và measures.",
     "features": "Kiểm chứng số lượng quan hệ giữa các bảng, Sinh DDL CREATE PROPERTY GRAPH chuẩn, Kiểm tra tính toàn vẹn cạnh.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Graph DDL Generator",
     "prompt": "Viết câu lệnh CREATE PROPERTY GRAPH liên kết bảng KhachHang (Node) và bảng GiaoDich (Edge) trỏ đến bảng SanPham (Node)."
   },
@@ -1217,7 +1217,7 @@
     ],
     "desc": "Truy vấn đồ thị thuộc tính BigQuery bằng ngôn ngữ chuẩn GQL: tìm kiếm đường đi đa bước (multi-hop), phân tích quan hệ topology.",
     "features": "Khớp mẫu quan hệ đệ quy, Tích hợp GRAPH_TABLE trong câu lệnh SQL, Tìm kiếm ngữ nghĩa kết hợp vector search.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "GQL Query Engine",
     "prompt": "Viết truy vấn GQL trong BigQuery để tìm tất cả các chuỗi giao dịch chuyển tiền vòng quanh giữa 3 tài khoản trong vòng 24 giờ."
   },
@@ -1236,7 +1236,7 @@
     ],
     "desc": "Kho tri thức chuẩn mực phát triển ứng dụng với BigQuery: quy chuẩn thiết kế schema, kiểm soát chi phí hạn ngạch và chất lượng dữ liệu.",
     "features": "Thiết kế nested và repeated fields, Quản trị chi phí truy vấn, Tối ưu schema chống dư thừa.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "BigQuery Standards",
     "prompt": "Đưa ra các nguyên tắc thiết kế schema BigQuery sử năng STRUCT và ARRAY để lưu trữ lịch sử đơn hàng tối ưu nhất."
   },
@@ -1256,7 +1256,7 @@
     ],
     "desc": "Thiết kế và vận hành cơ sở dữ liệu NoSQL độ trễ dưới 10ms Cloud Bigtable: thiết kế Row Key chống hotspotting và quản lý column families.",
     "features": "Thiết kế khóa dòng phân tán tối ưu, Cấu hình thời gian tồn tại GC rules, Giám sát throughput đọc ghi.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Bigtable Engine",
     "prompt": "Thiết kế kiến trúc Row Key cho bảng lưu dữ liệu cảm biến IoT để tránh hotspotting khi ghi hàng triệu bản ghi mỗi giây."
   },
@@ -1276,7 +1276,7 @@
     ],
     "desc": "Xây dựng pipeline chuyển đổi dữ liệu khai báo với Dataform và SQLX trên BigQuery: quản lý dependencies, data assertions và staging tables.",
     "features": "Quản lý đồ thị phụ thuộc giữa các bảng, Tự động kiểm thử tính hợp lệ của dữ liệu với assertions, Cấu hình workflow_settings.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Dataform Compiler",
     "prompt": "Tạo một tệp transform.sqlx trong Dataform để chuẩn hóa dữ liệu khách hàng kèm kiểm tra trùng lặp ID."
   },
@@ -1296,7 +1296,7 @@
     ],
     "desc": "Thiết kế và tối ưu hóa các mô hình dữ liệu dbt (data build tool) chuyên dụng cho BigQuery: xử lý bảng incremental, macros và snapshots.",
     "features": "Tối ưu cấu hình incremental table, Tự động sinh tài liệu schema.yml, Quản lý snapshot theo dõi lịch sử SCD Type 2.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "dbt Runner",
     "prompt": "Viết mô hình dbt với cấu hình materialized='incremental' và unique_key='transaction_id' tối ưu cho BigQuery."
   },
@@ -1315,7 +1315,7 @@
     ],
     "desc": "Tự động hóa làm sạch dữ liệu đầu vào cho các luồng BigQuery/Dataform: chuẩn hóa kiểu, loại bỏ bản ghi trùng lặp và xử lý giá trị null.",
     "features": "Khớp schema tự động, Tự động điền giá trị thiếu (imputation), Xuất báo cáo chất lượng dữ liệu sạch.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Cleaning Pipeline",
     "prompt": "Tạo pipeline làm sạch tệp CSV nhập khẩu: chuyển đổi ngày tháng về ISO-8601 và loại bỏ các dòng thiếu email."
   },
@@ -1334,7 +1334,7 @@
     ],
     "desc": "Tìm kiếm, khám phá và kiểm tra metadata của toàn bộ tài sản dữ liệu trên Google Cloud: BigQuery tables, Spanner, BigLake catalogs.",
     "features": "Tra cứu tài sản theo từ khóa nghiệp vụ, Trích xuất chính sách bảo mật và schema, Xem nguồn gốc dữ liệu (data lineage).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Data Catalog Agent",
     "prompt": "Tìm kiếm tất cả các bảng dữ liệu liên quan đến khách hàng VIP trên toàn bộ các project GCP của tổ chức."
   },
@@ -1353,7 +1353,7 @@
     ],
     "desc": "Xây dựng các ứng dụng dữ liệu tương tác hiện đại bằng React + Vite hoặc Streamlit, tích hợp chat hỏi đáp dữ liệu AI cùng BigQuery.",
     "features": "Biểu đồ tương tác thời gian thực, Tích hợp Gemini Data Analytics Chat API, Bố cục dashboard sang trọng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet, GPT-4o",
     "endpoint": "Data App Kit",
     "prompt": "Khởi tạo một ứng dụng React + Vite hiển thị dashboard doanh số lấy dữ liệu trực tiếp từ BigQuery qua API an toàn."
   },
@@ -1372,7 +1372,7 @@
     ],
     "desc": "Bắt buộc gắn nhãn (labels) quản trị chi phí khi thực thi các lệnh `bq` và `gcloud`, phục vụ đối soát ngân sách theo từng dự án.",
     "features": "Tự động chèn nhãn environment và cost-center, Ngăn ngừa lệnh không rõ nguồn gốc, Minh bạch chi phí đám mây.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Governance Policy",
     "prompt": "Gắn nhãn env=production và team=data-engineering vào tất cả các lệnh bq query sắp chạy."
   },
@@ -1391,7 +1391,7 @@
     ],
     "desc": "Cấu hình môi trường Google Cloud Data Agent Kit (DAK): kiểm tra thông tin xác thực ADC, project ID, vùng dữ liệu và các dịch vụ GCP.",
     "features": "Kiểm tra tính hợp lệ của tài khoản gcloud, Cấu hình tự động kết nối dịch vụ, Khắc phục lỗi thiếu quyền truy cập.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "DAK Setup Script",
     "prompt": "Kiểm tra và kích hoạt cấu hình Data Agent Kit cho GCP Project my-data-warehouse tại region asia-southeast1."
   },
@@ -1410,7 +1410,7 @@
     ],
     "desc": "Thiết lập liên kết danh mục dữ liệu đa đám mây (Lakehouse Federation) tới Iceberg REST Catalogs, Databricks Unity và AWS Glue.",
     "features": "Truy vấn bảng dữ liệu trên AWS S3 trực tiếp từ BigQuery, Không cần sao chép dữ liệu, Hỗ trợ định dạng Apache Iceberg.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Federation Engine",
     "prompt": "Cấu hình BigLake Metastore liên kết với danh mục Databricks Unity Catalog để truy vấn dữ liệu từ BigQuery."
   },
@@ -1429,7 +1429,7 @@
     ],
     "desc": "Trung tâm tư vấn và điều phối kiến trúc pipeline dữ liệu GCP: lựa chọn chính xác giữa dbt, Dataflow, Dataform, Spark hoặc Composer.",
     "features": "Đánh giá chi phí theo khối lượng dữ liệu, Lựa chọn công nghệ xử lý streaming vs batch, Thiết kế pipeline chịu lỗi cao.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Pipeline Architect",
     "prompt": "Tư vấn kiến trúc xử lý 100 triệu sự kiện clickstream mỗi ngày: nên dùng Cloud Dataflow hay BigQuery Streaming Insert?"
   },
@@ -1448,7 +1448,7 @@
     ],
     "desc": "Viết, đóng gói Flex Templates và vận hành pipeline xử lý dòng (streaming) và theo mẻ (batch) với Apache Beam trên Google Cloud Dataflow.",
     "features": "Chẩn đoán nghẽn cổ chai autoscaling, Cấu hình Flex Template với Cloud Build, Xử lý watermark và late data.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Dataflow Manager",
     "prompt": "Viết pipeline Apache Beam bằng Python đọc dữ liệu thời gian thực từ Pub/Sub và ghi vào BigQuery sau mỗi cửa sổ 1 phút."
   },
@@ -1467,7 +1467,7 @@
     ],
     "desc": "Chẩn đoán nguyên nhân gốc rễ (RCA) các lỗi thất bại của pipeline Apache Airflow chạy trên Cloud Composer, xuất báo cáo phục hồi nhanh.",
     "features": "Phân tích nhật ký lỗi của Airflow worker/scheduler, Khắc phục lỗi nghẽn Celery queue, Tối ưu tài nguyên Pod.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Airflow Diagnoser",
     "prompt": "Phân tích log Airflow task bị thất bại với lỗi Zombie Task và đưa ra giải pháp khắc phục triệt để."
   },
@@ -1486,7 +1486,7 @@
     ],
     "desc": "Xây dựng các kịch bản DAG Apache Airflow chuẩn mực cho Managed Service for Apache Airflow (MSAA/Composer): tương thích Airflow 2 & 3.",
     "features": "Sử dụng TaskFlow API hiện đại (@task), Cấu hình retry và alert webhook, Tối ưu thời gian parse DAG.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "DAG Generator",
     "prompt": "Tạo một file DAG Airflow mẫu chạy hàng ngày lúc 2h sáng: trích xuất dữ liệu, trigger dbt run và gửi thông báo Telegram."
   },
@@ -1505,7 +1505,7 @@
     ],
     "desc": "Quét và tự động chuyển đổi các DAG cũ lên phiên bản Airflow 2.11+ và Airflow 3: phát hiện breaking changes và thay thế toán tử lỗi thời.",
     "features": "Tự động quét mã DAG tìm import deprecated, Đề xuất toán tử thay thế tương đương, Kiểm thử cú pháp trước khi deploy.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Migration Suite",
     "prompt": "Quét thư mục DAGs hiện tại để tìm các toán tử BigQueryExecuteQueryOperator đã lỗi thời và cập nhật lên chuẩn mới."
   },
@@ -1524,7 +1524,7 @@
     ],
     "desc": "Tư vấn cấu hình, điều chỉnh tài nguyên và tối ưu hiệu suất cho môi trường Cloud Composer (MSAA): chống sập scheduler và tràn bộ nhớ.",
     "features": "Điều chỉnh kích thước worker và autoscaling, Tối ưu cấu hình cơ sở dữ liệu metadata, Giảm chi phí máy ảo.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Airflow Advisor",
     "prompt": "Đưa ra khuyến nghị cấu hình Composer 2 cho hệ thống chạy 500 DAGs đồng thời mà không bị restart worker."
   },
@@ -1543,7 +1543,7 @@
     ],
     "desc": "Khởi tạo và cập nhật định nghĩa điều phối toàn diện cho các luồng xử lý: kết hợp dbt, Spark jobs, Dataform và Python scripts.",
     "features": "Tự động deploy DAG lên Cloud Storage bucket của Composer, Kích hoạt chạy thử luồng điều phối qua API.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Composer Deployer",
     "prompt": "Triển khai một pipeline điều phối liên hoàn: Dataform staging -> Dataproc ML scoring -> BigQuery export."
   },
@@ -1562,7 +1562,7 @@
     ],
     "desc": "Tự động khởi tạo hạ tầng tài nguyên dữ liệu thông qua deployment.yaml: tạo BigQuery datasets, tables, quyền IAM và DTS transfers.",
     "features": "Quản lý biến môi trường dev/staging/prod riêng biệt, Khởi tạo tài nguyên khai báo tự động.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Provisioning Engine",
     "prompt": "Tạo file deployment.yaml để khởi tạo dataset bq_analytics_prod tại vùng asia-southeast1 với thời gian lưu trữ 90 ngày."
   },
@@ -1581,7 +1581,7 @@
     ],
     "desc": "Chẩn đoán sự cố chuyên sâu cho các tải xử lý Apache Spark/Dataproc Serverless: đọc luồng log driver, phân tích OOM và dữ liệu lệch pha.",
     "features": "Phân tích file event log trong GCS, Phát hiện lỗi lệch dữ liệu (data skew), Tinh chỉnh bộ nhớ executor và driver.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet (Thinking)",
     "endpoint": "Spark Diagnoser",
     "prompt": "Phân tích log Spark driver vừa bị lỗi java.lang.OutOfMemoryError: Java heap space và đề xuất cách repartition dữ liệu."
   },
@@ -1601,7 +1601,7 @@
     ],
     "desc": "Phát triển, tối ưu và vận hành mã nguồn PySpark/Spark SQL trên Google Cloud Dataproc (Cụm tiêu chuẩn hoặc Dataproc Serverless).",
     "features": "Xây dựng pipeline ETL phân tán, Tối ưu chi phí chạy cụm Dataproc tạm thời (ephemeral), Tích hợp BigQuery connector.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Spark Execution Engine",
     "prompt": "Viết kịch bản PySpark đọc 100GB dữ liệu Parquet từ Cloud Storage, tính tổng hợp doanh thu và ghi vào BigQuery."
   },
@@ -1620,7 +1620,7 @@
     ],
     "desc": "Nâng cấp phiên bản hình ảnh (image version) và runtime cho các batch job Spark/Dataproc mà không làm gián đoạn mã hiện hành.",
     "features": "Kiểm tra tương thích phiên bản thư viện, Thử nghiệm chạy trên staging bucket trước khi áp dụng chính thức.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Dataproc Upgrade Suite",
     "prompt": "Nâng cấp batch job Dataproc từ phiên bản image 2.0 lên phiên bản image 2.2 mới nhất và kiểm tra tương thích."
   },
@@ -1640,7 +1640,7 @@
     ],
     "desc": "Lưu trữ, quản lý và truyền tải tệp đối tượng trên Google Cloud Storage (GCS): cấu hình lớp lưu trữ (Standard/Nearline/Coldline/Archive).",
     "features": "Tạo link tải có chữ ký thời hạn (Signed URLs), Thiết lập vòng đời tệp (Lifecycle Rules), Kiểm soát phân quyền IAM.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "GCS Management Suite",
     "prompt": "Cấu hình Lifecycle Rule cho bucket gcs-logs để tự động chuyển tệp sang lớp Coldline sau 30 ngày và xóa sau 365 ngày."
   },
@@ -1660,7 +1660,7 @@
     ],
     "desc": "Thiết kế và khởi tạo bucket Google Cloud Storage an toàn tuyệt đối ngay từ đầu: bật Uniform bucket-level access, ngăn chặn công khai.",
     "features": "Thiết lập mã hóa khóa riêng CMEK, Kích hoạt tính năng chống xóa nhầm Soft Delete, Tuân thủ chuẩn an toàn cấp doanh nghiệp.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Bucket Architect Tool",
     "prompt": "Tạo lệnh khởi tạo bucket an toàn: bật Public Access Prevention, Uniform Bucket-Level Access và Soft Delete retention 7 ngày."
   },
@@ -1680,7 +1680,7 @@
     ],
     "desc": "Gắn kết (mount) bucket Google Cloud Storage thành ổ đĩa tệp POSIX cục bộ sử dụng Cloud Storage FUSE (gcsfuse), tối ưu cho AI/ML.",
     "features": "Cấu hình bộ đệm đọc ghi cache tối ưu, Bảo vệ an toàn việc lưu checkpoint mô hình học máy, Tích hợp GKE CSI Driver.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "FUSE Integration Suite",
     "prompt": "Cấu hình cờ gcsfuse mount bucket mô hình ML vào thư mục /mnt/models với chế độ cache metadata 60 giây."
   },
@@ -1699,7 +1699,7 @@
     ],
     "desc": "Đánh giá an ninh toàn diện hệ thống Cloud Storage: phát hiện xì lọt dữ liệu công khai, cấp quyền quá mức và vi phạm chuẩn Google SAIF.",
     "features": "Quét toàn bộ danh sách bucket của dự án, Phát hiện cấu hình nguy hiểm allUsers/allAuthenticatedUsers, Xuất kế hoạch vá lỗi.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "GCS Security Auditor",
     "prompt": "Quét bảo mật toàn bộ các bucket trong project để tìm các bucket đang bị mở quyền đọc ghi công khai trái phép."
   },
@@ -1719,7 +1719,7 @@
     ],
     "desc": "Quy trình kiểm tra tiền trạm Bước 0 bắt buộc: xác thực thông tin tài khoản Google Cloud và Application Default Credentials (ADC).",
     "features": "Tự động phát hiện thông tin xác thực hết hạn, Hướng dẫn chạy gcloud auth login an toàn, Đảm bảo quyền truy cập API.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Auth Guard Engine",
     "prompt": "Kiểm tra xem ADC hiện tại có quyền truy cập vào BigQuery và Cloud Storage hay không trước khi chạy lệnh ETL."
   },
@@ -1738,7 +1738,7 @@
     ],
     "desc": "Kiểm tra và tự động vá các biến vị trí vùng ($GCP_REGION) bị thiếu trong tệp cấu hình máy chủ MCP Server (Dataproc, Spark).",
     "features": "Phát hiện URL endpoint bị lỗi vùng, Tự động sửa tệp cấu hình mcp_config.json, Khởi động lại MCP an toàn.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "MCP Config Patch Tool",
     "prompt": "Kiểm tra cấu hình máy chủ MCP Dataproc và thay thế biến $GCP_REGION chưa điền bằng asia-southeast1."
   },
@@ -1758,7 +1758,7 @@
     ],
     "desc": "Quản lý thư viện phụ thuộc Python chuyên nghiệp: tuyệt đối không chạy `pip install` toàn cục, dùng virtualenv và uv tốc độ cao.",
     "features": "Khóa phiên bản chính xác với requirements.txt/pyproject.toml, Đảm bảo môi trường ảo venv luôn được kích hoạt.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Python Env Manager",
     "prompt": "Khởi tạo môi trường ảo Python venv và cài đặt các thư viện cần thiết cho BigQuery client bằng uv."
   },
@@ -1777,7 +1777,7 @@
     ],
     "desc": "Bộ quy chuẩn thực hành học máy chuyên nghiệp: phân lớp, hồi quy, chuỗi thời gian, đánh giá cross-validation và kiểm định thống kê.",
     "features": "Tránh rò rỉ dữ liệu (data leakage), Tự động so sánh benchmark các mô hình, Trực quan hóa ma trận nhầm lẫn (Confusion Matrix).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet, Gemini 2.5 Pro",
     "endpoint": "ML Pipeline Suite",
     "prompt": "Áp dụng ml-best-practices để xây dựng quy trình đánh giá chéo 5-fold cross-validation cho bài toán phân loại gian lận giao dịch."
   },
@@ -1797,7 +1797,7 @@
     ],
     "desc": "Hướng dẫn thực thi phân tích dữ liệu tương tác trong Jupyter Notebook: sử dụng magic `%%bqsql` truy vấn BigQuery trực tiếp, vẽ biểu đồ.",
     "features": "Cấu trúc notebook chuẩn khoa học dữ liệu, Tối ưu bộ nhớ khi load dữ liệu, Tích hợp matplotlib và seaborn đẹp mắt.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro",
     "endpoint": "Notebook Assistant",
     "prompt": "Tạo cấu trúc Jupyter Notebook hoàn chỉnh phân tích tỷ lệ rời bỏ khách hàng (Churn Analysis) bằng BigQuery SQL."
   },
@@ -1816,7 +1816,7 @@
     ],
     "desc": "Phân tích và thiết lập bản đồ chuyển đổi cấu trúc dữ liệu chi tiết (Mapping Manifesto) giữa nguồn và đích trước khi viết code ETL.",
     "features": "Định nghĩa quy tắc ép kiểu tường minh, Xử lý trường hợp thiếu cột, Tài liệu hóa quan hệ 1-1, 1-nhiều rõ ràng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Mapping Engine",
     "prompt": "Lập bảng mapping chi tiết giữa schema bảng đơn hàng cũ từ MySQL sang schema chuẩn BigQuery Data Warehouse mới."
   },
@@ -1835,7 +1835,7 @@
     ],
     "desc": "Mã hóa chống máy tính lượng tử: trao đổi khóa ML-KEM Kyber-768 và chữ ký số ML-DSA Dilithium-3 chuẩn NIST mới nhất.",
     "features": "Bảo vệ thông tin bí mật chống lại mối đe dọa Harvest Now Decrypt Later, Triển khai qua Rust Core DLL hiệu năng cực cao.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Quantum-Resistant Engine",
     "prompt": "Thực hiện quy trình tạo cặp khóa PQC ML-KEM Kyber-768 và mã hóa gói tin bảo mật gửi từ Engine sang Core."
   },
@@ -1855,7 +1855,7 @@
     ],
     "desc": "Bắt buộc ký JWT bất đối xứng với RS256 hoặc ES256: Private Key lưu an toàn tại Auth Service, các node khác chỉ giữ Public Key để verify.",
     "features": "Tuyệt đối cấm sử dụng HS256 đối xứng, Phòng chống giả mạo chữ ký token, Tự động xoay khóa (key rotation).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Auth Security Guard",
     "prompt": "Cấu hình module xác thực JWT sử dụng thuật toán RS256 và khóa công khai PEM, từ chối mọi token sử dụng HS256."
   },
@@ -1874,7 +1874,7 @@
     ],
     "desc": "Cạm bẫy mạng đánh lừa tin tặc: triển khai các cổng bẫy dummy endpoints, bẫy dò quét lỗ hổng và tự động cô lập IP tấn công.",
     "features": "Báo động xâm nhập với 0% dương tính giả, Ghi lại toàn bộ hành vi kẻ tấn công, Báo cáo tức thì vào hệ thống SIEM.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Honeypot Controller",
     "prompt": "Kích hoạt bẫy honeypot tại đường dẫn /admin/config.php và ghi nhận toàn bộ payload của IP thực hiện tấn công dò quét."
   },
@@ -1893,7 +1893,7 @@
     ],
     "desc": "Hệ thống giám sát an ninh SIEM và chống tấn công Log Injection (CRLF): khử toàn bộ ký tự xuống dòng từ user input trước khi ghi log.",
     "features": "Format log chuẩn hóa JSON có cấu trúc, Truy vết nguồn gốc hành vi người dùng, Cảnh báo sớm dấu hiệu bất thường.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "SIEM Central Collector",
     "prompt": "Áp dụng bộ lọc khử CRLF cho toàn bộ các trường dữ liệu người dùng trước khi ghi vào tệp audit.log."
   },
@@ -1912,7 +1912,7 @@
     ],
     "desc": "Ngăn chặn tấn công dựa trên thời gian (Timing Attack): bắt buộc so sánh mật khẩu, token, chữ ký HMAC bằng thuật toán thời gian hằng số.",
     "features": "Dùng subtle.ConstantTimeCompare (Go) và hmac.compare_digest (Python), Loại bỏ hoàn toàn toán tử so sánh `==` nhạy cảm.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Cryptographic Validator",
     "prompt": "Rà soát toàn bộ mã nguồn xác thực token để thay thế toán tử so sánh chuỗi == bằng subtle.ConstantTimeCompare."
   },
@@ -1931,7 +1931,7 @@
     ],
     "desc": "Bảo hộ giải phóng bộ nhớ khi gọi hàm liên ngôn ngữ FFI: Rust Core xuất hàm giải phóng và Go Engine bắt buộc gọi defer giải phóng vùng nhớ C.",
     "features": "Ngăn chặn rò rỉ bộ nhớ RAM ngoài tầm kiểm soát của Garbage Collector, Đảm bảo an toàn con trỏ trần (raw pointers).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "FFI Safety Guard",
     "prompt": "Kiểm tra toàn bộ các lệnh gọi FFI sang Rust DLL để đảm bảo mỗi con trỏ C được cấp phát đều có lệnh defer tương ứng để giải phóng."
   },
@@ -1950,7 +1950,7 @@
     ],
     "desc": "Đảm bảo tính lũy quyền (idempotency) tuyệt đối cho hệ thống message broker Kafka/Redpanda: chống xử lý trùng lặp giao dịch.",
     "features": "Mỗi bản tin mang mã Idempotency Key duy nhất, Consumer kiểm tra deduplication cache trước khi xử lý, Đảm bảo an toàn tài chính.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Message Broker Suite",
     "prompt": "Tạo middleware xác thực Idempotency-Key trên message bus để đảm bảo yêu cầu cộng tiền chỉ được thực thi duy nhất 1 lần."
   },
@@ -1969,7 +1969,7 @@
     ],
     "desc": "Quản lý công cụ dòng lệnh Firebase CLI: cài đặt phiên bản mới nhất, xác thực đăng nhập không cần trình duyệt và tải tệp cấu hình app.",
     "features": "Tải google-services.json và GoogleService-Info.plist, Chuyển đổi project đang kích hoạt với `firebase use`.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Firebase CLI",
     "prompt": "Kiểm tra phiên bản firebase-tools và cấu hình chọn project firebase-production."
   },
@@ -1989,7 +1989,7 @@
     ],
     "desc": "Thiết lập hệ thống xác thực người dùng toàn diện với Firebase Auth: đăng nhập Email/Password, Google OAuth và phân quyền Custom Claims.",
     "features": "Quản lý vòng đời token ID người dùng, Thiết lập vai trò Admin/User qua claims, Tích hợp xác thực đa yếu tố MFA.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "GPT-4o",
     "endpoint": "Auth Security Suite",
     "prompt": "Viết Cloud Function gán Custom Claim { role: 'admin' } cho tài khoản người dùng sau khi xác thực danh tính."
   },
@@ -2008,7 +2008,7 @@
     ],
     "desc": "Thiết kế mô hình dữ liệu tài liệu NoSQL với Cloud Firestore: định nghĩa subcollections, lập chỉ mục phức hợp (composite indexes).",
     "features": "Đồng bộ hóa dữ liệu thời gian thực (snapshot listeners), Hỗ trợ truy vấn offline cache, Tối ưu cấu trúc collection.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Firestore SDK",
     "prompt": "Thiết kế cấu trúc subcollection cho hệ thống chat: users/{userId}/messages với composite index theo timestamp."
   },
@@ -2027,7 +2027,7 @@
     ],
     "desc": "Thiết kế và lập trình tệp quy tắc bảo mật firestore.rules cấp độ doanh nghiệp: ngăn chặn leo thang đặc quyền và rò rỉ dữ liệu.",
     "features": "Xác thực danh tính chủ sở hữu request.auth.uid, Kiểm tra kiểu dữ liệu và giới hạn kích thước trường, Chống ghi đè trái phép.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Rules Author Subagent",
     "prompt": "Viết tệp firestore.rules chặn quyền đọc ghi của người dùng chưa đăng nhập và chỉ cho phép user cập nhật bài viết của chính mình."
   },
@@ -2046,7 +2046,7 @@
     ],
     "desc": "Audit rà soát lỗ hổng bảo mật trong quy tắc Firebase Security Rules: kiểm tra nguy cơ bỏ qua xác thực và cạn kiệt tài nguyên.",
     "features": "Chấm điểm an toàn theo checklist, Phát hiện các nhánh rule mở quá rộng allow read, write: if true, Đề xuất vá lỗi.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "DeepSeek R1 (Reasoning)",
     "endpoint": "Security Auditor",
     "prompt": "Rà soát toàn bộ firestore.rules để phát hiện xem có trường hợp nào người dùng bình thường có thể tự phong làm Admin không."
   },
@@ -2066,7 +2066,7 @@
     ],
     "desc": "Truy xuất cấu trúc 3D dự đoán bởi AlphaFold theo UniProt ID: phân tích chỉ số độ tin cậy pLDDT, ranh giới domain và vùng mất trật tự.",
     "features": "Đánh giá chất lượng cấu trúc protein, Trích xuất tọa độ PDB/mmCIF, Xác định các miền cấu trúc chức năng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "AlphaFold DB API",
     "prompt": "Truy xuất cấu trúc AlphaFold cho UniProt ID P04637 (p53) và xuất biểu đồ độ tin cậy pLDDT theo từng acid amin."
   },
@@ -2085,7 +2085,7 @@
     ],
     "desc": "Đánh giá điểm tác động chức năng của biến dị di truyền (AVI) sử dụng AlphaGenome API: quét cửa sổ đột biến bão hòa trên hệ gen.",
     "features": "Truy vấn biến thể theo chuẩn chr:pos:ref>alt, Trích xuất tọa độ GENCODE v46, Dự báo hậu quả biểu hiện gen.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "AlphaGenome Atlas",
     "prompt": "Tính toán điểm tác động AVI của biến thể chr17:7673802:C>T liên quan đến gen TP53."
   },
@@ -2104,7 +2104,7 @@
     ],
     "desc": "Phân tích tác động của biến dị di truyền lên biểu hiện RNA, độ mở chromatin (DNASE) và vị trí gắn yếu tố phiên mã qua AlphaGenome.",
     "features": "Dự báo đứt gãy splicing, Phân tích vùng điều hòa promoter/enhancer, Tra cứu ontology mô UBERON/CL.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "AlphaGenome Engine",
     "prompt": "Phân tích tác động của đột biến vùng promoter gen BRCA1 lên độ mở chromatin và mức phiên mã RNA."
   },
@@ -2123,7 +2123,7 @@
     ],
     "desc": "Tạo liên kết trực tiếp (deep-links) mở giao diện trực quan hóa AlphaGenome Atlas cho từng vị trí locus gen và biến dị cụ thể.",
     "features": "Khởi tạo link trực quan hóa locus chr:start-end, So sánh dự đoán đối chiếu bản gốc vs bản đột biến.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "Atlas Link Generator",
     "prompt": "Tạo liên kết xem trực quan trên AlphaGenome Atlas cho locus gen chr7:140453136-140453137."
   },
@@ -2143,7 +2143,7 @@
     ],
     "desc": "Trực quan hóa cấu trúc phân tử sinh học 3D tương tác thời gian thực bằng Mol*: hiển thị sidecar panel, tô màu gốc acid amin chỉ định.",
     "features": "Hỗ trợ tệp .pdb, .cif, .mmcif, Quản lý chú thích 3D, Liên kết mở nhanh sidecar:// trong giao diện chat.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Mol* Sidecar Viewer",
     "prompt": "Mở cấu hình xem 3D cho tệp cấu trúc protein 7KRR.pdb và làm nổi bật các gốc acid amin tại vị trí gắn cơ chất."
   },
@@ -2162,7 +2162,7 @@
     ],
     "desc": "Tìm kiếm và tải cấu trúc phân tử sinh học thực nghiệm từ RCSB PDB: tra cứu theo độ tương đồng trình tự, hóa chất và độ phân giải.",
     "features": "Trích xuất metadata thí nghiệm tinh thể học/Cryo-EM, Tải tệp tọa độ mmCIF, Tìm kiếm phức hợp phối tử.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "RCSB PDB API",
     "prompt": "Tìm kiếm các cấu trúc PDB có độ phân giải dưới 2.0 Å của thụ thể SARS-CoV-2 Spike gắn kháng thể trung hòa."
   },
@@ -2181,7 +2181,7 @@
     ],
     "desc": "Tìm kiếm protein có cấu trúc 3D tương đồng trên các cơ sở dữ liệu khổng lồ (PDB, AlphaFold DB, CATH) với tốc độ siêu nhanh qua Foldseek.",
     "features": "Căn chỉnh không gian 3D, Phát hiện mối liên hệ tiến hóa xa mà trình tự không nhận ra, So khớp cấu trúc tệp PDB tải lên.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Foldseek API",
     "prompt": "Sử dụng Foldseek để so khớp cấu trúc tệp protein mới giải trình tự với cơ sở dữ liệu AlphaFold DB để tìm kiếm họ chức năng."
   },
@@ -2200,7 +2200,7 @@
     ],
     "desc": "Dựng hình ảnh kết xuất cấu trúc protein chất lượng xuất bản khoa học bằng PyMOL: tô màu theo b-factor, đo khoảng cách liên kết phối tử.",
     "features": "Đo khoảng cách liên kết hydro, Tô màu khoang gắn thuốc (binding pocket), Xuất ảnh độ phân giải cao 300 DPI.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "PyMOL Scripting Engine",
     "prompt": "Tạo script PyMOL tự động xoay cấu trúc, ẩn phân tử nước và tô màu cam cho vùng thụ thể tương tác."
   },
@@ -2220,7 +2220,7 @@
     ],
     "desc": "Tra cứu thông tin protein toàn diện từ UniProtKB: chức năng sinh học, phân loại loài, chuỗi amino acid và các biến thể đồng dạng (isoforms).",
     "features": "Chuyển đổi chéo mã định danh (ID Mapping), Trích xuất tài liệu xuất bản tham chiếu, Chú giải chức năng enzyme.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "UniProt REST API",
     "prompt": "Tra cứu thông tin chức năng và các vị trí gắn phối tử đã chú giải của protein INS_HUMAN trên UniProt."
   },
@@ -2240,7 +2240,7 @@
     ],
     "desc": "Nhận diện miền cấu trúc (domains), họ protein và vị trí hoạt động chức năng bằng cách tổng hợp 14 cơ sở dữ liệu đối tác trong InterPro.",
     "features": "Phân tích kiến trúc domain (IDA), Gán nhãn thuật ngữ Gene Ontology (GO), Tra cứu độ bao phủ loài sinh vật.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "InterPro API",
     "prompt": "Quét chuỗi acid amin để xác định các miền Kinase domain và vị trí phosphoryl hóa sử dụng cơ sở dữ liệu InterPro."
   },
@@ -2260,7 +2260,7 @@
     ],
     "desc": "Tra cứu dữ liệu hệ gen học Ensembl: dịch mã ID gen/transcript, trích xuất cấu trúc exon và dự báo hậu quả biến dị di truyền (VEP).",
     "features": "Lấy chuỗi DNA theo tọa độ nhiễm sắc thể, Dự báo đột biến làm sai nghĩa missense/nonsense, Tra cứu phả hệ gen.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Ensembl REST API",
     "prompt": "Chạy công cụ dự báo biến dị Ensembl VEP cho danh sách các biến thể trên nhiễm sắc thể 13 để tìm đột biến mất chức năng."
   },
@@ -2280,7 +2280,7 @@
     ],
     "desc": "Tải chuỗi nucleotide và protein từ cơ sở dữ liệu NCBI GenBank/RefSeq bằng E-Utilities theo Accession ID hoặc tên gen.",
     "features": "Tải tệp định dạng FASTA/GenBank chuẩn, Trích xuất vùng mã hóa CDS, Tra cứu tài liệu PubMed liên kết.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "NCBI Entrez API",
     "prompt": "Tải chuỗi protein định dạng FASTA cho mã truy cập NCBI NP_000537.3 của gen TP53."
   },
@@ -2300,7 +2300,7 @@
     ],
     "desc": "Tra cứu phân loại bệnh học của các biến dị di truyền người từ ClinVar: xác định biến thể gây bệnh (Pathogenic), lành tính hay VUS.",
     "features": "Trích xuất chứng cứ lâm sàng thực nghiệm, Lọc các biến thể kiểm chuẩn dương tính (positive controls).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "ClinVar API",
     "prompt": "Kiểm tra mức độ bệnh học trong ClinVar cho biến thể BRCA1 c.5266dupC và xuất danh sách các báo cáo y khoa đính kèm."
   },
@@ -2320,7 +2320,7 @@
     ],
     "desc": "Tra cứu và ánh xạ các biến dị di truyền ngắn (SNPs, indels) trong cơ sở dữ liệu dbSNP của NCBI: giải mã giữa rsID, tọa độ VCF và HGVS.",
     "features": "Trích xuất tần số alen trên các quần thể dân số, Xác định loại đột biến, Tương thích tọa độ tham chiếu GRCh38.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "dbSNP Entrez API",
     "prompt": "Tra cứu thông tin rsID rs121913343: lấy tọa độ bộ gen GRCh38 và tần số alen trong các quần thể quốc tế."
   },
@@ -2340,7 +2340,7 @@
     ],
     "desc": "Truy vấn cơ sở dữ liệu tập hợp bộ gen gnomAD: đánh giá độ hiếm của biến dị di truyền và chỉ số bất dung nạp mất chức năng gen (pLI, LOEUF).",
     "features": "Tra cứu tần số xuất hiện trong hơn 140,000 cá thể, Lọc biến thể theo nhóm dân số, Đánh giá mức độ chọn lọc tự nhiên.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "gnomAD GraphQL API",
     "prompt": "Tra cứu chỉ số dung nạp đột biến LOEUF và pLI của gen SCN1A trên cơ sở dữ liệu gnomAD v4."
   },
@@ -2360,7 +2360,7 @@
     ],
     "desc": "Trích xuất dữ liệu biểu hiện gen RNA định lượng và biến dị điều hòa eQTL từ dự án GTEx trên 54 mô cơ thể người khỏe mạnh.",
     "features": "Xác định mô có mức biểu hiện gen cao nhất, Phân tích mối liên hệ giữa biến dị SNP và lượng phiên mã mô cụ thể.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "GTEx Portal API",
     "prompt": "Lấy biểu đồ mức độ biểu hiện gen ACE2 qua 54 mô cơ thể từ dữ liệu giải trình tự RNA của dự án GTEx."
   },
@@ -2380,7 +2380,7 @@
     ],
     "desc": "Truy xuất dữ liệu định vị không gian và biểu hiện protein ở mức bán định lượng trên các mô, tế bào và bào quan của Human Protein Atlas.",
     "features": "Định vị dưới tế bào (nhân, màng, ty thể), Ảnh nhuộm hóa mô miễn dịch IHC, Đánh giá tính đặc hiệu của protein.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "HPA API",
     "prompt": "Tra cứu vị trí định vị dưới tế bào của protein TP53 trong Human Protein Atlas."
   },
@@ -2400,7 +2400,7 @@
     ],
     "desc": "Truy vấn cơ sở dữ liệu phân tử hoạt tính sinh học ChEMBL: tra cứu đích tác dụng của thuốc, dữ liệu ái lực IC50/Ki và cơ chế tác động.",
     "features": "Tìm kiếm cấu trúc hóa học theo SMILES, Lọc các thuốc đã được phê duyệt, Phân tích hoạt tính ức chế enzyme.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "ChEMBL REST API",
     "prompt": "Tìm kiếm tất cả các phân tử nhỏ có hoạt tính ức chế đích EGFR với giá trị IC50 dưới 50 nM trong ChEMBL."
   },
@@ -2420,7 +2420,7 @@
     ],
     "desc": "Tra cứu thông tin hóa chất và hoạt tính sinh học từ PubChem: tìm kiếm theo tên, CID, SMILES, cấu trúc tương đồng và tính chất lý hóa.",
     "features": "Trích xuất khối lượng phân tử, logP, số liên kết hydro cho nhận, Tra cứu độc tính và dữ liệu an toàn SDS.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "PubChem PUG REST API",
     "prompt": "Tra cứu cấu trúc 2D, công thức hóa học và giá trị LogP của hợp chất Paracetamol theo mã định danh PubChem CID."
   },
@@ -2439,7 +2439,7 @@
     ],
     "desc": "Khám phá đích điều trị bệnh trên nền tảng Open Targets: đánh giá mối liên kết đích - bệnh, độ khả thi phát triển thuốc (druggability).",
     "features": "Tổng hợp chứng cứ di truyền học, ung thư và hóa dược, Xếp hạng độ ưu tiên đích can thiệp trị liệu.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Open Targets GraphQL",
     "prompt": "Tìm kiếm các đích phân tử có điểm liên kết bằng chứng di truyền cao nhất với bệnh tiểu đường type 2 trên Open Targets."
   },
@@ -2459,7 +2459,7 @@
     ],
     "desc": "Tra cứu các thử nghiệm lâm sàng toàn cầu trên ClinicalTrials.gov qua APIv2: tìm kiếm theo căn bệnh, tên thuốc, giai đoạn (Phase 1-4).",
     "features": "Kiểm tra tiêu chuẩn lựa chọn/loại trừ bệnh nhân, Thống kê danh mục thử nghiệm của nhà tài trợ, Lọc thử nghiệm đang tuyển mộ.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "ClinicalTrials APIv2",
     "prompt": "Tìm kiếm các thử nghiệm lâm sàng Giai đoạn 3 đang tuyển bệnh nhân tại Đông Nam Á điều trị bệnh phổi tắc nghẽn mãn tính."
   },
@@ -2479,7 +2479,7 @@
     ],
     "desc": "Khai thác dữ liệu pháp quy cơ quan quản lý thực phẩm và dược phẩm Hoa Kỳ qua openFDA API: báo cáo biến cố bất lợi (FAERS), thu hồi thuốc.",
     "features": "Tra cứu mã định danh thuốc NDC, Giám sát cảnh báo an toàn thuốc lưu hành, Phân tích dữ liệu thiết bị y tế 510(k).",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "openFDA REST API",
     "prompt": "Truy vấn các báo cáo biến cố bất lợi nghiêm trọng được gửi về FDA liên quan đến hoạt chất Ibuprofen trong 12 tháng qua."
   },
@@ -2498,7 +2498,7 @@
     ],
     "desc": "Phân tích làm giàu lộ trình sinh học (Pathway Enrichment) trên Reactome: xác định các đường truyền tín hiệu tế bào bị biến đổi.",
     "features": "Xuất sơ đồ phản ứng sinh hóa chi tiết, Ánh xạ danh sách gen sang lộ trình, Xác định chất tham gia phản ứng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Reactome Analysis API",
     "prompt": "Chạy phân tích làm giàu pathway trên Reactome cho danh sách 50 gen có mức biểu hiện tăng vọt trong khối u."
   },
@@ -2517,7 +2517,7 @@
     ],
     "desc": "Khai phá mạng lưới tương tác giữa các phân tử protein (PPI) trên cơ sở dữ liệu STRING: tính toán điểm tin cậy tương tác thực nghiệm.",
     "features": "Tìm kiếm đối tác tương tác lân cận, Phân tích cụm mạng lưới tương tác, Trích xuất bằng chứng đồng biểu hiện.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "STRING DB API",
     "prompt": "Vẽ đồ thị mạng lưới tương tác protein-protein cho EGFR và tìm 10 đối tác có điểm tin cậy tương tác cao nhất."
   },
@@ -2536,7 +2536,7 @@
     ],
     "desc": "Tra cứu hồ sơ motif gắn yếu tố phiên mã (Transcription Factor) từ JASPAR: trích xuất ma trận tần suất vị trí (PFM/PWM) chuẩn.",
     "features": "Hỗ trợ định dạng MEME, TRANSFAC, JASPAR YAML, Tra cứu ma trận theo tên gen yếu tố phiên mã.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "JASPAR REST API",
     "prompt": "Tải ma trận trọng số vị trí PWM của yếu tố phiên mã NF-kB từ JASPAR ở định dạng MEME."
   },
@@ -2555,7 +2555,7 @@
     ],
     "desc": "Truy vấn các vị trí gắn yếu tố phiên mã đã được kiểm chứng thực nghiệm bằng ChIP-seq trên cơ sở dữ liệu UniBind.",
     "features": "Tải tệp tọa độ định dạng BED/FASTA, Lọc dữ liệu theo dòng tế bào và loài sinh vật, Trực tiếp kiểm chứng tương tác DNA.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "UniBind API",
     "prompt": "Tải danh sách các vị trí gắn yếu tố phiên mã FOXA1 trên dòng tế bào gan người HepG2 ở định dạng BED."
   },
@@ -2575,7 +2575,7 @@
     ],
     "desc": "Truy vấn danh mục các yếu tố điều hòa biểu hiện gen dạng cis (cCREs) của dự án ENCODE qua API GraphQL: phân loại promoter và enhancer.",
     "features": "Tra cứu dữ liệu đỉnh ChIP-seq trên hàng trăm dòng tế bào người, Phân loại chức năng vùng gen không mã hóa.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "ENCODE SCREEN API",
     "prompt": "Tra cứu các yếu tố điều hòa cis (cCREs) hoạt động mạnh trong tế bào miễn dịch T-cell xung quanh locus gen IL2."
   },
@@ -2594,7 +2594,7 @@
     ],
     "desc": "Trích xuất điểm số bảo tồn tiến hóa sinh học (phyloP, phastCons) từ UCSC Genome Browser: đánh giá đột biến rơi vào vùng bảo tồn.",
     "features": "So sánh mức độ bảo tồn qua 100 loài có xương sống, Phát hiện các vùng gen chịu áp lực chọn lọc tự nhiên mạnh.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "UCSC REST API",
     "prompt": "Lấy điểm số bảo tồn phyloP 100-way cho đoạn trình tự nhiễm sắc thể 11:5246800-5246900."
   },
@@ -2614,7 +2614,7 @@
     ],
     "desc": "Tra cứu và điều hướng cây phả hệ thuật ngữ bản thể học y sinh (Ontology Lookup Service) qua hơn 250 ontologies: GO, DOID, HP.",
     "features": "Duyệt cây quan hệ cha-con (ancestors/children), Tự động hoàn thành từ khóa y sinh, Chuẩn hóa định danh thuật ngữ.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "EMBL-EBI OLS API",
     "prompt": "Tra cứu thuật ngữ Human Phenotype Ontology cho triệu chứng dị tật tim bẩm sinh và tìm tất cả các thuật ngữ con."
   },
@@ -2633,7 +2633,7 @@
     ],
     "desc": "Truy vấn QuickGO và Evidence & Conclusion Ontology: ánh xạ gen tới các quá trình sinh học, chức năng phân tử và vị trí tế bào.",
     "features": "Lọc theo mã chứng cứ thực nghiệm ECO, Duyệt đồ thị cấu trúc Gene Ontology, Phân loại chức năng gen toàn diện.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "QuickGO REST API",
     "prompt": "Tra cứu các gen người được chú giải với thuật ngữ GO:0006915 (Apoptotic process) có chứng cứ thực nghiệm."
   },
@@ -2652,7 +2652,7 @@
     ],
     "desc": "Thực hiện gióng hàng đa chuỗi protein (Multiple Sequence Alignment) bằng Clustal Omega: phân tích mức độ bảo tồn acid amin qua các loài.",
     "features": "Hỗ trợ xử lý tới 4000 chuỗi cùng lúc, Xuất ma trận tương đồng, Xác định vị trí acid amin bất biến mang tính quyết định chức năng.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "EBI Clustal Omega",
     "prompt": "Thực hiện căn chỉnh đa chuỗi cho 12 chuỗi protein Hemoglobin từ các loài động vật khác nhau để xác định vị trí gắn nhóm Heme."
   },
@@ -2671,7 +2671,7 @@
     ],
     "desc": "Tìm kiếm các protein có chuỗi tương đồng siêu tốc với MMseqs2 (hoặc BLAST toàn diện): suy luận chức năng dựa trên protein đã biết.",
     "features": "Tốc độ quét nhanh gấp 100 lần BLAST truyền thống, So khớp cơ sở dữ liệu UniRef và Swiss-Prot, Đánh giá E-value chính xác.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "MMseqs2 Engine",
     "prompt": "Chạy tìm kiếm tương đồng trình tự cho chuỗi peptide chưa rõ chức năng với cơ sở dữ liệu Swiss-Prot."
   },
@@ -2690,7 +2690,7 @@
     ],
     "desc": "Tìm kiếm văn hiến khoa học y sinh trên Europe PMC: tải toàn văn bài báo truy cập mở (Open Access) ở định dạng XML và PDF.",
     "features": "Trích xuất danh mục trích dẫn bài báo, Tìm kiếm theo mã PMCID, Lọc các nghiên cứu có kèm dữ liệu bổ sung.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "Europe PMC API",
     "prompt": "Tìm và tải toàn văn bài báo khoa học nghiên cứu cơ chế kháng thuốc của tế bào ung thư phổi có mã PMCID PMC7123456."
   },
@@ -2710,7 +2710,7 @@
     ],
     "desc": "Tìm kiếm cơ sở dữ liệu y học quốc tế PubMed: lấy tóm tắt nghiên cứu (Abstract), liên kết bài báo với mã định danh hợp chất PubChem và gen NCBI.",
     "features": "Tìm kiếm chính xác theo thuật ngữ MeSH, Trích xuất câu bằng BioC NLP, Kiểm tra tính xác thực của trích dẫn.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "NCBI PubMed API",
     "prompt": "Tìm kiếm 5 nghiên cứu lâm sàng mới nhất được công bố trên PubMed về liệu pháp tế bào CAR-T điều trị bệnh bạch cầu."
   },
@@ -2730,7 +2730,7 @@
     ],
     "desc": "Tìm kiếm các bài báo học thuật tiền ấn phẩm (preprints) trên arXiv thuộc lĩnh vực Khoa học máy tính, AI, Toán học và Sinh học định lượng.",
     "features": "Trích xuất abstract và danh sách tác giả, Tải tệp PDF và HTML bài báo, Theo dõi các đột phá AI mới nhất.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "arXiv API",
     "prompt": "Tìm các bài báo tiền ấn phẩm mới nhất trên arXiv về kiến trúc suy luận mở rộng (Reasoning LLMs) xuất bản trong tuần này."
   },
@@ -2750,7 +2750,7 @@
     ],
     "desc": "Duyệt, lọc và tải các bài báo tiền ấn phẩm sinh học và y khoa mới nhất từ máy chủ bioRxiv và medRxiv theo khoảng thời gian và danh mục.",
     "features": "Tra cứu bài báo theo mã định danh DOI, Cập nhật các phát hiện y sinh học trước khi bình duyệt chính thức.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "bioRxiv API",
     "prompt": "Tìm kiếm các bài báo bioRxiv trong danh mục Genomics có nhắc đến việc ứng dụng mô hình ngôn ngữ lớn để dự đoán cấu trúc RNA."
   },
@@ -2770,7 +2770,7 @@
     ],
     "desc": "Khai thác đồ thị nghiên cứu toàn cầu OpenAlex với hơn 250 triệu bài báo: tra cứu tác giả, cơ quan nghiên cứu, nguồn tài trợ và chỉ số H-index.",
     "features": "Tổng hợp số trích dẫn, Phân loại cây chủ đề nghiên cứu khoa học, Tải tệp PDF truy cập mở theo DOI.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Pro (Deep Research)",
     "endpoint": "OpenAlex API",
     "prompt": "Tra cứu hồ sơ nghiên cứu và các bài báo được trích dẫn nhiều nhất của tác giả nghiên cứu về mô hình khuếch tán hình ảnh."
   },
@@ -2790,7 +2790,7 @@
     ],
     "desc": "Phục hồi, xác định niên đại và định vị địa lý các văn bản khắc cổ đại Hy Lạp và La Mã bằng mô hình học sâu Ithaca và Aeneas.",
     "features": "Điền từ còn thiếu trong bản khắc cổ, Dự báo thế kỷ và vùng địa lý nơi tạo tác bản khắc với độ chính xác cao.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet",
     "endpoint": "Ancient Epigraphy AI",
     "prompt": "Phân tích đoạn văn bản khắc cổ Hy Lạp bị khuyết chữ để dự đoán các ký tự bị mất và niên đại sáng tác."
   },
@@ -2809,7 +2809,7 @@
     ],
     "desc": "Bộ công cụ quản lý thư viện Python viết bằng Rust với tốc độ nhanh gấp 10-100 lần pip thông thường: kiểm tra cài đặt và cấu hình PATH.",
     "features": "Giải quyết dependency tức thời, Tải bánh xe whl song song đa luồng, Tiết kiệm thời gian thiết lập môi trường.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash",
     "endpoint": "uv Package CLI",
     "prompt": "Kiểm tra phiên bản uv trên hệ thống và sử dụng uv pip install để cài đặt nhanh thư viện biopython và numpy."
   },
@@ -2866,7 +2866,7 @@
     ],
     "desc": "Hiển thị và kết xuất các tài liệu giao diện tạo sinh sống động: sơ đồ luồng Mermaid, bảng dữ liệu phân tích và mockup tương tác.",
     "features": "Hỗ trợ nhúng video WebP và ảnh, Carousel trình chiếu so sánh before/after, Diff xem trước thay đổi mã nguồn.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Claude 3.7 Sonnet, GPT-4o",
     "endpoint": "Artifacts Rendering Engine",
     "prompt": "Tạo một artifact sơ đồ kiến trúc Mermaid thể hiện luồng giao tiếp một chiều C# UI -> Go Engine -> Python AI -> Rust Core."
   },
@@ -2885,7 +2885,7 @@
     ],
     "desc": "Trực quan hóa bản đồ không gian 3D ảnh thực (Photorealistic 3D Maps) và Street View 360 độ sử dụng Google Maps Platform WebGL.",
     "features": "Mô phỏng đường bay fly-through quanh công trình, Tùy biến kiểu dáng bản đồ ban đêm, Đánh dấu đối tượng 3D.",
-    "models": "Gemini 3.1 Pro High",
+    "models": "Gemini 2.5 Flash, GPT-4o",
     "endpoint": "Google Maps 3D API",
     "prompt": "Dựng khung hiển thị bản đồ 3D tương tác của tòa nhà Landmark 81 với camera xoay quanh đỉnh tháp ở độ nghiêng 45 độ."
   }

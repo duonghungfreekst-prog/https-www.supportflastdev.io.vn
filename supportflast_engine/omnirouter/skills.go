@@ -22,6 +22,43 @@ type EmbeddedSkillItem struct {
 	Category string `json:"category"`
 	CatName  string `json:"catName"`
 	Desc     string `json:"desc"`
+	Models   string `json:"models,omitempty"`
+}
+
+func getOptimizedModelForSkill(skillID, category, skillModels string) string {
+	if skillModels != "" {
+		parts := strings.Split(skillModels, ",")
+		if len(parts) > 0 {
+			primary := strings.TrimSpace(parts[0])
+			if primary != "" {
+				return primary
+			}
+		}
+	}
+	cat := strings.ToLower(category)
+	id := strings.ToLower(skillID)
+	switch {
+	case strings.Contains(id, "live"):
+		return "Gemini 3.8 Live"
+	case strings.Contains(id, "omni"):
+		return "Gemini Omni 1.1 Flash"
+	case strings.Contains(cat, "science") || strings.Contains(cat, "bio"):
+		return "Gemini 2.5 Pro (Deep Research)"
+	case strings.Contains(cat, "sec") || strings.Contains(cat, "crypto") || strings.Contains(id, "jwt") || strings.Contains(id, "pqc") || strings.Contains(id, "trap") || strings.Contains(id, "rules"):
+		return "DeepSeek R1 (Reasoning)"
+	case strings.Contains(id, "ast") || strings.Contains(id, "terminal") || strings.Contains(id, "troubleshoot") || strings.Contains(id, "spark"):
+		return "Claude 3.7 Sonnet (Thinking)"
+	case strings.Contains(id, "linter") || strings.Contains(id, "static-analysis") || strings.Contains(id, "mocks") || strings.Contains(id, "json-serialization"):
+		return "Qwen 2.5 Coder 32B"
+	case strings.Contains(cat, "ui") || strings.Contains(cat, "design"):
+		return "Claude 3.5 Sonnet"
+	case strings.Contains(cat, "mobile") || strings.Contains(cat, "flutter") || strings.Contains(cat, "data") || strings.Contains(cat, "core"):
+		return "Claude 3.7 Sonnet"
+	case strings.Contains(id, "flash") || strings.Contains(id, "guide") || strings.Contains(id, "task-guard") || strings.Contains(id, "devtools"):
+		return "Gemini 2.5 Flash"
+	default:
+		return "Gemini 2.5 Pro"
+	}
 }
 
 
@@ -343,12 +380,13 @@ func init() {
 	for _, sk := range allSkills {
 		normID := normalizeSkillID(sk.ID)
 		isDis := disabled[normID]
+		optModel := getOptimizedModelForSkill(sk.ID, sk.Category, sk.Models)
 		activeSkillsMap[normID] = &ActiveSkillRecord{
 			ID:       normID,
 			Name:     sk.Name,
 			Category: sk.Category,
 			Client:   lastActiveClient,
-			Model:    lastActiveModel,
+			Model:    optModel,
 			ReqCount: 1,
 			LastUsed: time.Now().Format(time.RFC3339),
 			Source:   "integrated",
@@ -360,12 +398,13 @@ func init() {
 	for _, cs := range coreSkillsList {
 		normID := normalizeSkillID(cs.ID)
 		if _, exists := activeSkillsMap[normID]; !exists {
+			optModel := getOptimizedModelForSkill(cs.ID, cs.Category, "")
 			activeSkillsMap[normID] = &ActiveSkillRecord{
 				ID:       normID,
 				Name:     cs.Name,
 				Category: cs.Category,
 				Client:   lastActiveClient,
-				Model:    lastActiveModel,
+				Model:    optModel,
 				ReqCount: 1,
 				LastUsed: time.Now().Format(time.RFC3339),
 				Source:   "core",
@@ -381,12 +420,13 @@ func init() {
 			rec.IsActive = true
 			rec.Source = "pinned"
 		} else {
+			optModel := getOptimizedModelForSkill(id, "core", "")
 			activeSkillsMap[id] = &ActiveSkillRecord{
 				ID:       id,
 				Name:     id,
 				Category: "core",
 				Client:   lastActiveClient,
-				Model:    lastActiveModel,
+				Model:    optModel,
 				ReqCount: 0,
 				LastUsed: time.Now().Format(time.RFC3339),
 				Source:   "pinned",
@@ -575,9 +615,12 @@ func DeepScanActiveSkills() (int, []*ActiveSkillRecord) {
 	for _, sk := range allSkills {
 		normID := normalizeSkillID(sk.ID)
 		isDis := disabled[normID]
+		optModel := getOptimizedModelForSkill(sk.ID, sk.Category, sk.Models)
 		if rec, exists := activeSkillsMap[normID]; exists {
 			rec.Client = clientName
-			rec.Model = modelName
+			if rec.ReqCount <= 1 || rec.Model == "" || rec.Model == "Gemini 3.1 Pro High" {
+				rec.Model = optModel
+			}
 			if !isDis {
 				rec.IsActive = true
 			}
@@ -587,7 +630,7 @@ func DeepScanActiveSkills() (int, []*ActiveSkillRecord) {
 				Name:     sk.Name,
 				Category: sk.Category,
 				Client:   clientName,
-				Model:    modelName,
+				Model:    optModel,
 				ReqCount: 1,
 				LastUsed: time.Now().Format(time.RFC3339),
 				Source:   "integrated",
