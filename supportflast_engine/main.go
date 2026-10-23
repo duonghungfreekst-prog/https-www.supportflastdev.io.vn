@@ -445,6 +445,30 @@ func HandleHealthCheck(w http.ResponseWriter, r *http.Request, autoHTTPSEnabled 
 func main() {
 	log.SetPrefix("[ENGINE] ")
 
+	// 0. Phân tích tham số dòng lệnh CLI cho ModelRouter9 & Gateway (-port, -mitm-port, -dir)
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		if (arg == "-port" || arg == "--port") && i+1 < len(os.Args) {
+			p := strings.TrimSpace(os.Args[i+1])
+			if p != "" {
+				_ = os.Setenv("PORT", p)
+			}
+			i++
+		} else if strings.HasPrefix(arg, "-port=") || strings.HasPrefix(arg, "--port=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+				_ = os.Setenv("PORT", strings.TrimSpace(parts[1]))
+			}
+		} else if (arg == "-dir" || arg == "--dir") && i+1 < len(os.Args) {
+			d := strings.TrimSpace(os.Args[i+1])
+			if d != "" {
+				_ = os.Setenv("STATIC_DIR", d)
+				_ = os.Setenv("UI_DIR", d)
+			}
+			i++
+		}
+	}
+
 	// 1. Khởi động toàn diện quy trình Auto-Bootstrapping hệ thống cho first-run / hosting trắng
 	bootstrapResult, err := Bootstrap()
 	if err != nil {

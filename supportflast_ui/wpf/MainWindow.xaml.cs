@@ -1045,6 +1045,28 @@ public partial class MainWindow : Window
                 Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] Lỗi clear browsing cache: {cEx.Message}");
             }
 
+            // Điều hướng 100% các cửa sổ Popup và liên kết ngoại bộ (Google OAuth, OpenAI, Claude, DeepSeek...) ra trình duyệt mặc định ngoài Windows
+            AppWebView.CoreWebView2.NewWindowRequested += (sender, args) =>
+            {
+                args.Handled = true;
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(args.Uri))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = args.Uri,
+                            UseShellExecute = true
+                        });
+                        Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] Đã mở liên kết ngoại bộ bằng trình duyệt hệ thống: {args.Uri}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Lỗi mở trình duyệt hệ thống: {ex.Message}");
+                }
+            };
+
             // Tự động tìm thư mục chứa HTML và đồng bộ file mới nhất (Hot-Sync)
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string projectRoot = GetProjectRoot();

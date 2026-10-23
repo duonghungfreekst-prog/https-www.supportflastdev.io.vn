@@ -415,6 +415,10 @@ func HandleOAuth(db *sql.DB) http.HandlerFunc {
 			HandleOAuthPoll(w, r)
 			return
 		}
+		if strings.HasSuffix(path, "/callback-notify") {
+			HandleOAuthCallbackNotify(w, r)
+			return
+		}
 
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -625,6 +629,43 @@ var (
 	pendingOAuthCallbacksMu sync.RWMutex
 	pendingOAuthCallbacks   = make(map[string]*OAuthPendingCallback)
 )
+
+// HandleOAuthCallbackNotify nhận tín hiệu callback từ trang HTML để đồng bộ giữa Web và Local Gateway
+func HandleOAuthCallbackNotify(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-9r-cli-token")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	q := r.URL.Query()
+	state := strings.TrimSpace(q.Get("state"))
+	code := strings.TrimSpace(q.Get("code"))
+	token := strings.TrimSpace(q.Get("token"))
+	errStr := strings.TrimSpace(q.Get("error"))
+
+	if state != "" && (code != "" || token != "" || errStr != "") {
+		pendingOAuthCallbacksMu.Lock()
+		pendingOAuthCallbacks[state] = &OAuthPendingCallback{
+			Code:      code,
+			Token:     token,
+			State:     state,
+			Error:     errStr,
+			CreatedAt: time.Now(),
+		}
+		pendingOAuthCallbacksMu.Unlock()
+		log.Printf("[ENGINE] [OAUTH] ✔ [NOTIFY] Nhận callback đồng bộ cho state='%s' (code=%s)", state, MaskAPIKey(code))
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Callback recorded"})
+		return
+	}
+
+	w.WriteHeader(http.StatusBadRequest)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Missing state or code"})
+}
 
 // HandleOAuthPoll phục vụ kiểm tra trạng thái callback qua polling (giải quyết triệt để vấn đề mất opener hoặc cross-origin)
 func HandleOAuthPoll(w http.ResponseWriter, r *http.Request) {
