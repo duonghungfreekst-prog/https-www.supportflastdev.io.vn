@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="vi" class="dark web-mode">
 
@@ -8505,15 +8505,10 @@
       }
 
       if (targetBtn) {
-
         targetBtn.classList.remove('text-slate-400', 'border-transparent');
-
         targetBtn.classList.add('active-tab', 'bg-cyan-950/60', 'text-cyan-300', 'border-cyan-500/50', 'shadow-[0_0_16px_rgba(6,182,212,0.3)]');
-
-        const dot = targetBtn.querySelector('.tab-indicator');
-
-        if (dot) dot.classList.remove('hidden');
-
+        const dot = (typeof targetBtn.querySelector === 'function') ? targetBtn.querySelector('.tab-indicator') : null;
+        if (dot && dot.classList) dot.classList.remove('hidden');
       }
 
 
@@ -12451,9 +12446,6 @@
 
 
 
-    // Nút Lưu Kết Nối Mới cho API Key thông thường (POST /api/providers)
-
-    async 
     // Dán API Key từ Clipboard và tự động nhận diện
     async function pasteApiKeyFromClipboard() {
       try {
@@ -27311,48 +27303,32 @@
 
 
         if (titleEl) titleEl.textContent = m.name || m.id;
-
         if (subEl) {
-
           subEl.textContent = `${m.provider} • ${m.latency}ms`;
-
-          subEl.setAttribute('fill', m.color);
-
+          if (typeof subEl.setAttribute === 'function') subEl.setAttribute('fill', m.color);
         }
-
         if (badgeEl) badgeEl.textContent = m.badge || 'AG';
-
         if (countEl) countEl.textContent = (modelStats[slot]?.count || m.count || 0) + ' req';
 
-
-
         // Cập nhật logo chính xác theo hãng của Model
-
-        if (logoEl) {
-
+        if (logoEl && typeof logoEl.setAttribute === 'function') {
           const logoFile = getModelLogoFile(m.id, m.name, m.provider);
-
           logoEl.setAttribute('href', 'providers/' + logoFile);
-
           logoEl.setAttribute('xlink:href', 'providers/' + logoFile);
-
         }
 
 
 
-        if (nodeG) {
-
+        if (nodeG && typeof nodeG.querySelector === 'function') {
           const rect = nodeG.querySelector('rect');
-
-          if (rect) {
-
+          if (rect && typeof rect.setAttribute === 'function') {
             rect.setAttribute('stroke', m.color);
-
           }
-
-          nodeG.dataset.modelId = m.id;
-
-          nodeG.dataset.modelName = m.name;
+          if (nodeG.dataset) {
+            nodeG.dataset.modelId = m.id;
+            nodeG.dataset.modelName = m.name;
+          }
+        }
 
           nodeG.dataset.provider = m.provider;
 
@@ -27847,63 +27823,36 @@
 
 
       // 3. Đưa các đường cáp về trạng thái nhịp thở ambient mượt mà (Có sự sống, không đứng im)
-
       for (let i = 1; i <= 4; i++) {
-
         const flowEl = document.getElementById('flow-c' + i);
-
-        if (flowEl) {
-
+        if (flowEl && typeof flowEl.setAttribute === 'function') {
           flowEl.setAttribute('class', 'topo-stream-ambient');
-
           flowEl.setAttribute('stroke', 'rgba(0,240,255,0.22)');
-
           flowEl.setAttribute('stroke-width', '1.8');
-
           flowEl.setAttribute('opacity', '0.35');
-
-          flowEl.removeAttribute('filter');
-
+          if (typeof flowEl.removeAttribute === 'function') flowEl.removeAttribute('filter');
         }
-
       }
 
       const gwCache = document.getElementById('flow-gw-cache');
-
-      if (gwCache) {
-
+      if (gwCache && typeof gwCache.setAttribute === 'function') {
         gwCache.setAttribute('class', 'topo-stream-ambient');
-
         gwCache.setAttribute('stroke', 'rgba(0,240,255,0.25)');
-
         gwCache.setAttribute('stroke-width', '1.8');
-
         gwCache.setAttribute('opacity', '0.35');
-
-        gwCache.removeAttribute('filter');
-
+        if (typeof gwCache.removeAttribute === 'function') gwCache.removeAttribute('filter');
       }
 
       const allSlots = ['claude', 'gemini', 'deepseek', 'groq', 'openai'];
-
       allSlots.forEach(s => {
-
         const flowEl = document.getElementById('flow-m-' + s);
-
-        if (flowEl) {
-
+        if (flowEl && typeof flowEl.setAttribute === 'function') {
           flowEl.setAttribute('class', 'topo-stream-ambient');
-
           flowEl.setAttribute('stroke', 'rgba(34,211,238,0.2)');
-
           flowEl.setAttribute('stroke-width', '1.8');
-
           flowEl.setAttribute('opacity', '0.3');
-
-          flowEl.removeAttribute('filter');
-
+          if (typeof flowEl.removeAttribute === 'function') flowEl.removeAttribute('filter');
         }
-
       });
 
 
@@ -28103,27 +28052,18 @@
       }
 
       if (subEl) {
-
         subEl.textContent = `${info.provider || provider} • LIVE ${latency ? (latency >= 1000 ? (latency/1000).toFixed(1) + 's' : latency + 'ms') : ''}`;
-
-        subEl.setAttribute('fill', color || info.color || '#38BDF8');
-
+        if (typeof subEl.setAttribute === 'function') subEl.setAttribute('fill', color || info.color || '#38BDF8');
       }
 
       if (badgeEl) {
-
         badgeEl.textContent = info.badge || 'AI';
-
       }
 
-      if (logoEl) {
-
+      if (logoEl && typeof logoEl.setAttribute === 'function') {
         const logoFile = getModelLogoFile(rawModel, info.officialName, provider);
-
         logoEl.setAttribute('href', 'providers/' + logoFile);
-
         logoEl.setAttribute('xlink:href', 'providers/' + logoFile);
-
       }
 
     }
@@ -33830,7 +33770,9 @@
       if (IS_DESKTOP_ENV) return; // Môi trường App Desktop: Giữ nguyên 100%
 
       // Đánh dấu Web Mode lên document
-      document.documentElement.classList.add('web-mode');
+      if (document.documentElement && document.documentElement.classList) {
+        document.documentElement.classList.add('web-mode');
+      }
 
       try {
         // 1. Cập nhật Breadcrumb phụ trên Header
