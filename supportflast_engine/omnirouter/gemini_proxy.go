@@ -386,7 +386,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// FAST-PATH QUOTA & MODEL DISCOVERY RESPONDER (< 0.2ms)
 		// Đáp ứng ngay lập tức 100% hạn mức dồi dào cho Antigravity IDE ngay khi app mở lên,
 		// triệt tiêu hoàn toàn hiện tượng chậm trễ, quay spinner hay hiển thị 0% Claude / 49% Gemini
-		if strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") {
+		if strings.Contains(r.URL.Path, "retrieveUserQuota") {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.Header().Set("X-ModelRouter9-Aggregated", "true")
 			w.Header().Set("X-ModelRouter9-FastPath", "true")
@@ -408,7 +408,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		// NẾU LÀ REQUEST QUOTA: Kiểm tra Virtual Aggregated RAM Cache (chuẩn 9Router)
 		// Trả về ngay lập tức nếu cache còn hiệu lực (< 30s) -> Độ trễ < 1ms, chống spam và bảo vệ tuyệt đối quota
-		isQuotaReq := strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") || strings.Contains(r.URL.Path, "fetchAvailableModels")
+		isQuotaReq := strings.Contains(r.URL.Path, "retrieveUserQuota") || strings.Contains(r.URL.Path, "fetchAvailableModels")
 		if isQuotaReq {
 			ideQuotaCacheLock.RLock()
 			cached, hasCache := ideQuotaCache[r.URL.Path]
@@ -442,6 +442,13 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// bảo đảm tài khoản cá nhân của người dùng KHÔNG BAO GIỜ bị trừ token hay quota!
 		isPureStaticMeta := strings.Contains(r.URL.Path, "loadCodeAssist") || strings.Contains(r.URL.Path, "cclog")
 		if isPureStaticMeta {
+			if strings.Contains(r.URL.Path, "loadCodeAssist") && strings.TrimSpace(r.Header.Get("Authorization")) == "" {
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"codeAssistEnabled":true,"billingTier":"TIER_PRO","userTier":"TIER_PRO","allowedModels":["gemini-3.1-pro-high","gemini-3.1-pro-low","gemini-pro-agent","gemini-3.8-flash-high","claude-sonnet-4-6"]}`))
+				log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Fast-Path loadCodeAssist: Kích hoạt TIER_PRO cho Antigravity IDE")
+				return
+			}
 			targetHost := "daily-cloudcode-pa.googleapis.com"
 			if strings.Contains(strings.ToLower(r.Host), "cloudcode-pa.googleapis.com") && !strings.Contains(strings.ToLower(r.Host), "daily-") {
 				targetHost = "cloudcode-pa.googleapis.com"

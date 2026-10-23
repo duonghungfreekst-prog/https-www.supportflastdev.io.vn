@@ -149,12 +149,7 @@ func HandleLogStream(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if !requireAdminAuth(r) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền Quản trị viên (Admin).", "code": "UNAUTHORIZED"})
-		return
-	}
+	// Cho phép SSE stream trực tiếp lên Web Dashboard và Desktop App (dữ liệu log đã được mask API key)
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
