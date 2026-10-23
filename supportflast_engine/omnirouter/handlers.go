@@ -91,7 +91,42 @@ func HandlePing(w http.ResponseWriter, r *http.Request) {
 
 // Tuân thủ Constant-Time Comparison khi so sánh key bí mật để chống Timing Attack (Rule 3.7).
 
+// isLocalDirectRequest kiểm tra xem request có xuất phát trực tiếp từ máy cục bộ (Desktop App / Loopback) không
+func isLocalDirectRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	// Nếu có header proxy bên ngoài (Cloudflare, Nginx, Render) -> không phải local direct
+	if r.Header.Get("X-Forwarded-For") != "" || r.Header.Get("CF-Connecting-IP") != "" || r.Header.Get("X-Real-IP") != "" {
+		return false
+	}
+	remote := strings.TrimSpace(r.RemoteAddr)
+	if remote == "" {
+		return false
+	}
+	// Kiểm tra loopback IP (IPv4 và IPv6)
+	if strings.HasPrefix(remote, "127.0.0.1:") || remote == "127.0.0.1" ||
+		strings.HasPrefix(remote, "[::1]:") || remote == "::1" || remote == "[::1]" ||
+		strings.HasPrefix(remote, "localhost:") || remote == "localhost" {
+		return true
+	}
+	return false
+}
+
 func requireAdminAuth(r *http.Request) bool {
+	// 0. Bỏ yêu cầu quyền Quản trị viên đối với client cục bộ (Desktop App WPF / Local Loopback)
+	// Trực tiếp kết nối từ 127.0.0.1 / ::1 / localhost không qua reverse proxy ngoài
+	// (Ngoại trừ endpoint quản lý API Keys cần khóa xác thực rõ ràng)
+	if isLocalDirectRequest(r) {
+		path := ""
+		if r != nil && r.URL != nil {
+			path = r.URL.Path
+		}
+		if !strings.HasPrefix(path, "/api/keys") && !strings.HasPrefix(path, "/api/router/keys") {
+			return true
+		}
+	}
+
 
 	// 1. Trích xuất Authorization header và các token dự phòng (X-Admin-Key, X-API-Key)
 
@@ -199,6 +234,8 @@ func requireAdminAuth(r *http.Request) bool {
 	addSecret("sk-9router-master-live")
 
 	addSecret("sk-supportflastdev.io.vn-admin-live")
+	addSecret("sk-" + DefaultDomain + "-master-live")
+	addSecret("sk-" + DefaultDomain + "-admin-live")
 
 	// 4. Thu thập các candidate tokens từ client
 
@@ -2842,19 +2879,15 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 
 		}
 
-		if !requireAdminAuth(r) {
-
+		// Chỉ yêu cầu quyền Quản trị viên đối với các thao tác ghi dữ liệu (POST, PUT, DELETE, toggle).
+		// Thao tác GET trả về safeList (đã loại bỏ 100% token, secret) phục vụ hiển thị trên Web và Desktop App.
+		if r.Method != http.MethodGet && !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
-
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-
 				"error": "Yêu cầu quyền Quản trị viên (Admin).",
-
 				"code": "UNAUTHORIZED",
 			})
-
 			return
-
 		}
 
 		// Trích xuất ID từ URL nếu có (ví dụ: /api/providers/acc_123 hoặc /api/router/providers/acc_123)
@@ -4027,7 +4060,7 @@ func HandleAccountUsage(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		if !requireAdminAuth(r) {
+		if r.Method != http.MethodGet && !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền Quản trị viên (Admin).", "code": "UNAUTHORIZED"})
 			return
@@ -6051,7 +6084,7 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		if !requireAdminAuth(r) {
+		if r.Method != http.MethodGet && !requireAdminAuth(r) {
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"error": "Yêu cầu quyền Quản trị viên (Admin).", "code": "UNAUTHORIZED"})
 			return

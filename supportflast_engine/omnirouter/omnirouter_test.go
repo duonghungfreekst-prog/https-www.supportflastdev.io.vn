@@ -1863,23 +1863,23 @@ func TestRouterAdminSecurityAndAuthentication(t *testing.T) {
 		t.Fatalf("Không thể sinh token Admin RS256: %v", err)
 	}
 
-	// 1. GET /api/providers không có auth -> BẮT BUỘC HTTP 401
-	t.Run("GET /api/providers không có auth -> 401", func(t *testing.T) {
+	// 1. GET /api/providers không có auth -> HTTP 200 OK trả về safeList cho Web & Desktop App
+	t.Run("GET /api/providers không có auth -> 200", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/providers", nil)
 		rec := httptest.NewRecorder()
 		HandleListProviders(db)(rec, req)
-		if rec.Code != http.StatusUnauthorized {
-			t.Fatalf("Kỳ vọng HTTP 401 Unauthorized khi không đăng nhập, nhận được: %d", rec.Code)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng HTTP 200 OK khi đọc danh sách providers công khai, nhận được: %d", rec.Code)
 		}
 	})
 
-	// 2. GET /api/router/providers không có auth -> BẮT BUỘC HTTP 401
-	t.Run("GET /api/router/providers không có auth -> 401", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/router/providers", nil)
+	// 2. POST /api/providers không có auth -> BẮT BUỘC HTTP 401 Unauthorized
+	t.Run("POST /api/providers không có auth -> 401", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "/api/providers", strings.NewReader(`{"name":"Hacker"}`))
 		rec := httptest.NewRecorder()
 		HandleListProviders(db)(rec, req)
 		if rec.Code != http.StatusUnauthorized {
-			t.Fatalf("Kỳ vọng HTTP 401 Unauthorized khi không đăng nhập, nhận được: %d", rec.Code)
+			t.Fatalf("Kỳ vọng HTTP 401 Unauthorized khi ghi không đăng nhập, nhận được: %d", rec.Code)
 		}
 	})
 

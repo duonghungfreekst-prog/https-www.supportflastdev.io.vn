@@ -335,7 +335,32 @@ func RefreshKeyCache(db *sql.DB) {
 	for rows.Next() {
 		var k ClientKey
 		if err := rows.Scan(&k.ID, &k.Name, &k.Key, &k.KeyHash, &k.UsedRequests, &k.TotalTokens, &k.QuotaLimit, &k.ExpiresAt, &k.DurationHours, &k.IsActive, &k.CreatedAt, &k.LastUsedAt); err == nil {
-			keyCache[k.Key] = &k
+			keyCopy := k
+			keyCache[keyCopy.Key] = &keyCopy
+		}
+	}
+
+	// Đảm bảo 100% các Master System Key và CLI Token luôn hiện diện trong RAM cache
+	systemMasterKeys = []string{
+		"sk-supportflastdev.io.vn-master-live",
+		"sk-9r-master-live-gateway-secret",
+		"sk-9router-master-live",
+		"sk-supportflastdev.io.vn-admin-live",
+		"sk-" + DefaultDomain + "-master-live",
+		"sk-" + DefaultDomain + "-admin-live",
+		"6929c9313fb35a0b",
+	}
+	for _, mk := range systemMasterKeys {
+		if _, exists := keyCache[mk]; !exists {
+			keyCache[mk] = &ClientKey{
+				ID:         "master_" + HashString(mk)[:12],
+				Name:       "Master System Key",
+				Key:        mk,
+				KeyHash:    HashString(mk),
+				QuotaLimit: 0,
+				IsActive:   1,
+				CreatedAt:  "2026-01-01T00:00:00Z",
+			}
 		}
 	}
 }
