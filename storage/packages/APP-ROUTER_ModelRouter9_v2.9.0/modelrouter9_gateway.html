@@ -821,7 +821,19 @@
 
     /* Web Mode: Ẩn các tính năng chỉ dành cho Desktop (MITM, CLI, Media, Protocol, PxPipe, Engine Panel) */
     html.web-mode .desktop-only-feature,
-    html.web-mode #header-gateway-badge-container {
+    html.web-mode #header-gateway-badge-container,
+    html.web-mode #sidebar-gateway-card {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    /* Desktop Mode: Ẩn các thành phần chỉ dành riêng cho Web */
+    html.desktop-mode .web-only-feature {
       display: none !important;
       visibility: hidden !important;
       height: 0 !important;
@@ -1272,106 +1284,58 @@
 
 
 
-      <!-- Sidebar Footer (Quản lý ModelRouter9 Gateway Master: 1 Nút Chuẩn Nhất + Switch Bật/Tắt) -->
+      <!-- Sidebar Footer -->
+      <div id="sidebar-footer-container" class="p-3 border-t border-white/5 bg-[#030712] flex-shrink-0">
 
-      <div class="p-3 border-t border-white/5 bg-[#030712] flex-shrink-0">
-
-        <div id="sidebar-gateway-card" class="glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-emerald-500/30 transition-all duration-300">
-
-          
+        <!-- 1. BẢN DÀNH CHO DESKTOP APP (WPF WebView2): Có đầy đủ công tắc, nút Khởi động & Update -->
+        <div id="sidebar-gateway-card" class="desktop-only-feature glass-card rounded-xl p-3 flex flex-col gap-2.5 border border-emerald-500/30 transition-all duration-300">
 
           <!-- Hàng 1: Tiêu đề + Trạng thái Port + Switch BẬT/TẮT Trực quan -->
-
           <div class="flex items-center justify-between">
-
             <div class="flex items-center gap-2">
-
               <span id="sidebar-gw-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse"></span>
-
               <div class="flex flex-col">
-
                 <span id="sidebar-gw-title" class="text-xs font-bold text-white font-mono leading-tight">ModelRouter9 Engine</span>
-
                 <span id="sidebar-gw-port-status" class="text-[10px] font-mono text-emerald-400 font-semibold">🟢 ONLINE :20128</span>
-
               </div>
-
             </div>
-
-            
 
             <!-- Công tắc BẬT / TẮT Neon Switch chuẩn nhất -->
-
             <div class="flex items-center gap-1.5" title="Gạt công tắc để BẬT hoặc TẮT Gateway">
-
               <span id="label-gw-toggle-text" class="text-[10px] font-mono font-bold text-emerald-400 uppercase">BẬT</span>
-
               <div id="sidebar-gw-toggle-switch" onclick="toggleGatewayPowerSwitch()" class="nexus-switch active cursor-pointer">
-
                 <div class="nexus-switch-knob"></div>
-
               </div>
-
             </div>
-
           </div>
 
-          
-
           <!-- Hàng 2: DUY NHẤT 1 NÚT KHỞI ĐỘNG CHUẨN NHẤT CÓ TỰ ĐỘNG UPDATE -->
-
           <div class="space-y-1.5 pt-0.5">
-
             <button id="btn-master-launch" onclick="masterLaunchWithAutoUpdate()" title="Tự động tải bản mới nhất & Điều hướng mọi App" class="w-full py-1.5 px-3 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)] hover:shadow-[0_0_18px_rgba(6,182,212,0.4)] cursor-pointer flex items-center justify-center gap-1.5 group">
-
               <span id="master-btn-icon" class="text-xs">🚀</span>
-
               <span id="master-btn-label" class="tracking-wide">KHỞI ĐỘNG & UPDATE</span>
-
             </button>
-
-            
 
             <!-- Nút kích hoạt điều hướng mọi app khi đang TẮT -->
-
             <button id="btn-sidebar-run-intercept" onclick="runInterceptAllAppsDirectly()" class="w-full py-1.5 px-2 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/70 border border-cyan-500/40 text-cyan-300 font-mono text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-
               <span>⚡</span>
-
               <span id="label-sidebar-run-intercept">BẬT ĐIỀU HƯỚNG MỌI APP</span>
-
             </button>
 
-
-
             <!-- Trạng thái chuyển hướng App tự động khi đang BẬT -->
-
             <div id="status-sidebar-intercept-active" class="hidden flex items-center justify-between px-2 py-1 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-[10px] font-mono text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-
               <span class="flex items-center gap-1.5 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> ĐANG BẬT ĐIỀU HƯỚNG</span>
-
               <button onclick="stopInterceptAllAppsDirectly()" class="px-2 py-0.5 rounded bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 cursor-pointer font-bold text-[9px]" title="Bấm để dừng chặn và đưa mọi app về bình thường">Dừng</button>
-
             </div>
 
-
-
             <!-- Cụm tính năng nhúng trực tiếp: Dọn Dẹp Cache & Khởi Động Lại Nhanh (Không cần file .bat) -->
-
             <div class="flex items-center justify-between pt-1 border-t border-white/5 text-[9px] font-mono text-slate-400">
-
               <button onclick="cleanAndOptimizeDeeply()" class="hover:text-cyan-300 flex items-center gap-1 transition-colors cursor-pointer" title="Dọn sạch cache rác, reset lock, cấu hình 16GB RAM">
-
                 <span>🧹</span> Dọn Dẹp & Fix Lỗi
-
               </button>
-
               <button onclick="restartGatewayDirectly()" class="hover:text-amber-300 flex items-center gap-1 transition-colors cursor-pointer" title="Khởi động lại tiến trình Gateway">
-
                 <span>🔄</span> Reset Nhanh
-
               </button>
-
             </div>
 
             <!-- Thông tin phiên Quản Trị Viên & Nút Đăng Xuất Bảo Mật -->
@@ -1384,9 +1348,18 @@
                 Đăng Xuất
               </button>
             </div>
-
           </div>
+        </div>
 
+        <!-- 2. BẢN DÀNH CHO WEB CLOUD: Tinh gọn, chỉ hiện thông tin Quản Trị Viên & Đăng Xuất -->
+        <div id="sidebar-web-footer" class="web-only-feature px-3 py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-between text-xs font-mono text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.1)]">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981] animate-pulse"></span>
+            <span class="font-bold text-white tracking-wide">Quản Trị Viên</span>
+          </div>
+          <button onclick="logoutAdminFromRouter()" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 cursor-pointer font-bold text-[10px] transition-colors" title="Đăng xuất khỏi phiên quản trị Cloud">
+            Đăng Xuất
+          </button>
         </div>
 
       </div>
