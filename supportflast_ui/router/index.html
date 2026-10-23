@@ -6665,7 +6665,12 @@
 
         </div>
 
-        <button onclick="closeModal('modal-provider-detail')" class="p-1 rounded text-slate-400 hover:text-white text-lg cursor-pointer">&times;</button>
+        <div class="flex items-center gap-2">
+          <a id="provider-detail-official-link" href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white text-xs font-sans font-semibold border border-cyan-500/30 flex items-center gap-1.5 transition-all shadow-[0_0_10px_rgba(6,182,212,0.2)] cursor-pointer" title="Mở trang quản trị chính thức trong tab mới">
+            <span>🌐 Console chính thức ↗</span>
+          </a>
+          <button onclick="closeModal('modal-provider-detail')" class="p-1 rounded text-slate-400 hover:text-white text-lg cursor-pointer">&times;</button>
+        </div>
 
       </div>
 
@@ -6919,6 +6924,27 @@
 
 
 
+      <!-- BANNER CỔNG ĐĂNG NHẬP / QUẢN LÝ KHÓA API CHÍNH THỨC -->
+      <div id="new-conn-official-banner" class="p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div id="new-conn-official-icon" class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold text-sm flex-shrink-0">
+            🔗
+          </div>
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-300 font-sans flex items-center gap-1.5">
+              <span>Cổng chính thức:</span>
+              <span id="new-conn-official-title" class="font-bold text-white truncate">OpenAI Developer Platform</span>
+            </div>
+            <div id="new-conn-official-domain" class="text-[10px] font-mono text-cyan-400/90 truncate">
+              platform.openai.com/api-keys
+            </div>
+          </div>
+        </div>
+        <a id="new-conn-official-btn" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.4)] flex items-center gap-1.5 flex-shrink-0 hover:scale-105 transition-all cursor-pointer font-sans" title="Mở trang web chính thức trong tab mới">
+          <span>Mở trang đăng nhập ↗</span>
+        </a>
+      </div>
+
       <!-- ================= CHẾ ĐỘ 1: GIAO DIỆN OAUTH CHUẨN 100% ẢNH 2 (ANTIGRAVITY / OAUTH HUBS) ================= -->
 
       <div id="new-conn-oauth-panel" class="space-y-4">
@@ -7062,6 +7088,13 @@
           </div>
 
           <input type="password" id="new-conn-apikey" placeholder="Nhập API Key hoặc Token bí mật..." class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-cyan-500/60">
+
+          <div class="flex items-center justify-between text-[11px] pt-1">
+            <span class="text-slate-400 font-sans">Chưa có khóa API?</span>
+            <a id="new-conn-apikey-helper-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 font-sans font-semibold cursor-pointer">
+              <span>Lấy API Key chính thức tại đây ↗</span>
+            </a>
+          </div>
 
         </div>
 
@@ -8621,7 +8654,15 @@
 
       const modal = document.getElementById(id);
 
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (id === 'modal-custom-provider') {
+          const select = document.getElementById('new-conn-provider-select');
+          if (select && select.value && typeof onNewConnProviderChanged === 'function') {
+            onNewConnProviderChanged(select.value);
+          }
+        }
+      }
 
     }
 
@@ -11085,6 +11126,149 @@
 
 
     // Danh sách kết nối thực tế từ người dùng (Không sử dụng dữ liệu giả lập/hardcode theo Rule 9)
+    // =========================================================================
+    // TỪ ĐIỂN URL CỔNG ĐĂNG NHẬP & QUẢN LÝ API KEY CHÍNH THỨC CỦA TỪNG NHÀ CUNG CẤP
+    // =========================================================================
+    const PROVIDER_LOGIN_URLS = {
+      // Nhóm 1: Google & Antigravity
+      'antigravity': { name: 'Google Cloud Platform', url: 'https://console.cloud.google.com/', domain: 'console.cloud.google.com' },
+      'gemini': { name: 'Google AI Studio (Gemini)', url: 'https://aistudio.google.com/app/apikey', domain: 'aistudio.google.com' },
+      'gemini-cli': { name: 'Google AI Studio (Gemini)', url: 'https://aistudio.google.com/app/apikey', domain: 'aistudio.google.com' },
+      'vertex': { name: 'Google Cloud Vertex AI', url: 'https://console.cloud.google.com/vertex-ai', domain: 'console.cloud.google.com' },
+      'vertex-partner': { name: 'Google Cloud Model Garden', url: 'https://console.cloud.google.com/vertex-ai/model-garden', domain: 'console.cloud.google.com' },
+      'google-pse': { name: 'Google Programmable Search', url: 'https://programmablesearchengine.google.com/', domain: 'programmablesearchengine.google.com' },
+      'google-tts': { name: 'Google Cloud Text-to-Speech', url: 'https://console.cloud.google.com/apis/api/texttospeech.googleapis.com', domain: 'console.cloud.google.com' },
+
+      // Nhóm 2: OpenAI & Azure
+      'codex': { name: 'OpenAI Developer Platform', url: 'https://platform.openai.com/api-keys', domain: 'platform.openai.com' },
+      'openai': { name: 'OpenAI Developer Platform', url: 'https://platform.openai.com/api-keys', domain: 'platform.openai.com' },
+      'azure': { name: 'Microsoft Azure OpenAI Portal', url: 'https://portal.azure.com/', domain: 'portal.azure.com' },
+
+      // Nhóm 3: Anthropic Claude
+      'claude': { name: 'Anthropic Console', url: 'https://console.anthropic.com/settings/keys', domain: 'console.anthropic.com' },
+      'anthropic': { name: 'Anthropic Console', url: 'https://console.anthropic.com/settings/keys', domain: 'console.anthropic.com' },
+
+      // Nhóm 4: xAI Grok
+      'xai': { name: 'xAI Console (Grok)', url: 'https://console.x.ai/', domain: 'console.x.ai' },
+      'grok-cli': { name: 'xAI Console (Grok)', url: 'https://console.x.ai/', domain: 'console.x.ai' },
+      'bedrock-xai': { name: 'Amazon Bedrock (xAI Grok)', url: 'https://console.aws.amazon.com/bedrock/', domain: 'aws.amazon.com' },
+
+      // Nhóm 5: GitHub Copilot
+      'copilot': { name: 'GitHub Developer Settings (Tokens)', url: 'https://github.com/settings/tokens', domain: 'github.com' },
+
+      // Nhóm 6: DeepSeek
+      'deepseek': { name: 'DeepSeek Open Platform', url: 'https://platform.deepseek.com/api_keys', domain: 'platform.deepseek.com' },
+
+      // Nhóm 7: Các Coding IDEs & Agents
+      'cursor': { name: 'Cursor Settings Dashboard', url: 'https://www.cursor.com/settings', domain: 'cursor.com' },
+      'qoder': { name: 'Qoder AI Platform', url: 'https://qoder.ai/', domain: 'qoder.ai' },
+      'qoder-cn': { name: 'Qoder AI Platform (CN)', url: 'https://qoder.ai/', domain: 'qoder.ai' },
+      'kilo': { name: 'Kilo Code Platform', url: 'https://kilo.ai/', domain: 'kilo.ai' },
+      'kilo-gateway': { name: 'Kilo Gateway Console', url: 'https://kilo.ai/', domain: 'kilo.ai' },
+      'cline': { name: 'Cline Developer Portal', url: 'https://cline.bot/', domain: 'cline.bot' },
+      'clinepass': { name: 'ClinePass Gateway', url: 'https://cline.bot/', domain: 'cline.bot' },
+      'codebuddy': { name: 'CodeBuddy Platform', url: 'https://codebuddy.ai/', domain: 'codebuddy.ai' },
+      'codebuddy-cn': { name: 'CodeBuddy Platform (CN)', url: 'https://codebuddy.ai/', domain: 'codebuddy.ai' },
+      'zed': { name: 'Zed Editor Account', url: 'https://zed.dev/account', domain: 'zed.dev' },
+
+      // Nhóm 8: MiniMax, Moonshot Kimi, Zhipu GLM, Xiaomi
+      'minimax': { name: 'MiniMax Open Platform (Global)', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
+      'minimax-api': { name: 'MiniMax LLM API Platform', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
+      'minimax-global': { name: 'MiniMax Code (Global)', url: 'https://platform.minimaxi.com/', domain: 'platform.minimaxi.com' },
+      'minimax-cn': { name: 'MiniMax 开放平台 (China)', url: 'https://api.minimax.chat/', domain: 'api.minimax.chat' },
+      'kimi': { name: 'Moonshot AI / Kimi Platform', url: 'https://platform.moonshot.cn/console/api-keys', domain: 'platform.moonshot.cn' },
+      'zai-glm': { name: '智谱 AI 开放平台 (Zhipu BigModel)', url: 'https://open.bigmodel.cn/usercenter/apikeys', domain: 'open.bigmodel.cn' },
+      'glm-cn': { name: '智谱 AI 开放平台 (China)', url: 'https://open.bigmodel.cn/usercenter/apikeys', domain: 'open.bigmodel.cn' },
+      'xiaomi-mimo': { name: 'Xiaomi MiMo Open Platform', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
+      'mimo-free': { name: 'Xiaomi MiMo Free Tier', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
+      'xiaomi-tokenplan': { name: 'Xiaomi TokenPlan Platform', url: 'https://mimo.xiaomi.com/', domain: 'mimo.xiaomi.com' },
+
+      // Nhóm 9: Các nhà cung cấp Gateway & Inference hàng đầu
+      'openrouter': { name: 'OpenRouter Account Keys', url: 'https://openrouter.ai/settings/keys', domain: 'openrouter.ai' },
+      'groq': { name: 'GroqCloud Console', url: 'https://console.groq.com/keys', domain: 'console.groq.com' },
+      'mistral': { name: 'Mistral AI La Plateforme', url: 'https://console.mistral.ai/api-keys/', domain: 'console.mistral.ai' },
+      'together': { name: 'Together AI Settings', url: 'https://api.together.ai/settings/api-keys', domain: 'together.ai' },
+      'fireworks': { name: 'Fireworks AI Console', url: 'https://fireworks.ai/account/api-keys', domain: 'fireworks.ai' },
+      'cerebras': { name: 'Cerebras Cloud Inference', url: 'https://cloud.cerebras.ai/', domain: 'cloud.cerebras.ai' },
+      'siliconflow': { name: 'SiliconFlow Cloud (硅基流动)', url: 'https://cloud.siliconflow.cn/account/ak', domain: 'cloud.siliconflow.cn' },
+      'cohere': { name: 'Cohere Dashboard', url: 'https://dashboard.cohere.com/api-keys', domain: 'dashboard.cohere.com' },
+      'perplexity': { name: 'Perplexity AI API Settings', url: 'https://www.perplexity.ai/settings/api', domain: 'perplexity.ai' },
+      'perplexity-agent': { name: 'Perplexity Agent Console', url: 'https://www.perplexity.ai/settings/api', domain: 'perplexity.ai' },
+      'huggingface': { name: 'Hugging Face Access Tokens', url: 'https://huggingface.co/settings/tokens', domain: 'huggingface.co' },
+      'cloudflare-ai': { name: 'Cloudflare Dashboard (Workers AI)', url: 'https://dash.cloudflare.com/', domain: 'dash.cloudflare.com' },
+      'alicode': { name: 'Alibaba Cloud DashScope (百炼)', url: 'https://dashscope.console.aliyun.com/apiKey', domain: 'dashscope.console.aliyun.com' },
+      'alicode-intl': { name: 'AliCode Global DashScope', url: 'https://dashscope.console.aliyun.com/apiKey', domain: 'dashscope.console.aliyun.com' },
+      'alims-intl': { name: 'AliMS International Dashboard', url: 'https://dashscope.console.aliyun.com/apiKey', domain: 'dashscope.console.aliyun.com' },
+      'alitp-intl': { name: 'AliTP Global Cloud', url: 'https://dashscope.console.aliyun.com/apiKey', domain: 'dashscope.console.aliyun.com' },
+      'nvidia': { name: 'NVIDIA API Catalog (NIM)', url: 'https://build.nvidia.com/', domain: 'build.nvidia.com' },
+      'bedrock': { name: 'Amazon Web Services (Bedrock)', url: 'https://console.aws.amazon.com/bedrock/', domain: 'aws.amazon.com' },
+      'nebius': { name: 'Nebius AI Studio', url: 'https://studio.nebius.ai/', domain: 'studio.nebius.ai' },
+      'sambanova': { name: 'SambaNova Cloud Portal', url: 'https://cloud.sambanova.ai/', domain: 'cloud.sambanova.ai' },
+      'tencent': { name: 'Tencent Cloud Hunyuan (腾讯混元)', url: 'https://console.cloud.tencent.com/hunyuan', domain: 'cloud.tencent.com' },
+      'baidu': { name: 'Baidu Qianfan Platform (百度千帆)', url: 'https://console.bce.baidu.com/qianfan/ais/console/onlineService', domain: 'bce.baidu.com' },
+      'volcengine-ark': { name: 'Volcengine Doubao Ark (火山引擎)', url: 'https://console.volcengine.com/ark', domain: 'volcengine.com' },
+      'byteplus': { name: 'BytePlus AI Console (ByteDance)', url: 'https://console.byteplus.com/', domain: 'console.byteplus.com' },
+      'hyperbolic': { name: 'Hyperbolic AI GPU Cloud', url: 'https://hyperbolic.xyz/', domain: 'hyperbolic.xyz' },
+      'featherless': { name: 'Featherless AI Inference', url: 'https://featherless.ai/', domain: 'featherless.ai' },
+      'chutes': { name: 'Chutes Serverless AI', url: 'https://chutes.ai/', domain: 'chutes.ai' },
+      'poolside': { name: 'Poolside AI Developer Portal', url: 'https://poolside.ai/', domain: 'poolside.ai' },
+      'venice': { name: 'Venice AI Privacy Dashboard', url: 'https://venice.ai/settings/api', domain: 'venice.ai' },
+      'vercel-ai-gateway': { name: 'Vercel AI Gateway Dashboard', url: 'https://vercel.com/dashboard', domain: 'vercel.com' },
+
+      // Nhóm 10: Âm thanh, Hình ảnh, Tìm kiếm
+      'elevenlabs': { name: 'ElevenLabs Voice AI Console', url: 'https://elevenlabs.io/app/speech-synthesis', domain: 'elevenlabs.io' },
+      'deepgram': { name: 'Deepgram Console', url: 'https://console.deepgram.com/', domain: 'console.deepgram.com' },
+      'cartesia': { name: 'Cartesia Sonic AI Playground', url: 'https://play.cartesia.ai/', domain: 'play.cartesia.ai' },
+      'playht': { name: 'PlayHT Voice Studio', url: 'https://play.ht/app', domain: 'play.ht' },
+      'fish-audio': { name: 'Fish Audio SOTA Voice', url: 'https://fish.audio/go-api/', domain: 'fish.audio' },
+      'recraft': { name: 'Recraft AI Studio', url: 'https://www.recraft.ai/', domain: 'recraft.ai' },
+      'runwayml': { name: 'Runway ML Studio', url: 'https://runwayml.com/', domain: 'runwayml.com' },
+      'fal-ai': { name: 'fal.ai Developer Keys', url: 'https://fal.ai/dashboard/keys', domain: 'fal.ai' },
+      'black-forest-labs': { name: 'Black Forest Labs FLUX', url: 'https://docs.bfl.ml/', domain: 'bfl.ml' },
+      'stability-ai': { name: 'Stability AI Developer Platform', url: 'https://platform.stability.ai/account/keys', domain: 'platform.stability.ai' },
+      'brave-search': { name: 'Brave Search API Dashboard', url: 'https://brave.com/search/api/', domain: 'brave.com' },
+      'serper': { name: 'Serper Fast Google Search API', url: 'https://serper.dev/api-key', domain: 'serper.dev' },
+      'searchapi': { name: 'SearchAPI SERP Dashboard', url: 'https://www.searchapi.io/', domain: 'searchapi.io' },
+      'tavily': { name: 'Tavily AI Research Search', url: 'https://app.tavily.com/home', domain: 'tavily.com' },
+      'exa': { name: 'Exa Semantic Neural Search', url: 'https://dashboard.exa.ai/api-keys', domain: 'exa.ai' },
+      'jina-ai': { name: 'Jina AI API Dashboard', url: 'https://jina.ai/', domain: 'jina.ai' },
+      'jina-reader': { name: 'Jina Reader Web API', url: 'https://jina.ai/', domain: 'jina.ai' },
+      'firecrawl': { name: 'Firecrawl Web Markdown API', url: 'https://www.firecrawl.dev/app/api-keys', domain: 'firecrawl.dev' },
+
+      // Nhóm 11: Local & Self-Hosted
+      'ollama': { name: 'Ollama Official Site & Models', url: 'https://ollama.com/', domain: 'ollama.com' },
+      'ollama-local': { name: 'Ollama Local Host', url: 'http://localhost:11434', domain: 'localhost:11434' },
+      'ollama-search': { name: 'Ollama Web Search', url: 'https://ollama.com/', domain: 'ollama.com' },
+      'searxng': { name: 'SearXNG Instances & Docs', url: 'https://searx.space/', domain: 'searx.space' },
+      'sdwebui': { name: 'Stable Diffusion WebUI', url: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui', domain: 'github.com' },
+      'comfyui': { name: 'ComfyUI Official Portal', url: 'https://www.comfy.org/', domain: 'comfy.org' },
+      'local-device': { name: 'On-Device Local Inference Engine', url: 'http://localhost:20128', domain: 'localhost:20128' },
+
+      // Nhóm 12: Custom Endpoints
+      'custom-openai': { name: 'OpenAI-Compatible Platform', url: 'https://platform.openai.com/api-keys', domain: 'api.openai.com' },
+      'custom-anthropic': { name: 'Anthropic-Compatible Platform', url: 'https://console.anthropic.com/settings/keys', domain: 'api.anthropic.com' }
+    };
+
+    // Hàm tra cứu URL cổng đăng nhập / lấy API Key chính thức
+    function getProviderLoginInfo(pid) {
+      if (!pid) return { name: 'AI Developer Platform', url: 'https://google.com', domain: 'developer.portal' };
+      const lower = pid.toLowerCase().trim();
+      if (PROVIDER_LOGIN_URLS[lower]) return PROVIDER_LOGIN_URLS[lower];
+
+      // Tìm kiếm tương đối (Fuzzy lookup)
+      for (const k in PROVIDER_LOGIN_URLS) {
+        if (lower.includes(k) || k.includes(lower)) {
+          return PROVIDER_LOGIN_URLS[k];
+        }
+      }
+
+      return {
+        name: `${pid.toUpperCase()} Developer Portal`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(pid + ' API keys login console')}`,
+        domain: `${lower}.portal`
+      };
+    }
+
     const SEED_PROXY_POOLS = [];
     const SEED_CONNECTIONS = [];
 
@@ -11390,6 +11574,28 @@
 
         title.innerHTML = `Connect ${displayName}`;
 
+      }
+
+      // Cập nhật Banner link đăng nhập và helper link chính thức
+      const loginInfo = (typeof getProviderLoginInfo === 'function') ? getProviderLoginInfo(val) : { name: displayName, url: 'https://google.com', domain: 'portal' };
+      const officialTitle = document.getElementById('new-conn-official-title');
+      const officialDomain = document.getElementById('new-conn-official-domain');
+      const officialBtn = document.getElementById('new-conn-official-btn');
+      const officialIcon = document.getElementById('new-conn-official-icon');
+      const helperLink = document.getElementById('new-conn-apikey-helper-link');
+
+      if (officialTitle) officialTitle.textContent = loginInfo.name;
+      if (officialDomain) officialDomain.textContent = loginInfo.domain;
+      if (officialBtn) {
+        officialBtn.href = loginInfo.url;
+        officialBtn.title = `Mở ${loginInfo.name} (${loginInfo.domain}) trong tab mới`;
+      }
+      if (officialIcon && typeof getProviderIconImg === 'function') {
+        officialIcon.innerHTML = pObj ? getProviderIconImg(val, pObj.icon, pObj.color || 'cyan', 'w-5 h-5') : '🔗';
+      }
+      if (helperLink) {
+        helperLink.href = loginInfo.url;
+        helperLink.title = `Lấy API Key chính thức của ${loginInfo.name} (${loginInfo.domain})`;
       }
 
 
@@ -12591,6 +12797,14 @@
       }
 
       if (accountsCountBadge) accountsCountBadge.textContent = matched.length;
+
+      // Cập nhật nút Console chính thức của Provider
+      const officialLink = document.getElementById('provider-detail-official-link');
+      if (officialLink) {
+        const pLogin = (typeof getProviderLoginInfo === 'function') ? getProviderLoginInfo(providerId) : { name: pConfig.name || providerId, url: 'https://google.com', domain: 'portal' };
+        officialLink.href = pLogin.url;
+        officialLink.title = `Mở trang web / quản trị chính thức của ${pConfig.name || providerId} (${pLogin.domain})`;
+      }
 
 
 
