@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"bytes"
@@ -974,6 +974,10 @@ func main() {
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
+		if path == "/v1" || path == "/v1/" || path == "/api/v1" || path == "/api/v1/" {
+			omnirouter.HandleV1Base(w, r)
+			return
+		}
 
 		// Neu nguoi dung truy cap truc tiep goc http://127.0.0.1:20128 hoac http://localhost:20128, tu dong chuyen huong ve /router/
 		if path == "/" || path == "" {

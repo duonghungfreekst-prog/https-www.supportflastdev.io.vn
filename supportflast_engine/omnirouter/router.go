@@ -291,7 +291,13 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	safeRegister(mux, "/api/v1/client/set_active_key", activeKeyHandler)
 	safeRegister(mux, "/api/v1/client/active_key", activeKeyHandler)
 
-	// 10. Cá»•ng Gateway Proxy trá»±c tiáº¿p chuáº©n OpenAI
+	// 10. Cổng Gateway Base Endpoint /v1 (Chống lỗi 404 khi ping Base URL)
+	safeRegister(mux, "/v1", HandleV1Base)
+	safeRegister(mux, "/v1/", HandleV1Base)
+	safeRegister(mux, "/api/v1", HandleV1Base)
+	safeRegister(mux, "/api/v1/", HandleV1Base)
+
+	// 10. Cổng Gateway Proxy trực tiếp chuẩn OpenAI
 	chatHandler := HandleChatCompletions(db)
 	safeRegister(mux, "/v1/chat/completions", chatHandler)
 	safeRegister(mux, "/api/v1/chat/completions", chatHandler)

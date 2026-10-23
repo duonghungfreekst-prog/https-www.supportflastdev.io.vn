@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -150,6 +150,14 @@ func main() {
 
 	// Route gốc fallback về trang giao diện nếu không khớp route API
 	safeRegister("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "" {
+			serveHTML(w, r)
+			return
+		}
+		if r.URL.Path == "/v1" || r.URL.Path == "/v1/" || r.URL.Path == "/api/v1" || r.URL.Path == "/api/v1/" {
+			omnirouter.HandleV1Base(w, r)
+			return
+		}
 		if r.URL.Path == "/" {
 			serveHTML(w, r)
 			return
