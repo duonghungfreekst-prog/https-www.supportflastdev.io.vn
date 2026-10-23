@@ -17,10 +17,10 @@ const (
 	// DefaultAivenPostgresURI là placeholder an toàn không chứa mật khẩu thực.
 	// Thông tin xác thực bắt buộc phải cấu hình qua biến môi trường (AIVEN_PG_URI, DATABASE_URL, POSTGRES_URI).
 	DefaultAivenPostgresURI = ""
-	DefaultPGMaxOpenConns   = 8
-	DefaultPGMaxIdleConns   = 3
-	DefaultPGConnLifetime   = 3 * time.Minute
-	DefaultPGConnIdleTime   = 30 * time.Second
+	DefaultPGMaxOpenConns   = 25
+	DefaultPGMaxIdleConns   = 10
+	DefaultPGConnLifetime   = 5 * time.Minute
+	DefaultPGConnIdleTime   = 3 * time.Minute
 	DefaultPGConnectTimeout = 10 * time.Second
 )
 
@@ -68,6 +68,15 @@ func OpenPostgresConnection(customURI ...string) (*sql.DB, error) {
 			uri += "&sslmode=require"
 		} else {
 			uri += "?sslmode=require"
+		}
+	}
+
+	// Tối ưu hóa timeout kết nối Aiven PostgreSQL tránh treo socket
+	if !strings.Contains(uri, "connect_timeout=") {
+		if strings.Contains(uri, "?") {
+			uri += "&connect_timeout=5"
+		} else {
+			uri += "?connect_timeout=5"
 		}
 	}
 
