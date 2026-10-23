@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"supportflast_engine/cloudpool/core"
-	"supportflast_engine/cloudpool/storage"
 	"supportflast_engine/config"
 	"supportflast_engine/database"
 
@@ -169,23 +168,22 @@ func TestSubagent6Audit(t *testing.T) {
 	t.Logf("  SQLite virtual_files: %d tệp | file_chunks: %d khối", vfCount, fcCount)
 
 	t.Logf("\n=== 3. KIỂM TRA AIVEN POSTGRESQL ===")
-	pgCfg := database.DefaultPostgresConfig()
-	t.Logf("  Postgres Host: %s | Port: %d | User: %s | DB: %s | TLS: %s",
-		pgCfg.Host, pgCfg.Port, maskStr(pgCfg.User), pgCfg.Database, pgCfg.TLS)
+	pgURI := database.GetPostgresURI()
+	t.Logf("  Postgres URI: %s", maskStr(pgURI))
 
 	var pgMasterPass string
-	pgStore, err := storage.NewPostgres(pgCfg)
+	pgStore, err := database.OpenPostgresConnection(pgURI)
 	if err != nil {
 		t.Logf("  [WARN] Không thể kết nối tới Postgres Cloud: %v", err)
 	} else {
 		defer pgStore.Close()
-		_ = pgStore.SQLDB().QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&pgMasterPass)
+		_ = pgStore.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&pgMasterPass)
 		t.Logf("  Postgres settings.master_passphrase: %s", maskStr(pgMasterPass))
 
 		pgKey := core.DeriveKey(pgMasterPass, nil)
 
 		// Kiểm tra accounts trên Postgres
-		tRows, err := pgStore.SQLDB().Query("SELECT id, email, email_hash, name, name_hash, token_json, credentials_json FROM accounts")
+		tRows, err := pgStore.Query("SELECT id, email, email_hash, name, name_hash, token_json, credentials_json FROM accounts")
 		if err != nil {
 			t.Logf("  Lỗi query accounts Postgres: %v", err)
 		} else {
@@ -232,8 +230,8 @@ func TestSubagent6Audit(t *testing.T) {
 		}
 
 		var tVfCount, tFcCount int
-		_ = pgStore.SQLDB().QueryRow("SELECT count(*) FROM virtual_files WHERE id != 'root'").Scan(&tVfCount)
-		_ = pgStore.SQLDB().QueryRow("SELECT count(*) FROM file_chunks").Scan(&tFcCount)
+		_ = pgStore.QueryRow("SELECT count(*) FROM virtual_files WHERE id != 'root'").Scan(&tVfCount)
+		_ = pgStore.QueryRow("SELECT count(*) FROM file_chunks").Scan(&tFcCount)
 		t.Logf("  Postgres virtual_files: %d tệp | file_chunks: %d khối", tVfCount, tFcCount)
 	}
 

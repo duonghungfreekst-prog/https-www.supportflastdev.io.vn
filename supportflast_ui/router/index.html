@@ -576,15 +576,25 @@
 
     .tab-content {
 
-      display: none;
+      display: none !important;
 
-      opacity: 0;
+      visibility: hidden !important;
+
+      opacity: 0 !important;
+
+      pointer-events: none !important;
 
     }
 
     .tab-content.active {
 
-      display: block;
+      display: block !important;
+
+      visibility: visible !important;
+
+      opacity: 1 !important;
+
+      pointer-events: auto !important;
 
       animation: tabFadeSlide 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 
@@ -1401,11 +1411,11 @@
 
           <div class="flex items-center gap-2">
 
-            <span id="breadcrumb-title" class="text-white font-bold text-sm tracking-wide">Theo Dõi Hạn Mức Quota Tiêu Thụ</span>
+            <span id="breadcrumb-title" class="text-white font-bold text-sm tracking-wide">Thống Kê Lưu Lượng & Hiệu Năng</span>
 
             <span class="text-slate-400 text-xs">/</span>
 
-            <span class="text-slate-400 text-xs font-mono">127.0.0.1:20128</span>
+            <span id="breadcrumb-sub" class="text-slate-400 text-xs font-mono">127.0.0.1:20128</span>
 
           </div>
 
@@ -2375,7 +2385,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-endpoints" class="tab-content active space-y-6">
+        <div id="tab-endpoints" class="tab-content space-y-6">
 
           <!-- KHỐI 1: KẾT NỐI MÁY CHỦ WEB & ĐỒNG BỘ DỮ LIỆU SQL (CHỈ HIỂN THỊ TRÊN BẢN APP DESKTOP) -->
           <div id="desktop-web-sync-section" class="glass-card rounded-2xl p-6 border border-cyan-500/40 bg-gradient-to-br from-cyan-950/40 via-slate-900/60 to-black space-y-4 shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden desktop-only-block">
@@ -3103,7 +3113,7 @@
 
         <!-- ========================================================================= -->
 
-        <div id="tab-stats" class="tab-content space-y-6">
+        <div id="tab-stats" class="tab-content active space-y-6">
 
 
 
@@ -8478,42 +8488,33 @@
 
 
 
-      // Ẩn tất cả tab contents
-
+      // Ẩn tất cả tab contents triệt để (vừa xóa class active, vừa ép style inline display none)
       document.querySelectorAll('.tab-content').forEach(el => {
-
         el.classList.remove('active');
-
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+        el.style.setProperty('opacity', '0', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
       });
 
       // Bỏ active trên các nav button và ẩn toàn bộ tab-indicator
-
       document.querySelectorAll('.nav-btn').forEach(btn => {
-
         btn.classList.remove('active-tab', 'bg-cyan-950/60', 'text-cyan-300', 'border-cyan-500/50', 'shadow-[0_0_16px_rgba(6,182,212,0.3)]');
-
         btn.classList.add('text-slate-400', 'border-transparent');
-
         const dot = btn.querySelector('.tab-indicator');
-
         if (dot) dot.classList.add('hidden');
-
       });
 
-
-
-      // Kích hoạt tab được chọn
-
+      // Kích hoạt duy nhất tab được chọn
       const targetContent = document.getElementById('tab-' + tabId);
-
       const targetBtn = document.getElementById('btn-tab-' + tabId);
-
       
-
       if (targetContent) {
-
         targetContent.classList.add('active');
-
+        targetContent.style.setProperty('display', 'block', 'important');
+        targetContent.style.setProperty('visibility', 'visible', 'important');
+        targetContent.style.setProperty('opacity', '1', 'important');
+        targetContent.style.setProperty('pointer-events', 'auto', 'important');
       }
 
       if (targetBtn) {
@@ -32507,31 +32508,27 @@
 
     async function startRealtimeConnection() {
       unlockAdminDashboard();
-      await checkAdminAuthAccess();
+
+      // 1. Kích hoạt & đồng bộ Tab UI ngay lập tức (0ms), không để bất kỳ network request nào làm trễ UI
+      let activeTabToOpen = 'stats';
+      try {
+        activeTabToOpen = getSavedActiveTab() || 'stats';
+      } catch (_) {}
+      switchTab(activeTabToOpen);
+
+      if (activeTabToOpen === 'console') {
+        initConsoleLogStream();
+        loadConsoleLogsImmediately();
+      }
 
       applyAppBgStyles();
+
+      // 2. Xác thực quyền Admin chạy nền (không block luồng render UI)
+      checkAdminAuthAccess().catch(err => console.warn('[AUTH GUARD] Kiểm tra quyền Admin:', err));
 
       initRealtimeUsageStream();
 
       loadCascadeFallbackConfigLive();
-
-      // Khôi phục Tab người dùng đang đứng trước khi nhấn F5 / Ctrl+F5 (Lấy qua bộ nhớ đa tầng bền vững)
-
-      const activeTabToOpen = getSavedActiveTab();
-
-
-
-      // Kích hoạt tab đã lưu giữ trạng thái
-
-      switchTab(activeTabToOpen);
-
-      if (activeTabToOpen === 'console') {
-
-        initConsoleLogStream();
-
-        loadConsoleLogsImmediately();
-
-      }
 
       loadUsageStatsLive();
 
@@ -33609,9 +33606,9 @@
 
       try {
         // 1. Cập nhật Breadcrumb phụ trên Header
-        const breadcrumbSub = document.querySelector('#breadcrumb-title + span + span');
+        const breadcrumbSub = document.getElementById('breadcrumb-sub') || document.querySelector('#breadcrumb-title + span + span');
         if (breadcrumbSub) {
-          breadcrumbSub.textContent = window.location.host + ' (Aiven PostgreSQL)';
+          breadcrumbSub.textContent = (window.location.host || 'supportflastdev.io.vn') + ' (Aiven PostgreSQL)';
         }
 
         // 2. Cập nhật Topbar Header Status
