@@ -10255,7 +10255,22 @@
 
         const res = await apiRequest('/api/keys');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const tbody = document.getElementById('api-keys-tbody');
 
@@ -10383,7 +10398,22 @@
             quota: quotaLimit
           })
         });
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
         if (data.key) {
           const quotaText = quotaLimit > 0 ? `${quotaLimit.toLocaleString('vi-VN')} requests` : 'Không giới hạn';
           alert(`Đã tạo thành công khóa API mới trên ModelRouter9:\nNhãn: ${data.name}\nKhóa: ${data.key}\nSố Quota: ${quotaText}`);
@@ -11085,7 +11115,22 @@
 
         const res = await apiRequest('/api/providers');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         
 
@@ -11519,7 +11564,22 @@
 
         const res = await apiRequest(`/api/oauth/${providerId}/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`);
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!res.ok) throw new Error(data.error || 'Không thể tạo liên kết OAuth');
 
@@ -11821,7 +11881,22 @@
 
 
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!res.ok || data.error) {
 
@@ -12741,7 +12816,22 @@
 
         const res = await apiRequest(`/api/models/provider?id=${encodeURIComponent(providerId)}`);
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const available = data?.availableModels || [];
 
@@ -13577,7 +13667,22 @@
 
         const res = await apiRequest('/api/usage/stats?period=7d');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!data) return;
 
@@ -13863,7 +13968,22 @@
 
             const res = await apiRequest('/api/usage/request-details?pageSize=15');
 
-            const data = await res.json();
+            let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
             if (data && Array.isArray(data.details) && data.details.length > 0) {
 
@@ -15635,7 +15755,22 @@
 
         if (!res.ok) return;
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (data && data.aliases && typeof data.aliases === 'object') {
 
@@ -15889,7 +16024,22 @@
 
         const res = await apiRequest('/api/v1/models');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (data && Array.isArray(data.data) && data.data.length > 0) {
 
@@ -16809,7 +16959,22 @@
           res = await fetch(`${activeApiBase || ''}/api/translator/console-logs`, { cache: 'no-store' });
         }
         if (res && res.ok) {
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
           const logsList = Array.isArray(data.logs) ? data.logs : (Array.isArray(data.raw_logs) ? data.raw_logs : (Array.isArray(data.entries) ? data.entries : (Array.isArray(data) ? data : [])));
           if (logsList) {
             if (stream) stream.innerHTML = '';
@@ -17003,7 +17168,22 @@
 
         if (res && res.ok) {
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           if (data && Array.isArray(data.logs)) {
 
@@ -23094,7 +23274,22 @@
 
         if (!res.ok) throw new Error(`HTTP status: ${res.status}`);
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         _activeSkillsMap = {};
 
@@ -23180,7 +23375,22 @@
 
         const res = await fetch('/api/skills/scan', { method: 'POST' });
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (data && data.success) {
 
@@ -23282,7 +23492,22 @@
 
         });
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (data && data.success) {
 
@@ -23968,7 +24193,22 @@
 
         if (res.ok) {
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           const content = data.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
 
@@ -24036,7 +24276,22 @@
 
         const res = await apiRequest('/api/cli-tools/all-statuses');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const grid = document.getElementById('cli-tools-grid');
 
@@ -24180,7 +24435,22 @@
 
         const res = await apiRequest('/api/settings/database');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!data) return;
 
@@ -24445,7 +24715,22 @@
 
         const res = await apiRequest('/api/settings/database');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const jsonStr = JSON.stringify(data, null, 2);
 
@@ -24620,7 +24905,22 @@
           body: JSON.stringify(payload)
         });
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
         if (data && data.success !== false) {
           showToastNotification('💾 Cài đặt hệ thống đã được LƯU VĨNH VIỄN vào Aiven PostgreSQL Cloud!');
           if (btn) {
@@ -24766,7 +25066,22 @@
 
         const res = await apiRequest('/api/proxy-pools?includeUsage=true');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const pools = Array.isArray(data.proxyPools) ? data.proxyPools : [];
 
@@ -25366,7 +25681,22 @@
 
         });
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!res.ok) throw new Error(data.error || 'Lỗi gán proxy');
 
@@ -25454,7 +25784,22 @@
 
         });
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!res.ok) throw new Error(data.error || 'Lỗi gỡ proxy');
 
@@ -25650,7 +25995,22 @@
 
         const res = await apiRequest('/api/tunnel/status');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const cfStatusEl = document.getElementById('cf-tunnel-status');
 
@@ -25698,7 +26058,22 @@
 
         const res = await apiRequest('/api/tunnel/tailscale-check');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         const tsStatusEl = document.getElementById('ts-tunnel-status');
 
@@ -25806,7 +26181,22 @@
 
           const res = await apiRequest(`/api/translator/load?file=${step.file}`);
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           if (data && data.success && data.content) {
 
@@ -25878,7 +26268,22 @@
 
         const res = await apiRequest('/api/pxpipe/status');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (!data) return;
 
@@ -26123,7 +26528,22 @@
 
         if (res && res.ok) {
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           const realModels = data?.availableModels || [];
 
@@ -28566,7 +28986,22 @@
     async function pollRealtimeRequestDiff() {
       try {
         const res = await apiRequest('/api/realtime/stream-logs');
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
         if (data && data.success && Array.isArray(data.logs)) {
           const isLocalEngine = activeApiBase.includes('127.0.0.1:20128') || 
                                 activeApiBase.includes('localhost:20128') || 
@@ -28618,7 +29053,22 @@
 
         const res = await apiRequest('/api/realtime/full-models');
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (data && data.success && data.counts) {
 
@@ -29178,7 +29628,22 @@
 
       try {
         const res = await apiRequest('/api/providers');
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
         const connections = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : []);
 
         // Lọc các kết nối tài khoản (antigravity, google, codex, oauth...)
@@ -30148,7 +30613,22 @@
 
         const res = await apiRequest(`/api/proxy-pools/test?url=${encodeURIComponent(url)}`);
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (res.ok && data.status === 'active') {
 
@@ -30600,7 +31080,22 @@
 
         const res = await apiRequest(`/api/proxy-pools/test?url=${encodeURIComponent(url)}`);
 
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
         if (res.ok && data.status === 'active') {
 
@@ -30670,7 +31165,22 @@
 
           });
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           showToastNotification(`🎉 Đã chuyển toàn bộ ${data.count || 0} tài khoản [${pid.toUpperCase()}] về Direct Connection!`);
 
@@ -30688,7 +31198,22 @@
 
           });
 
-          const data = await res.json();
+          let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
 
           showToastNotification(`🎉 Đã gán Proxy Pool thành công cho ${data.count || 0} tài khoản [${pid.toUpperCase()}]!`);
 
@@ -31103,7 +31628,22 @@
 
       try {
         const res = await apiRequest('/api/optimizer/stats');
-        const data = await res.json();
+        let data = null;
+        const cType = res.headers?.get('content-type') || '';
+        if (cType.includes('application/json')) {
+          data = await res.json().catch(() => null);
+        }
+        if (!data) {
+          const rawText = await res.text().catch(() => '');
+          try {
+            data = JSON.parse(rawText);
+          } catch (_) {
+            if (!res.ok) {
+              throw new Error(`Máy chủ phản hồi (HTTP ${res.status}): ${rawText.slice(0, 100).trim() || res.statusText}`);
+            }
+          }
+        }
+        if (!data) data = {};
         if (!data || !data.success) return;
 
         // 1. Cập nhật Badge tỷ lệ Hit lớn ở Header

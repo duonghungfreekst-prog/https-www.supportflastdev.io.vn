@@ -99,6 +99,13 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isTiDB bool, uiDir
 	safeRegister(mux, "/api/router/keys/", keysHandler)
 	safeRegister(mux, "/api/router/keys/toggle", HandleToggleKey(db))
 
+	// 5.1 API OAuth 2.0 PKCE & Handlers cho tất cả các nhà cung cấp AI
+	oauthHandler := HandleOAuth(db)
+	safeRegister(mux, "/api/oauth/", oauthHandler)
+	safeRegister(mux, "/api/router/oauth/", oauthHandler)
+	safeRegister(mux, "/callback", HandleOAuthCallbackHTML)
+	safeRegister(mux, "/callback/", HandleOAuthCallbackHTML)
+
 	// 6. API Danh sÃ¡ch tÃ i khoáº£n AI & TÆ°Æ¡ng tÃ¡c (Há»— trá»£ cáº£ dáº¡ng /api/providers vÃ  /api/router/providers)
 	providersHandler := HandleListProviders(db)
 	safeRegister(mux, "/api/providers", providersHandler)

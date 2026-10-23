@@ -756,6 +756,69 @@ func UpdateProviderStatus(db *sql.DB, id string, isActive int, priority int) err
 	return err
 }
 
+// SaveProvider thêm mới hoặc cập nhật một Provider vào CSDL và đồng bộ RAM cache
+func SaveProvider(db *sql.DB, p *ProviderConnection) error {
+	if db == nil {
+		providerCacheMu.Lock()
+		defer providerCacheMu.Unlock()
+		found := false
+		for i, existing := range providerCache {
+			if existing.ID == p.ID {
+				providerCache[i] = *p
+				found = true
+				break
+			}
+		}
+		if !found {
+			providerCache = append(providerCache, *p)
+		}
+		return nil
+	}
+
+	now := NowISO()
+	if p.CreatedAt == "" {
+		p.CreatedAt = now
+	}
+	p.UpdatedAt = now
+
+	// 1. Thử cú pháp MySQL / TiDB (ON DUPLICATE KEY UPDATE)
+	_, err := db.Exec(`
+		INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE 
+			provider = VALUES(provider),
+			auth_type = VALUES(auth_type),
+			name = VALUES(name),
+			email = VALUES(email),
+			priority = VALUES(priority),
+			is_active = VALUES(is_active),
+			data = VALUES(data),
+			updated_at = VALUES(updated_at)`,
+		p.ID, p.Provider, p.AuthType, p.Name, p.Email, p.Priority, p.IsActive, string(p.Data), p.CreatedAt, p.UpdatedAt)
+
+	// 2. Fallback sang cú pháp SQLite (ON CONFLICT DO UPDATE) nếu gặp lỗi cú pháp
+	if err != nil && (strings.Contains(err.Error(), "syntax error") || strings.Contains(err.Error(), "near \"ON\": syntax error") || strings.Contains(err.Error(), "no such table")) {
+		_, err = db.Exec(`
+			INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				provider = excluded.provider,
+				auth_type = excluded.auth_type,
+				name = excluded.name,
+				email = excluded.email,
+				priority = excluded.priority,
+				is_active = excluded.is_active,
+				data = excluded.data,
+				updated_at = excluded.updated_at`,
+			p.ID, p.Provider, p.AuthType, p.Name, p.Email, p.Priority, p.IsActive, string(p.Data), p.CreatedAt, p.UpdatedAt)
+	}
+
+	if err == nil {
+		RefreshProviderCache(db)
+	}
+	return err
+}
+
 // DeleteProvider xóa một Provider khỏi hệ thống
 func DeleteProvider(db *sql.DB, id string) error {
 	_, err := db.Exec("DELETE FROM omni_providers WHERE id = ?", id)

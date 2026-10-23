@@ -1949,3 +1949,98 @@ func TestRouterAdminSecurityAndAuthentication(t *testing.T) {
 		}
 	})
 }
+
+// TestOAuthAndProviderManagement kiểm thử toàn diện luồng OAuth 2.0 PKCE và thêm Provider qua API Key
+func TestOAuthAndProviderManagement(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Không thể mở CSDL in-memory: %v", err)
+	}
+	defer db.Close()
+
+	if err := InitStorage(db, false); err != nil {
+		t.Fatalf("InitStorage thất bại: %v", err)
+	}
+
+	// 1. GET /api/oauth/antigravity/authorize
+	t.Run("GET /api/oauth/antigravity/authorize -> Sinh authUrl hợp lệ", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/oauth/antigravity/authorize?redirect_uri=http://localhost:20128/callback", nil)
+		rec := httptest.NewRecorder()
+		HandleOAuth(db)(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200, nhận được: %d", rec.Code)
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		authURL, _ := res["authUrl"].(string)
+		if !strings.Contains(authURL, "accounts.google.com") || !strings.Contains(authURL, AntigravityClientID) {
+			t.Fatalf("authUrl không chứa Google OAuth URL hoặc AntigravityClientID: %s", authURL)
+		}
+		if res["provider"] != "antigravity" {
+			t.Fatalf("Kỳ vọng provider = antigravity, nhận được: %v", res["provider"])
+		}
+	})
+
+	// 2. GET /api/oauth/codex/authorize -> Báo requiresApiKey
+	t.Run("GET /api/oauth/codex/authorize -> requiresApiKey", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/oauth/codex/authorize", nil)
+		rec := httptest.NewRecorder()
+		HandleOAuth(db)(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200, nhận được: %d", rec.Code)
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["requiresApiKey"] != true {
+			t.Fatalf("Kỳ vọng requiresApiKey = true, nhận được: %v", res["requiresApiKey"])
+		}
+	})
+
+	// 3. GET /callback -> Trả về HTML callback có postMessage / BroadcastChannel
+	t.Run("GET /callback -> Trả về HTML", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/callback?code=test-code-123&state=xyz", nil)
+		rec := httptest.NewRecorder()
+		HandleOAuthCallbackHTML(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("Kỳ vọng 200, nhận được: %d", rec.Code)
+		}
+		bodyStr := rec.Body.String()
+		if !strings.Contains(bodyStr, "oauth_callback") || !strings.Contains(bodyStr, "postMessage") {
+			t.Fatalf("HTML thiếu logic callback postMessage: %s", bodyStr)
+		}
+	})
+
+	// 4. POST /api/providers với API Key -> Tạo thành công HTTP 201
+	t.Run("POST /api/providers -> Tạo kết nối thành công 201", func(t *testing.T) {
+		payload := map[string]interface{}{
+			"provider": "openai",
+			"name":     "OpenAI Primary Key",
+			"apiKey":   "sk-test-live-key-12345",
+			"priority": 1,
+			"isActive": true,
+		}
+		bodyBytes, _ := json.Marshal(payload)
+		req := httptest.NewRequest("POST", "/api/providers", bytes.NewReader(bodyBytes))
+		req.Header.Set("x-9r-cli-token", "6929c9313fb35a0b")
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		HandleListProviders(db)(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("Kỳ vọng HTTP 201 Created, nhận được: %d, body: %s", rec.Code, rec.Body.String())
+		}
+		var res map[string]interface{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &res)
+		if res["success"] != true {
+			t.Fatalf("Kỳ vọng success = true, nhận được: %v", res["success"])
+		}
+
+		// Xác minh lưu vào DB
+		all, err := GetAllProviders(db)
+		if err != nil || len(all) == 0 {
+			t.Fatalf("Không tìm thấy provider đã lưu trong DB: %v", err)
+		}
+		if all[0].Name != "OpenAI Primary Key" || all[0].Provider != "openai" {
+			t.Fatalf("Dữ liệu provider trong DB không khớp: %+v", all[0])
+		}
+	})
+}
