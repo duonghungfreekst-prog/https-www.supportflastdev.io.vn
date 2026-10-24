@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -234,12 +235,6 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 		{"key_master_domain_cloud", "Master Web Domain Key (" + DefaultDomain + ")", "sk-" + DefaultDomain + "-master-live"},
 		{"key_master_gateway_secret", "Master Gateway Secret", "sk-9r-master-live-gateway-secret"},
 		{"key_master_legacy", "Legacy Master Key", "sk-9router-master-live"},
-		// Khóa API chính thức chuẩn SupportFlast cho ứng dụng nội bộ & Dev Tools
-		{"key_default_internal_app", "Default Internal App", "sk-sf-live-default-8f42"},
-		{"key_vscode_antigravity_ide", "VS Code Antigravity IDE", "sk-sf-live-antigravity-b198"},
-		// Khóa tương thích ngược (Legacy compatibility aliases)
-		{"key_legacy_default_internal", "Legacy Default Internal App", "sk-nx-live-9router-default-8f42"},
-		{"key_legacy_antigravity_ide", "Legacy VS Code Antigravity IDE", "sk-nx-live-antigravity-b190"},
 	}
 	for _, sk := range seedKeys {
 		var exists int
@@ -252,11 +247,148 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 		}
 	}
 
+	// Xóa vĩnh viễn và triệt để các khóa API mẫu không liên quan (Default Internal App & VS Code Antigravity IDE)
+	_, _ = db.Exec(`
+		DELETE FROM omni_client_keys 
+		WHERE id IN ('key_default_internal_app', 'key_vscode_antigravity_ide', 'key_legacy_default_internal', 'key_legacy_antigravity_ide') 
+		   OR name IN ('Default Internal App', 'VS Code Antigravity IDE', 'Legacy Default Internal App', 'Legacy VS Code Antigravity IDE') 
+		   OR api_key IN ('sk-sf-live-default-8f42', 'sk-sf-live-antigravity-b198', 'sk-nx-live-9router-default-8f42', 'sk-nx-live-antigravity-b190')
+	`)
+
+	// Tự động nhận diện và đăng ký 4 nhà cung cấp API model miễn phí (OpenRouter, Groq, Mistral, Cloudflare) từ biến môi trường
+	SeedEnvProviders(db)
+
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")
 	// Nạp sẵn cache
 	RefreshKeyCache(db)
 	RefreshProviderCache(db)
 	return nil
+}
+
+// SeedEnvProviders tự động đăng ký hoặc cập nhật 4 nhà cung cấp API model miễn phí (OpenRouter, Groq, Mistral, Cloudflare) nếu có cấu hình trong môi trường/env
+func SeedEnvProviders(db *sql.DB) {
+	if db == nil {
+		return
+	}
+	now := NowISO()
+
+	type envProv struct {
+		id       string
+		name     string
+		provider string
+		authType string
+		apiKey   string
+		baseURL  string
+		extra    map[string]interface{}
+		priority int
+	}
+
+	var candidates []envProv
+
+	// 1. OpenRouter
+	if key := strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")); key != "" {
+		bURL := strings.TrimSpace(os.Getenv("OPENROUTER_BASE_URL"))
+		if bURL == "" {
+			bURL = "https://openrouter.ai/api/v1"
+		}
+		candidates = append(candidates, envProv{
+			id:       "prov_openrouter_env",
+			name:     "OpenRouter AI (Free/Multi-Model)",
+			provider: "openrouter",
+			authType: "api_key",
+			apiKey:   key,
+			baseURL:  bURL,
+			priority: 2,
+		})
+	}
+
+	// 2. Groq
+	if key := strings.TrimSpace(os.Getenv("GROQ_API_KEY")); key != "" {
+		bURL := strings.TrimSpace(os.Getenv("GROQ_BASE_URL"))
+		if bURL == "" {
+			bURL = "https://api.groq.com/openai/v1"
+		}
+		candidates = append(candidates, envProv{
+			id:       "prov_groq_env",
+			name:     "Groq Cloud (Ultra-Fast Inference)",
+			provider: "groq",
+			authType: "api_key",
+			apiKey:   key,
+			baseURL:  bURL,
+			priority: 1,
+		})
+	}
+
+	// 3. Mistral AI
+	if key := strings.TrimSpace(os.Getenv("MISTRAL_API_KEY")); key != "" {
+		bURL := strings.TrimSpace(os.Getenv("MISTRAL_BASE_URL"))
+		if bURL == "" {
+			bURL = "https://api.mistral.ai/v1"
+		}
+		candidates = append(candidates, envProv{
+			id:       "prov_mistral_env",
+			name:     "Mistral AI (Independent Fallback)",
+			provider: "mistral",
+			authType: "api_key",
+			apiKey:   key,
+			baseURL:  bURL,
+			priority: 3,
+		})
+	}
+
+	// 4. Cloudflare Workers AI
+	if token := strings.TrimSpace(os.Getenv("CLOUDFLARE_API_TOKEN")); token != "" {
+		accID := strings.TrimSpace(os.Getenv("CLOUDFLARE_ACCOUNT_ID"))
+		bURL := strings.TrimSpace(os.Getenv("CLOUDFLARE_BASE_URL"))
+		if bURL == "" && accID != "" {
+			bURL = fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/ai/v1", accID)
+		}
+		candidates = append(candidates, envProv{
+			id:       "prov_cloudflare_env",
+			name:     "Cloudflare Workers AI",
+			provider: "cloudflare",
+			authType: "api_token",
+			apiKey:   token,
+			baseURL:  bURL,
+			extra: map[string]interface{}{
+				"projectId": accID,
+			},
+			priority: 4,
+		})
+	}
+
+	for _, cp := range candidates {
+		dataMap := map[string]interface{}{
+			"apiKey":      cp.apiKey,
+			"accessToken": cp.apiKey,
+			"baseUrl":     cp.baseURL,
+			"source":      "env_auto_seed",
+		}
+		if cp.extra != nil {
+			for ek, ev := range cp.extra {
+				dataMap[ek] = ev
+			}
+		}
+		dataJSON, _ := json.Marshal(dataMap)
+
+		var existingCount int
+		_ = db.QueryRow("SELECT COUNT(*) FROM omni_providers WHERE id = ?", cp.id).Scan(&existingCount)
+		if existingCount == 0 {
+			_, err := db.Exec(`
+				INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+			`, cp.id, cp.provider, cp.authType, cp.name, cp.provider+"@system.local", cp.priority, string(dataJSON), now, now)
+			if err == nil {
+				log.Printf("[ENGINE] [OMNIROUTER] ✔ Đã tự động đăng ký Provider từ ENV: %s (%s)", cp.name, cp.provider)
+			}
+		} else {
+			_, _ = db.Exec(`
+				UPDATE omni_providers 
+				SET data = ?, priority = ?, is_active = 1, updated_at = ? 
+				WHERE id = ?
+			`, string(dataJSON), cp.priority, now, cp.id)
+		}
+	}
 }
 
 // DefaultDomain là tên miền web chính thức của hệ thống
@@ -500,7 +632,7 @@ func CreateNewClientKeyWithDomain(db *sql.DB, name string, domain string) (*Clie
 	return CreateNewClientKeyWithQuotaAndExpiry(db, name, domain, 0, 0)
 }
 
-// ListAllClientKeys lấy danh sách API Key thông thường (ẨN HOÀN TOÀN Master Web Domain Key không bao giờ hiện)
+// ListAllClientKeys lấy danh sách API Key thông thường (ẨN HOÀN TOÀN Master Web Domain Key và các khóa mặc định)
 func ListAllClientKeys(db *sql.DB) ([]ClientKey, error) {
 	rows, err := db.Query(`
 		SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at 
@@ -509,6 +641,9 @@ func ListAllClientKeys(db *sql.DB) ([]ClientKey, error) {
 		  AND id NOT LIKE 'key_legacy_%' 
 		  AND api_key NOT LIKE '%master-live%' 
 		  AND name NOT LIKE '%Master%' 
+		  AND id NOT IN ('key_default_internal_app', 'key_vscode_antigravity_ide')
+		  AND name NOT IN ('Default Internal App', 'VS Code Antigravity IDE')
+		  AND api_key NOT IN ('sk-sf-live-default-8f42', 'sk-sf-live-antigravity-b198')
 		ORDER BY created_at DESC
 	`)
 	if err != nil {

@@ -2780,83 +2780,9 @@
                 </thead>
 
                 <tbody id="api-keys-tbody" class="divide-y divide-white/5 font-mono">
-
-                  <tr class="hover:bg-white/5 transition-colors">
-
-                    <td class="py-3.5 px-3 font-sans font-semibold text-white">Default Internal App</td>
-
-                    <td class="py-3.5 px-3 text-cyan-400">sk-sf-live-***8f42</td>
-
-                    <td class="py-3.5 px-3 text-slate-300">Không giới hạn</td>
-
-                    <td class="py-3.5 px-3 text-slate-400">01/10/2026</td>
-
-                    <td class="py-3.5 px-3">
-
-                      <div class="flex items-center gap-2">
-
-                        <button class="nexus-switch nexus-switch-sm active" title="Đang hoạt động">
-
-                          <div class="nexus-switch-knob"></div>
-
-                        </button>
-
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">HOẠT ĐỘNG</span>
-
-                      </div>
-
-                    </td>
-
-                    <td class="py-3.5 px-3 text-right space-x-2">
-
-                      <button class="text-amber-400 hover:underline">Tắt</button>
-
-                      <button onclick="copyToClipboard('sk-sf-live-default-8f42')" class="text-cyan-400 hover:underline">Sao chép</button>
-
-                      <button onclick="revokeKey(1)" class="text-red-400 hover:underline">Xóa</button>
-
-                    </td>
-
+                  <tr>
+                    <td colspan="6" class="py-6 text-center text-slate-400 font-mono text-sm">Chưa có khóa API nào. Hãy bấm "<strong>+ Tạo Khóa API Mới</strong>" ở trên.</td>
                   </tr>
-
-                  <tr class="hover:bg-white/5 transition-colors">
-
-                    <td class="py-3.5 px-3 font-sans font-semibold text-white">VS Code Antigravity IDE</td>
-
-                    <td class="py-3.5 px-3 text-cyan-400">sk-sf-live-***b198</td>
-
-                    <td class="py-3.5 px-3 text-slate-300">Không giới hạn</td>
-
-                    <td class="py-3.5 px-3 text-slate-400">1/10/2026</td>
-
-                    <td class="py-3.5 px-3">
-
-                      <div class="flex items-center gap-2">
-
-                        <button class="nexus-switch nexus-switch-sm active" title="Đang hoạt động">
-
-                          <div class="nexus-switch-knob"></div>
-
-                        </button>
-
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">HOẠT ĐỘNG</span>
-
-                      </div>
-
-                    </td>
-
-                    <td class="py-3.5 px-3 text-right space-x-2">
-
-                      <button class="text-amber-400 hover:underline">Tắt</button>
-
-                      <button onclick="copyToClipboard('sk-sf-live-antigravity-b198')" class="text-cyan-400 hover:underline">Sao chép</button>
-
-                      <button onclick="revokeKey(2)" class="text-red-400 hover:underline">Xóa</button>
-
-                    </td>
-
-                  </tr>
-
                 </tbody>
 
               </table>
@@ -10505,9 +10431,18 @@
 
           data.keys.forEach(k => {
 
-            // Ẩn hoàn toàn Master Web Domain Key - tuyệt đối không bao giờ hiển thị trên bảng quản trị
+            // Ẩn hoàn toàn Master Web Domain Key và các khóa mặc định - tuyệt đối không bao giờ hiển thị trên bảng quản trị
             if (k.id === 'key_master_domain_cloud' || 
                 k.id === 'key_master_legacy' ||
+                k.id === 'key_default_internal_app' ||
+                k.id === 'key_vscode_antigravity_ide' ||
+                k.id === 'key_legacy_default_internal' ||
+                k.id === 'key_legacy_antigravity_ide' ||
+                k.name === 'Default Internal App' ||
+                k.name === 'VS Code Antigravity IDE' ||
+                k.name === 'Legacy Default Internal App' ||
+                k.name === 'Legacy VS Code Antigravity IDE' ||
+                (k.key && (k.key.includes('default-8f42') || k.key.includes('antigravity-b198') || k.key.includes('antigravity-b190'))) ||
                 (k.name && k.name.toLowerCase().includes('master')) ||
                 (k.key && k.key.includes('master-live')) ||
                 (k.id && k.id.toLowerCase().includes('master'))) {

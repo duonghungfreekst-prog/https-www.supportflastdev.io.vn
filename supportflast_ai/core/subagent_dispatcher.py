@@ -58,7 +58,20 @@ class SubagentDispatcher:
         is_healthy_model = llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)
         agent_status = "READY" if is_healthy_model else ("DEGRADED" if llm_engine.is_enabled else "ON_DEVICE_READY")
         engine_status = "online" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "offline")
-        model_mode = "gemini_api" if llm_engine.is_enabled else "on_device_fallback"
+        active_list = []
+        if getattr(llm_engine, "gemini_enabled", False):
+            active_list.append("gemini")
+        for p in getattr(llm_engine, "openai_providers", []):
+            if getattr(p, "is_enabled", False):
+                active_list.append(p.name)
+
+        if len(active_list) > 1:
+            joined = "+".join(active_list)
+            model_mode = f"multi_provider ({joined})"
+        elif len(active_list) == 1:
+            model_mode = f"{active_list[0]}_api"
+        else:
+            model_mode = "on_device_fallback"
 
         return [
             {
@@ -69,7 +82,8 @@ class SubagentDispatcher:
                 "status": agent_status,
                 "model_status": engine_status,
                 "model_name": llm_engine.model_name,
-                "provider": model_mode
+                "provider": model_mode,
+                "active_providers": active_list
             }
             for agent in self.agents.values()
         ]

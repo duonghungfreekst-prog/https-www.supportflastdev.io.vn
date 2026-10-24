@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -132,6 +133,9 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 
 	// Danh sách model hợp lệ đã được chuẩn hóa - nếu trùng khớp → KHÔNG map lại
 	knownValidModels := map[string]bool{
+		"gemini-pro-agent":         true,
+		"gemini-3.1-pro-high":      true,
+		"gemini-2.5-pro":           true,
 		"gemini-3.8-flash-high":    true,
 		"gemini-3.8-flash-medium":  true,
 		"gemini-3.8-flash-low":     true,
@@ -150,12 +154,12 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		"gpt-oss-120b-medium":      true,
 	}
 	if knownValidModels[lowerNorm] {
-		// Model đã hợp lệ (ví dụ: do user alias mapping từ UI) → giữ nguyên 100%
+		// Model đã hợp lệ (ví dụ: do user alias mapping từ UI hoặc model chuẩn) → giữ nguyên 100%
 		log.Printf("[ENGINE] [GEMINI-PROXY] ✅ Model đã valid từ alias mapping: %q → giữ nguyên", normPrimary)
 		return []string{normPrimary}
 	}
 
-	// Chỉ normalize khi model là alias/lỗi thời chưa được resolve (ví dụ: "gemini-2.5-pro", "claude-3-5-sonnet"...)
+	// Chỉ normalize khi model là alias/lỗi thời chưa được resolve (ví dụ: "claude-3-5-sonnet"...)
 	switch {
 	case strings.Contains(lowerNorm, "opus"):
 		normPrimary = "claude-opus-4-6-thinking"
@@ -163,10 +167,12 @@ func resolveCascadeModelTiers(db *sql.DB, requestedModel string) []string {
 		normPrimary = "claude-sonnet-4-6"
 	case strings.Contains(lowerNorm, "gpt-oss") || strings.Contains(lowerNorm, "120b"):
 		normPrimary = "gpt-oss-120b-medium"
+	case strings.Contains(lowerNorm, "pro-agent"):
+		normPrimary = "gemini-pro-agent"
 	case strings.Contains(lowerNorm, "3.1-pro") || strings.Contains(lowerNorm, "pro-high"):
-		normPrimary = "gemini-3.8-flash-high"
-	case strings.Contains(lowerNorm, "pro-agent") || strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
-		normPrimary = "gemini-3.8-flash-high"
+		normPrimary = "gemini-3.1-pro-high"
+	case strings.Contains(lowerNorm, "2.5-pro") || strings.Contains(lowerNorm, "1.5-pro"):
+		normPrimary = "gemini-pro-agent"
 	case strings.Contains(lowerNorm, "argon"):
 		normPrimary = "gemini-3.8-flash-high"
 	case strings.Contains(lowerNorm, "flash"):
@@ -300,6 +306,14 @@ func DetermineProvider(acc *ProviderConnection, model string) string {
 			return "anthropic"
 		case p == "google" || p == "gemini":
 			return "google"
+		case p == "openrouter":
+			return "openrouter"
+		case p == "groq":
+			return "groq"
+		case p == "mistral" || p == "mistralai":
+			return "mistral"
+		case p == "cloudflare" || p == "cloudflare-ai" || p == "workers-ai":
+			return "cloudflare"
 		case p == "antigravity":
 			return "antigravity"
 		}
@@ -307,6 +321,14 @@ func DetermineProvider(acc *ProviderConnection, model string) string {
 	// Fallback dựa trên model nếu account provider chưa xác định
 	m := strings.ToLower(strings.TrimSpace(model))
 	switch {
+	case strings.HasPrefix(m, "openrouter/"):
+		return "openrouter"
+	case strings.HasPrefix(m, "groq/"):
+		return "groq"
+	case strings.HasPrefix(m, "mistral/") || strings.HasPrefix(m, "mistralai/"):
+		return "mistral"
+	case strings.HasPrefix(m, "cloudflare/") || strings.HasPrefix(m, "@cf/"):
+		return "cloudflare"
 	case strings.HasPrefix(m, "openai/") || strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1") || strings.HasPrefix(m, "o3") || strings.Contains(m, "chatgpt"):
 		return "openai"
 	case strings.HasPrefix(m, "anthropic/") || strings.Contains(m, "claude") || strings.Contains(m, "sonnet") || strings.Contains(m, "opus"):
@@ -322,6 +344,14 @@ func DetermineProvider(acc *ProviderConnection, model string) string {
 func TargetProviderForModel(model string) string {
 	m := strings.ToLower(strings.TrimSpace(model))
 	switch {
+	case strings.HasPrefix(m, "openrouter/"):
+		return "openrouter"
+	case strings.HasPrefix(m, "groq/"):
+		return "groq"
+	case strings.HasPrefix(m, "mistral/") || strings.HasPrefix(m, "mistralai/"):
+		return "mistral"
+	case strings.HasPrefix(m, "cloudflare/") || strings.HasPrefix(m, "@cf/"):
+		return "cloudflare"
 	case strings.HasPrefix(m, "openai/") || strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1") || strings.HasPrefix(m, "o3") || strings.Contains(m, "chatgpt"):
 		return "openai"
 	case strings.HasPrefix(m, "anthropic/") || strings.Contains(m, "claude") || strings.Contains(m, "sonnet") || strings.Contains(m, "opus"):
@@ -501,6 +531,50 @@ func ParseAnthropicChunk(chunkJSON string) (string, int64, int64, string) {
 	return deltaText, pTok, cTok, finishReason
 }
 
+// buildOpenAICompatibleRequest tạo HTTP request chuẩn OpenAI cho các nhà cung cấp tương thích (OpenRouter, Groq, Mistral, Cloudflare, v.v.)
+func buildOpenAICompatibleRequest(
+	ctx context.Context,
+	upstreamBaseURL string,
+	apiKey string,
+	model string,
+	req ChatCompletionRequest,
+	isStream bool,
+	extraHeaders map[string]string,
+) (*http.Request, error) {
+	upstreamURL := strings.TrimSpace(upstreamBaseURL)
+	if !strings.HasSuffix(upstreamURL, "/chat/completions") {
+		upstreamURL = strings.TrimRight(upstreamURL, "/") + "/chat/completions"
+	}
+	payload := map[string]interface{}{
+		"model":    model,
+		"messages": req.Messages,
+		"stream":   isStream,
+	}
+	if req.Request != nil {
+		for k, v := range req.Request {
+			if k != "messages" && k != "model" && k != "stream" && k != "contents" {
+				payload[k] = v
+			}
+		}
+	}
+	outboundBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("lỗi encode payload OpenAI-compatible: %w", err)
+	}
+	fReq, err := http.NewRequestWithContext(ctx, "POST", upstreamURL, bytes.NewReader(outboundBody))
+	if err != nil {
+		return nil, fmt.Errorf("lỗi tạo request OpenAI-compatible: %w", err)
+	}
+	fReq.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		fReq.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	for hk, hv := range extraHeaders {
+		fReq.Header.Set(hk, hv)
+	}
+	return fReq, nil
+}
+
 // BuildOutboundRequest khởi tạo HTTP Request gửi lên Upstream phân nhánh động theo Provider
 func BuildOutboundRequest(
 	ctx context.Context,
@@ -511,6 +585,75 @@ func BuildOutboundRequest(
 	isStream bool,
 ) (*http.Request, error) {
 	switch provider {
+	case "openrouter":
+		cleanModel := strings.TrimPrefix(model, "openrouter/")
+		baseURL := strings.TrimSpace(os.Getenv("OPENROUTER_BASE_URL"))
+		if baseURL == "" {
+			baseURL = "https://openrouter.ai/api/v1"
+		}
+		apiKey := ""
+		if creds != nil && creds.AccessToken != "" {
+			apiKey = creds.AccessToken
+		} else {
+			apiKey = strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY"))
+		}
+		extraHeaders := map[string]string{
+			"HTTP-Referer": "https://supportflastdev.io.vn",
+			"X-Title":      "SupportFlastDev ModelRouter9",
+		}
+		return buildOpenAICompatibleRequest(ctx, baseURL, apiKey, cleanModel, req, isStream, extraHeaders)
+
+	case "groq":
+		cleanModel := strings.TrimPrefix(model, "groq/")
+		baseURL := strings.TrimSpace(os.Getenv("GROQ_BASE_URL"))
+		if baseURL == "" {
+			baseURL = "https://api.groq.com/openai/v1"
+		}
+		apiKey := ""
+		if creds != nil && creds.AccessToken != "" {
+			apiKey = creds.AccessToken
+		} else {
+			apiKey = strings.TrimSpace(os.Getenv("GROQ_API_KEY"))
+		}
+		return buildOpenAICompatibleRequest(ctx, baseURL, apiKey, cleanModel, req, isStream, nil)
+
+	case "mistral":
+		cleanModel := strings.TrimPrefix(strings.TrimPrefix(model, "mistral/"), "mistralai/")
+		baseURL := strings.TrimSpace(os.Getenv("MISTRAL_BASE_URL"))
+		if baseURL == "" {
+			baseURL = "https://api.mistral.ai/v1"
+		}
+		apiKey := ""
+		if creds != nil && creds.AccessToken != "" {
+			apiKey = creds.AccessToken
+		} else {
+			apiKey = strings.TrimSpace(os.Getenv("MISTRAL_API_KEY"))
+		}
+		return buildOpenAICompatibleRequest(ctx, baseURL, apiKey, cleanModel, req, isStream, nil)
+
+	case "cloudflare", "cloudflare-ai", "workers-ai":
+		cleanModel := strings.TrimPrefix(model, "cloudflare/")
+		accountID := ""
+		if creds != nil && creds.ProjectId != "" && creds.ProjectId != "aicode-consumers" {
+			accountID = creds.ProjectId
+		} else {
+			accountID = strings.TrimSpace(os.Getenv("CLOUDFLARE_ACCOUNT_ID"))
+		}
+		baseURL := strings.TrimSpace(os.Getenv("CLOUDFLARE_BASE_URL"))
+		if baseURL == "" && accountID != "" {
+			baseURL = fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/ai/v1", accountID)
+		}
+		if baseURL == "" {
+			baseURL = "https://api.cloudflare.com/client/v4/accounts/unknown/ai/v1"
+		}
+		apiToken := ""
+		if creds != nil && creds.AccessToken != "" {
+			apiToken = creds.AccessToken
+		} else {
+			apiToken = strings.TrimSpace(os.Getenv("CLOUDFLARE_API_TOKEN"))
+		}
+		return buildOpenAICompatibleRequest(ctx, baseURL, apiToken, cleanModel, req, isStream, nil)
+
 	case "openai":
 		cleanModel := strings.TrimPrefix(model, "openai/")
 		upstreamURL := "https://api.openai.com/v1/chat/completions"
@@ -675,7 +818,7 @@ func ParseNonStreamingResponse(provider string, body []byte) (string, int64, int
 					var delta string
 					var p, c int64
 					switch provider {
-					case "openai":
+					case "openai", "openrouter", "groq", "mistral", "cloudflare", "cloudflare-ai", "workers-ai":
 						delta, p, c, _ = ParseOpenAIChunk(dataJSON)
 					case "anthropic":
 						delta, p, c, _ = ParseAnthropicChunk(dataJSON)
@@ -696,7 +839,7 @@ func ParseNonStreamingResponse(provider string, body []byte) (string, int64, int
 	}
 
 	switch provider {
-	case "openai":
+	case "openai", "openrouter", "groq", "mistral", "cloudflare", "cloudflare-ai", "workers-ai":
 		var oaiResp struct {
 			Choices []struct {
 				Message struct {
@@ -1128,7 +1271,7 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 							var pTok, cTok int64
 
 							switch usedProvider {
-							case "openai":
+							case "openai", "openrouter", "groq", "mistral", "cloudflare", "cloudflare-ai", "workers-ai":
 								deltaText, pTok, cTok, _ = ParseOpenAIChunk(dataJSON)
 							case "anthropic":
 								deltaText, pTok, cTok, _ = ParseAnthropicChunk(dataJSON)

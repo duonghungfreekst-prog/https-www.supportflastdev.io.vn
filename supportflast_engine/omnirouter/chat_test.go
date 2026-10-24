@@ -1,9 +1,11 @@
 package omnirouter
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -245,5 +247,140 @@ func TestHandleCacheStats_RealMetrics(t *testing.T) {
 	}
 	if int64(stats2["entries"].(float64)) != 42 {
 		t.Errorf("Kỳ vọng entries = 42, nhận: %v", stats2["entries"])
+	}
+}
+
+// TestDetermineProvider_FourFreeProviders kiểm tra nhận diện chính xác 4 provider mới (OpenRouter, Groq, Mistral, Cloudflare)
+func TestDetermineProvider_FourFreeProviders(t *testing.T) {
+	tests := []struct {
+		accProvider  string
+		model        string
+		wantProvider string
+	}{
+		// Theo Connection Provider
+		{"openrouter", "openrouter/free", "openrouter"},
+		{"groq", "llama-3.3-70b-versatile", "groq"},
+		{"mistral", "mistral-small-latest", "mistral"},
+		{"cloudflare", "@cf/meta/llama-3.1-8b-instruct", "cloudflare"},
+		{"cloudflare-ai", "cf-model", "cloudflare"},
+		{"workers-ai", "cf-model", "cloudflare"},
+
+		// Fallback theo Model Prefix
+		{"", "openrouter/free", "openrouter"},
+		{"", "groq/llama-3.3-70b", "groq"},
+		{"", "mistral/mistral-large", "mistral"},
+		{"", "mistralai/mistral-7b", "mistral"},
+		{"", "cloudflare/@cf/meta/llama-3.1-8b-instruct", "cloudflare"},
+		{"", "@cf/meta/llama-3.1-8b-instruct", "cloudflare"},
+	}
+
+	for _, tt := range tests {
+		var acc *ProviderConnection
+		if tt.accProvider != "" {
+			acc = &ProviderConnection{Provider: tt.accProvider}
+		}
+		got := DetermineProvider(acc, tt.model)
+		if got != tt.wantProvider {
+			t.Errorf("DetermineProvider(acc=%s, model=%s) = %s, kỳ vọng: %s", tt.accProvider, tt.model, got, tt.wantProvider)
+		}
+	}
+}
+
+// TestBuildOutboundRequest_FourFreeProviders kiểm tra dựng outbound request chuẩn OpenAI-compatible cho 4 provider
+func TestBuildOutboundRequest_FourFreeProviders(t *testing.T) {
+	ctx := context.Background()
+	req := ChatCompletionRequest{
+		Model: "test-model",
+		Messages: []map[string]interface{}{
+			{"role": "user", "content": "Xin chào SupportFlast"},
+		},
+	}
+
+	// 1. OpenRouter
+	{
+		creds := &Credentials{AccessToken: "sk-or-v1-testkey123"}
+		fReq, err := BuildOutboundRequest(ctx, "openrouter", "openrouter/free", creds, req, false)
+		if err != nil {
+			t.Fatalf("BuildOutboundRequest openrouter thất bại: %v", err)
+		}
+		if fReq.URL.String() != "https://openrouter.ai/api/v1/chat/completions" {
+			t.Errorf("OpenRouter URL không đúng: %s", fReq.URL.String())
+		}
+		if fReq.Header.Get("Authorization") != "Bearer sk-or-v1-testkey123" {
+			t.Errorf("OpenRouter Auth Header sai: %s", fReq.Header.Get("Authorization"))
+		}
+		if fReq.Header.Get("HTTP-Referer") != "https://supportflastdev.io.vn" {
+			t.Errorf("OpenRouter HTTP-Referer thiếu")
+		}
+	}
+
+	// 2. Groq
+	{
+		creds := &Credentials{AccessToken: "gsk_testgroqkey456"}
+		fReq, err := BuildOutboundRequest(ctx, "groq", "groq/llama-3.3-70b-versatile", creds, req, true)
+		if err != nil {
+			t.Fatalf("BuildOutboundRequest groq thất bại: %v", err)
+		}
+		if fReq.URL.String() != "https://api.groq.com/openai/v1/chat/completions" {
+			t.Errorf("Groq URL không đúng: %s", fReq.URL.String())
+		}
+		if fReq.Header.Get("Authorization") != "Bearer gsk_testgroqkey456" {
+			t.Errorf("Groq Auth Header sai: %s", fReq.Header.Get("Authorization"))
+		}
+	}
+
+	// 3. Mistral
+	{
+		creds := &Credentials{AccessToken: "mis_testkey789"}
+		fReq, err := BuildOutboundRequest(ctx, "mistral", "mistral/mistral-small-latest", creds, req, false)
+		if err != nil {
+			t.Fatalf("BuildOutboundRequest mistral thất bại: %v", err)
+		}
+		if fReq.URL.String() != "https://api.mistral.ai/v1/chat/completions" {
+			t.Errorf("Mistral URL không đúng: %s", fReq.URL.String())
+		}
+		if fReq.Header.Get("Authorization") != "Bearer mis_testkey789" {
+			t.Errorf("Mistral Auth Header sai: %s", fReq.Header.Get("Authorization"))
+		}
+	}
+
+	// 4. Cloudflare
+	{
+		creds := &Credentials{AccessToken: "cf_token_secret", ProjectId: "acc_cf_12345"}
+		fReq, err := BuildOutboundRequest(ctx, "cloudflare", "cloudflare/@cf/meta/llama-3.1-8b-instruct", creds, req, false)
+		if err != nil {
+			t.Fatalf("BuildOutboundRequest cloudflare thất bại: %v", err)
+		}
+		expectedURL := "https://api.cloudflare.com/client/v4/accounts/acc_cf_12345/ai/v1/chat/completions"
+		if fReq.URL.String() != expectedURL {
+			t.Errorf("Cloudflare URL không đúng: nhận %s, kỳ vọng %s", fReq.URL.String(), expectedURL)
+		}
+		if fReq.Header.Get("Authorization") != "Bearer cf_token_secret" {
+			t.Errorf("Cloudflare Auth Header sai: %s", fReq.Header.Get("Authorization"))
+		}
+	}
+}
+
+// TestSeedEnvProviders kiểm tra tự động nạp cấu hình Provider từ biến môi trường
+func TestSeedEnvProviders(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	os.Setenv("OPENROUTER_API_KEY", "sk-or-test-mock-key")
+	os.Setenv("GROQ_API_KEY", "gsk-test-mock-key")
+	defer os.Unsetenv("OPENROUTER_API_KEY")
+	defer os.Unsetenv("GROQ_API_KEY")
+
+	SeedEnvProviders(db)
+
+	var orCount, groqCount int
+	_ = db.QueryRow("SELECT COUNT(*) FROM omni_providers WHERE id = 'prov_openrouter_env'").Scan(&orCount)
+	_ = db.QueryRow("SELECT COUNT(*) FROM omni_providers WHERE id = 'prov_groq_env'").Scan(&groqCount)
+
+	if orCount != 1 {
+		t.Errorf("Kỳ vọng 1 provider OpenRouter được nạp từ env, nhận: %d", orCount)
+	}
+	if groqCount != 1 {
+		t.Errorf("Kỳ vọng 1 provider Groq được nạp từ env, nhận: %d", groqCount)
 	}
 }

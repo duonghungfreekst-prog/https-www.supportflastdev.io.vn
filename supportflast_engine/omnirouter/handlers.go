@@ -1173,10 +1173,11 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 }
 
 // HandleClientReport API nhận báo cáo ngầm từ App Go (PC / Termux)
-
 func HandleClientReport(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, X-Admin-Key, x-9r-cli-token, X-9R-CLI-TOKEN")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -1184,69 +1185,108 @@ func HandleClientReport(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		// Xác thực linh hoạt cho liên kết Server Chủ và Desktop App:
-		// 1. Chấp nhận kết nối từ Desktop App / CLI qua token nội bộ x-9r-cli-token
-		// 2. Chấp nhận kết nối từ loopback / localhost
-		// 3. Chấp nhận kết nối có Authorization Bearer hoặc x-api-key hoặc report.ApiKey
-		cliToken := strings.TrimSpace(r.Header.Get("x-9r-cli-token"))
-		isInternalCli := cliToken == "6929c9313fb35a0b" || isLocalDirectRequest(r)
+
+		// P0 SECURITY: Bắt buộc request gửi tới /api/client/report hoặc /api/v1/client/report
+		// phải có Authorization Bearer API Key hợp lệ và đang Active trong bảng omni_client_keys.
+		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Thiếu Authorization Bearer API Key xác thực. Vui lòng gửi kèm header 'Authorization: Bearer <api_key>'.",
+			})
+			return
+		}
+
+		bearerKey := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		if bearerKey == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Bearer API Key không được để trống",
+			})
+			return
+		}
+
+		// Xác thực Client API Key trong RAM cache và Database
+		keyItem, validKey := ValidateClientKey(bearerKey)
+		if (!validKey || keyItem == nil) && db != nil {
+			var k ClientKey
+			err := db.QueryRow(`
+				SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at 
+				FROM omni_client_keys 
+				WHERE api_key = ? AND is_active = 1`, bearerKey).Scan(
+				&k.ID, &k.Name, &k.Key, &k.KeyHash, &k.UsedRequests, &k.TotalTokens, &k.QuotaLimit, &k.ExpiresAt, &k.DurationHours, &k.IsActive, &k.CreatedAt, &k.LastUsedAt,
+			)
+			if err == nil {
+				keyCacheMu.Lock()
+				keyCache[k.Key] = &k
+				keyCacheMu.Unlock()
+				keyItem, validKey = ValidateClientKey(bearerKey)
+			}
+		}
+
+		if !validKey || keyItem == nil || keyItem.IsActive != 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "API Key không hợp lệ hoặc đã bị khóa",
+			})
+			return
+		}
+
+		// Kiểm tra thêm trạng thái is_active trực tiếp trong bảng omni_client_keys nếu có kết nối DB
+		if db != nil {
+			var isActive int
+			if err := db.QueryRow("SELECT is_active FROM omni_client_keys WHERE api_key = ?", bearerKey).Scan(&isActive); err == nil {
+				if isActive != 1 {
+					w.WriteHeader(http.StatusUnauthorized)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"error": "API Key đã bị vô hiệu hóa hoặc không còn hoạt động trong hệ thống",
+					})
+					return
+				}
+			}
+		}
+
 		var report ClientReportPayload
 		if err := json.NewDecoder(r.Body).Decode(&report); err != nil {
 			http.Error(w, `{"error":"Invalid JSON"}`, http.StatusBadRequest)
 			return
 		}
-		apiKey := strings.TrimSpace(report.ApiKey)
-		if apiKey == "" {
-			authH := strings.TrimSpace(r.Header.Get("Authorization"))
-			if strings.HasPrefix(authH, "Bearer ") {
-				apiKey = strings.TrimSpace(authH[7:])
-			} else if xk := strings.TrimSpace(r.Header.Get("x-api-key")); xk != "" {
-				apiKey = xk
+
+		// Ràng buộc bảo mật: report.ApiKey phải trùng khớp với Key đã được xác thực ở header Authorization
+		if report.ApiKey != "" {
+			if subtle.ConstantTimeCompare([]byte(report.ApiKey), []byte(bearerKey)) != 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": "report.api_key không trùng khớp với API Key được xác thực ở header Authorization",
+				})
+				return
 			}
 		}
-		if !isInternalCli && apiKey == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": "Thiếu thông tin xác thực báo cáo telemetry.",
-			})
-			return
-		}
-		report.ApiKey = apiKey
+
+		// Server áp buộc định danh theo Bearer Key đã xác thực (chống mạo danh)
+		report.ApiKey = bearerKey
+		apiKey := bearerKey
+
+		// Vệ sinh dữ liệu: Client không được tự ý gửi số lượt UsedRequests và TotalTokens tùy tiện để ghi đè/phá hoại hệ thống
 		if report.UsedRequests < 0 || report.TotalTokens < 0 {
-
 			w.WriteHeader(http.StatusBadRequest)
-
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-
 				"error": "Giá trị used_requests và total_tokens không hợp lệ (không được là số âm)",
 			})
-
 			return
-
 		}
 
 		// Chống tấn công DoS hạn mức hoặc tràn số nguyên (integer overflow)
-
 		if report.UsedRequests > 100000 || report.TotalTokens > 50000000 {
-
 			w.WriteHeader(http.StatusBadRequest)
-
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-
 				"error": "Giá trị used_requests hoặc total_tokens vượt quá giới hạn an toàn cho phép trong một báo cáo",
 			})
-
 			return
-
 		}
 
-		// P1 SECURITY & ACCURACY: Client Report từ Desktop App gửi lên (kèm Bearer API Key hợp lệ đã xác thực)
-		// Cập nhật số lượt used_requests và total_tokens vào CSDL cho ĐÚNG API Key này
-		if apiKey != "" && report.UsedRequests > 0 && !report.SkipDBIncrement &&
-			!strings.Contains(apiKey, "native-proxy") && !strings.Contains(apiKey, "antigravity") {
-			RecordKeyUsageAsync(db, apiKey, report.UsedRequests, report.TotalTokens)
-			log.Printf("[ENGINE] [QUOTA] ✔ Đã đồng bộ Quota cho Client Key %s: +%d req, +%d tokens", MaskAPIKey(apiKey), report.UsedRequests, report.TotalTokens)
-		} else if apiKey != "" && (report.UsedRequests > 0 || report.TotalTokens > 0) {
+		// P1 Security: Ghi nhận telemetry nhưng KHÔNG cho phép client report tùy tiện tăng/sửa quota used_requests
+		if apiKey != "" && (report.UsedRequests > 0 || report.TotalTokens > 0) {
 			log.Printf("[ENGINE] [TELEMETRY] Ghi nhận telemetry từ client key %s (used=%d, tokens=%d)", MaskAPIKey(apiKey), report.UsedRequests, report.TotalTokens)
 		}
 

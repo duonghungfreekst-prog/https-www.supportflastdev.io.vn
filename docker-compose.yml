@@ -37,7 +37,16 @@ services:
       - JWT_KEYS_DIR=${JWT_KEYS_DIR:-/app/data/keys}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
-      - TZ=${TZ:-Asia/Ho_Chi_Minh}
+      - TZ=
+      - OPENROUTER_API_KEY=
+      - OPENROUTER_BASE_URL=
+      - GROQ_API_KEY=
+      - GROQ_BASE_URL=
+      - MISTRAL_API_KEY=
+      - MISTRAL_BASE_URL=
+      - CLOUDFLARE_API_TOKEN=
+      - CLOUDFLARE_ACCOUNT_ID=
+      - CLOUDFLARE_BASE_URL=${TZ:-Asia/Ho_Chi_Minh}
     ports:
       - "${HOST_PORT:-${PORT:-8080}}:8080"
     volumes:
@@ -87,7 +96,22 @@ services:
       - ENV=${ENV:-production}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
-      - MAX_INFLIGHT_LLM=${MAX_INFLIGHT_LLM:-8}
+      - MAX_INFLIGHT_LLM=
+      - OPENROUTER_API_KEY=
+      - OPENROUTER_BASE_URL=
+      - OPENROUTER_MODEL=
+      - GROQ_API_KEY=
+      - GROQ_BASE_URL=
+      - GROQ_MODEL=
+      - MISTRAL_API_KEY=
+      - MISTRAL_BASE_URL=
+      - MISTRAL_MODEL=
+      - CLOUDFLARE_API_TOKEN=
+      - CLOUDFLARE_ACCOUNT_ID=
+      - CLOUDFLARE_BASE_URL=
+      - CLOUDFLARE_MODEL=
+      - LLM_REQUEST_TIMEOUT_SECONDS=
+      - LLM_RETRY_MAX=${MAX_INFLIGHT_LLM:-8}
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - TZ=${TZ:-Asia/Ho_Chi_Minh}

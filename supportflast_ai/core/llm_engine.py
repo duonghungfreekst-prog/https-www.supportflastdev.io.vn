@@ -4,7 +4,8 @@ import logging
 import asyncio
 import threading
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
+import httpx
 
 logger = logging.getLogger("supportflast_ai")
 
@@ -43,49 +44,362 @@ def get_sync_llm_semaphore() -> threading.Semaphore:
         _sync_llm_semaphore = threading.Semaphore(max_inflight)
     return _sync_llm_semaphore
 
-class LLMEngine:
-    def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
+
+class OpenAICompatibleProvider:
+    """Adapter dùng chung cho các nhà cung cấp mô hình tương thích OpenAI (OpenRouter, Groq, Mistral, Cloudflare)."""
+
+    def __init__(
+        self,
+        name: str,
+        base_url: str,
+        api_key: str,
+        model: str,
+        extra_headers: Optional[Dict[str, str]] = None,
+        timeout_sec: float = 30.0,
+        retry_max: int = 2
+    ):
+        self.name = name
+        self.base_url = base_url.rstrip("/")
+        if not self.base_url.endswith("/chat/completions"):
+            self.chat_endpoint = f"{self.base_url}/chat/completions"
+        else:
+            self.chat_endpoint = self.base_url
+        self.api_key = api_key.strip()
+        self.model = model.strip()
+        self.extra_headers = extra_headers or {}
+        self.timeout_sec = timeout_sec
+        self.retry_max = retry_max
+
         self.is_enabled = bool(self.api_key)
-        self.client = None
-        self.legacy_model = None
-        # Model ID chuẩn chính thức từ Google (mặc định gemini-3.8-flash, tuyệt đối không gắn đuôi -high vào model ID)
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        self.is_healthy: bool = False
+        self.last_error: Optional[str] = None
+        self.last_error_code: Optional[str] = None
+        self.cooldown_until: float = 0.0
+        self.failure_count: int = 0
+
+    def is_available(self) -> bool:
+        """Kiểm tra xem provider có được kích hoạt và không đang trong thời gian cooldown không."""
+        if not self.is_enabled:
+            return False
+        if time.time() < self.cooldown_until:
+            return False
+        return True
+
+    def mark_cooldown(self, seconds: float = 60.0, reason: str = ""):
+        """Đưa provider vào cooldown khi gặp lỗi 429 hoặc quá tải."""
+        self.cooldown_until = time.time() + seconds
+        self.failure_count += 1
+        logger.warning(f"[AI] [{self.name.upper()}] Tạm thời đưa vào cooldown {seconds:.0f}s: {reason}")
+
+    def _build_headers(self) -> Dict[str, str]:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        headers.update(self.extra_headers)
+        return headers
+
+    def _build_payload(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> Dict[str, Any]:
+        messages = []
+        if system_instruction:
+            messages.append({"role": "system", "content": system_instruction})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.3 if json_mode else 0.7,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        return payload
+
+    def _sanitize_json_text(self, text: str) -> str:
+        s = text.strip()
+        if s.startswith("```json"):
+            s = s[7:]
+        elif s.startswith("```"):
+            s = s[3:]
+        if s.endswith("```"):
+            s = s[:-3]
+        return s.strip()
+
+    async def agenerate(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> Optional[Any]:
+        """Gọi bất đồng bộ tới upstream tương thích OpenAI với Retry có kiểm soát và Circuit Breaker."""
+        if not self.is_available():
+            return None
+
+        headers = self._build_headers()
+        payload = self._build_payload(prompt, system_instruction, json_mode)
+
+        attempt = 0
+        while attempt <= self.retry_max:
+            attempt += 1
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout_sec) as client:
+                    resp = await client.post(self.chat_endpoint, json=payload, headers=headers)
+
+                # 1. Xử lý 401 / 403 (Sai API Key) -> Khóa provider ngay, KHÔNG retry
+                if resp.status_code in (401, 403):
+                    self.is_healthy = False
+                    self.is_enabled = False
+                    self.last_error_code = "API_KEY_INVALID"
+                    self.last_error = f"Xác thực thất bại HTTP {resp.status_code}: {resp.text[:200]}"
+                    logger.error(f"[AI] [{self.name.upper()}] {self.last_error}")
+                    return None
+
+                # 2. Xử lý 429 (Hết hạn mức / Quota / Rate limit)
+                if resp.status_code == 429:
+                    self.is_healthy = False
+                    self.last_error_code = "QUOTA_EXCEEDED"
+                    retry_after = 60.0
+                    ra_hdr = resp.headers.get("retry-after")
+                    if ra_hdr and ra_hdr.isdigit():
+                        retry_after = float(ra_hdr)
+                    self.mark_cooldown(seconds=retry_after, reason=f"429 Quota Exceeded (Retry-After: {retry_after}s)")
+                    return None
+
+                # 3. Lỗi 5xx hoặc mã khác
+                if resp.status_code != 200:
+                    err_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                    self.last_error = err_msg
+                    self.last_error_code = f"HTTP_{resp.status_code}"
+                    if attempt <= self.retry_max:
+                        await asyncio.sleep(0.5 * attempt)
+                        continue
+                    self.mark_cooldown(seconds=30.0, reason=err_msg)
+                    return None
+
+                # 4. Thành công HTTP 200 OK
+                data = resp.json()
+                choices = data.get("choices", [])
+                if not choices:
+                    return None
+                content = choices[0].get("message", {}).get("content", "")
+                self.is_healthy = True
+                self.failure_count = 0
+                self.last_error = None
+                self.last_error_code = None
+
+                if json_mode:
+                    sanitized = self._sanitize_json_text(content)
+                    return json.loads(sanitized)
+                return content
+
+            except httpx.TimeoutException as te:
+                self.last_error_code = "TIMEOUT"
+                self.last_error = f"Timeout sau {self.timeout_sec}s"
+                if attempt <= self.retry_max:
+                    await asyncio.sleep(0.5 * attempt)
+                    continue
+                self.mark_cooldown(seconds=30.0, reason="Timeout liên tục")
+                return None
+            except Exception as ex:
+                self.last_error_code = "NETWORK_ERROR"
+                self.last_error = str(ex)
+                if attempt <= self.retry_max:
+                    await asyncio.sleep(0.5 * attempt)
+                    continue
+                self.mark_cooldown(seconds=30.0, reason=str(ex))
+                return None
+
+        return None
+
+    def generate(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> Optional[Any]:
+        """Gọi đồng bộ tới upstream tương thích OpenAI."""
+        if not self.is_available():
+            return None
+
+        headers = self._build_headers()
+        payload = self._build_payload(prompt, system_instruction, json_mode)
+
+        attempt = 0
+        while attempt <= self.retry_max:
+            attempt += 1
+            try:
+                with httpx.Client(timeout=self.timeout_sec) as client:
+                    resp = client.post(self.chat_endpoint, json=payload, headers=headers)
+
+                if resp.status_code in (401, 403):
+                    self.is_healthy = False
+                    self.is_enabled = False
+                    self.last_error_code = "API_KEY_INVALID"
+                    self.last_error = f"Xác thực thất bại HTTP {resp.status_code}: {resp.text[:200]}"
+                    return None
+
+                if resp.status_code == 429:
+                    self.is_healthy = False
+                    self.last_error_code = "QUOTA_EXCEEDED"
+                    self.mark_cooldown(seconds=60.0, reason="429 Quota Exceeded")
+                    return None
+
+                if resp.status_code != 200:
+                    if attempt <= self.retry_max:
+                        time.sleep(0.5 * attempt)
+                        continue
+                    self.mark_cooldown(seconds=30.0, reason=f"HTTP {resp.status_code}")
+                    return None
+
+                data = resp.json()
+                choices = data.get("choices", [])
+                if not choices:
+                    return None
+                content = choices[0].get("message", {}).get("content", "")
+                self.is_healthy = True
+                self.failure_count = 0
+                self.last_error = None
+                self.last_error_code = None
+
+                if json_mode:
+                    sanitized = self._sanitize_json_text(content)
+                    return json.loads(sanitized)
+                return content
+            except Exception as ex:
+                if attempt <= self.retry_max:
+                    time.sleep(0.5 * attempt)
+                    continue
+                self.mark_cooldown(seconds=30.0, reason=str(ex))
+                return None
+        return None
+
+
+class LLMEngine:
+    """Bộ điều phối Model Đa Nhà Cung Cấp (Multi-Provider Engine) cho 10 Subagents.
+    Tích hợp 5 nguồn model: Google Gemini, Groq, OpenRouter, Mistral AI và Cloudflare Workers AI.
+    Hỗ trợ cơ chế Fallback Cascade, Concurrency Semaphore, Circuit Breaker và Cache Health Check.
+    """
+
+    def __init__(self):
+        # 1. Thiết lập chung
+        self.timeout_sec = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "30.0"))
+        self.retry_max = int(os.getenv("LLM_RETRY_MAX", "2"))
+
+        # 2. Provider 1: Google Gemini (Native SDK)
+        self.gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        self.gemini_client = None
+        self.gemini_legacy_model = None
+        self.gemini_enabled = bool(self.gemini_key)
+
+        if self.gemini_enabled:
+            try:
+                from google import genai
+                self.gemini_client = genai.Client(api_key=self.gemini_key)
+                logger.info(f"[AI] [GEMINI] Initialized successfully with google.genai (model={self.gemini_model}).")
+            except ImportError:
+                try:
+                    import google.generativeai as legacy_genai
+                    legacy_genai.configure(api_key=self.gemini_key)
+                    self.gemini_legacy_model = legacy_genai.GenerativeModel(self.gemini_model)
+                    logger.info(f"[AI] [GEMINI] Initialized with legacy google.generativeai (model={self.gemini_model}).")
+                except Exception as ex:
+                    logger.error(f"[AI] [GEMINI] Failed to initialize legacy SDK: {ex}")
+                    self.gemini_enabled = False
+            except Exception as e:
+                logger.error(f"[AI] [GEMINI] Failed to initialize google.genai: {e}")
+                self.gemini_enabled = False
+
+        # 3. Provider 2: Groq (Ultra-Fast Inference - OpenAI-compatible)
+        groq_key = os.getenv("GROQ_API_KEY", "").strip()
+        groq_base = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip()
+        groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+        self.groq_provider = OpenAICompatibleProvider(
+            name="groq",
+            base_url=groq_base,
+            api_key=groq_key,
+            model=groq_model,
+            timeout_sec=min(self.timeout_sec, 20.0),
+            retry_max=self.retry_max
+        )
+
+        # 4. Provider 3: OpenRouter (Multi-Model & Free Catalog - OpenAI-compatible)
+        openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        openrouter_base = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip()
+        openrouter_model = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
+        self.openrouter_provider = OpenAICompatibleProvider(
+            name="openrouter",
+            base_url=openrouter_base,
+            api_key=openrouter_key,
+            model=openrouter_model,
+            extra_headers={
+                "HTTP-Referer": "https://supportflastdev.io.vn",
+                "X-Title": "SupportFlastDev AI Subagents"
+            },
+            timeout_sec=self.timeout_sec,
+            retry_max=self.retry_max
+        )
+
+        # 5. Provider 4: Mistral AI (Independent Fallback - OpenAI-compatible)
+        mistral_key = os.getenv("MISTRAL_API_KEY", "").strip()
+        mistral_base = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1").strip()
+        mistral_model = os.getenv("MISTRAL_MODEL", "mistral-small-latest").strip()
+        self.mistral_provider = OpenAICompatibleProvider(
+            name="mistral",
+            base_url=mistral_base,
+            api_key=mistral_key,
+            model=mistral_model,
+            timeout_sec=self.timeout_sec,
+            retry_max=self.retry_max
+        )
+
+        # 6. Provider 5: Cloudflare Workers AI (Daily Compute Budget - OpenAI-compatible)
+        cf_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
+        cf_account = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
+        cf_base = os.getenv("CLOUDFLARE_BASE_URL", "").strip()
+        if not cf_base and cf_account:
+            cf_base = f"https://api.cloudflare.com/client/v4/accounts/{cf_account}/ai/v1"
+        elif not cf_base:
+            cf_base = "https://api.cloudflare.com/client/v4/accounts/unknown/ai/v1"
+        cf_model = os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.1-8b-instruct").strip()
+        self.cloudflare_provider = OpenAICompatibleProvider(
+            name="cloudflare",
+            base_url=cf_base,
+            api_key=cf_token,
+            model=cf_model,
+            timeout_sec=self.timeout_sec,
+            retry_max=self.retry_max
+        )
+
+        # Tổng hợp danh sách nhà cung cấp OpenAI-compatible
+        self.openai_providers = [
+            self.groq_provider,
+            self.openrouter_provider,
+            self.mistral_provider,
+            self.cloudflare_provider
+        ]
+
+        # Kiểm tra tính sẵn sàng tổng thể
+        self.is_enabled = self.gemini_enabled or any(p.is_enabled for p in self.openai_providers)
+        self.model_name = self.gemini_model if self.gemini_enabled else (
+            self.groq_provider.model if self.groq_provider.is_enabled else (
+                self.openrouter_provider.model if self.openrouter_provider.is_enabled else (
+                    self.mistral_provider.model if self.mistral_provider.is_enabled else (
+                        self.cloudflare_provider.model if self.cloudflare_provider.is_enabled else "on-device-rule-based"
+                    )
+                )
+            )
+        )
+
         self.last_error: Optional[str] = None
         self.last_error_code: Optional[str] = None
         self.is_healthy: bool = False
-        # Cache kết quả kiểm tra sức khỏe để chống cạn kiệt Quota do probe liên tục (Audit P1.5)
         self._last_health_cache: Optional[Dict[str, Any]] = None
         self._last_health_check_time: float = 0.0
         self._health_cache_ttl: float = 60.0
 
-        if self.is_enabled:
-            # Ưu tiên SDK mới nhất: google.genai (Audit P1.4)
-            try:
-                from google import genai
-                self.client = genai.Client(api_key=self.api_key)
-                logger.info(f"[AI] LLM Engine initialized successfully with google.genai SDK (model={self.model_name}).")
-            except ImportError:
-                try:
-                    import google.generativeai as legacy_genai
-                    legacy_genai.configure(api_key=self.api_key)
-                    self.legacy_model = legacy_genai.GenerativeModel(self.model_name)
-                    logger.info(f"[AI] LLM Engine initialized with legacy google.generativeai SDK (model={self.model_name}).")
-                except Exception as ex:
-                    logger.error(f"[AI] Failed to initialize legacy LLM SDK: {ex}")
-                    self.is_enabled = False
-                    self.last_error = str(ex)
-                    self.last_error_code = "SDK_INIT_ERROR"
-            except Exception as e:
-                logger.error(f"[AI] Failed to initialize google.genai client: {e}")
-                self.is_enabled = False
-                self.last_error = str(e)
-                self.last_error_code = "CLIENT_INIT_ERROR"
+        active_names = []
+        if self.gemini_enabled:
+            active_names.append("Gemini")
+        for p in self.openai_providers:
+            if p.is_enabled:
+                active_names.append(p.name.capitalize())
+
+        if active_names:
+            logger.info(f"[AI] Multi-Provider LLM Engine activated with: {', '.join(active_names)}.")
         else:
-            logger.info("[AI] GEMINI_API_KEY is not configured. Running in high-speed On-Device Rule-Based mode.")
+            logger.info("[AI] No external LLM keys configured. Running in high-speed On-Device Rule-Based mode.")
 
     def _classify_error(self, err_str: str) -> str:
-        """Phân loại lỗi chi tiết (API_KEY_INVALID, MODEL_NOT_FOUND, QUOTA_EXCEEDED, RATE_LIMITED, TIMEOUT, NETWORK_ERROR)."""
         s = err_str.lower()
         if "api_key_invalid" in s or "api key not valid" in s or "invalid api key" in s or "unauthenticated" in s:
             return "API_KEY_INVALID"
@@ -99,16 +413,226 @@ class LLMEngine:
             return "TIMEOUT"
         return "NETWORK_ERROR"
 
+    def _get_ordered_providers(self, mode: str = "fast") -> List[Tuple[str, Any]]:
+        """Sắp xếp thứ tự gọi provider theo chế độ (fast / parallel / deep / default)."""
+        ordered = []
+        # Chế độ fast: Ưu tiên Groq (độ trễ thấp nhất) -> Gemini -> OpenRouter -> Mistral -> Cloudflare
+        if mode == "fast" and self.groq_provider.is_available():
+            ordered.append(("groq", self.groq_provider))
+
+        if self.gemini_enabled:
+            ordered.append(("gemini", None))
+
+        for p in self.openai_providers:
+            if (p.name, p) not in ordered and p.is_available():
+                ordered.append((p.name, p))
+
+        return ordered
+
+    async def _agenerate_gemini(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> Optional[Any]:
+        """Gọi bất đồng bộ tới Google Gemini."""
+        if not self.gemini_enabled:
+            return None
+
+        # 1. Dùng google.genai client hiện đại
+        if self.gemini_client and hasattr(self.gemini_client, "aio") and hasattr(self.gemini_client.aio, "models"):
+            try:
+                from google.genai import types
+                cfg_kwargs = {}
+                if json_mode:
+                    cfg_kwargs["response_mime_type"] = "application/json"
+                if system_instruction:
+                    cfg_kwargs["system_instruction"] = system_instruction
+
+                config = types.GenerateContentConfig(**cfg_kwargs) if cfg_kwargs else None
+                response = await self.gemini_client.aio.models.generate_content(
+                    model=self.gemini_model,
+                    contents=prompt,
+                    config=config
+                )
+                raw_text = response.text.strip()
+                if json_mode:
+                    if raw_text.startswith("```json"):
+                        raw_text = raw_text[7:]
+                    elif raw_text.startswith("```"):
+                        raw_text = raw_text[3:]
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text[:-3]
+                    return json.loads(raw_text.strip())
+                return raw_text
+            except Exception as e:
+                logger.error(f"[AI] [GEMINI] Error: {e}")
+                self.last_error = str(e)
+                self.last_error_code = self._classify_error(str(e))
+                return None
+
+        # 2. Fallback sang threadpool nếu chạy SDK đồng bộ
+        return await asyncio.to_thread(self._generate_gemini_sync, prompt, system_instruction, json_mode)
+
+    def _generate_gemini_sync(self, prompt: str, system_instruction: Optional[str] = None, json_mode: bool = False) -> Optional[Any]:
+        """Gọi đồng bộ tới Google Gemini."""
+        if not self.gemini_enabled:
+            return None
+
+        if self.gemini_client:
+            try:
+                from google.genai import types
+                cfg_kwargs = {}
+                if json_mode:
+                    cfg_kwargs["response_mime_type"] = "application/json"
+                if system_instruction:
+                    cfg_kwargs["system_instruction"] = system_instruction
+                config = types.GenerateContentConfig(**cfg_kwargs) if cfg_kwargs else None
+                response = self.gemini_client.models.generate_content(
+                    model=self.gemini_model,
+                    contents=prompt,
+                    config=config
+                )
+                raw_text = response.text.strip()
+                if json_mode:
+                    if raw_text.startswith("```json"):
+                        raw_text = raw_text[7:]
+                    elif raw_text.startswith("```"):
+                        raw_text = raw_text[3:]
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text[:-3]
+                    return json.loads(raw_text.strip())
+                return raw_text
+            except Exception as e:
+                logger.error(f"[AI] [GEMINI_SYNC] Error: {e}")
+                return None
+
+        if self.gemini_legacy_model:
+            try:
+                import google.generativeai as legacy_genai
+                model = self.gemini_legacy_model
+                if system_instruction:
+                    model = legacy_genai.GenerativeModel(self.gemini_model, system_instruction=system_instruction)
+                gen_cfg = legacy_genai.GenerationConfig(response_mime_type="application/json") if json_mode else None
+                response = model.generate_content(prompt, generation_config=gen_cfg)
+                if json_mode:
+                    return json.loads(response.text)
+                return response.text
+            except Exception as e:
+                logger.error(f"[AI] [GEMINI_LEGACY] Error: {e}")
+                return None
+
+        return None
+
+    async def agenerate_text(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[str]:
+        """Gọi LLM bất đồng bộ dạng Text qua Cascade Fallback giữa các nhà cung cấp khả dụng."""
+        if not self.is_enabled:
+            return None
+
+        sem = get_llm_semaphore()
+        async with sem:
+            providers = self._get_ordered_providers(mode=mode)
+            for prov_name, prov_obj in providers:
+                try:
+                    if prov_name == "gemini":
+                        res = await self._agenerate_gemini(prompt, system_instruction, json_mode=False)
+                    else:
+                        res = await prov_obj.agenerate(prompt, system_instruction, json_mode=False)
+
+                    if res:
+                        self.is_healthy = True
+                        return res
+                except Exception as ex:
+                    logger.warning(f"[AI] Provider {prov_name} failed: {ex}. Falling back to next provider...")
+
+        return None
+
+    async def agenerate_json(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[Dict[str, Any]]:
+        """Gọi LLM bất đồng bộ dạng JSON qua Cascade Fallback giữa các nhà cung cấp khả dụng."""
+        if not self.is_enabled:
+            return None
+
+        sem = get_llm_semaphore()
+        async with sem:
+            providers = self._get_ordered_providers(mode=mode)
+            for prov_name, prov_obj in providers:
+                try:
+                    if prov_name == "gemini":
+                        res = await self._agenerate_gemini(prompt, system_instruction, json_mode=True)
+                    else:
+                        res = await prov_obj.agenerate(prompt, system_instruction, json_mode=True)
+
+                    if res and isinstance(res, dict):
+                        self.is_healthy = True
+                        return res
+                except Exception as ex:
+                    logger.warning(f"[AI] Provider {prov_name} (json) failed: {ex}. Falling back to next provider...")
+
+        return None
+
+    def generate_text(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[str]:
+        """Gọi LLM đồng bộ dạng Text có kiểm soát Semaphore đồng bộ."""
+        if not self.is_enabled:
+            return None
+
+        sem = get_sync_llm_semaphore()
+        acquired = sem.acquire(timeout=10.0)
+        if not acquired:
+            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            return None
+
+        try:
+            providers = self._get_ordered_providers(mode=mode)
+            for prov_name, prov_obj in providers:
+                try:
+                    if prov_name == "gemini":
+                        res = self._generate_gemini_sync(prompt, system_instruction, json_mode=False)
+                    else:
+                        res = prov_obj.generate(prompt, system_instruction, json_mode=False)
+
+                    if res:
+                        self.is_healthy = True
+                        return res
+                except Exception as ex:
+                    logger.warning(f"[AI] Provider {prov_name} failed: {ex}. Falling back...")
+            return None
+        finally:
+            sem.release()
+
+    def generate_json(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[Dict[str, Any]]:
+        """Gọi LLM đồng bộ dạng JSON có kiểm soát Semaphore đồng bộ."""
+        if not self.is_enabled:
+            return None
+
+        sem = get_sync_llm_semaphore()
+        acquired = sem.acquire(timeout=10.0)
+        if not acquired:
+            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            return None
+
+        try:
+            providers = self._get_ordered_providers(mode=mode)
+            for prov_name, prov_obj in providers:
+                try:
+                    if prov_name == "gemini":
+                        res = self._generate_gemini_sync(prompt, system_instruction, json_mode=True)
+                    else:
+                        res = prov_obj.generate(prompt, system_instruction, json_mode=True)
+
+                    if res and isinstance(res, dict):
+                        self.is_healthy = True
+                        return res
+                except Exception as ex:
+                    logger.warning(f"[AI] Provider {prov_name} (json) failed: {ex}. Falling back...")
+            return None
+        finally:
+            sem.release()
+
     async def check_health(self, force_refresh: bool = False) -> Dict[str, Any]:
-        """Kiểm tra kết nối thực tế tới Gemini Model có Cache TTL 60s để chống cạn kiệt Quota (Audit P1.5)."""
+        """Kiểm tra kết nối thực tế tới tất cả các nhà cung cấp có Cache TTL 60s để chống cạn kiệt Quota."""
         if not self.is_enabled:
             return {
                 "status": "offline",
-                "code": "API_KEY_MISSING",
-                "message": "Chưa cấu hình GEMINI_API_KEY. Hệ thống đang chạy ở chế độ On-Device Rule-Based an toàn.",
-                "model": self.model_name,
+                "code": "NO_PROVIDERS_CONFIGURED",
+                "message": "Chưa cấu hình API Key của nhà cung cấp nào. Hệ thống đang chạy ở chế độ On-Device Rule-Based an toàn.",
+                "model": "on-device-rule-based",
                 "fallback_active": True,
-                "sdk": "google-genai" if self.client else ("legacy-genai" if self.legacy_model else "none")
+                "providers": {}
             }
 
         now = time.time()
@@ -118,262 +642,55 @@ class LLMEngine:
             res["cache_age_sec"] = round(now - self._last_health_check_time, 1)
             return res
 
-        t0 = time.time()
-        try:
-            # Gửi 1 prompt ping siêu nhẹ với timeout 4s để kiểm tra tính sẵn sàng thực tế của model
-            test_res = await asyncio.wait_for(
-                self.agenerate_text("ping", system_instruction="Trả lời đúng một từ: PONG"),
-                timeout=4.0
-            )
-            latency_ms = round((time.time() - t0) * 1000, 2)
-            if test_res:
-                self.is_healthy = True
-                self.last_error = None
-                self.last_error_code = None
-                res = {
-                    "status": "online",
-                    "code": "OK",
-                    "model": self.model_name,
-                    "sdk": "google-genai" if self.client else "legacy-genai",
-                    "latency_ms": latency_ms,
-                    "fallback_active": False,
-                    "cached": False
-                }
-            else:
-                self.is_healthy = False
-                err_code = self.last_error_code or "MODEL_EMPTY_RESPONSE"
-                res = {
-                    "status": "degraded",
-                    "code": err_code,
-                    "error": self.last_error or "Không nhận được phản hồi từ model",
-                    "model": self.model_name,
-                    "fallback_active": True,
-                    "cached": False
-                }
-        except asyncio.TimeoutError:
-            self.is_healthy = False
-            self.last_error_code = "TIMEOUT"
-            self.last_error = "Quá thời gian chờ khi kết nối Gemini API (Timeout 4s)"
-            res = {
-                "status": "degraded",
-                "code": "TIMEOUT",
-                "error": self.last_error,
-                "model": self.model_name,
-                "fallback_active": True,
-                "cached": False
-            }
-        except Exception as ex:
-            self.is_healthy = False
-            err_str = str(ex)
-            err_code = self._classify_error(err_str)
-            self.last_error_code = err_code
-            self.last_error = err_str
-            res = {
-                "status": "degraded",
-                "code": err_code,
-                "error": err_str,
-                "model": self.model_name,
-                "fallback_active": True,
-                "cached": False
-            }
+        providers_status = {}
+        any_online = False
 
+        # 1. Kiểm tra Gemini
+        if self.gemini_enabled:
+            t0 = time.time()
+            try:
+                test_gemini = await asyncio.wait_for(
+                    self._agenerate_gemini("ping", system_instruction="Trả lời đúng 1 từ: PONG"),
+                    timeout=4.0
+                )
+                lat = round((time.time() - t0) * 1000, 2)
+                if test_gemini:
+                    providers_status["gemini"] = {"status": "online", "model": self.gemini_model, "latency_ms": lat}
+                    any_online = True
+                else:
+                    providers_status["gemini"] = {"status": "degraded", "model": self.gemini_model, "error": "Empty response"}
+            except Exception as ex:
+                providers_status["gemini"] = {"status": "degraded", "model": self.gemini_model, "error": str(ex)}
+
+        # 2. Kiểm tra các OpenAI-compatible providers
+        for p in self.openai_providers:
+            if p.is_enabled:
+                t0 = time.time()
+                try:
+                    test_res = await asyncio.wait_for(
+                        p.agenerate("ping", system_instruction="Reply with 1 word: PONG"),
+                        timeout=4.0
+                    )
+                    lat = round((time.time() - t0) * 1000, 2)
+                    if test_res:
+                        providers_status[p.name] = {"status": "online", "model": p.model, "latency_ms": lat}
+                        any_online = True
+                    else:
+                        providers_status[p.name] = {"status": "degraded", "model": p.model, "error": p.last_error or "Empty response"}
+                except Exception as ex:
+                    providers_status[p.name] = {"status": "degraded", "model": p.model, "error": str(ex)}
+
+        self.is_healthy = any_online
+        res = {
+            "status": "online" if any_online else "degraded",
+            "code": "OK" if any_online else "ALL_PROVIDERS_UNAVAILABLE",
+            "model": self.model_name,
+            "fallback_active": not any_online,
+            "cached": False,
+            "providers": providers_status
+        }
         self._last_health_cache = res
         self._last_health_check_time = time.time()
         return res
-
-    def generate_json(self, prompt: str, system_instruction: str = None) -> Optional[Dict[str, Any]]:
-        """Gọi LLM đồng bộ trả về kết quả cấu trúc JSON có kiểm soát Semaphore đồng bộ (Audit P1.2)."""
-        if not self.is_enabled:
-            return None
-
-        sem = get_sync_llm_semaphore()
-        acquired = sem.acquire(timeout=10.0)
-        if not acquired:
-            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
-            return None
-
-        try:
-            # 1. Dùng google.genai client hiện đại
-            if self.client:
-                try:
-                    from google.genai import types
-                    config = types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction=system_instruction
-                    )
-                    response = self.client.models.generate_content(
-                        model=self.model_name,
-                        contents=prompt,
-                        config=config
-                    )
-                    raw_text = response.text.strip()
-                    if raw_text.startswith("```json"):
-                        raw_text = raw_text[7:]
-                    if raw_text.startswith("```"):
-                        raw_text = raw_text[3:]
-                    if raw_text.endswith("```"):
-                        raw_text = raw_text[:-3]
-                    self.is_healthy = True
-                    return json.loads(raw_text.strip())
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] google.genai generate_json error: {e}")
-                    return None
-
-            # 2. Dùng legacy client nếu có
-            if self.legacy_model:
-                try:
-                    import google.generativeai as legacy_genai
-                    model = self.legacy_model
-                    if system_instruction:
-                        model = legacy_genai.GenerativeModel(
-                            self.model_name,
-                            system_instruction=system_instruction
-                        )
-                    response = model.generate_content(
-                        prompt,
-                        generation_config=legacy_genai.GenerationConfig(
-                            response_mime_type="application/json"
-                        )
-                    )
-                    self.is_healthy = True
-                    return json.loads(response.text)
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] Legacy LLM Error: {e}")
-                    return None
-
-            return None
-        finally:
-            sem.release()
-
-    async def agenerate_json(self, prompt: str, system_instruction: str = None) -> Optional[Dict[str, Any]]:
-        """Gọi LLM bất đồng bộ thật sự (Async LLM) có kiểm soát Concurrency Semaphore (Nút thắt 2 & Audit P1.2)."""
-        if not self.is_enabled:
-            return None
-
-        sem = get_llm_semaphore()
-        async with sem:
-            # 1. Dùng google.genai client hiện đại qua client.aio
-            if self.client and hasattr(self.client, "aio") and hasattr(self.client.aio, "models"):
-                try:
-                    from google.genai import types
-                    config = types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction=system_instruction
-                    )
-                    response = await self.client.aio.models.generate_content(
-                        model=self.model_name,
-                        contents=prompt,
-                        config=config
-                    )
-                    raw_text = response.text.strip()
-                    if raw_text.startswith("```json"):
-                        raw_text = raw_text[7:]
-                    if raw_text.startswith("```"):
-                        raw_text = raw_text[3:]
-                    if raw_text.endswith("```"):
-                        raw_text = raw_text[:-3]
-                    self.is_healthy = True
-                    return json.loads(raw_text.strip())
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] google.genai aio generate_json error: {e}")
-                    return None
-
-            # 2. Fallback an toàn qua threadpool nếu SDK chạy đồng bộ
-            return await asyncio.to_thread(self.generate_json, prompt, system_instruction)
-
-    def generate_text(self, prompt: str, system_instruction: str = None) -> Optional[str]:
-        """Gọi LLM đồng bộ trả về kết quả dạng Text có kiểm soát Semaphore đồng bộ (Audit P1.2)."""
-        if not self.is_enabled:
-            return None
-
-        sem = get_sync_llm_semaphore()
-        acquired = sem.acquire(timeout=10.0)
-        if not acquired:
-            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
-            return None
-
-        try:
-            # 1. Dùng google.genai client hiện đại
-            if self.client:
-                try:
-                    from google.genai import types
-                    config = types.GenerateContentConfig(
-                        system_instruction=system_instruction
-                    ) if system_instruction else None
-                    response = self.client.models.generate_content(
-                        model=self.model_name,
-                        contents=prompt,
-                        config=config
-                    )
-                    self.is_healthy = True
-                    return response.text
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] google.genai generate_text error: {e}")
-                    return None
-
-            # 2. Dùng legacy client nếu có
-            if self.legacy_model:
-                try:
-                    import google.generativeai as legacy_genai
-                    model = self.legacy_model
-                    if system_instruction:
-                        model = legacy_genai.GenerativeModel(
-                            self.model_name,
-                            system_instruction=system_instruction
-                        )
-                    response = model.generate_content(prompt)
-                    self.is_healthy = True
-                    return response.text
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] Legacy LLM Error: {e}")
-                    return None
-
-            return None
-        finally:
-            sem.release()
-
-    async def agenerate_text(self, prompt: str, system_instruction: str = None) -> Optional[str]:
-        """Gọi LLM bất đồng bộ dạng Text có kiểm soát Concurrency Semaphore (Nút thắt 2 & Audit P1.2)."""
-        if not self.is_enabled:
-            return None
-
-        sem = get_llm_semaphore()
-        async with sem:
-            if self.client and hasattr(self.client, "aio") and hasattr(self.client.aio, "models"):
-                try:
-                    from google.genai import types
-                    config = types.GenerateContentConfig(
-                        system_instruction=system_instruction
-                    ) if system_instruction else None
-                    response = await self.client.aio.models.generate_content(
-                        model=self.model_name,
-                        contents=prompt,
-                        config=config
-                    )
-                    self.is_healthy = True
-                    return response.text
-                except Exception as e:
-                    self.is_healthy = False
-                    self.last_error = str(e)
-                    self.last_error_code = self._classify_error(str(e))
-                    logger.error(f"[AI] [{self.last_error_code}] google.genai aio generate_text error: {e}")
-                    return None
-
-            return await asyncio.to_thread(self.generate_text, prompt, system_instruction)
 
 llm_engine = LLMEngine()
