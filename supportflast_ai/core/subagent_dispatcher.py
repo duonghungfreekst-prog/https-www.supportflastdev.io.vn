@@ -53,10 +53,12 @@ class SubagentDispatcher:
         }
 
     def list_subagents(self) -> List[Dict[str, Any]]:
-        """Trả về metadata của 10 subagents cùng trạng thái model kết nối thực tế (Mục 4)."""
+        """Trả về metadata của 10 subagents cùng trạng thái model kết nối thực tế (Audit 3.3)."""
         from core.llm_engine import llm_engine
+        is_healthy_model = llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)
+        agent_status = "READY" if is_healthy_model else ("DEGRADED" if llm_engine.is_enabled else "ON_DEVICE_READY")
+        engine_status = "online" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "offline")
         model_mode = "gemini_api" if llm_engine.is_enabled else "on_device_fallback"
-        engine_status = "online" if (llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)) else ("on_device" if not llm_engine.is_enabled else "degraded")
 
         return [
             {
@@ -64,7 +66,7 @@ class SubagentDispatcher:
                 "name": agent.name,
                 "color": agent.color,
                 "description": agent.role_description,
-                "status": "online",
+                "status": agent_status,
                 "model_status": engine_status,
                 "model_name": llm_engine.model_name,
                 "provider": model_mode
@@ -138,7 +140,8 @@ class SubagentDispatcher:
             target_ids = [agent_id]
             selected_mode = "targeted"
         else:
-            selected_mode = mode.lower() if mode in ("fast", "parallel", "deep") else "fast"
+            raw_mode = str(mode or "fast").strip().lower()
+            selected_mode = raw_mode if raw_mode in ("fast", "parallel", "deep") else "fast"
             if selected_mode == "fast":
                 target_ids = [self.fast_route(query)]
             elif selected_mode == "parallel":
@@ -187,10 +190,22 @@ class SubagentDispatcher:
         results_dict: Dict[str, Any] = {aid: res for aid, res in raw_results}
         wall_clock_ms = round((time.time() - start_wall) * 1000, 2)
 
+        from core.llm_engine import llm_engine
+        is_healthy_model = llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)
+
+        # Ghi nhận model_used và fallback_used tại từng agent (Audit 4)
+        for aid, r in results_dict.items():
+            r["fallback_used"] = not is_healthy_model
+            r["model_used"] = llm_engine.model_name if is_healthy_model else "rule_based_on_device"
+
         latencies = [r.get("execution_time_ms", 0.0) for r in results_dict.values()]
         latencies_sorted = sorted(latencies)
-        p95_ms = latencies_sorted[int(len(latencies_sorted) * 0.95)] if latencies_sorted else 0.0
-        p99_ms = latencies_sorted[int(len(latencies_sorted) * 0.99)] if latencies_sorted else 0.0
+        min_ms = round(min(latencies), 2) if latencies else 0.0
+        max_ms = round(max(latencies), 2) if latencies else 0.0
+        avg_ms = round(sum(latencies) / len(latencies), 2) if latencies else 0.0
+        # Percentiles chỉ có ý nghĩa thống kê khi mẫu >= 10, nếu ít hơn lấy max (Audit 6.2)
+        p95_ms = max_ms if len(latencies) < 10 else latencies_sorted[int(len(latencies_sorted) * 0.95)]
+        p99_ms = max_ms if len(latencies) < 10 else latencies_sorted[int(len(latencies_sorted) * 0.99)]
         total_sequential_ms = round(sum(latencies), 2)
         speedup = round(total_sequential_ms / max(wall_clock_ms, 0.001), 2)
 
@@ -234,19 +249,35 @@ class SubagentDispatcher:
         header = f"**[Báo Cáo Phân Tích Tổng Hợp Đa Subagents (Chế độ: {selected_mode.upper()})]**\n- Số lượng Subagents: **{len(target_ids)}** | Thời gian fan-out: **{wall_clock_ms}ms** (Tiết kiệm **{speedup}x** thời gian so với chạy tuần tự)\n\n"
         combined_summary = header + "\n\n---\n\n".join(sections)
 
-        has_timeout = any(r.get("status") == "timeout" for r in results_dict.values())
-        overall_status = "partial_success" if has_timeout else "success"
+        # Tính trạng thái tổng thể chính xác theo kết quả từng agent (Audit 4)
+        statuses = [r.get("status") for r in results_dict.values()]
+        total_count = len(statuses)
+        success_count = sum(1 for s in statuses if s in ("success", "unmeasured"))
+        timeout_count = sum(1 for s in statuses if s == "timeout")
+        error_count = sum(1 for s in statuses if s not in ("success", "unmeasured", "timeout"))
 
-        from core.llm_engine import llm_engine
-        multi_fallback_used = not (llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False))
+        if success_count == total_count:
+            overall_status = "success"
+        elif success_count > 0:
+            overall_status = "partial_success"
+        else:
+            overall_status = "failed"
+
+        multi_fallback_used = not is_healthy_model
         return {
             "status": overall_status,
             "mode": selected_mode,
             "total_agents": len(target_ids),
+            "successful_agents": success_count,
+            "failed_agents": error_count,
+            "timed_out_agents": timeout_count,
             "wall_clock_ms": wall_clock_ms,
             "total_sequential_ms": total_sequential_ms,
             "speedup": speedup,
             "router_ms": router_ms,
+            "latency_min_ms": min_ms,
+            "latency_max_ms": max_ms,
+            "latency_avg_ms": avg_ms,
             "p95_ms": p95_ms,
             "p99_ms": p99_ms,
             "metrics_scope": "single_request_fanout",

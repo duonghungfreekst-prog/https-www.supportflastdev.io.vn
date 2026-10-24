@@ -38,13 +38,27 @@ var (
 
 // GetInitialAdminPassword lấy mật khẩu khởi tạo cho tài khoản admin.
 // Ưu tiên đọc từ biến môi trường ADMIN_PASSWORD (tối thiểu 8 ký tự).
-// Nếu chưa cấu hình, sinh ngẫu nhiên CSPRNG và lưu trong bộ nhớ tiến trình,
-// tuyệt đối không dùng mật khẩu cố định trong mã nguồn (Tuân thủ P0.2 & Rule 3).
+// Nếu chưa cấu hình, đọc từ tệp khóa bền vững data/keys/.admin_secret để giữ mật khẩu nhất quán qua các lần restart.
+// Nếu tệp chưa tồn tại, sinh ngẫu nhiên CSPRNG và lưu bền vững vào tệp (Tuân thủ P0 & Rule 3).
 func GetInitialAdminPassword() string {
 	envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
 	if len(envPass) >= 8 {
 		return envPass
 	}
+
+	// Đọc từ persistent secret file data/keys/.admin_secret
+	adminSecretPath := filepath.Join("data", "keys", ".admin_secret")
+	if dataDir := strings.TrimSpace(os.Getenv("DATA_DIR")); dataDir != "" {
+		adminSecretPath = filepath.Join(dataDir, "keys", ".admin_secret")
+	}
+	if data, err := os.ReadFile(adminSecretPath); err == nil {
+		saved := strings.TrimSpace(string(data))
+		if len(saved) >= 8 {
+			_ = os.Setenv("ADMIN_PASSWORD", saved)
+			return saved
+		}
+	}
+
 	generatedAdminPasswordOnce.Do(func() {
 		buf := make([]byte, 12)
 		if _, err := rand.Read(buf); err != nil {
@@ -52,7 +66,10 @@ func GetInitialAdminPassword() string {
 		} else {
 			generatedAdminPassword = fmt.Sprintf("Admin@%s!Secured", hex.EncodeToString(buf))
 		}
-		log.Printf("[ENGINE] [DATABASE] [SECURITY] Đã tạo mật khẩu quản trị ngẫu nhiên CSPRNG: %s (Hãy đặt biến môi trường ADMIN_PASSWORD để cố định)", generatedAdminPassword)
+		_ = os.Setenv("ADMIN_PASSWORD", generatedAdminPassword)
+		_ = os.MkdirAll(filepath.Dir(adminSecretPath), 0700)
+		_ = os.WriteFile(adminSecretPath, []byte(generatedAdminPassword), 0600)
+		log.Printf("[ENGINE] [DATABASE] [SECURITY] Đã tạo và lưu mật khẩu quản trị ngẫu nhiên CSPRNG tại '%s': %s (Hãy đặt biến môi trường ADMIN_PASSWORD để cố định)", adminSecretPath, generatedAdminPassword)
 	})
 	return generatedAdminPassword
 }

@@ -12,11 +12,26 @@ logger = logging.getLogger("supportflast_ai")
 _llm_semaphore: Optional[asyncio.Semaphore] = None
 _sync_llm_semaphore: Optional[threading.Semaphore] = None
 
+def _parse_max_inflight() -> int:
+    """Xác thực và chuyển đổi MAX_INFLIGHT_LLM sang số nguyên dương hợp lệ (> 0).
+    Nếu <= 0 hoặc sai định dạng, tự động fallback an toàn về 8 để chống nghẽn hoặc sập semaphore (Audit P1).
+    """
+    raw = os.getenv("MAX_INFLIGHT_LLM", "8").strip()
+    try:
+        val = int(raw)
+        if val > 0:
+            return val
+        logger.warning(f"[AI] MAX_INFLIGHT_LLM={val} không hợp lệ (phải > 0). Tự động fallback về 8.")
+        return 8
+    except (ValueError, TypeError):
+        logger.warning(f"[AI] MAX_INFLIGHT_LLM='{raw}' không phải số nguyên. Tự động fallback về 8.")
+        return 8
+
 def get_llm_semaphore() -> asyncio.Semaphore:
     """Trả về asyncio.Semaphore cấp tiến trình để kiểm soát số lượng yêu cầu gọi LLM bất đồng bộ (MAX_INFLIGHT_LLM)."""
     global _llm_semaphore
     if _llm_semaphore is None:
-        max_inflight = int(os.getenv("MAX_INFLIGHT_LLM", "8"))
+        max_inflight = _parse_max_inflight()
         _llm_semaphore = asyncio.Semaphore(max_inflight)
     return _llm_semaphore
 
@@ -24,7 +39,7 @@ def get_sync_llm_semaphore() -> threading.Semaphore:
     """Trả về threading.Semaphore để kiểm soát số lượng yêu cầu gọi LLM đồng bộ (MAX_INFLIGHT_LLM)."""
     global _sync_llm_semaphore
     if _sync_llm_semaphore is None:
-        max_inflight = int(os.getenv("MAX_INFLIGHT_LLM", "8"))
+        max_inflight = _parse_max_inflight()
         _sync_llm_semaphore = threading.Semaphore(max_inflight)
     return _sync_llm_semaphore
 
@@ -201,6 +216,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return json.loads(raw_text.strip())
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] google.genai generate_json error: {e}")
@@ -225,6 +241,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return json.loads(response.text)
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] Legacy LLM Error: {e}")
@@ -264,6 +281,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return json.loads(raw_text.strip())
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] google.genai aio generate_json error: {e}")
@@ -299,6 +317,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return response.text
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] google.genai generate_text error: {e}")
@@ -318,6 +337,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return response.text
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] Legacy LLM Error: {e}")
@@ -348,6 +368,7 @@ class LLMEngine:
                     self.is_healthy = True
                     return response.text
                 except Exception as e:
+                    self.is_healthy = False
                     self.last_error = str(e)
                     self.last_error_code = self._classify_error(str(e))
                     logger.error(f"[AI] [{self.last_error_code}] google.genai aio generate_text error: {e}")

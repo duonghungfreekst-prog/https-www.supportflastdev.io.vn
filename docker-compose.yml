@@ -25,7 +25,7 @@ services:
       - .env
     environment:
       # Biến môi trường cốt lõi Production (ưu tiên giá trị từ .env nếu có)
-      - PORT=${PORT:-8080}
+      - PORT=8080
       - HOST=${HOST:-0.0.0.0}
       - DOMAIN=${DOMAIN:-supportflastdev.io.vn}
       - ENV=${ENV:-production}
@@ -39,7 +39,7 @@ services:
       - AI_ENGINE_URL=${AI_ENGINE_URL:-http://supportflast-ai:8000}
       - TZ=${TZ:-Asia/Ho_Chi_Minh}
     ports:
-      - "${PORT:-8080}:8080"
+      - "${HOST_PORT:-${PORT:-8080}}:8080"
     volumes:
       # Volume persistence 1: Cơ sở dữ liệu SQLite và khóa mã hóa RS256
       - ./data:/app/data

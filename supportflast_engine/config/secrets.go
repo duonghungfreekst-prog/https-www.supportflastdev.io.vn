@@ -67,6 +67,11 @@ func IsInsecureInternalSecret(secret string) bool {
 
 // GetInternalSecretFilePath trả về đường dẫn tệp khóa bí mật nội bộ chia sẻ giữa Go và Python (data/keys/.internal_secret)
 func GetInternalSecretFilePath() string {
+	return GetPersistentSecretFilePath("internal_secret")
+}
+
+// GetPersistentSecretFilePath trả về đường dẫn tệp khóa bí mật lưu bền vững trong thư mục keys (data/keys/.{name})
+func GetPersistentSecretFilePath(name string) string {
 	keysDir := strings.TrimSpace(os.Getenv("JWT_KEYS_DIR"))
 	if keysDir == "" {
 		dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
@@ -75,7 +80,46 @@ func GetInternalSecretFilePath() string {
 		}
 		keysDir = filepath.Join(dataDir, "keys")
 	}
-	return filepath.Join(keysDir, ".internal_secret")
+	return filepath.Join(keysDir, "."+name)
+}
+
+// readOrGeneratePersistentSecret đọc secret từ env, fallback sang tệp persistent trong data/keys/, hoặc tự sinh CSPRNG và lưu file
+func readOrGeneratePersistentSecret(envKey, fileName string, length int, isBadFunc func(string) bool, formatFunc func(string) string) string {
+	val := strings.TrimSpace(Get(envKey, ""))
+	filePath := GetPersistentSecretFilePath(fileName)
+
+	// 1. Nếu biến môi trường đã có và hợp lệ -> đồng bộ vào file bền vững nếu file chưa có
+	if val != "" && !isBadFunc(val) {
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			_ = os.MkdirAll(filepath.Dir(filePath), 0700)
+			_ = os.WriteFile(filePath, []byte(val), 0600)
+		}
+		return val
+	}
+
+	// 2. Thử đọc từ tệp bền vững
+	if data, err := os.ReadFile(filePath); err == nil {
+		saved := strings.TrimSpace(string(data))
+		if saved != "" && !isBadFunc(saved) {
+			_ = os.Setenv(envKey, saved)
+			return saved
+		}
+	}
+
+	// 3. Nếu vẫn thiếu hoặc không hợp lệ -> sinh mới CSPRNG và lưu bền vững vào file
+	if randHex, err := GenerateSecureHex(length); err == nil {
+		finalVal := randHex
+		if formatFunc != nil {
+			finalVal = formatFunc(randHex)
+		}
+		_ = os.Setenv(envKey, finalVal)
+		_ = os.MkdirAll(filepath.Dir(filePath), 0700)
+		_ = os.WriteFile(filePath, []byte(finalVal), 0600)
+		log.Printf("[ENGINE] [SECURITY] Đã tự động sinh và lưu bền vững %s tại '%s' (Quyền: 0600)", envKey, filePath)
+		return finalVal
+	}
+
+	return ""
 }
 
 // GetInternalServiceSecret trả về token bí mật phục vụ xác thực giao tiếp nội bộ giữa Go Engine và Python AI Subagents.
@@ -101,82 +145,48 @@ func GetInternalServiceSecret() string {
 	return ""
 }
 
-// EnsureProductionSecrets tự động kiểm tra và sinh các khóa CSPRNG an toàn nếu thiếu biến môi trường trong môi trường Production
-// Đảm bảo nguyên tắc Resilient Zero-Crash: Không bao giờ để thiếu biến môi trường phụ trợ làm sập máy chủ đám mây.
+// EnsureProductionSecrets tự động kiểm tra và sinh các khóa CSPRNG an toàn nếu thiếu biến môi trường trong môi trường Production.
+// Bắt buộc lưu trữ bền vững vào data/keys/ để chống mất phiên đăng nhập, mất khóa giải mã hoặc lệch mật khẩu khi restart (Audit P0).
 func EnsureProductionSecrets() {
 	if !IsProduction() {
 		return
 	}
 
-	// 1. Tự động sinh JWT_SECRET nếu rỗng hoặc mang giá trị placeholder
-	jwtSecret := strings.TrimSpace(Get("JWT_SECRET", ""))
-	needNewJWT := jwtSecret == "" || strings.HasPrefix(jwtSecret, "<GENERATE") || strings.Contains(strings.ToLower(jwtSecret), "change_me")
-	for _, bad := range insecureJWTPlaceholders {
-		if jwtSecret == bad {
-			needNewJWT = true
-			break
+	// 1. Tự động sinh và lưu bền vững JWT_SECRET nếu rỗng hoặc mang giá trị placeholder (32 hex bytes = 64 chars)
+	readOrGeneratePersistentSecret("JWT_SECRET", "jwt_secret", 32, func(s string) bool {
+		if len(s) < 32 || strings.HasPrefix(s, "<GENERATE") || strings.Contains(strings.ToLower(s), "change_me") {
+			return true
 		}
-	}
-	if needNewJWT || len(jwtSecret) < 32 {
-		if newKey, err := GenerateSecureHex(32); err == nil {
-			_ = os.Setenv("JWT_SECRET", newKey)
-		}
-	}
-
-	// 2. Tự động sinh CLOUDPOOL_MASTER_KEY nếu rỗng hoặc placeholder
-	masterKey := strings.TrimSpace(Get("CLOUDPOOL_MASTER_KEY", ""))
-	if masterKey == "" || masterKey == "cloudpool_secure_master_key_2026" || strings.HasPrefix(masterKey, "<GENERATE") || strings.Contains(strings.ToLower(masterKey), "change_me") || len(masterKey) < 16 {
-		if newKey, err := GenerateSecureHex(32); err == nil {
-			_ = os.Setenv("CLOUDPOOL_MASTER_KEY", newKey)
-		}
-	}
-
-	// 3. Tự động sinh INTERNAL_SERVICE_SECRET ngẫu nhiên CSPRNG nếu rỗng (TUYỆT ĐỐI KHÔNG dùng chuỗi cố định - Audit P0)
-	// Đồng bộ ra file chung data/keys/.internal_secret để Python AI và Go Engine luôn khớp 100% secret
-	internalSecret := strings.TrimSpace(Get("INTERNAL_SERVICE_SECRET", ""))
-	secretFilePath := GetInternalSecretFilePath()
-	if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
-		// Thử đọc từ shared file trước nếu tệp đã tồn tại
-		if data, err := os.ReadFile(secretFilePath); err == nil {
-			savedSec := strings.TrimSpace(string(data))
-			if savedSec != "" && !IsInsecureInternalSecret(savedSec) {
-				internalSecret = savedSec
-				_ = os.Setenv("INTERNAL_SERVICE_SECRET", savedSec)
+		for _, bad := range insecureJWTPlaceholders {
+			if s == bad {
+				return true
 			}
 		}
-		// Nếu vẫn chưa có, sinh mới và lưu vào shared file
-		if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
-			if randSec, err := GenerateSecureHex(32); err == nil {
-				_ = os.Setenv("INTERNAL_SERVICE_SECRET", randSec)
-				_ = os.MkdirAll(filepath.Dir(secretFilePath), 0700)
-				_ = os.WriteFile(secretFilePath, []byte(randSec), 0600)
-				log.Printf("[ENGINE] [SECURITY] Đã tự động sinh và lưu shared INTERNAL_SERVICE_SECRET tại '%s'", secretFilePath)
+		return false
+	}, nil)
+
+	// 2. Tự động sinh và lưu bền vững CLOUDPOOL_MASTER_KEY nếu rỗng hoặc placeholder (32 hex bytes = 64 chars)
+	readOrGeneratePersistentSecret("CLOUDPOOL_MASTER_KEY", "master_key", 32, func(s string) bool {
+		return s == "" || s == "cloudpool_secure_master_key_2026" || strings.HasPrefix(s, "<GENERATE") || strings.Contains(strings.ToLower(s), "change_me") || len(s) < 16
+	}, nil)
+
+	// 3. Tự động sinh và lưu bền vững INTERNAL_SERVICE_SECRET nếu rỗng (Audit P0)
+	readOrGeneratePersistentSecret("INTERNAL_SERVICE_SECRET", "internal_secret", 32, IsInsecureInternalSecret, nil)
+
+	// 4. Tự động sinh và lưu bền vững ADMIN_PASSWORD ngẫu nhiên CSPRNG nếu rỗng hoặc mang giá trị placeholder (Audit P0)
+	readOrGeneratePersistentSecret("ADMIN_PASSWORD", "admin_secret", 16, func(s string) bool {
+		if len(s) < 16 || strings.HasPrefix(s, "<GENERATE") {
+			return true
+		}
+		for _, bad := range insecureAdminPasswords {
+			if s == bad {
+				return true
 			}
 		}
-	} else {
-		// Đã có secret hợp lệ từ env, đồng bộ ra shared file nếu file chưa có
-		if _, err := os.Stat(secretFilePath); os.IsNotExist(err) {
-			_ = os.MkdirAll(filepath.Dir(secretFilePath), 0700)
-			_ = os.WriteFile(secretFilePath, []byte(internalSecret), 0600)
-		}
-	}
-
-	// 4. Tự động sinh ADMIN_PASSWORD ngẫu nhiên CSPRNG nếu rỗng hoặc mang giá trị placeholder (Audit P0)
-	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
-	needNewAdminPass := adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") || len(adminPass) < 16
-	for _, bad := range insecureAdminPasswords {
-		if adminPass == bad {
-			needNewAdminPass = true
-			break
-		}
-	}
-	if needNewAdminPass {
-		if randPass, err := GenerateSecureHex(16); err == nil {
-			genPass := "Admin@" + randPass + "!Secured"
-			_ = os.Setenv("ADMIN_PASSWORD", genPass)
-			log.Printf("[ENGINE] [SECURITY] [NOTICE] Đã tự động sinh ADMIN_PASSWORD ngẫu nhiên CSPRNG (32 ký tự).")
-		}
-	}
+		return false
+	}, func(randHex string) string {
+		return "Admin@" + randHex + "!Secured"
+	})
 }
 
 // ValidateProductionSecrets kiểm tra và từ chối khởi động nếu các secret nhạy cảm vẫn mang giá trị mẫu/mặc định trong Production.

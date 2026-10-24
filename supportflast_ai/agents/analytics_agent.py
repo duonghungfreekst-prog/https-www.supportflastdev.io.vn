@@ -44,43 +44,30 @@ class AnalyticsAgent:
         }
 
     def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        query_lower = query.lower()
-        performance_grade = "A+ (Tối ưu tuyệt đối cho ARM64)"
-        concurrency_capacity = "10 Subagents Đồng Thời (Worker Pool Limit)"
-        metrics_summary = []
-
-        if any(w in query_lower for w in ["benchmark", "test 10", "10 subagent", "song song", "đo", "speed"]):
-            metrics_summary.append("Thời gian xử lý trung bình mỗi Subagent On-Device: 0.8ms - 2.5ms.")
-            metrics_summary.append("Độ trễ khi gọi đồng thời cả 10 Subagents qua Semaphore: < 35ms.")
-            metrics_summary.append("Mức chiếm dụng RAM khi 10 Subagents cùng hoạt động: 28MB - 35MB.")
-            metrics_summary.append("Tỷ lệ thành công điều phối: 100% (Zero dropped requests).")
-        elif any(w in query_lower for w in ["cpu", "ram", "memory", "tải", "load"]):
-            metrics_summary.append("CPU usage lúc chờ (Idle): < 0.5% (Tiết kiệm pin tối đa).")
-            metrics_summary.append("CPU usage lúc tải 10 Subagents: 8% - 15% (Chỉ dùng các nhân tiết kiệm điện).")
-            metrics_summary.append("Goroutine limit: Cố định 10 slot concurrency chống nghẽn luồng.")
-        else:
-            metrics_summary.append("Hệ thống đã sẵn sàng điều phối đồng thời 10 Subagents độc lập.")
-            metrics_summary.append("Cơ chế Non-blocking I/O của Go Engine giúp phục vụ hàng trăm kết nối đồng thời trên điện thoại.")
-            metrics_summary.append("Bộ đệm LRU Cache L1 xử lý các yêu cầu lặp lại trong 0.05ms.")
-
-        metrics_text = "\n".join([f"  • {m}" for m in metrics_summary])
-        response_text = (
-            f"**[Phân Tích Hiệu Năng & Đo Kiểm 10 Subagents - Subagent Analytics]**\n"
-            f"- Đánh giá hiệu năng: **{performance_grade}**\n"
-            f"- Năng lực xử lý: **{concurrency_capacity}**\n"
-            f"- Báo cáo giám sát chi tiết:\n{metrics_text}\n\n"
-            f"Điện thoại của bạn hoàn toàn đáp ứng xuất sắc vai trò một máy chủ dịch vụ di động 24/7."
-        )
-
+        """Xử lý fallback theo quy tắc khi chưa có dữ liệu đo lường thực tế (Tuân thủ Audit 3.1 & Rule Phần 9).
+        Tuyệt đối không sinh dữ liệu giả lập/mock đẹp về latency, CPU hay điểm A+ khi chưa có phép đo thời gian thực.
+        """
+        # Trả về kết quả trung thực khi không có bộ đo benchmark đang chạy
         return {
             "agent_id": self.agent_id,
             "agent_name": self.name,
-            "status": "success",
-            "avg_latency_ms": 1.2,
-            "concurrency_capacity": concurrency_capacity,
-            "performance_grade": performance_grade,
-            "metrics_summary": metrics_summary,
-            "response": response_text
+            "status": "unmeasured",
+            "metrics_available": False,
+            "measurements": {},
+            "reason": "Chưa có dữ liệu đo kiểm benchmark thời gian thực từ profiler",
+            "concurrency_capacity": "Tối đa 10 Subagents (Cấu hình Worker Pool)",
+            "performance_grade": "Chưa đo kiểm (Unmeasured)",
+            "metrics_summary": [
+                "Hệ thống telemetry không phát hiện profiler tải đang chạy.",
+                "Yêu cầu đo kiểm cần cung cấp ngữ cảnh số liệu thực tế qua context để phân tích."
+            ],
+            "response": (
+                f"**[Báo Cáo Giám Sát Hiệu Năng & Đo Kiểm - Subagent Analytics]**\n"
+                f"- Trạng thái đo lường: **Chưa đo kiểm (Unmeasured)**\n"
+                f"- Năng lực điều phối: **Tối đa 10 Subagents đồng thời**\n"
+                f"- Lý do: Chưa có phiên đo kiểm tải hoạt động trực tiếp trên hệ thống.\n\n"
+                f"Hệ thống giám sát tuân thủ nguyên tắc không tạo số liệu giả lập. Vui lòng cung cấp dữ liệu đo kiểm hoặc kích hoạt profiling để nhận báo cáo phân tích chi tiết."
+            )
         }
 
     async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:

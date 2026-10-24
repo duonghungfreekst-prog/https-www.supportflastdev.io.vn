@@ -287,11 +287,19 @@ async def chat_with_agent(req: ChatRequest, request: Request):
     if req.agent_id and req.agent_id not in dispatcher.agents:
         raise HTTPException(status_code=400, detail="Mã Subagent không hợp lệ")
 
+    # Chuẩn hóa và xác thực mode (Audit 6.1)
+    raw_mode = (req.mode or "fast").strip().lower()
+    if raw_mode not in ("fast", "parallel", "deep"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chế độ điều phối '{req.mode}' không hợp lệ. Chỉ chấp nhận 'fast', 'parallel', hoặc 'deep'."
+        )
+
     res = await dispatcher.adispatch(
         query=req.query,
         agent_id=req.agent_id,
         context=req.context,
-        mode=req.mode or "fast",
+        mode=raw_mode,
         timeout_sec=req.timeout_sec or 15.0
     )
     return res

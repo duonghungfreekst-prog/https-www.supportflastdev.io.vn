@@ -26,7 +26,7 @@ services:
     env_file:
       - .env
     environment:
-      - PORT=${PORT:-8080}
+      - PORT=8080
       - HOST=${HOST:-0.0.0.0}
       - DOMAIN=${DOMAIN:-supportflastdev.io.vn}
       - ENV=production
@@ -41,7 +41,7 @@ services:
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - TZ=Asia/Ho_Chi_Minh
     ports:
-      - "127.0.0.1:${PORT:-8080}:8080"
+      - "127.0.0.1:${HOST_PORT:-${PORT:-8080}}:8080"
     volumes:
       # Volume 1: Cơ sở dữ liệu SQLite (WAL/SHM) và cặp khóa bảo mật RS256
       - ./data:/app/data

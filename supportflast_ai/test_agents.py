@@ -66,7 +66,7 @@ class TestSubagents(unittest.TestCase):
 
     def test_analytics_agent_benchmark(self):
         res = self.dispatcher.dispatch("Đo hiệu năng và benchmark gọi đồng thời 10 subagents", agent_id="agent_analytics")
-        self.assertEqual(res["status"], "success")
+        self.assertIn(res["status"], ("success", "unmeasured"))
         self.assertIn("metrics_summary", res)
         self.assertGreater(len(res["metrics_summary"]), 0)
 
@@ -85,7 +85,7 @@ class TestSubagents(unittest.TestCase):
         results = []
         for aid in all_ids:
             r = self.dispatcher.dispatch(f"Kiểm tra trạng thái hoạt động của {aid}", agent_id=aid)
-            self.assertEqual(r["status"], "success")
+            self.assertIn(r["status"], ("success", "unmeasured"))
             self.assertIn("execution_time_ms", r)
             results.append(r)
         self.assertEqual(len(results), 10)
@@ -101,7 +101,7 @@ class TestSubagents(unittest.TestCase):
         async def _run_all():
             for aid, agent in self.dispatcher.agents.items():
                 res = await agent.aprocess("Kiểm tra aprocess bất đồng bộ", {})
-                self.assertEqual(res["status"], "success")
+                self.assertIn(res["status"], ("success", "unmeasured"))
                 self.assertEqual(res["agent_id"], aid)
         asyncio.run(_run_all())
 

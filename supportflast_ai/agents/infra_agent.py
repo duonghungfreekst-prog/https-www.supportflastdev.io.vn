@@ -1,19 +1,25 @@
 """Subagent 3: App Distribution, CDN & Mirror Infrastructure Agent
 Giám sát mạng phân phối file cài đặt, kiểm tra Anycast CDN, HTTP Range Resume và tính toàn vẹn Checksum SHA-256.
 """
+import os
 import socket
 import time
 import threading
 from typing import Dict, Any
 from core.llm_engine import llm_engine
 
-# Stale-While-Revalidate DNS Cache chống thắt nút cổ chai (Zero Blocking Latency)
+# Domain chuẩn hóa từ biến môi trường toàn hệ thống (Audit 3.2)
+DEFAULT_HOST = os.getenv("DOMAIN", "supportflastdev.io.vn").strip()
+
+# DNS Cache có last_success_at, TTL rõ ràng, trạng thái unknown/resolved/failed trung thực (Audit 3.2)
 _DNS_CACHE: Dict[str, Any] = {
-    "status": "resolved",
-    "host": "supportflast.dev.io.vn",
-    "ips": ["104.21.58.114", "172.67.182.201"],  # Cloudflare Anycast CDN IPs
-    "latency_ms": 0.45,
-    "last_updated": 0.0
+    "status": "unknown",
+    "host": DEFAULT_HOST,
+    "ips": [],
+    "latency_ms": None,
+    "last_updated": 0.0,
+    "last_success_at": 0.0,
+    "error": None
 }
 _DNS_LOCK = threading.Lock()
 _IS_UPDATING = False
@@ -25,13 +31,14 @@ class InfraAgent:
         self.color = "#00FF66"
         self.role_description = "Hạ tầng phân phối ứng dụng tốc độ cao, quản lý mạng CDN Anycast, HTTP Range Resume và Checksum"
 
-    def check_dns(self, host: str) -> Dict[str, Any]:
-        """Kiểm tra DNS với cơ chế Cache bất đồng bộ, loại bỏ hoàn toàn độ trễ blocking 11s của OS."""
+    def check_dns(self, host: str = None) -> Dict[str, Any]:
+        """Kiểm tra DNS với số liệu đo lường thực tế, có trạng thái thất bại trung thực và TTL (Audit 3.2)."""
         global _IS_UPDATING
+        target_host = host or DEFAULT_HOST
         now = time.time()
 
-        # Nếu cache cũ hơn 300 giây và chưa có thread cập nhật ngầm -> kích hoạt daemon worker
-        if (now - _DNS_CACHE["last_updated"] > 300) and not _IS_UPDATING:
+        # Nếu cache cũ hơn 300 giây hoặc chưa từng giải mã -> kích hoạt worker phân giải
+        if (now - _DNS_CACHE["last_updated"] > 300 or _DNS_CACHE["status"] == "unknown") and not _IS_UPDATING:
             with _DNS_LOCK:
                 if not _IS_UPDATING:
                     _IS_UPDATING = True
@@ -39,32 +46,45 @@ class InfraAgent:
                         global _IS_UPDATING
                         try:
                             start_time = time.time()
-                            addr_info = socket.getaddrinfo(host, None)
+                            addr_info = socket.getaddrinfo(target_host, None)
                             duration_ms = round((time.time() - start_time) * 1000, 2)
-                            ips = list(set([item[4][0] for item in addr_info]))
-                            _DNS_CACHE.update({
-                                "status": "resolved",
-                                "host": host,
-                                "ips": ips,
-                                "latency_ms": duration_ms,
-                                "last_updated": time.time()
-                            })
-                        except Exception:
-                            # Giữ nguyên Anycast CDN IPs nếu không phân giải được
-                            _DNS_CACHE["last_updated"] = time.time()
+                            ips = sorted(list(set([item[4][0] for item in addr_info])))
+                            with _DNS_LOCK:
+                                _DNS_CACHE.update({
+                                    "status": "resolved" if ips else "failed",
+                                    "host": target_host,
+                                    "ips": ips,
+                                    "latency_ms": duration_ms,
+                                    "last_updated": time.time(),
+                                    "last_success_at": time.time() if ips else _DNS_CACHE.get("last_success_at", 0.0),
+                                    "error": None if ips else "No IP address returned"
+                                })
+                        except Exception as ex:
+                            # Cập nhật trạng thái failed rõ ràng, KHÔNG báo kết nối khỏe giả tạo (Audit 3.2)
+                            with _DNS_LOCK:
+                                _DNS_CACHE.update({
+                                    "status": "failed",
+                                    "host": target_host,
+                                    "ips": [],
+                                    "latency_ms": None,
+                                    "last_updated": time.time(),
+                                    "error": str(ex)
+                                })
                         finally:
                             _IS_UPDATING = False
 
                     thread = threading.Thread(target=_async_resolver, daemon=True, name="DNS-Resolver")
                     thread.start()
 
-        # Trả về kết quả từ cache ngay lập tức (< 0.1ms), không bao giờ block luồng chính
-        return {
-            "status": _DNS_CACHE.get("status", "resolved"),
-            "host": host,
-            "ips": list(_DNS_CACHE.get("ips", ["104.21.58.114", "172.67.182.201"])),
-            "latency_ms": _DNS_CACHE.get("latency_ms", 0.45)
-        }
+        with _DNS_LOCK:
+            return {
+                "status": _DNS_CACHE.get("status", "unknown"),
+                "host": target_host,
+                "ips": list(_DNS_CACHE.get("ips", [])),
+                "latency_ms": _DNS_CACHE.get("latency_ms"),
+                "last_success_at": _DNS_CACHE.get("last_success_at", 0.0),
+                "error": _DNS_CACHE.get("error")
+            }
 
     def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None, dns_res: Dict[str, Any] = None):
         system_instruction = (
@@ -120,7 +140,7 @@ class InfraAgent:
 
     async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
-        target_domain = "supportflast.dev.io.vn"
+        target_domain = (context.get("domain") if context else None) or DEFAULT_HOST
         dns_res = self.check_dns(target_domain)
 
         if llm_engine.is_enabled:
@@ -133,7 +153,7 @@ class InfraAgent:
 
     def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
-        target_domain = "supportflast.dev.io.vn"
+        target_domain = (context.get("domain") if context else None) or DEFAULT_HOST
         dns_res = self.check_dns(target_domain)
 
         if llm_engine.is_enabled:

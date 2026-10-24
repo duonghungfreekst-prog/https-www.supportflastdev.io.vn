@@ -508,11 +508,14 @@ func main() {
 		log.Fatalf("[ENGINE] Auto-Bootstrapping thất bại: %v", err)
 	}
 
-	// 1.1 Khởi động an toàn: Đảm bảo toàn bộ bí mật hệ thống được CSPRNG sinh tự động nếu thiếu (Audit P0 & Zero-Crash)
+	// 1.1 Khởi động an toàn: Đảm bảo toàn bộ bí mật hệ thống được CSPRNG sinh và lưu bền vững (Audit P0)
 	config.EnsureProductionSecrets()
 	if err := config.ValidateProductionSecrets(); err != nil {
 		log.Printf("[ENGINE] [SECURITY] [WARN] Phát hiện cấu hình bí mật chưa tối ưu: %v. Đang kích hoạt tự phục hồi an toàn...", err)
 		config.EnsureProductionSecrets()
+		if errRetry := config.ValidateProductionSecrets(); errRetry != nil {
+			log.Fatalf("[ENGINE] [SECURITY] [FATAL] Cấu hình Production Secrets không hợp lệ và không thể tự phục hồi: %v. Dừng khởi động để bảo vệ an ninh hệ thống (Audit P0 & Rule 3/12).", errRetry)
+		}
 	}
 	dataDir := bootstrapResult.DataDir
 	dbPath := bootstrapResult.MainDBPath
@@ -915,8 +918,7 @@ func main() {
 			return
 		}
 
-		cleanLog := security.SanitizeCRLF(payload.Query)
-		log.Printf("[ENGINE] Dispatching query to subagents (Pool: 10 max): %s (agent=%s)", cleanLog, payload.AgentID)
+		log.Printf("[ENGINE] Dispatching query to subagents (Pool: 10 max, query_len=%d, agent=%s, mode=%s)", len(payload.Query), payload.AgentID, payload.Mode)
 
 		// 3.2 Chuyển tiếp tới AI Engine nếu có (context timeout 60s đồng bộ với HTTP Client)
 		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
