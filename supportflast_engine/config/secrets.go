@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 )
@@ -109,14 +110,20 @@ func EnsureProductionSecrets() {
 		}
 	}
 
-	// 4. Kiểm tra ADMIN_PASSWORD: Tuyệt đối không gán mật khẩu mặc định cố định trong Production (Audit P0)
+	// 4. Tự động sinh ADMIN_PASSWORD ngẫu nhiên CSPRNG nếu rỗng hoặc mang giá trị placeholder (Audit P0)
 	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
-	if adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") || len(adminPass) < 16 {
-		// Trong môi trường dev/test tự sinh mật khẩu ngẫu nhiên tạm thời, không hardcode
-		if !IsProduction() {
-			if randPass, err := GenerateSecureHex(16); err == nil {
-				_ = os.Setenv("ADMIN_PASSWORD", "Dev@"+randPass)
-			}
+	needNewAdminPass := adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") || len(adminPass) < 16
+	for _, bad := range insecureAdminPasswords {
+		if adminPass == bad {
+			needNewAdminPass = true
+			break
+		}
+	}
+	if needNewAdminPass {
+		if randPass, err := GenerateSecureHex(16); err == nil {
+			genPass := "Admin@" + randPass + "!Secured"
+			_ = os.Setenv("ADMIN_PASSWORD", genPass)
+			log.Printf("[ENGINE] [SECURITY] [NOTICE] Đã tự động sinh ADMIN_PASSWORD ngẫu nhiên CSPRNG (32 ký tự).")
 		}
 	}
 }
