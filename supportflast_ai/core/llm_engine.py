@@ -7,15 +7,24 @@ import time
 from typing import Dict, Any, Optional, List, Tuple
 import httpx
 
-logger = logging.getLogger("supportflast_ai")
+# Tự động nạp file .env từ thư mục gốc hoặc thư mục hiện tại (Audit Environment)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    _root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+    if os.path.isfile(_root_env):
+        load_dotenv(_root_env)
+    _app_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    if os.path.isfile(_app_env):
+        load_dotenv(_app_env)
+except ImportError:
+    pass
 
-# Quản lý giới hạn tải Concurrency toàn cục cho các lời gọi LLM (Nút thắt 2 & 3 - Audit P1.2)
-_llm_semaphore: Optional[asyncio.Semaphore] = None
-_sync_llm_semaphore: Optional[threading.Semaphore] = None
+logger = logging.getLogger("supportflast_ai")
 
 def _parse_max_inflight() -> int:
     """Xác thực và chuyển đổi MAX_INFLIGHT_LLM sang số nguyên dương hợp lệ (> 0).
-    Nếu <= 0 hoặc sai định dạng, tự động fallback an toàn về 8 để chống nghẽn hoặc sập semaphore (Audit P1).
+    Nếu <= 0 hoặc sai định dạng, tự động fallback an toàn về 8 để chống nghẽn hoặc sập limiter (Audit P1).
     """
     raw = os.getenv("MAX_INFLIGHT_LLM", "8").strip()
     try:
@@ -28,25 +37,71 @@ def _parse_max_inflight() -> int:
         logger.warning(f"[AI] MAX_INFLIGHT_LLM='{raw}' không phải số nguyên. Tự động fallback về 8.")
         return 8
 
-def get_llm_semaphore() -> asyncio.Semaphore:
-    """Trả về asyncio.Semaphore cấp tiến trình để kiểm soát số lượng yêu cầu gọi LLM bất đồng bộ (MAX_INFLIGHT_LLM)."""
-    global _llm_semaphore
-    if _llm_semaphore is None:
-        max_inflight = _parse_max_inflight()
-        _llm_semaphore = asyncio.Semaphore(max_inflight)
-    return _llm_semaphore
 
-def get_sync_llm_semaphore() -> threading.Semaphore:
-    """Trả về threading.Semaphore để kiểm soát số lượng yêu cầu gọi LLM đồng bộ (MAX_INFLIGHT_LLM)."""
-    global _sync_llm_semaphore
-    if _sync_llm_semaphore is None:
-        max_inflight = _parse_max_inflight()
-        _sync_llm_semaphore = threading.Semaphore(max_inflight)
-    return _sync_llm_semaphore
+class UnifiedConcurrencyLimiter:
+    """Bộ kiểm soát Concurrency duy nhất trên toàn bộ tiến trình.
+    Đảm bảo TẤT CẢ các đường gọi LLM (cả bất đồng bộ async lẫn đồng bộ sync của các Subagent)
+    đều chia sẻ CHUNG một BoundedSemaphore duy nhất, tuân thủ nghiêm ngặt MAX_INFLIGHT_LLM (Audit Concurrency).
+    """
+    def __init__(self, max_inflight: Optional[int] = None):
+        self.max_inflight = max_inflight or _parse_max_inflight()
+        self._thread_sem = threading.BoundedSemaphore(self.max_inflight)
+        self._lock = threading.Lock()
+        self._active_count = 0
+        self._peak_count = 0
+
+    def acquire_sync(self, timeout: float = 10.0) -> bool:
+        acquired = self._thread_sem.acquire(timeout=timeout)
+        if acquired:
+            with self._lock:
+                self._active_count += 1
+                if self._active_count > self._peak_count:
+                    self._peak_count = self._active_count
+        return acquired
+
+    def release_sync(self):
+        with self._lock:
+            self._active_count = max(0, self._active_count - 1)
+        try:
+            self._thread_sem.release()
+        except ValueError:
+            pass
+
+    async def acquire_async(self, timeout: float = 10.0) -> bool:
+        return await asyncio.to_thread(self.acquire_sync, timeout)
+
+    def release_async(self):
+        self.release_sync()
+
+    @property
+    def active_inflight(self) -> int:
+        with self._lock:
+            return self._active_count
+
+    @property
+    def peak_inflight(self) -> int:
+        with self._lock:
+            return self._peak_count
+
+_unified_limiter: Optional[UnifiedConcurrencyLimiter] = None
+
+def get_unified_limiter() -> UnifiedConcurrencyLimiter:
+    global _unified_limiter
+    if _unified_limiter is None:
+        _unified_limiter = UnifiedConcurrencyLimiter()
+    return _unified_limiter
+
+def get_llm_semaphore():
+    """Hàm tương thích ngược trả về semaphore bất đồng bộ."""
+    return get_unified_limiter()
+
+def get_sync_llm_semaphore():
+    """Hàm tương thích ngược trả về semaphore đồng bộ."""
+    return get_unified_limiter()
 
 
 class OpenAICompatibleProvider:
-    """Adapter dùng chung cho các nhà cung cấp mô hình tương thích OpenAI (OpenRouter, Groq, Mistral, Cloudflare)."""
+    """Adapter dùng chung cho các nhà cung cấp mô hình tương thích OpenAI (OpenRouter, Groq, Mistral, Cloudflare, OmniRouter)."""
 
     def __init__(
         self,
@@ -186,7 +241,7 @@ class OpenAICompatibleProvider:
                     return json.loads(sanitized)
                 return content
 
-            except httpx.TimeoutException as te:
+            except httpx.TimeoutException:
                 self.last_error_code = "TIMEOUT"
                 self.last_error = f"Timeout sau {self.timeout_sec}s"
                 if attempt <= self.retry_max:
@@ -265,8 +320,8 @@ class OpenAICompatibleProvider:
 
 class LLMEngine:
     """Bộ điều phối Model Đa Nhà Cung Cấp (Multi-Provider Engine) cho 10 Subagents.
-    Tích hợp 5 nguồn model: Google Gemini, Groq, OpenRouter, Mistral AI và Cloudflare Workers AI.
-    Hỗ trợ cơ chế Fallback Cascade, Concurrency Semaphore, Circuit Breaker và Cache Health Check.
+    Tích hợp 6 nguồn model: OmniRouter Gateway, Google Gemini, Groq, OpenRouter, Mistral AI và Cloudflare Workers AI.
+    Hỗ trợ cơ chế Fallback Cascade, Unified Concurrency Limiter, Circuit Breaker và Cache Health Check.
     """
 
     def __init__(self):
@@ -274,7 +329,22 @@ class LLMEngine:
         self.timeout_sec = float(os.getenv("LLM_REQUEST_TIMEOUT_SECONDS", "30.0"))
         self.retry_max = int(os.getenv("LLM_RETRY_MAX", "2"))
 
-        # 2. Provider 1: Google Gemini (Native SDK)
+        # 2. Provider 1: OmniRouter Gateway (Go Backend Local/Internal Service)
+        omnirouter_base = os.getenv("OMNIROUTER_BASE_URL", "").strip()
+        omnirouter_key = os.getenv("OMNIROUTER_API_KEY", "").strip()
+        omnirouter_model = os.getenv("OMNIROUTER_MODEL", "gemini-3.8-flash-high").strip()
+        if not omnirouter_key:
+            omnirouter_key = os.getenv("MASTER_ADMIN_KEY", "sk-supportflastdev.io.vn-master-live").strip()
+        self.omnirouter_provider = OpenAICompatibleProvider(
+            name="omnirouter",
+            base_url=omnirouter_base or "http://127.0.0.1:20128/v1",
+            api_key=omnirouter_key if (omnirouter_base or os.getenv("OMNIROUTER_ENABLED") == "true") else "",
+            model=omnirouter_model,
+            timeout_sec=self.timeout_sec,
+            retry_max=self.retry_max
+        )
+
+        # 3. Provider 2: Google Gemini (Native SDK)
         self.gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
         self.gemini_client = None
@@ -299,7 +369,7 @@ class LLMEngine:
                 logger.error(f"[AI] [GEMINI] Failed to initialize google.genai: {e}")
                 self.gemini_enabled = False
 
-        # 3. Provider 2: Groq (Ultra-Fast Inference - OpenAI-compatible)
+        # 4. Provider 3: Groq (Ultra-Fast Inference - OpenAI-compatible)
         groq_key = os.getenv("GROQ_API_KEY", "").strip()
         groq_base = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1").strip()
         groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
@@ -312,7 +382,7 @@ class LLMEngine:
             retry_max=self.retry_max
         )
 
-        # 4. Provider 3: OpenRouter (Multi-Model & Free Catalog - OpenAI-compatible)
+        # 5. Provider 4: OpenRouter (Multi-Model & Free Catalog - OpenAI-compatible)
         openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         openrouter_base = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip()
         openrouter_model = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
@@ -329,7 +399,7 @@ class LLMEngine:
             retry_max=self.retry_max
         )
 
-        # 5. Provider 4: Mistral AI (Independent Fallback - OpenAI-compatible)
+        # 6. Provider 5: Mistral AI (Independent Fallback - OpenAI-compatible)
         mistral_key = os.getenv("MISTRAL_API_KEY", "").strip()
         mistral_base = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1").strip()
         mistral_model = os.getenv("MISTRAL_MODEL", "mistral-small-latest").strip()
@@ -342,7 +412,7 @@ class LLMEngine:
             retry_max=self.retry_max
         )
 
-        # 6. Provider 5: Cloudflare Workers AI (Daily Compute Budget - OpenAI-compatible)
+        # 7. Provider 6: Cloudflare Workers AI (Daily Compute Budget - OpenAI-compatible)
         cf_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
         cf_account = os.getenv("CLOUDFLARE_ACCOUNT_ID", "").strip()
         cf_base = os.getenv("CLOUDFLARE_BASE_URL", "").strip()
@@ -360,25 +430,33 @@ class LLMEngine:
             retry_max=self.retry_max
         )
 
-        # Tổng hợp danh sách nhà cung cấp OpenAI-compatible
+        # Danh sách các nhà cung cấp OpenAI-compatible
         self.openai_providers = [
+            self.omnirouter_provider,
             self.groq_provider,
             self.openrouter_provider,
             self.mistral_provider,
             self.cloudflare_provider
         ]
 
-        # Kiểm tra tính sẵn sàng tổng thể
+        # Kiểm tra tính sẵn sàng tổng thể: có ít nhất 1 nguồn API hoạt động
         self.is_enabled = self.gemini_enabled or any(p.is_enabled for p in self.openai_providers)
-        self.model_name = self.gemini_model if self.gemini_enabled else (
-            self.groq_provider.model if self.groq_provider.is_enabled else (
-                self.openrouter_provider.model if self.openrouter_provider.is_enabled else (
-                    self.mistral_provider.model if self.mistral_provider.is_enabled else (
-                        self.cloudflare_provider.model if self.cloudflare_provider.is_enabled else "on-device-rule-based"
-                    )
-                )
-            )
-        )
+
+        # Xác định model đại diện chính
+        if self.gemini_enabled:
+            self.model_name = self.gemini_model
+        elif self.groq_provider.is_enabled:
+            self.model_name = self.groq_provider.model
+        elif self.openrouter_provider.is_enabled:
+            self.model_name = self.openrouter_provider.model
+        elif self.mistral_provider.is_enabled:
+            self.model_name = self.mistral_provider.model
+        elif self.cloudflare_provider.is_enabled:
+            self.model_name = self.cloudflare_provider.model
+        elif self.omnirouter_provider.is_enabled:
+            self.model_name = self.omnirouter_provider.model
+        else:
+            self.model_name = "on-device-rule-based"
 
         self.last_error: Optional[str] = None
         self.last_error_code: Optional[str] = None
@@ -388,9 +466,11 @@ class LLMEngine:
         self._health_cache_ttl: float = 60.0
 
         active_names = []
+        if self.omnirouter_provider.is_enabled:
+            active_names.append("OmniRouter")
         if self.gemini_enabled:
             active_names.append("Gemini")
-        for p in self.openai_providers:
+        for p in [self.groq_provider, self.openrouter_provider, self.mistral_provider, self.cloudflare_provider]:
             if p.is_enabled:
                 active_names.append(p.name.capitalize())
 
@@ -416,9 +496,12 @@ class LLMEngine:
     def _get_ordered_providers(self, mode: str = "fast") -> List[Tuple[str, Any]]:
         """Sắp xếp thứ tự gọi provider theo chế độ (fast / parallel / deep / default)."""
         ordered = []
-        # Chế độ fast: Ưu tiên Groq (độ trễ thấp nhất) -> Gemini -> OpenRouter -> Mistral -> Cloudflare
+        # Chế độ fast: Ưu tiên Groq (độ trễ thấp nhất) -> OmniRouter -> Gemini -> OpenRouter -> Mistral -> Cloudflare
         if mode == "fast" and self.groq_provider.is_available():
             ordered.append(("groq", self.groq_provider))
+
+        if self.omnirouter_provider.is_available():
+            ordered.append(("omnirouter", self.omnirouter_provider))
 
         if self.gemini_enabled:
             ordered.append(("gemini", None))
@@ -520,12 +603,17 @@ class LLMEngine:
         return None
 
     async def agenerate_text(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[str]:
-        """Gọi LLM bất đồng bộ dạng Text qua Cascade Fallback giữa các nhà cung cấp khả dụng."""
+        """Gọi LLM bất đồng bộ dạng Text qua Cascade Fallback với Unified Concurrency Limiter."""
         if not self.is_enabled:
             return None
 
-        sem = get_llm_semaphore()
-        async with sem:
+        limiter = get_unified_limiter()
+        acquired = await limiter.acquire_async(timeout=10.0)
+        if not acquired:
+            logger.warning("[AI] Async LLM Limiter timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            return None
+
+        try:
             providers = self._get_ordered_providers(mode=mode)
             for prov_name, prov_obj in providers:
                 try:
@@ -539,16 +627,22 @@ class LLMEngine:
                         return res
                 except Exception as ex:
                     logger.warning(f"[AI] Provider {prov_name} failed: {ex}. Falling back to next provider...")
-
-        return None
+            return None
+        finally:
+            limiter.release_async()
 
     async def agenerate_json(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[Dict[str, Any]]:
-        """Gọi LLM bất đồng bộ dạng JSON qua Cascade Fallback giữa các nhà cung cấp khả dụng."""
+        """Gọi LLM bất đồng bộ dạng JSON qua Cascade Fallback với Unified Concurrency Limiter."""
         if not self.is_enabled:
             return None
 
-        sem = get_llm_semaphore()
-        async with sem:
+        limiter = get_unified_limiter()
+        acquired = await limiter.acquire_async(timeout=10.0)
+        if not acquired:
+            logger.warning("[AI] Async LLM Limiter timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            return None
+
+        try:
             providers = self._get_ordered_providers(mode=mode)
             for prov_name, prov_obj in providers:
                 try:
@@ -562,18 +656,19 @@ class LLMEngine:
                         return res
                 except Exception as ex:
                     logger.warning(f"[AI] Provider {prov_name} (json) failed: {ex}. Falling back to next provider...")
-
-        return None
+            return None
+        finally:
+            limiter.release_async()
 
     def generate_text(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[str]:
-        """Gọi LLM đồng bộ dạng Text có kiểm soát Semaphore đồng bộ."""
+        """Gọi LLM đồng bộ dạng Text có kiểm soát qua Unified Concurrency Limiter."""
         if not self.is_enabled:
             return None
 
-        sem = get_sync_llm_semaphore()
-        acquired = sem.acquire(timeout=10.0)
+        limiter = get_unified_limiter()
+        acquired = limiter.acquire_sync(timeout=10.0)
         if not acquired:
-            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            logger.warning("[AI] Sync LLM Limiter timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
             return None
 
         try:
@@ -592,17 +687,17 @@ class LLMEngine:
                     logger.warning(f"[AI] Provider {prov_name} failed: {ex}. Falling back...")
             return None
         finally:
-            sem.release()
+            limiter.release_sync()
 
     def generate_json(self, prompt: str, system_instruction: Optional[str] = None, mode: str = "fast") -> Optional[Dict[str, Any]]:
-        """Gọi LLM đồng bộ dạng JSON có kiểm soát Semaphore đồng bộ."""
+        """Gọi LLM đồng bộ dạng JSON có kiểm soát qua Unified Concurrency Limiter."""
         if not self.is_enabled:
             return None
 
-        sem = get_sync_llm_semaphore()
-        acquired = sem.acquire(timeout=10.0)
+        limiter = get_unified_limiter()
+        acquired = limiter.acquire_sync(timeout=10.0)
         if not acquired:
-            logger.warning("[AI] Sync LLM Semaphore timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
+            logger.warning("[AI] Sync LLM Limiter timeout - Hệ thống đang đạt ngưỡng tối đa MAX_INFLIGHT_LLM.")
             return None
 
         try:
@@ -621,7 +716,7 @@ class LLMEngine:
                     logger.warning(f"[AI] Provider {prov_name} (json) failed: {ex}. Falling back...")
             return None
         finally:
-            sem.release()
+            limiter.release_sync()
 
     async def check_health(self, force_refresh: bool = False) -> Dict[str, Any]:
         """Kiểm tra kết nối thực tế tới tất cả các nhà cung cấp có Cache TTL 60s để chống cạn kiệt Quota."""

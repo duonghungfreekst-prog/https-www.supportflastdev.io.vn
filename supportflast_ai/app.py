@@ -3,6 +3,16 @@ Cổng kết nối AI Engine cho 10 Subagents trên supportflastdev.io.vn.
 """
 import os
 import sys
+
+# Tự động nạp file .env từ thư mục gốc hoặc thư mục hiện tại (Audit Environment)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    _root_env = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    if os.path.isfile(_root_env):
+        load_dotenv(_root_env)
+except ImportError:
+    pass
 import logging
 import hmac
 from fastapi import FastAPI, HTTPException, Request
@@ -233,7 +243,20 @@ async def health_check():
     from core.llm_engine import llm_engine
     is_healthy_model = llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)
     status_str = "healthy" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "ready")
-    mode_str = "gemini_api" if is_healthy_model else "rule_based_fallback"
+
+    active_providers = []
+    if getattr(llm_engine, "gemini_enabled", False):
+        active_providers.append("gemini")
+    for p in getattr(llm_engine, "openai_providers", []):
+        if getattr(p, "is_enabled", False):
+            active_providers.append(p.name)
+
+    if len(active_providers) > 1:
+        mode_str = f"multi_provider ({'+'.join(active_providers)})"
+    elif len(active_providers) == 1:
+        mode_str = f"{active_providers[0]}_api"
+    else:
+        mode_str = "rule_based_fallback"
 
     return {
         "status": status_str,
@@ -242,6 +265,7 @@ async def health_check():
         "total_agents": total_agents,
         "agents_ready": True,
         "mode": mode_str,
+        "active_providers": active_providers,
         "llm_engine_enabled": llm_engine.is_enabled,
         "llm_model": llm_engine.model_name,
         "llm_status": "online" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "offline"),
@@ -257,10 +281,18 @@ async def model_diagnostics(request: Request, refresh: bool = False):
 
     from core.llm_engine import llm_engine
     health = await llm_engine.check_health(force_refresh=refresh)
+    active_providers = []
+    if getattr(llm_engine, "gemini_enabled", False):
+        active_providers.append("gemini")
+    for p in getattr(llm_engine, "openai_providers", []):
+        if getattr(p, "is_enabled", False):
+            active_providers.append(p.name)
+
     return {
         "service": "supportflast_ai",
-        "gemini_api_key_configured": llm_engine.is_enabled,
-        "model_name": llm_engine.model_name,
+        "llm_engine_enabled": llm_engine.is_enabled,
+        "primary_model_name": llm_engine.model_name,
+        "active_providers": active_providers,
         "concurrency_limit": int(os.getenv("MAX_INFLIGHT_LLM", "8")),
         "diagnostics": health
     }
