@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -902,6 +904,122 @@ func ParseNonStreamingResponse(provider string, body []byte) (string, int64, int
 	return string(body), 0, 0, nil
 }
 
+// proxyClientChatToWeb leaves key validation and quota reservation authoritative on the Web server.
+func proxyClientChatToWeb(w http.ResponseWriter, r *http.Request, apiKey string) {
+	writeProxyError := func(status int, message string) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": map[string]string{
+				"message": message,
+				"type":    "server_error",
+			},
+		})
+	}
+
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 10*1024*1024))
+	if err != nil {
+		writeProxyError(http.StatusRequestEntityTooLarge, "Dữ liệu yêu cầu vượt quá giới hạn cho phép hoặc không thể đọc.")
+		return
+	}
+
+	webURL := strings.TrimRight(strings.TrimSpace(GetWebServerURL()), "/")
+	remoteURL, err := url.Parse(webURL)
+	if err != nil || remoteURL.Hostname() == "" || remoteURL.User != nil || remoteURL.RawQuery != "" || remoteURL.Fragment != "" {
+		writeProxyError(http.StatusBadGateway, "Cấu hình máy chủ Web không hợp lệ.")
+		return
+	}
+	if remoteURL.Scheme != "https" {
+		ip := net.ParseIP(remoteURL.Hostname())
+		isLoopback := strings.EqualFold(remoteURL.Hostname(), "localhost") || ip != nil && ip.IsLoopback()
+		if remoteURL.Scheme != "http" || !isLoopback {
+			writeProxyError(http.StatusBadGateway, "Chỉ cho phép HTTPS khi chuyển tiếp API Key tới máy chủ Web.")
+			return
+		}
+	}
+	if strings.EqualFold(remoteURL.Host, r.Host) {
+		writeProxyError(http.StatusBadGateway, "URL máy chủ Web trỏ ngược về chính gateway cục bộ.")
+		return
+	}
+
+	basePath := strings.TrimRight(remoteURL.Path, "/")
+	if strings.HasSuffix(basePath, "/v1") {
+		remoteURL.Path = basePath + "/chat/completions"
+	} else {
+		remoteURL.Path = basePath + "/v1/chat/completions"
+	}
+	remoteURL.RawPath = ""
+	remoteURL.RawQuery = r.URL.RawQuery
+
+	proxyRequest, err := http.NewRequestWithContext(r.Context(), http.MethodPost, remoteURL.String(), bytes.NewReader(body))
+	if err != nil {
+		writeProxyError(http.StatusBadGateway, "Không thể tạo yêu cầu tới máy chủ Web.")
+		return
+	}
+	for _, header := range []string{"Accept", "Content-Type", "OpenAI-Beta", "OpenAI-Organization", "OpenAI-Project"} {
+		if value := r.Header.Get(header); value != "" {
+			proxyRequest.Header.Set(header, value)
+		}
+	}
+	proxyRequest.Header.Set("Authorization", "Bearer "+apiKey)
+	proxyRequest.Header.Set("User-Agent", "SupportFlast-Desktop-Gateway/2.9.0")
+
+	client := &http.Client{
+		Transport: chatTransport,
+		Timeout:   300 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	remoteResponse, err := client.Do(proxyRequest)
+	if err != nil {
+		log.Printf("[ENGINE] [WEB-PROXY] Không thể chuyển tiếp yêu cầu chat tới máy chủ Web: %v", err)
+		writeProxyError(http.StatusBadGateway, "Không thể kết nối tới máy chủ Web.")
+		return
+	}
+	defer remoteResponse.Body.Close()
+	if remoteResponse.StatusCode >= http.StatusMultipleChoices && remoteResponse.StatusCode < http.StatusBadRequest {
+		writeProxyError(http.StatusBadGateway, "Máy chủ Web chuyển hướng yêu cầu; hãy kiểm tra URL đã cấu hình.")
+		return
+	}
+
+	for name, values := range remoteResponse.Header {
+		lowerName := strings.ToLower(name)
+		if lowerName == "content-type" || lowerName == "cache-control" || lowerName == "retry-after" ||
+			strings.HasPrefix(lowerName, "x-ratelimit-") || strings.HasPrefix(lowerName, "ratelimit-") ||
+			strings.HasPrefix(lowerName, "openai-") {
+			for _, value := range values {
+				w.Header().Add(name, value)
+			}
+		}
+	}
+	w.WriteHeader(remoteResponse.StatusCode)
+	flusher, canFlush := w.(http.Flusher)
+	buffer := make([]byte, 32*1024)
+	for {
+		n, readErr := remoteResponse.Body.Read(buffer)
+		if n > 0 {
+			written, writeErr := w.Write(buffer[:n])
+			if writeErr != nil {
+				return
+			}
+			if written != n {
+				return
+			}
+			if canFlush {
+				flusher.Flush()
+			}
+		}
+		if readErr == io.EOF {
+			return
+		}
+		if readErr != nil {
+			log.Printf("[ENGINE] [WEB-PROXY] Lỗi đọc phản hồi chat từ máy chủ Web: %v", readErr)
+			return
+		}
+	}
+}
+
 // HandleChatCompletions xử lý request /v1/chat/completions chuẩn OpenAI
 func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -981,6 +1099,12 @@ func HandleChatCompletions(db *sql.DB) http.HandlerFunc {
 		case "OK":
 			clientKeyItem = item
 		default:
+			activeKey := GetActiveClientKey(db)
+			if status == "NOT_FOUND" && len(apiKey) == len(activeKey) &&
+				subtle.ConstantTimeCompare([]byte(apiKey), []byte(activeKey)) == 1 {
+				proxyClientChatToWeb(w, r, apiKey)
+				return
+			}
 			log.Printf("[ENGINE] [OMNIROUTER] 🛑 Từ chối request vì API Key không hợp lệ: %s", MaskAPIKey(apiKey))
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(http.StatusUnauthorized)

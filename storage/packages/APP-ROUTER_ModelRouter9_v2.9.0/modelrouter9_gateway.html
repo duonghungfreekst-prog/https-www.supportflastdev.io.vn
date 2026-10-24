@@ -8357,7 +8357,7 @@
       }
     }
 
-    async function testWebConnection(silent = false) {
+    async function testWebConnection(silent = false, persistApiKey = false) {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
       let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
@@ -8371,7 +8371,11 @@
 
       const badge = document.getElementById('web-sql-status-badge');
       if (!apiKey) {
-        if (!silent) showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        applyWebConnectionResult({
+          success: false,
+          statusCode: 401,
+          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
+        }, silent);
         return false;
       }
 
@@ -8399,7 +8403,7 @@
 
           try {
             window.chrome.webview.postMessage(JSON.stringify({
-              action: 'testWebConnection',
+              action: persistApiKey ? 'saveWebApiKey' : 'testWebConnection',
               serverUrl: serverUrl,
               apiKey: apiKey
             }));
@@ -8407,12 +8411,16 @@
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
 
-          // Timeout dự phòng 6 giây: nếu C# chưa phản hồi, tự động fallback sang direct fetch
+          // Keep the native request authoritative; a browser fallback could report a false success.
           setTimeout(() => {
             if (!hasSettled) {
-              doDirectWebFetchTest(serverUrl, apiKey, silent).then(finish);
+              finish(applyWebConnectionResult({
+                success: false,
+                statusCode: 0,
+                errorMessage: 'Ứng dụng desktop không phản hồi khi kiểm tra máy chủ Web.'
+              }, silent));
             }
-          }, 6000);
+          }, 30000);
         });
       }
 
@@ -8423,15 +8431,34 @@
     async function doDirectWebFetchTest(serverUrl, apiKey, silent = false) {
       try {
         const startTime = Date.now();
-        const res = await fetch(`${serverUrl}/api/usage/stats`, {
+        const res = await fetch(`${serverUrl}/api/v1/client/config`, {
           method: 'GET',
+          redirect: 'error',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'x-api-key': apiKey,
             'Accept': 'application/json'
           }
         });
+        const authData = res.ok ? await res.json() : null;
+        if (!res.ok || authData?.success !== true) {
+          return applyWebConnectionResult({
+            success: false,
+            statusCode: res.status || 502,
+            serverUrl: serverUrl,
+            errorMessage: res.ok
+              ? 'Máy chủ không xác nhận API Key.'
+              : `Máy chủ từ chối xác thực API Key (HTTP ${res.status}).`
+          }, silent);
+        }
         const latency = Date.now() - startTime;
+        let statsBody = '';
+        try {
+          const statsRes = await fetch(`${serverUrl}/api/usage/stats`, { redirect: 'error' });
+          if (statsRes.ok) statsBody = await statsRes.text();
+        } catch (statsErr) {
+          console.warn('[WebSQL] Không thể tải thống kê sau khi xác thực:', statsErr);
+        }
         let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
@@ -8456,10 +8483,11 @@
         } catch (_) {}
 
         return applyWebConnectionResult({
-          success: res.ok || realProvidersData.length > 0,
+          success: true,
           statusCode: res.status,
           serverUrl: serverUrl,
           latencyMs: latency,
+          stats: statsBody,
           providers: JSON.stringify({ providers: realProvidersData, total: realProvidersData.length })
         }, silent);
       } catch (err) {
@@ -8484,33 +8512,31 @@
       const apiKey = (keyInput?.value || '').trim();
 
       if (!apiKey) {
-        showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        applyWebConnectionResult({
+          success: false,
+          statusCode: 401,
+          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
+        });
         return;
       }
 
       showToast('Đang lưu khóa và đồng bộ dữ liệu SQL từ Web...', 'info');
-
-      try {
-        localStorage.setItem('omnirouter_web_url', serverUrl);
-        localStorage.setItem('omnirouter_web_key', apiKey);
-
-      } catch (_) {}
-
-      if (window.chrome && window.chrome.webview) {
-        try {
-          window.chrome.webview.postMessage(JSON.stringify({
-            action: 'saveWebApiKey',
-            serverUrl: serverUrl,
-            apiKey: apiKey
-          }));
-        } catch (e) {
-          console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
-        }
-      }
-
-      const isConnected = await testWebConnection(false);
+      const isConnected = await testWebConnection(false, true);
       if (isConnected) {
-        showToast('✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!', 'success');
+        let storedInWebView = true;
+        try {
+          localStorage.setItem('omnirouter_web_url', serverUrl);
+          localStorage.setItem('omnirouter_web_key', apiKey);
+        } catch (storageErr) {
+          storedInWebView = false;
+          console.warn('[WebSQL] Không thể lưu cấu hình máy chủ Web:', storageErr);
+        }
+        showToast(
+          storedInWebView
+            ? '✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!'
+            : 'Đã xác thực và lưu API Key cho gateway, nhưng không lưu được vào bộ nhớ giao diện.',
+          storedInWebView ? 'success' : 'warning'
+        );
       }
     }
 
@@ -27248,56 +27274,27 @@
 
 
 
-        // Hỗ trợ Quota Ngày (Daily) nếu có
-        if (qMap?.gemini_daily) {
-          const gemDaily = qMap.gemini_daily;
-          quotas.push({
-            key: 'gemini_daily',
-            displayName: gemDaily.displayName || 'Gemini (Daily)',
-            total: gemDaily.total !== undefined ? gemDaily.total : 1000,
-            used: gemDaily.used !== undefined ? gemDaily.used : 0,
-            remainingPercentage: gemDaily.remainingPercentage !== undefined ? Number(gemDaily.remainingPercentage) : null,
-            remainingFraction: gemDaily.remainingFraction,
-            resetAt: gemDaily.resetAt || null,
-            hasData: true,
-            status: gemDaily.status || 'LIVE',
-            source: gemDaily.source || 'live_api'
-          });
-        }
+        // 5. Model hình ảnh phụ mặc định bị ẩn
 
-        if (qMap?.claude_gpt_daily) {
-          const cldDaily = qMap.claude_gpt_daily;
-          quotas.push({
-            key: 'claude_gpt_daily',
-            displayName: cldDaily.displayName || 'Claude & GPT (Daily)',
-            total: cldDaily.total !== undefined ? cldDaily.total : 1000,
-            used: cldDaily.used !== undefined ? cldDaily.used : 0,
-            remainingPercentage: cldDaily.remainingPercentage !== undefined ? Number(cldDaily.remainingPercentage) : null,
-            remainingFraction: cldDaily.remainingFraction,
-            resetAt: cldDaily.resetAt || null,
-            hasData: true,
-            status: cldDaily.status || 'LIVE',
-            source: cldDaily.source || 'live_api'
-          });
-        }
+        quotas.push({
 
-        // 5. Model hình ảnh phụ - chỉ hiển thị nếu Backend thực sự có dữ liệu thật (Khắc phục lỗi P0)
-        if (qMap?.gemini_flash_image) {
-          const imgQ = qMap.gemini_flash_image;
-          quotas.push({
-            key: 'gemini_flash_image',
-            displayName: imgQ.displayName || 'Gemini 3.1 Flash Image',
-            total: imgQ.total !== undefined ? imgQ.total : 1000,
-            used: imgQ.used !== undefined ? imgQ.used : 0,
-            remainingPercentage: imgQ.remainingPercentage !== undefined ? Number(imgQ.remainingPercentage) : null,
-            remainingFraction: imgQ.remainingFraction,
-            resetAt: imgQ.resetAt || null,
-            hasData: true,
-            status: imgQ.status || 'LIVE',
-            source: imgQ.source || 'live_api',
-            defaultHidden: true
-          });
-        }
+          key: 'gemini_flash_image',
+
+          displayName: 'Gemini 3.1 Flash Image',
+
+          total: 1000,
+
+          used: 0,
+
+          remainingPercentage: 100,
+
+          resetAt: null,
+
+          hasData: true,
+
+          defaultHidden: true
+
+        });
 
 
 
@@ -31174,4 +31171,3 @@
   </body>
 
 </html>
-

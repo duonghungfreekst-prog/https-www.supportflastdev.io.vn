@@ -72,9 +72,11 @@ Nhấp đúp chuột vào file `run_supportflast.bat` tại thư mục gốc c�
 .\run_supportflast.bat
 ```
 Hệ thống sẽ tự động khởi động:
-- Python Subagent AI Service trên cổng `8000`
-- Go Gateway Engine & Web 3D trên cổng `8080`
+- Go Gateway Engine trên cổng `8080` và Python Subagent AI Service trên cổng `8000`
+- Web UI được Go Engine phục vụ; các yêu cầu AI đi qua Go tới Python AI
 - Tự động mở trình duyệt tại `http://localhost:8080`
+
+Kiểm tra trạng thái kết nối AI tại `http://127.0.0.1:8080/api/agents`; phản hồi cần có `"ai_service_online": true`. Nếu Python AI chưa sẵn sàng, cửa sổ khởi động sẽ báo lỗi và Go Engine tiếp tục ở chế độ fallback.
 
 ### 2. Sử dụng Makefile
 - **Chạy kiểm thử toàn bộ hệ thống (Rust + Go + Python)**:

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -894,6 +895,91 @@ func TestChatCompletionsAuthMatrix(t *testing.T) {
 	handler(recValid, reqValid)
 	if recValid.Code == http.StatusUnauthorized || recValid.Code == http.StatusForbidden {
 		t.Errorf("Key hợp lệ không được bị từ chối xác thực: %d", recValid.Code)
+	}
+}
+
+func TestChatCompletionsForwardsActiveWebKey(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	previousKey := GetActiveClientKey(db)
+	previousWebURL := GetWebServerURL()
+	defer func() {
+		SetActiveClientKey(previousKey)
+		SetCachedWebServerURL(previousWebURL)
+	}()
+
+	remoteKey := fmt.Sprintf("sk-web-proxy-test-%d", time.Now().UnixNano())
+	const requestBody = `{"model":"remote-model","messages":[{"role":"user","content":"hello"}],"stream":true}`
+	const quotaRequestBody = `{"model":"remote-model","messages":[{"role":"user","content":"quota"}]}`
+	const responseBody = "data: remote-ok\n\n"
+	const quotaResponseBody = `{"error":{"code":"quota_exceeded"}}`
+	remoteServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/chat/completions" {
+			t.Errorf("Remote request = %s %s, want POST /v1/chat/completions", r.Method, r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer "+remoteKey {
+			t.Errorf("Remote request did not carry the configured API key")
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("Could not read forwarded request: %v", err)
+			return
+		} else if string(body) == quotaRequestBody {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = fmt.Fprint(w, quotaResponseBody)
+			return
+		} else if string(body) != requestBody {
+			t.Errorf("Forwarded body = %s, want %s", body, requestBody)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("X-RateLimit-Remaining", "17")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprint(w, responseBody)
+	}))
+	defer remoteServer.Close()
+
+	setKeyBody, err := json.Marshal(map[string]string{
+		"key":            remoteKey,
+		"web_server_url": remoteServer.URL,
+	})
+	if err != nil {
+		t.Fatalf("Could not encode active key configuration: %v", err)
+	}
+	setKeyReq := httptest.NewRequest(http.MethodPost, "/api/v1/client/set_active_key", strings.NewReader(string(setKeyBody)))
+	setKeyRec := httptest.NewRecorder()
+	HandleSetActiveKey(db)(setKeyRec, setKeyReq)
+	if setKeyRec.Code != http.StatusOK || GetWebServerURL() != remoteServer.URL {
+		t.Fatalf("Could not configure active Web key and URL: status=%d", setKeyRec.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(requestBody))
+	req.Header.Set("Authorization", "Bearer "+remoteKey)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	HandleChatCompletions(db)(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Forwarded response status = %d, want %d (body: %s)", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if rec.Body.String() != responseBody {
+		t.Fatalf("Forwarded response body = %q, want %q", rec.Body.String(), responseBody)
+	}
+	if rec.Header().Get("Content-Type") != "text/event-stream" {
+		t.Errorf("Forwarded Content-Type = %q, want text/event-stream", rec.Header().Get("Content-Type"))
+	}
+	if rec.Header().Get("X-RateLimit-Remaining") != "17" {
+		t.Errorf("Forwarded rate limit header = %q, want 17", rec.Header().Get("X-RateLimit-Remaining"))
+	}
+
+	quotaReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(quotaRequestBody))
+	quotaReq.Header.Set("Authorization", "Bearer "+remoteKey)
+	quotaReq.Header.Set("Content-Type", "application/json")
+	quotaRec := httptest.NewRecorder()
+	HandleChatCompletions(db)(quotaRec, quotaReq)
+	if quotaRec.Code != http.StatusTooManyRequests || quotaRec.Body.String() != quotaResponseBody {
+		t.Fatalf("Remote quota response = %d %q, want 429 %q", quotaRec.Code, quotaRec.Body.String(), quotaResponseBody)
 	}
 }
 

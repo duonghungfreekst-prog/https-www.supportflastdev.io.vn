@@ -1963,13 +1963,15 @@ func HandleSetActiveKey(db *sql.DB) http.HandlerFunc {
 		}
 
 		var keyToSet string
+		var webServerURLToSet string
 
 		if r.Method == http.MethodPost {
 
 			var body struct {
 				Key string `json:"key"`
 
-				APIKey string `json:"api_key"`
+				APIKey       string `json:"api_key"`
+				WebServerURL string `json:"web_server_url"`
 			}
 
 			_ = json.NewDecoder(r.Body).Decode(&body)
@@ -1981,6 +1983,7 @@ func HandleSetActiveKey(db *sql.DB) http.HandlerFunc {
 				keyToSet = strings.TrimSpace(body.APIKey)
 
 			}
+			webServerURLToSet = strings.TrimSpace(body.WebServerURL)
 
 		} else {
 
@@ -1996,6 +1999,9 @@ func HandleSetActiveKey(db *sql.DB) http.HandlerFunc {
 
 		if keyToSet != "" {
 
+			if webServerURLToSet != "" {
+				SetCachedWebServerURL(webServerURLToSet)
+			}
 			SetActiveClientKey(keyToSet)
 
 			json.NewEncoder(w).Encode(map[string]interface{}{

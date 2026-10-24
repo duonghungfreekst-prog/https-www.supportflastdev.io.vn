@@ -1315,9 +1315,10 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Xử lý kiểm tra kết nối và lưu Web API Key qua C# Native HttpClient (Chống 100% lỗi CORS và Failed to fetch)
+            // Validate web credentials before persisting them.
             if (lowerAction == "testwebconnection" || lowerAction == "savewebapikey")
             {
+                bool persistApiKey = lowerAction == "savewebapikey";
                 _ = Task.Run(async () =>
                 {
                     try
@@ -1355,87 +1356,162 @@ public partial class MainWindow : Window
                                                  .Replace("http://supportflastdev.io.vn", "https://www.supportflastdev.io.vn");
                         }
 
-                        if (!string.IsNullOrEmpty(apiKey))
+                        if (string.IsNullOrWhiteSpace(apiKey) || apiKey.Contains("...") || apiKey.Contains("***"))
                         {
-                            try
-                            {
-                                string projectRoot = GetProjectRoot();
-                                string cfgPath = System.IO.Path.Combine(projectRoot, "config.json");
-                                var cfgObj = new System.Collections.Generic.Dictionary<string, object>
-                                {
-                                    ["web_server_url"] = serverUrl,
-                                    ["render_url"] = serverUrl,
-                                    ["master_api_key"] = apiKey,
-                                    ["api_key"] = apiKey,
-                                    ["local_port"] = 20128
-                                };
-                                string newJson = System.Text.Json.JsonSerializer.Serialize(cfgObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-                                bool saved = SafeWriteTextWithRetry(cfgPath, newJson);
-
-                                string baseCfg = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
-                                if (!string.Equals(System.IO.Path.GetFullPath(cfgPath), System.IO.Path.GetFullPath(baseCfg), StringComparison.OrdinalIgnoreCase))
-                                {
-                                    SafeWriteTextWithRetry(baseCfg, newJson);
-                                }
-
-                                if (saved)
-                                {
-                                    Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] ✔ Đã lưu Web API Key vào config.json an toàn.");
-                                }
-
-                                // Cập nhật trực tiếp Active API Key cho Go Engine qua cổng 20128
-                                try
-                                {
-                                    using var engineSyncClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-                                    var setKeyPayload = new System.Net.Http.StringContent(
-                                        System.Text.Json.JsonSerializer.Serialize(new { key = apiKey }),
-                                        System.Text.Encoding.UTF8,
-                                        "application/json"
-                                    );
-                                    _ = engineSyncClient.PostAsync("http://127.0.0.1:20128/api/v1/client/set_active_key", setKeyPayload);
-                                }
-                                catch { }
-                            }
-                            catch (Exception saveEx)
-                            {
-                                Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Bỏ qua lỗi tạm thời khi lưu config.json (tiếp tục kiểm tra kết nối mạng): {saveEx.Message}");
-                            }
+                            throw new InvalidOperationException("Vui lòng nhập API Key hợp lệ do Web sinh ra.");
                         }
 
-                        // Kiểm tra kết nối trực tiếp qua HttpClient cấp hệ thống
                         var sw = Stopwatch.StartNew();
                         using var handler = new System.Net.Http.HttpClientHandler
                         {
-                            AllowAutoRedirect = true,
-                            ServerCertificateCustomValidationCallback = (m, c, ch, er) => true
+                            AllowAutoRedirect = false
                         };
-                        using var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(45) };
+                        using var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
                         client.DefaultRequestHeaders.Add("User-Agent", "SupportFlast-Desktop-Gateway/2.9.0");
-                        if (!string.IsNullOrEmpty(apiKey))
+                        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                        using var response = await client.GetAsync($"{serverUrl}/api/v1/client/config");
+                        sw.Stop();
+                        string authBody = await response.Content.ReadAsStringAsync();
+                        bool isConnected = false;
+                        if (response.IsSuccessStatusCode)
                         {
-                            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
-                            client.DefaultRequestHeaders.TryAddWithoutValidation("x-api-key", apiKey);
-                            client.DefaultRequestHeaders.TryAddWithoutValidation("x-9r-cli-token", apiKey);
+                            try
+                            {
+                                using var authDoc = System.Text.Json.JsonDocument.Parse(authBody);
+                                isConnected = authDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                                              authDoc.RootElement.TryGetProperty("success", out var successProp) &&
+                                              successProp.ValueKind == System.Text.Json.JsonValueKind.True;
+                            }
+                            catch (System.Text.Json.JsonException)
+                            {
+                                isConnected = false;
+                            }
                         }
 
-                        var response = await client.GetAsync($"{serverUrl}/api/usage/stats");
-                        sw.Stop();
-                        string body = await response.Content.ReadAsStringAsync();
+                        if (!isConnected)
+                        {
+                            string errorMessage = response.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
+                                                  response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                                ? "API Key bị máy chủ Web từ chối hoặc đã bị khóa."
+                                : response.IsSuccessStatusCode
+                                    ? "Máy chủ Web không xác nhận API Key."
+                                    : $"Máy chủ Web trả về HTTP {(int)response.StatusCode} khi xác thực API Key.";
+                            Dispatcher.Invoke(() =>
+                            {
+                                var errorObj = new
+                                {
+                                    type = "webConnectionResult",
+                                    success = false,
+                                    statusCode = (int)response.StatusCode,
+                                    serverUrl = serverUrl,
+                                    errorMessage
+                                };
+                                AppWebView?.CoreWebView2?.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(errorObj));
+                            });
+                            return;
+                        }
+
+                        if (persistApiKey)
+                        {
+                            string projectRoot = GetProjectRoot();
+                            string projectConfigPath = System.IO.Path.Combine(projectRoot, "config.json");
+                            string appConfigPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                            var configPaths = new[] { projectConfigPath, appConfigPath };
+                            foreach (string configPath in configPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+                            {
+                                System.Text.Json.Nodes.JsonObject config;
+                                if (System.IO.File.Exists(configPath))
+                                {
+                                    var existingConfig = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(configPath));
+                                    config = existingConfig as System.Text.Json.Nodes.JsonObject
+                                        ?? throw new InvalidOperationException($"Cấu hình không phải JSON object: {configPath}");
+                                }
+                                else
+                                {
+                                    config = new System.Text.Json.Nodes.JsonObject();
+                                }
+
+                                config["web_server_url"] = serverUrl;
+                                config["render_url"] = serverUrl;
+                                config["master_api_key"] = apiKey;
+                                config["api_key"] = apiKey;
+                                config["local_port"] = 20128;
+                                string configJson = config.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                                if (!SafeWriteTextWithRetry(configPath, configJson))
+                                {
+                                    throw new System.IO.IOException($"Không thể ghi cấu hình máy chủ Web: {configPath}");
+                                }
+                            }
+
+                            try
+                            {
+                                using var engineSyncClient = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+                                using var setKeyPayload = new System.Net.Http.StringContent(
+                                    System.Text.Json.JsonSerializer.Serialize(new { key = apiKey, web_server_url = serverUrl }),
+                                    System.Text.Encoding.UTF8,
+                                    "application/json");
+                                using var engineResponse = await engineSyncClient.PostAsync(
+                                    "http://127.0.0.1:20128/api/v1/client/set_active_key",
+                                    setKeyPayload);
+                                bool engineKeyUpdated = false;
+                                if (engineResponse.IsSuccessStatusCode)
+                                {
+                                    try
+                                    {
+                                        using var engineDoc = System.Text.Json.JsonDocument.Parse(
+                                            await engineResponse.Content.ReadAsStringAsync());
+                                        engineKeyUpdated = engineDoc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                                                           engineDoc.RootElement.TryGetProperty("success", out var engineSuccess) &&
+                                                           engineSuccess.ValueKind == System.Text.Json.JsonValueKind.True;
+                                    }
+                                    catch (System.Text.Json.JsonException)
+                                    {
+                                        engineKeyUpdated = false;
+                                    }
+                                }
+
+                                if (!engineKeyUpdated)
+                                {
+                                    Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Đã xác thực và lưu API Key web, nhưng local gateway không xác nhận cập nhật key (HTTP {(int)engineResponse.StatusCode}).");
+                                }
+                            }
+                            catch (Exception engineEx)
+                            {
+                                Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Đã xác thực và lưu API Key web, nhưng không cập nhật được local gateway: {engineEx.Message}");
+                            }
+                        }
+
+                        string body = "";
+                        try
+                        {
+                            using var statsTimeout = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                            using var statsResponse = await client.GetAsync($"{serverUrl}/api/usage/stats", statsTimeout.Token);
+                            if (statsResponse.IsSuccessStatusCode)
+                            {
+                                body = await statsResponse.Content.ReadAsStringAsync(statsTimeout.Token);
+                            }
+                        }
+                        catch (Exception statsEx)
+                        {
+                            Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Xác thực thành công nhưng không tải được usage stats: {statsEx.Message}");
+                        }
 
                         string providersBody = "[]";
                         try
                         {
-                            var pRes = await client.GetAsync($"{serverUrl}/api/router/providers");
+                            using var providersTimeout = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                            using var pRes = await client.GetAsync($"{serverUrl}/api/router/providers", providersTimeout.Token);
                             if (pRes.IsSuccessStatusCode)
                             {
-                                providersBody = await pRes.Content.ReadAsStringAsync();
+                                providersBody = await pRes.Content.ReadAsStringAsync(providersTimeout.Token);
                             }
                             else
                             {
-                                var pRes2 = await client.GetAsync($"{serverUrl}/api/providers");
+                                using var fallbackTimeout = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(3));
+                                using var pRes2 = await client.GetAsync($"{serverUrl}/api/providers", fallbackTimeout.Token);
                                 if (pRes2.IsSuccessStatusCode)
                                 {
-                                    providersBody = await pRes2.Content.ReadAsStringAsync();
+                                    providersBody = await pRes2.Content.ReadAsStringAsync(fallbackTimeout.Token);
                                 }
                             }
                         }
@@ -1444,16 +1520,15 @@ public partial class MainWindow : Window
                             Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WARN] Không thể nạp /api/router/providers: {provEx.Message}");
                         }
 
-                        bool isConnected = response.IsSuccessStatusCode || (!string.IsNullOrEmpty(providersBody) && providersBody.Length > 20);
-                        int httpCode = response.IsSuccessStatusCode ? (int)response.StatusCode : (isConnected ? 200 : (int)response.StatusCode);
-                        Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WebSync] Kết quả gọi {serverUrl}: HTTP {httpCode}, Providers JSON length: {providersBody.Length} bytes.");
+                        int httpCode = (int)response.StatusCode;
+                        Console.WriteLine($"[UI {DateTime.Now:HH:mm:ss}] [WebSync] API Key được máy chủ xác nhận: HTTP {httpCode}; Providers JSON length: {providersBody.Length} bytes.");
 
                         Dispatcher.Invoke(() =>
                         {
                             var resultObj = new
                             {
                                 type = "webConnectionResult",
-                                success = isConnected,
+                                success = true,
                                 statusCode = httpCode,
                                 serverUrl = serverUrl,
                                 latencyMs = sw.ElapsedMilliseconds,
