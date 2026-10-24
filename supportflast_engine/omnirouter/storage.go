@@ -234,6 +234,12 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 		{"key_master_domain_cloud", "Master Web Domain Key (" + DefaultDomain + ")", "sk-" + DefaultDomain + "-master-live"},
 		{"key_master_gateway_secret", "Master Gateway Secret", "sk-9r-master-live-gateway-secret"},
 		{"key_master_legacy", "Legacy Master Key", "sk-9router-master-live"},
+		// Khóa API chính thức chuẩn SupportFlast cho ứng dụng nội bộ & Dev Tools
+		{"key_default_internal_app", "Default Internal App", "sk-sf-live-default-8f42"},
+		{"key_vscode_antigravity_ide", "VS Code Antigravity IDE", "sk-sf-live-antigravity-b198"},
+		// Khóa tương thích ngược (Legacy compatibility aliases)
+		{"key_legacy_default_internal", "Legacy Default Internal App", "sk-nx-live-9router-default-8f42"},
+		{"key_legacy_antigravity_ide", "Legacy VS Code Antigravity IDE", "sk-nx-live-antigravity-b190"},
 	}
 	for _, sk := range seedKeys {
 		var exists int
@@ -499,8 +505,8 @@ func ListAllClientKeys(db *sql.DB) ([]ClientKey, error) {
 	rows, err := db.Query(`
 		SELECT id, name, api_key, key_hash, used_requests, total_tokens, quota_limit, expires_at, duration_hours, is_active, created_at, last_used_at 
 		FROM omni_client_keys 
-		WHERE id != 'key_master_domain_cloud' 
-		  AND id != 'key_master_legacy' 
+		WHERE id NOT LIKE 'key_master_%' 
+		  AND id NOT LIKE 'key_legacy_%' 
 		  AND api_key NOT LIKE '%master-live%' 
 		  AND name NOT LIKE '%Master%' 
 		ORDER BY created_at DESC
