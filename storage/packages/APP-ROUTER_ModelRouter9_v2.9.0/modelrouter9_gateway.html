@@ -8357,7 +8357,7 @@
       }
     }
 
-    async function testWebConnection(silent = false, persistApiKey = false) {
+    async function testWebConnection(silent = false) {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
       let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
@@ -8367,18 +8367,11 @@
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
         if (urlInput) urlInput.value = serverUrl;
       }
-      let apiKey = (keyInput?.value || '').trim();
-      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
-        apiKey = '';
-      }
+      const apiKey = (keyInput?.value || '').trim();
 
       const badge = document.getElementById('web-sql-status-badge');
       if (!apiKey) {
-        applyWebConnectionResult({
-          success: false,
-          statusCode: 401,
-          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
-        }, silent);
+        if (!silent) showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
         return false;
       }
 
@@ -8387,7 +8380,7 @@
         badge.textContent = 'ĐANG KIỂM TRA...';
       }
 
-      // Let the native host validate and persist desktop keys without exposing them to browser fallbacks.
+      // Nếu đang chạy trong Desktop App (WebView2), ưu tiên gọi qua C# Native HttpClient để chống 100% lỗi CORS & 301
       if (window.chrome && window.chrome.webview) {
         return new Promise((resolve) => {
           let hasSettled = false;
@@ -8406,7 +8399,7 @@
 
           try {
             window.chrome.webview.postMessage(JSON.stringify({
-              action: persistApiKey ? 'saveWebApiKey' : 'testWebConnection',
+              action: 'testWebConnection',
               serverUrl: serverUrl,
               apiKey: apiKey
             }));
@@ -8414,16 +8407,12 @@
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
 
-          // Do not treat a browser fallback as proof that the desktop host authenticated the key.
+          // Timeout dự phòng 6 giây: nếu C# chưa phản hồi, tự động fallback sang direct fetch
           setTimeout(() => {
             if (!hasSettled) {
-              finish(applyWebConnectionResult({
-                success: false,
-                statusCode: 0,
-                errorMessage: 'Ứng dụng desktop không phản hồi khi kiểm tra máy chủ Web.'
-              }, silent));
+              doDirectWebFetchTest(serverUrl, apiKey, silent).then(finish);
             }
-          }, 30000);
+          }, 6000);
         });
       }
 
@@ -8434,38 +8423,18 @@
     async function doDirectWebFetchTest(serverUrl, apiKey, silent = false) {
       try {
         const startTime = Date.now();
-        const res = await fetch(`${serverUrl}/api/v1/client/config`, {
+        const res = await fetch(`${serverUrl}/api/usage/stats`, {
           method: 'GET',
-          redirect: 'error',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'x-api-key': apiKey,
             'Accept': 'application/json'
           }
         });
-        const authData = res.ok ? await res.json() : null;
-        if (!res.ok || authData?.success !== true) {
-          return applyWebConnectionResult({
-            success: false,
-            statusCode: res.status || 502,
-            serverUrl: serverUrl,
-            errorMessage: res.ok
-              ? 'Máy chủ không xác nhận API Key.'
-              : `Máy chủ từ chối xác thực API Key (HTTP ${res.status}).`
-          }, silent);
-        }
         const latency = Date.now() - startTime;
-        let statsBody = '';
-        try {
-          const statsRes = await fetch(`${serverUrl}/api/usage/stats`, { redirect: 'error' });
-          if (statsRes.ok) statsBody = await statsRes.text();
-        } catch (statsErr) {
-          console.warn('[WebSQL] Không thể tải thống kê sau khi xác thực:', statsErr);
-        }
         let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
-            redirect: 'error',
             headers: { 
               'Authorization': `Bearer ${apiKey}`,
               'x-api-key': apiKey,
@@ -8477,7 +8446,6 @@
             realProvidersData = (pData && pData.providers) ? pData.providers : (Array.isArray(pData) ? pData : (pData && pData.connections ? pData.connections : []));
           } else {
             const provRes2 = await fetch(`${serverUrl}/api/providers`, {
-              redirect: 'error',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey }
             });
             if (provRes2.ok) {
@@ -8488,11 +8456,10 @@
         } catch (_) {}
 
         return applyWebConnectionResult({
-          success: true,
+          success: res.ok || realProvidersData.length > 0,
           statusCode: res.status,
           serverUrl: serverUrl,
           latencyMs: latency,
-          stats: statsBody,
           providers: JSON.stringify({ providers: realProvidersData, total: realProvidersData.length })
         }, silent);
       } catch (err) {
@@ -8517,32 +8484,33 @@
       const apiKey = (keyInput?.value || '').trim();
 
       if (!apiKey) {
-        applyWebConnectionResult({
-          success: false,
-          statusCode: 401,
-          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
-        });
+        showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
         return;
       }
 
       showToast('Đang lưu khóa và đồng bộ dữ liệu SQL từ Web...', 'info');
 
-      const isConnected = await testWebConnection(false, true);
-      if (isConnected) {
-        let storedInWebView = true;
+      try {
+        localStorage.setItem('omnirouter_web_url', serverUrl);
+        localStorage.setItem('omnirouter_web_key', apiKey);
+
+      } catch (_) {}
+
+      if (window.chrome && window.chrome.webview) {
         try {
-          localStorage.setItem('omnirouter_web_url', serverUrl);
-          localStorage.setItem('omnirouter_web_key', apiKey);
-        } catch (storageErr) {
-          storedInWebView = false;
-          console.warn('[WebSQL] Không thể lưu cấu hình máy chủ Web:', storageErr);
+          window.chrome.webview.postMessage(JSON.stringify({
+            action: 'saveWebApiKey',
+            serverUrl: serverUrl,
+            apiKey: apiKey
+          }));
+        } catch (e) {
+          console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
         }
-        showToast(
-          storedInWebView
-            ? '✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!'
-            : 'Đã xác thực và lưu API Key cho gateway, nhưng không lưu được vào bộ nhớ giao diện.',
-          storedInWebView ? 'success' : 'warning'
-        );
+      }
+
+      const isConnected = await testWebConnection(false);
+      if (isConnected) {
+        showToast('✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!', 'success');
       }
     }
 
@@ -31177,3 +31145,4 @@
   </body>
 
 </html>
+
