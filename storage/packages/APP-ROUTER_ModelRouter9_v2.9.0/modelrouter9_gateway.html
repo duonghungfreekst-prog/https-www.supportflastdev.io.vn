@@ -27248,27 +27248,56 @@
 
 
 
-        // 5. Model hình ảnh phụ mặc định bị ẩn
+        // Hỗ trợ Quota Ngày (Daily) nếu có
+        if (qMap?.gemini_daily) {
+          const gemDaily = qMap.gemini_daily;
+          quotas.push({
+            key: 'gemini_daily',
+            displayName: gemDaily.displayName || 'Gemini (Daily)',
+            total: gemDaily.total !== undefined ? gemDaily.total : 1000,
+            used: gemDaily.used !== undefined ? gemDaily.used : 0,
+            remainingPercentage: gemDaily.remainingPercentage !== undefined ? Number(gemDaily.remainingPercentage) : null,
+            remainingFraction: gemDaily.remainingFraction,
+            resetAt: gemDaily.resetAt || null,
+            hasData: true,
+            status: gemDaily.status || 'LIVE',
+            source: gemDaily.source || 'live_api'
+          });
+        }
 
-        quotas.push({
+        if (qMap?.claude_gpt_daily) {
+          const cldDaily = qMap.claude_gpt_daily;
+          quotas.push({
+            key: 'claude_gpt_daily',
+            displayName: cldDaily.displayName || 'Claude & GPT (Daily)',
+            total: cldDaily.total !== undefined ? cldDaily.total : 1000,
+            used: cldDaily.used !== undefined ? cldDaily.used : 0,
+            remainingPercentage: cldDaily.remainingPercentage !== undefined ? Number(cldDaily.remainingPercentage) : null,
+            remainingFraction: cldDaily.remainingFraction,
+            resetAt: cldDaily.resetAt || null,
+            hasData: true,
+            status: cldDaily.status || 'LIVE',
+            source: cldDaily.source || 'live_api'
+          });
+        }
 
-          key: 'gemini_flash_image',
-
-          displayName: 'Gemini 3.1 Flash Image',
-
-          total: 1000,
-
-          used: 0,
-
-          remainingPercentage: 100,
-
-          resetAt: null,
-
-          hasData: true,
-
-          defaultHidden: true
-
-        });
+        // 5. Model hình ảnh phụ - chỉ hiển thị nếu Backend thực sự có dữ liệu thật (Khắc phục lỗi P0)
+        if (qMap?.gemini_flash_image) {
+          const imgQ = qMap.gemini_flash_image;
+          quotas.push({
+            key: 'gemini_flash_image',
+            displayName: imgQ.displayName || 'Gemini 3.1 Flash Image',
+            total: imgQ.total !== undefined ? imgQ.total : 1000,
+            used: imgQ.used !== undefined ? imgQ.used : 0,
+            remainingPercentage: imgQ.remainingPercentage !== undefined ? Number(imgQ.remainingPercentage) : null,
+            remainingFraction: imgQ.remainingFraction,
+            resetAt: imgQ.resetAt || null,
+            hasData: true,
+            status: imgQ.status || 'LIVE',
+            source: imgQ.source || 'live_api',
+            defaultHidden: true
+          });
+        }
 
 
 

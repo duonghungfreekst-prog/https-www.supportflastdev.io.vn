@@ -6010,16 +6010,22 @@ func HandleRefreshAllQuotas(db *sql.DB) http.HandlerFunc {
 		}
 
 		result := FetchAllAntigravityQuotas(db, force)
+		msg := fmt.Sprintf("Đã làm mới thành công %d live, %d cache cũ / tổng %d tài khoản (%dms)", result.LiveSuccess, result.CachedCount, result.Total, result.DurationMs)
+		if result.LiveSuccess == 0 && result.CachedCount > 0 {
+			msg = fmt.Sprintf("Bảo lưu %d tài khoản từ bộ đệm (API Google tạm thời gián đoạn) (%dms)", result.CachedCount, result.DurationMs)
+		}
 		respData := map[string]interface{}{
 			"success":      true,
 			"total":        result.Total,
 			"successCount": result.Success,
+			"liveSuccess":  result.LiveSuccess,
+			"cachedCount":  result.CachedCount,
 			"failedCount":  result.Failed,
 			"durationMs":   result.DurationMs,
 			"accountData":  result.AccountData,
 			"results":      result.Results,
 			"refreshedAt":  time.Now().Format(time.RFC3339),
-			"message":      fmt.Sprintf("Đã làm mới thành công %d/%d tài khoản AI (%dms)", result.Success, result.Total, result.DurationMs),
+			"message":      msg,
 		}
 		respBytes, _ := json.Marshal(respData)
 

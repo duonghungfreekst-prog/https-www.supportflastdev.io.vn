@@ -1999,99 +1999,70 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 		for _, b := range g.Buckets {
 
 			win := strings.ToLower(b.Window)
-
 			bText := strings.ToLower(b.BucketId + " " + b.DisplayName)
 
-			isWeekly := win == "weekly" || strings.Contains(bText, "weekly")
+			isWeekly := win == "weekly" || strings.Contains(bText, "weekly") || strings.Contains(bText, "7d")
+			isDaily := win == "daily" || strings.Contains(bText, "daily") || strings.Contains(bText, "24h") || strings.Contains(bText, "per day")
+			isSession := !isDaily && !isWeekly && (win == "5h" || win == "session" || strings.Contains(bText, "five hour") || strings.Contains(bText, "5h") || strings.Contains(bText, "5 hour") || strings.Contains(bText, "session"))
 
-			isSession := win == "5h" || strings.Contains(bText, "five hour") || strings.Contains(bText, "5h") || win == "daily"
-
-			if !isWeekly && !isSession {
-
+			if !isWeekly && !isSession && !isDaily {
 				continue
-
 			}
 
 			remFrac := b.RemainingFraction
-
 			if b.Disabled {
-
 				remFrac = 0
-
 			}
-
 			if remFrac < 0 {
-
 				remFrac = 0
-
 			} else if remFrac > 1 {
-
 				remFrac = 1
-
 			}
 
 			remPct := math.Round(remFrac*1000) / 10
-
 			total := 1000
-
 			remCount := int(math.Round(float64(total) * remFrac))
-
 			used := total - remCount
 
 			var rPtr *string
-
 			if b.ResetTime != "" {
-
 				rTime := b.ResetTime
-
 				rPtr = &rTime
-
 			}
 
+			var qKey, qDisp, qWin string
 			if isGem {
-
 				if isSession {
-
-					parsedQuotas["gemini_session"] = QuotaItem{
-
-						Total: total, Used: used, RemainingPercentage: remPct,
-
-						ResetAt: rPtr, DisplayName: "Gemini (5h)", Unlimited: false,
-					}
-
+					qKey, qDisp, qWin = "gemini_session", "Gemini (5h)", "5h"
+				} else if isDaily {
+					qKey, qDisp, qWin = "gemini_daily", "Gemini (Daily)", "daily"
 				} else if isWeekly {
-
-					parsedQuotas["gemini_weekly"] = QuotaItem{
-
-						Total: total, Used: used, RemainingPercentage: remPct,
-
-						ResetAt: rPtr, DisplayName: "Gemini (Weekly)", Unlimited: false,
-					}
-
+					qKey, qDisp, qWin = "gemini_weekly", "Gemini (Weekly)", "weekly"
 				}
-
 			} else if isCld {
-
 				if isSession {
-
-					parsedQuotas["claude_gpt_session"] = QuotaItem{
-
-						Total: total, Used: used, RemainingPercentage: remPct,
-
-						ResetAt: rPtr, DisplayName: "Claude & GPT (5h)", Unlimited: false,
-					}
-
+					qKey, qDisp, qWin = "claude_gpt_session", "Claude & GPT (5h)", "5h"
+				} else if isDaily {
+					qKey, qDisp, qWin = "claude_gpt_daily", "Claude & GPT (Daily)", "daily"
 				} else if isWeekly {
-
-					parsedQuotas["claude_gpt_weekly"] = QuotaItem{
-
-						Total: total, Used: used, RemainingPercentage: remPct,
-
-						ResetAt: rPtr, DisplayName: "Claude & GPT (Weekly)", Unlimited: false,
-					}
-
+					qKey, qDisp, qWin = "claude_gpt_weekly", "Claude & GPT (Weekly)", "weekly"
 				}
+			}
 
+			if qKey != "" {
+				parsedQuotas[qKey] = QuotaItem{
+					Total:               total,
+					Used:                used,
+					RemainingPercentage: remPct,
+					RemainingFraction:   remFrac,
+					ResetAt:             rPtr,
+					DisplayName:         qDisp,
+					Unlimited:           false,
+					BucketID:            b.BucketId,
+					Window:              qWin,
+					Source:              "live_api",
+					Status:              "LIVE",
+				}
 			}
 
 		}
@@ -2141,10 +2112,18 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 			}
 
 			parsedQuotas[mKey] = QuotaItem{
-
-				Total: total, Used: total - remCount, RemainingPercentage: remPct,
-
-				ResetAt: rPtr, DisplayName: disp, Unlimited: false,
+				Total:               total,
+				Used:                total - remCount,
+				RemainingPercentage: remPct,
+				RemainingFraction:   remFrac,
+				ResetAt:             rPtr,
+				DisplayName:         disp,
+				Unlimited:           false,
+				BucketID:            mKey,
+				Window:              "model",
+				Source:              "live_api",
+				Status:              "LIVE",
+				FetchedAt:           NowISO(),
 			}
 
 		}

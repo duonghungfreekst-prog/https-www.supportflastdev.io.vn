@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -507,4 +508,274 @@ func TestProvidersAndQuotasInMemoryCacheSpeedAndInvalidation(t *testing.T) {
 			t.Logf("✔ Route đã đăng ký thành công: %s (Status: %d)", ep, w.Code)
 		}
 	}
+}
+
+type quotaMockRoundTripper func(*http.Request) (*http.Response, error)
+
+func (m quotaMockRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return m(r)
+}
+
+// TestQuotaP0_NoFakeImageWhenMissing kiểm tra lỗi P0: Khi upstream không có model ảnh, KHÔNG TỰ BỊA 100%
+func TestQuotaP0_NoFakeImageWhenMissing(t *testing.T) {
+	mockClient := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "fetchAvailableModels") {
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{
+					"models": {
+						"gemini-2.5-pro": {
+							"displayName": "Gemini 2.5 Pro",
+							"quotaInfo": {
+								"remainingFraction": 0.85,
+								"resetTime": "2026-10-24T18:00:00Z"
+							}
+						}
+					}
+				}`)
+			} else {
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{"groups": []}`)
+			}
+			return rec.Result(), nil
+		}),
+	}
+
+	creds := &Credentials{AccessToken: "mock_tok_p0"}
+	quotas, err := executeQuotaFetch(mockClient, creds)
+	if err != nil {
+		t.Fatalf("executeQuotaFetch thất bại: %v", err)
+	}
+
+	if _, exists := quotas["gemini_flash_image"]; exists {
+		t.Errorf("VI PHẠM P0: gemini_flash_image không được phép tự động sinh ra khi upstream không trả về!")
+	}
+	if _, exists := quotas["gemini-3.1-flash-image"]; exists {
+		t.Errorf("gemini-3.1-flash-image không được tồn tại")
+	}
+	if q, exists := quotas["gemini-2.5-pro"]; !exists || q.RemainingPercentage != 85.0 {
+		t.Errorf("gemini-2.5-pro phải tồn tại với 85%% quota, nhận: %+v", q)
+	}
+}
+
+// TestQuotaP1_DailyVsSessionClassification kiểm tra lỗi P1: Quota Daily không bị gán nhầm thành Session 5h
+func TestQuotaP1_DailyVsSessionClassification(t *testing.T) {
+	mockClient := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "retrieveUserQuotaSummary") {
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{
+					"groups": [
+						{
+							"displayName": "Gemini Models",
+							"buckets": [
+								{
+									"bucketId": "gemini_daily_bucket",
+									"displayName": "Daily Limit",
+									"window": "DAILY",
+									"remainingFraction": 0.45,
+									"resetTime": "2026-10-25T00:00:00Z"
+								},
+								{
+									"bucketId": "gemini_5h_bucket",
+									"displayName": "Five Hour Window",
+									"window": "5H",
+									"remainingFraction": 0.88,
+									"resetTime": "2026-10-24T17:00:00Z"
+								}
+							]
+						}
+					]
+				}`)
+			} else {
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{"models": {}}`)
+			}
+			return rec.Result(), nil
+		}),
+	}
+
+	creds := &Credentials{AccessToken: "mock_tok_p1"}
+	quotas, err := executeQuotaFetch(mockClient, creds)
+	if err != nil {
+		t.Fatalf("executeQuotaFetch thất bại: %v", err)
+	}
+
+	// 1. Kiểm tra gemini_daily
+	daily, okDaily := quotas["gemini_daily"]
+	if !okDaily {
+		t.Fatalf("gemini_daily phải tồn tại trong quotas")
+	}
+	if daily.Window != "daily" || daily.RemainingPercentage != 45.0 {
+		t.Errorf("gemini_daily sai cửa sổ hoặc %%: Window=%s, Pct=%.1f", daily.Window, daily.RemainingPercentage)
+	}
+
+	// 2. Kiểm tra gemini_session (5h)
+	sess, okSess := quotas["gemini_session"]
+	if !okSess {
+		t.Fatalf("gemini_session phải tồn tại trong quotas")
+	}
+	if sess.Window != "5h" || sess.RemainingPercentage != 88.0 {
+		t.Errorf("gemini_session sai cửa sổ hoặc %%: Window=%s, Pct=%.1f", sess.Window, sess.RemainingPercentage)
+	}
+
+	// 3. Đảm bảo quota 5h không bị gán đè bởi quota Daily (45% vs 88%)
+	if sess.RemainingPercentage == 45.0 {
+		t.Errorf("VI PHẠM P1: Quota 5h bị gán nhầm giá trị của quota Daily 45%%!")
+	}
+}
+
+// TestQuotaP1_NoLowestModelInference kiểm tra lỗi P1: Không tự lấy model thấp nhất gán bừa thành nhóm 5h
+func TestQuotaP1_NoLowestModelInference(t *testing.T) {
+	mockClient := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.Header().Set("Content-Type", "application/json")
+			if strings.Contains(r.URL.Path, "fetchAvailableModels") {
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{
+					"models": {
+						"gemini-2.5-flash": {
+							"displayName": "Gemini 2.5 Flash",
+							"quotaInfo": { "remainingFraction": 0.10 }
+						},
+						"gemini-2.5-pro": {
+							"displayName": "Gemini 2.5 Pro",
+							"quotaInfo": { "remainingFraction": 0.90 }
+						}
+					}
+				}`)
+			} else {
+				// Không có nhóm tóm tắt 5h
+				rec.WriteHeader(http.StatusOK)
+				_, _ = rec.WriteString(`{"groups": []}`)
+			}
+			return rec.Result(), nil
+		}),
+	}
+
+	creds := &Credentials{AccessToken: "mock_tok_infer"}
+	quotas, err := executeQuotaFetch(mockClient, creds)
+	if err != nil {
+		t.Fatalf("executeQuotaFetch thất bại: %v", err)
+	}
+
+	// Không được tự ý tạo "gemini_session" bằng cách lấy model thấp nhất (10%)
+	if _, exists := quotas["gemini_session"]; exists {
+		t.Errorf("VI PHẠM P1: Không được tự tiện suy diễn gemini_session từ model thấp nhất khi API không trả về summary 5h!")
+	}
+
+	// Từng model riêng lẻ phải giữ nguyên quota độc lập của nó
+	if q, ok := quotas["gemini-2.5-flash"]; !ok || q.RemainingPercentage != 10.0 {
+		t.Errorf("gemini-2.5-flash quota sai: %+v", q)
+	}
+	if q, ok := quotas["gemini-2.5-pro"]; !ok || q.RemainingPercentage != 90.0 {
+		t.Errorf("gemini-2.5-pro quota sai: %+v", q)
+	}
+}
+
+// TestQuotaP2_HttpErrorsAndMalformedJson kiểm tra lỗi P2: Bắt và báo lỗi HTTP != 200 và JSON lỗi
+func TestQuotaP2_HttpErrorsAndMalformedJson(t *testing.T) {
+	// Kịch bản 1: HTTP 503 Service Unavailable
+	client503 := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = rec.WriteString(`{"error": "Backend server overloaded"}`)
+			return rec.Result(), nil
+		}),
+	}
+
+	creds := &Credentials{AccessToken: "tok"}
+	_, err503 := executeQuotaFetch(client503, creds)
+	if err503 == nil || !strings.Contains(err503.Error(), "503") {
+		t.Errorf("Mong đợi lỗi HTTP 503, nhận được: %v", err503)
+	}
+
+	// Kịch bản 2: HTTP 429 Too Many Requests
+	client429 := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.WriteHeader(http.StatusTooManyRequests)
+			_, _ = rec.WriteString(`Rate limit exceeded`)
+			return rec.Result(), nil
+		}),
+	}
+	_, err429 := executeQuotaFetch(client429, creds)
+	if err429 == nil || !strings.Contains(err429.Error(), "429") {
+		t.Errorf("Mong đợi lỗi HTTP 429, nhận được: %v", err429)
+	}
+
+	// Kịch bản 3: JSON hỏng (Malformed JSON)
+	clientMalformed := &http.Client{
+		Transport: quotaMockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			rec := httptest.NewRecorder()
+			rec.WriteHeader(http.StatusOK)
+			_, _ = rec.WriteString(`{invalid_json_content`)
+			return rec.Result(), nil
+		}),
+	}
+	_, errJson := executeQuotaFetch(clientMalformed, creds)
+	if errJson == nil || (!strings.Contains(errJson.Error(), "giải mã JSON") && !strings.Contains(errJson.Error(), "invalid")) {
+		t.Errorf("Mong đợi lỗi giải mã JSON, nhận được: %v", errJson)
+	}
+}
+
+// TestQuotaP1_StaleCacheDistinction kiểm tra phân biệt rõ ràng dữ liệu LIVE và dữ liệu STALE Cache
+func TestQuotaP1_StaleCacheDistinction(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("Không thể mở CSDL in-memory: %v", err)
+	}
+	defer db.Close()
+
+	if err := InitStorage(db, false); err != nil {
+		t.Fatalf("InitStorage lỗi: %v", err)
+	}
+
+	// Chuẩn bị 1 tài khoản có cache cũ trong DB
+	oldQuotaJson := `{"quotas":{"gemini_session":{"total":1000,"used":100,"remainingPercentage":90.0,"source":"live_api","status":"LIVE"}}}`
+	acc := ProviderConnection{
+		ID:        "acc_test_stale_01",
+		Provider:  "google",
+		AuthType:  "oauth",
+		Name:      "Stale Test Account",
+		Email:     "stale@supportflast.dev",
+		Priority:  1,
+		IsActive:  1,
+		Data:      []byte(oldQuotaJson),
+		CreatedAt: NowISO(),
+		UpdatedAt: NowISO(),
+	}
+	if err := SaveProvider(db, &acc); err != nil {
+		t.Fatalf("SaveProvider lỗi: %v", err)
+	}
+
+	// Force gọi khi token không hợp lệ (gặp lỗi kết nối/auth upstream)
+	// Hàm FetchAntigravityQuota phải fallback về cache DB và gắn cờ Status="STALE", Source="db_cache"
+	resQuotas, err := FetchAntigravityQuota(db, &acc, true)
+	if err != nil {
+		t.Fatalf("Mong đợi fallback thành công về cache DB, nhận lỗi: %v", err)
+	}
+
+	sessItem, ok := resQuotas["gemini_session"]
+	if !ok {
+		t.Fatalf("Mong đợi gemini_session tồn tại trong kết quả cache")
+	}
+
+	if sessItem.Status != "STALE" {
+		t.Errorf("Mong đợi Status == 'STALE', nhận: %s", sessItem.Status)
+	}
+	if sessItem.Source != "db_cache" {
+		t.Errorf("Mong đợi Source == 'db_cache', nhận: %s", sessItem.Source)
+	}
+	if sessItem.LastError == "" {
+		t.Errorf("Mong đợi LastError ghi nhận lý do fallback cache")
+	}
+	t.Logf("✔ Phân biệt thành công STALE cache: Status=%s, Source=%s, LastError=%s",
+		sessItem.Status, sessItem.Source, sessItem.LastError)
 }
