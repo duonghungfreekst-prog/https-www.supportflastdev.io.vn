@@ -11,30 +11,27 @@ class BillingAgent:
         self.color = "#BF00FF"
         self.role_description = "Hỗ trợ tài khoản Nhà phát triển, cấp phép License Key bản quyền, đối soát doanh thu và hóa đơn"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        # Gọi LLM Engine
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Billing Agent, xử lý tài khoản Developer, doanh thu, thanh toán (Visa, Master, Stripe), bản quyền (DRM). "
-                "Trả về JSON: {\"category\": \"Subscription/DRM/Payment\", \"solution_steps\": [\"Bước 1\"], \"response\": \"Phản hồi\"}"
-            )
-            
-            prompt = f"Yêu cầu của người dùng:\n{query}"
-            if context:
-                prompt += f"\n\nContext:\n{context}"
-                
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "category": llm_res.get("category", "Subscription/DRM/Payment"),
-                    "solution_steps": llm_res.get("solution_steps", []),
-                    "response": f"**[Quản Lý Bản Quyền Phần Mềm & Gói Nhà Phát Triển]**\n- Phân loại: **{llm_res.get('category')}**\n\n{llm_res.get('response', '')}"
-                }
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Billing Agent, xử lý tài khoản Developer, doanh thu, thanh toán (Visa, Master, Stripe), bản quyền (DRM). "
+            'Trả về JSON: {"category": "Subscription/DRM/Payment", "solution_steps": ["Bước 1"], "response": "Phản hồi"}'
+        )
+        prompt = f"Yêu cầu của người dùng:\n{query}"
+        if context:
+            prompt += f"\n\nContext:\n{context}"
+        return prompt, system_instruction
 
-        # Fallback logic cũ
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "category": llm_res.get("category", "Subscription/DRM/Payment"),
+            "solution_steps": llm_res.get("solution_steps", []),
+            "response": f"**[Quản Lý Bản Quyền Phần Mềm & Gói Nhà Phát Triển]**\n- Phân loại: **{llm_res.get('category')}**\n\n{llm_res.get('response', '')}"
+        }
+
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         publisher_plans = [
             {
                 "tier": "Indie Developer (Miễn phí)",
@@ -76,3 +73,23 @@ class BillingAgent:
             "available_plans": publisher_plans,
             "response": res_body
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

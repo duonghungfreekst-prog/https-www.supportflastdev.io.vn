@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -175,6 +176,12 @@ func TestPerformDiagnostics_Postgres_Config(t *testing.T) {
 	t.Setenv("PG_HOST", "supportflast-postgres.aivencloud.com")
 	t.Setenv("PG_PORT", "4000")
 	t.Setenv("PG_DATABASE", "supportflast")
+
+	mockDB, errMock := sql.Open("sqlite", ":memory:")
+	if errMock == nil {
+		defer mockDB.Close()
+		database.SetDBInstance(mockDB, "postgres")
+	}
 
 	resp := PerformDiagnostics()
 

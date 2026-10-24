@@ -11,44 +11,40 @@ class TechAgent:
         self.color = "#00F0FF"
         self.role_description = "Hỗ trợ kỹ thuật đóng gói (MSIX/EXE/APK/DMG), tối ưu build pipeline và gỡ lỗi installer"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Tech Agent, chuyên gia hỗ trợ kỹ thuật đóng gói (Windows MSIX/EXE, Android APK/AAB, macOS DMG, Linux AppImage) và sửa lỗi build pipeline. "
-                "Trả về một JSON object có format: "
-                '{"detected_issues": ["Vấn đề 1"], "suggestions": ["Giải pháp 1"], "response": "Câu trả lời chào mừng/tổng hợp định dạng Markdown"}'
-            )
-            
-            prompt = f"Yêu cầu của người dùng:\n{query}"
-            if context:
-                prompt += f"\n\nContext:\n{context}"
-                
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                detected_issues = llm_res.get("detected_issues", [])
-                suggestions = llm_res.get("suggestions", [])
-                
-                res_body = (
-                    f"**[Chẩn Đoán Kỹ Thuật Đóng Gói Ứng Dụng]**\n"
-                    f"- Đơn vị tiếp nhận: Subagent Tech ({self.name})\n"
-                    f"- Vấn đề nhận diện:\n"
-                    + "\n".join([f"  • {issue}" for issue in detected_issues]) + "\n\n"
-                    f"- Hướng dẫn kỹ thuật chuẩn mực:\n"
-                    + "\n".join([f"  {idx+1}. {sug}" for idx, sug in enumerate(suggestions)]) + "\n\n"
-                    f"{llm_res.get('response', '')}\n\n"
-                    f"Hệ thống `supportflast.dev.io.vn` hỗ trợ CI/CD pipeline tự động build và ký số cho ứng dụng của bạn."
-                )
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Tech Agent, chuyên gia hỗ trợ kỹ thuật đóng gói (Windows MSIX/EXE, Android APK/AAB, macOS DMG, Linux AppImage) và sửa lỗi build pipeline. "
+            "Trả về một JSON object có format: "
+            '{"detected_issues": ["Vấn đề 1"], "suggestions": ["Giải pháp 1"], "response": "Câu trả lời chào mừng/tổng hợp định dạng Markdown"}'
+        )
+        prompt = f"Yêu cầu của người dùng:\n{query}"
+        if context:
+            prompt += f"\n\nContext:\n{context}"
+        return prompt, system_instruction
 
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "detected_issues": detected_issues,
-                    "suggestions": suggestions,
-                    "response": res_body
-                }
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        detected_issues = llm_res.get("detected_issues", [])
+        suggestions = llm_res.get("suggestions", [])
+        res_body = (
+            f"**[Chẩn Đoán Kỹ Thuật Đóng Gói Ứng Dụng]**\n"
+            f"- Đơn vị tiếp nhận: Subagent Tech ({self.name})\n"
+            f"- Vấn đề nhận diện:\n"
+            + "\n".join([f"  • {issue}" for issue in detected_issues]) + "\n\n"
+            f"- Hướng dẫn kỹ thuật chuẩn mực:\n"
+            + "\n".join([f"  {idx+1}. {sug}" for idx, sug in enumerate(suggestions)]) + "\n\n"
+            f"{llm_res.get('response', '')}\n\n"
+            f"Hệ thống `supportflast.dev.io.vn` hỗ trợ CI/CD pipeline tự động build và ký số cho ứng dụng của bạn."
+        )
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "detected_issues": detected_issues,
+            "suggestions": suggestions,
+            "response": res_body
+        }
 
-        # Fallback rule-based nếu không có LLM
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         query_lower = query.lower()
         detected_issues = []
         suggestions = []
@@ -102,3 +98,23 @@ class TechAgent:
             "suggestions": suggestions,
             "response": res_body
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

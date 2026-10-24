@@ -94,11 +94,14 @@ services:
       - HOST=0.0.0.0
       - ENV=production
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
       - MAX_INFLIGHT_LLM=${MAX_INFLIGHT_LLM:-8}
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - TZ=Asia/Ho_Chi_Minh
+    volumes:
+      # Volume persistence: Khóa xác thực chia sẻ nội bộ từ Go Engine (Audit P0)
+      - ./data/keys:/app/data/keys:ro
     expose:
       - "8000"
     ports:

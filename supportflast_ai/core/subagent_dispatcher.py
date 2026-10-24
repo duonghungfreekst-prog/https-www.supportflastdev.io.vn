@@ -231,7 +231,7 @@ class SubagentDispatcher:
             icon = "✔" if a_status == "success" else ("⚠️" if a_status == "timeout" else "❌")
             sections.append(f"### {icon} [{a_name}] (ID: `{aid}`)\n{a_resp}")
 
-        header = f"**[Báo Cáo Phân Tích Tổng Hợp Đa Subagents (Chế độ: {selected_mode.upper()})]**\n- Số lượng Subagents: **{len(target_ids)}** | Tốc độ xử lý: **{wall_clock_ms}ms** (Nhanh gấp **{speedup}x** tuần tự)\n\n"
+        header = f"**[Báo Cáo Phân Tích Tổng Hợp Đa Subagents (Chế độ: {selected_mode.upper()})]**\n- Số lượng Subagents: **{len(target_ids)}** | Thời gian fan-out: **{wall_clock_ms}ms** (Tiết kiệm **{speedup}x** thời gian so với chạy tuần tự)\n\n"
         combined_summary = header + "\n\n---\n\n".join(sections)
 
         has_timeout = any(r.get("status") == "timeout" for r in results_dict.values())
@@ -249,6 +249,8 @@ class SubagentDispatcher:
             "router_ms": router_ms,
             "p95_ms": p95_ms,
             "p99_ms": p99_ms,
+            "metrics_scope": "single_request_fanout",
+            "metrics_note": "Chỉ số speedup và percentiles phản ánh phân phối độ trễ song song của riêng lượt điều phối hiện tại, không phải benchmark hệ thống toàn cục (Audit P2).",
             "memory_usage_mb": mem_mb,
             "fallback_used": multi_fallback_used,
             "model_used": llm_engine.model_name if not multi_fallback_used else "rule_based_on_device",

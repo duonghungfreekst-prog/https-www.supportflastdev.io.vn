@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -64,12 +65,40 @@ func IsInsecureInternalSecret(secret string) bool {
 	return false
 }
 
+// GetInternalSecretFilePath trả về đường dẫn tệp khóa bí mật nội bộ chia sẻ giữa Go và Python (data/keys/.internal_secret)
+func GetInternalSecretFilePath() string {
+	keysDir := strings.TrimSpace(os.Getenv("JWT_KEYS_DIR"))
+	if keysDir == "" {
+		dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+		if dataDir == "" {
+			dataDir = "data"
+		}
+		keysDir = filepath.Join(dataDir, "keys")
+	}
+	return filepath.Join(keysDir, ".internal_secret")
+}
+
 // GetInternalServiceSecret trả về token bí mật phục vụ xác thực giao tiếp nội bộ giữa Go Engine và Python AI Subagents.
+// Đồng bộ 100% với Python AI qua biến môi trường hoặc tệp dùng chung (Audit P0).
 func GetInternalServiceSecret() string {
-	if s := strings.TrimSpace(os.Getenv("INTERNAL_SERVICE_SECRET")); s != "" {
+	if s := strings.TrimSpace(os.Getenv("INTERNAL_SERVICE_SECRET")); s != "" && !IsInsecureInternalSecret(s) {
 		return s
 	}
-	return strings.TrimSpace(os.Getenv("JWT_SECRET"))
+
+	// Đọc từ shared secret file (data/keys/.internal_secret) nếu biến môi trường rỗng
+	filePath := GetInternalSecretFilePath()
+	if data, err := os.ReadFile(filePath); err == nil {
+		sec := strings.TrimSpace(string(data))
+		if sec != "" && !IsInsecureInternalSecret(sec) {
+			_ = os.Setenv("INTERNAL_SERVICE_SECRET", sec)
+			return sec
+		}
+	}
+
+	if jwt := strings.TrimSpace(os.Getenv("JWT_SECRET")); jwt != "" && !IsInsecureInternalSecret(jwt) {
+		return jwt
+	}
+	return ""
 }
 
 // EnsureProductionSecrets tự động kiểm tra và sinh các khóa CSPRNG an toàn nếu thiếu biến môi trường trong môi trường Production
@@ -103,10 +132,32 @@ func EnsureProductionSecrets() {
 	}
 
 	// 3. Tự động sinh INTERNAL_SERVICE_SECRET ngẫu nhiên CSPRNG nếu rỗng (TUYỆT ĐỐI KHÔNG dùng chuỗi cố định - Audit P0)
+	// Đồng bộ ra file chung data/keys/.internal_secret để Python AI và Go Engine luôn khớp 100% secret
 	internalSecret := strings.TrimSpace(Get("INTERNAL_SERVICE_SECRET", ""))
+	secretFilePath := GetInternalSecretFilePath()
 	if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
-		if randSec, err := GenerateSecureHex(32); err == nil {
-			_ = os.Setenv("INTERNAL_SERVICE_SECRET", randSec)
+		// Thử đọc từ shared file trước nếu tệp đã tồn tại
+		if data, err := os.ReadFile(secretFilePath); err == nil {
+			savedSec := strings.TrimSpace(string(data))
+			if savedSec != "" && !IsInsecureInternalSecret(savedSec) {
+				internalSecret = savedSec
+				_ = os.Setenv("INTERNAL_SERVICE_SECRET", savedSec)
+			}
+		}
+		// Nếu vẫn chưa có, sinh mới và lưu vào shared file
+		if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
+			if randSec, err := GenerateSecureHex(32); err == nil {
+				_ = os.Setenv("INTERNAL_SERVICE_SECRET", randSec)
+				_ = os.MkdirAll(filepath.Dir(secretFilePath), 0700)
+				_ = os.WriteFile(secretFilePath, []byte(randSec), 0600)
+				log.Printf("[ENGINE] [SECURITY] Đã tự động sinh và lưu shared INTERNAL_SERVICE_SECRET tại '%s'", secretFilePath)
+			}
+		}
+	} else {
+		// Đã có secret hợp lệ từ env, đồng bộ ra shared file nếu file chưa có
+		if _, err := os.Stat(secretFilePath); os.IsNotExist(err) {
+			_ = os.MkdirAll(filepath.Dir(secretFilePath), 0700)
+			_ = os.WriteFile(secretFilePath, []byte(internalSecret), 0600)
 		}
 	}
 

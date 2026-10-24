@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"supportflast_engine/config"
 	"sync"
 	"time"
 )
@@ -150,10 +151,7 @@ func (c *SIEMClient) getURL() string {
 }
 
 func getInternalServiceToken() string {
-	if s := strings.TrimSpace(os.Getenv("INTERNAL_SERVICE_SECRET")); s != "" {
-		return s
-	}
-	return strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	return config.GetInternalServiceSecret()
 }
 
 // PushEvent đẩy sự kiện vào hàng đợi xử lý bất đồng bộ không gây nghẽn (Non-blocking theo Rule 7.1)

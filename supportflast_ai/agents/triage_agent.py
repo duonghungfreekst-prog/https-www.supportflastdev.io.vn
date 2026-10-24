@@ -11,35 +11,32 @@ class TriageAgent:
         self.color = "#FF9900"
         self.role_description = "Tiếp nhận hồ sơ ứng dụng, phân loại SLA kiểm duyệt và định tuyến quy trình nộp app"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        # Gọi LLM Engine
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Triage Agent của hệ thống supportflast.dev.io.vn.\n"
-                "Nhiệm vụ: Phân loại yêu cầu hỗ trợ của người dùng, xác định mức độ ưu tiên (severity), SLA, "
-                "và agent chuyên trách phù hợp (agent_tech, agent_infra, agent_security, agent_billing).\n"
-                "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
-                '{"severity": "P1/P2/P3 - Mô tả", "sla": "Thời gian SLA", "recommended_agent": "ID của agent phù hợp", '
-                '"response": "Câu trả lời chào mừng và xác nhận đã phân loại yêu cầu"}'
-            )
-            
-            prompt = f"Yêu cầu của người dùng:\n{query}"
-            if context:
-                prompt += f"\n\nContext:\n{context}"
-                
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "severity": llm_res.get("severity", "P3 - Standard"),
-                    "sla": llm_res.get("sla", "15 phút"),
-                    "recommended_agent": llm_res.get("recommended_agent", "agent_tech"),
-                    "response": f"**[Cổng Điều Phối & Phân Loại Đăng Tải Ứng Dụng]**\n- Nền tảng: `supportflast.dev.io.vn`\n- Mức độ ưu tiên phân loại: **{llm_res.get('severity')}**\n- Cam kết SLA: **{llm_res.get('sla')}**\n- Subagent đề xuất: **{llm_res.get('recommended_agent')}**\n\n{llm_res.get('response', '')}"
-                }
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Triage Agent của hệ thống supportflast.dev.io.vn.\n"
+            "Nhiệm vụ: Phân loại yêu cầu hỗ trợ của người dùng, xác định mức độ ưu tiên (severity), SLA, "
+            "và agent chuyên trách phù hợp (agent_tech, agent_infra, agent_security, agent_billing).\n"
+            "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
+            '{"severity": "P1/P2/P3 - Mô tả", "sla": "Thời gian SLA", "recommended_agent": "ID của agent phù hợp", '
+            '"response": "Câu trả lời chào mừng và xác nhận đã phân loại yêu cầu"}'
+        )
+        prompt = f"Yêu cầu của người dùng:\n{query}"
+        if context:
+            prompt += f"\n\nContext:\n{context}"
+        return prompt, system_instruction
 
-        # Fallback rule-based nếu không có LLM
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "severity": llm_res.get("severity", "P3 - Standard"),
+            "sla": llm_res.get("sla", "15 phút"),
+            "recommended_agent": llm_res.get("recommended_agent", "agent_tech"),
+            "response": f"**[Cổng Điều Phối & Phân Loại Đăng Tải Ứng Dụng]**\n- Nền tảng: `supportflast.dev.io.vn`\n- Mức độ ưu tiên phân loại: **{llm_res.get('severity')}**\n- Cam kết SLA: **{llm_res.get('sla')}**\n- Subagent đề xuất: **{llm_res.get('recommended_agent')}**\n\n{llm_res.get('response', '')}"
+        }
+
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         query_lower = query.lower()
         severity = "P3 - Standard App Review"
         sla = "15 phút"
@@ -116,3 +113,23 @@ class TriageAgent:
             "recommended_agent": recommended_agent,
             "response": response_text
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

@@ -30,40 +30,37 @@ class SecurityAgent:
 
         return {"threat_detected": len(findings) > 0, "findings": findings}
 
-    def process(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        context = context or {}
-        
-        # Gọi LLM Engine
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Security Agent, chuyên gia an ninh mạng. Hỗ trợ quét mã độc, báo cáo lỗ hổng (CVE, XSS), sandbox, Code Signing. "
-                'Trả về JSON: {"threat_level": "High/Medium/Low", "security_advice": ["Lời khuyên"], "response": "Phản hồi"}'
-            )
-            prompt = f"Yêu cầu của người dùng:\n{query}"
-            if context:
-                prompt += f"\n\nContext:\n{context}"
-                
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                threat_level = llm_res.get("threat_level", "Low")
-                security_advice = llm_res.get("security_advice", [])
-                advice_str = "\n".join([f"  - {adv}" for adv in security_advice])
-                res_body = (
-                    f"**[CẢNH BÁO / TƯ VẤN AN NINH ỨNG DỤNG]**\n"
-                    f"- Mức độ đe dọa (Threat Level): **{threat_level}**\n"
-                    f"- Lời khuyên bảo mật:\n{advice_str}\n\n"
-                    f"{llm_res.get('response', '')}"
-                )
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "threat_level": threat_level,
-                    "security_advice": security_advice,
-                    "response": res_body
-                }
+    def _build_prompt_and_instruction(self, query: str, context: Optional[Dict[str, Any]] = None):
+        system_instruction = (
+            "Bạn là Security Agent, chuyên gia an ninh mạng. Hỗ trợ quét mã độc, báo cáo lỗ hổng (CVE, XSS), sandbox, Code Signing. "
+            'Trả về JSON: {"threat_level": "High/Medium/Low", "security_advice": ["Lời khuyên"], "response": "Phản hồi"}'
+        )
+        prompt = f"Yêu cầu của người dùng:\n{query}"
+        if context:
+            prompt += f"\n\nContext:\n{context}"
+        return prompt, system_instruction
 
-        # Fallback logic cũ
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        threat_level = llm_res.get("threat_level", "Low")
+        security_advice = llm_res.get("security_advice", [])
+        advice_str = "\n".join([f"  - {adv}" for adv in security_advice])
+        res_body = (
+            f"**[CẢNH BÁO / TƯ VẤN AN NINH ỨNG DỤNG]**\n"
+            f"- Mức độ đe dọa (Threat Level): **{threat_level}**\n"
+            f"- Lời khuyên bảo mật:\n{advice_str}\n\n"
+            f"{llm_res.get('response', '')}"
+        )
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "threat_level": threat_level,
+            "security_advice": security_advice,
+            "response": res_body
+        }
+
+    def _rule_based_process(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        context = context or {}
         file_path = context.get("file_path")
         package_info = context.get("package_info")
         raw_b64 = context.get("raw_content_base64")
@@ -142,3 +139,22 @@ class SecurityAgent:
             "response": res_body
         }
 
+    async def aprocess(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

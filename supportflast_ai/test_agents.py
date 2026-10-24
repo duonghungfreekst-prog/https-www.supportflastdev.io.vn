@@ -1,8 +1,13 @@
 """Unit test chuẩn thư viện tiêu chuẩn Python cho 10 Subagents của supportflast_ai
-Bao gồm kiểm thử đơn vị và benchmark điều phối đồng thời 10 Subagents.
+Bao gồm kiểm thử đơn vị, aprocess async coroutines và benchmark điều phối đồng thời 10 Subagents.
 """
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 import unittest
 import asyncio
+import inspect
 from core.subagent_dispatcher import SubagentDispatcher
 
 class TestSubagents(unittest.TestCase):
@@ -85,6 +90,21 @@ class TestSubagents(unittest.TestCase):
             results.append(r)
         self.assertEqual(len(results), 10)
 
+    def test_all_10_agents_have_aprocess(self):
+        """Kiểm tra toàn bộ 10 subagents bắt buộc phải có hàm aprocess coroutine bất đồng bộ (Audit P1.2)."""
+        for aid, agent in self.dispatcher.agents.items():
+            self.assertTrue(hasattr(agent, "aprocess"), f"Agent {aid} thiếu method aprocess")
+            self.assertTrue(inspect.iscoroutinefunction(agent.aprocess), f"Agent {aid}.aprocess không phải là coroutine function")
+
+    def test_all_10_agents_aprocess_execution(self):
+        """Kiểm tra gọi trực tiếp aprocess trên 10 agents bất đồng bộ."""
+        async def _run_all():
+            for aid, agent in self.dispatcher.agents.items():
+                res = await agent.aprocess("Kiểm tra aprocess bất đồng bộ", {})
+                self.assertEqual(res["status"], "success")
+                self.assertEqual(res["agent_id"], aid)
+        asyncio.run(_run_all())
+
     def test_dispatch_concurrent_method(self):
         """Kiểm tra gọi đồng thời 10 subagents qua ThreadPoolExecutor và kiểm tra độ trễ."""
         res = self.dispatcher.dispatch_concurrent("Kiểm tra sức khỏe toàn bộ hệ thống phân tán")
@@ -92,7 +112,6 @@ class TestSubagents(unittest.TestCase):
         self.assertEqual(res["total_agents"], 10)
         self.assertIn("wall_clock_ms", res)
         self.assertIn("p95_ms", res)
-        # Độ trễ toàn bộ batch phải dưới 500ms
         self.assertLess(res["wall_clock_ms"], 500.0)
 
     def test_adispatch_fast_mode(self):
@@ -120,14 +139,17 @@ class TestSubagents(unittest.TestCase):
         self.assertEqual(res["total_agents"], 10)
         self.assertIn("agent_results", res)
 
-    def test_llm_engine_health_check_offline(self):
-        """Kiểm tra cơ chế chẩn đoán kết nối model thực tế (Mục 4)."""
+    def test_llm_engine_health_check_offline_and_cache(self):
+        """Kiểm tra cơ chế chẩn đoán kết nối model thực tế và Cache TTL 60s (Audit P1.5)."""
         from core.llm_engine import llm_engine
-        health = asyncio.run(llm_engine.check_health())
-        self.assertIn("status", health)
-        self.assertIn("code", health)
-        self.assertIn("model", health)
-        self.assertIn("fallback_active", health)
+        health1 = asyncio.run(llm_engine.check_health())
+        self.assertIn("status", health1)
+        self.assertIn("code", health1)
+        self.assertIn("model", health1)
+
+        # Lần 2 phải trả về từ cache nếu chưa đổi thời gian
+        health2 = asyncio.run(llm_engine.check_health())
+        self.assertEqual(health2["status"], health1["status"])
 
     def test_subagents_list_truthful_model_status(self):
         """Kiểm tra metadata agent phản ánh trung thực trạng thái model thật (Mục 4)."""

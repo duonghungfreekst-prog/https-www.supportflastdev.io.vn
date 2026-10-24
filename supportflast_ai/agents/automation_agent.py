@@ -11,40 +11,37 @@ class AutomationAgent:
         self.color = "#EF476F"
         self.role_description = "Lập lịch sao lưu dữ liệu tự động, kiểm tra sức khỏe hệ thống (Watchdog) và thông báo qua Webhook"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        context = context or {}
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Automation Agent, chuyên gia tự động hóa tác vụ, Cron job và Watchdog phục hồi hệ thống máy chủ di động.\n"
+            "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
+            '{"scheduled_jobs": ["Job 1", "Job 2"], "watchdog_status": "Active & Guarded", '
+            '"cron_summary": "Tóm tắt lịch biểu", "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+        )
+        prompt = f"Yêu cầu tự động hóa:\n{query}"
+        if context:
+            prompt += f"\n\nContext tác vụ:\n{context}"
+        return prompt, system_instruction
 
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Automation Agent, chuyên gia tự động hóa tác vụ, Cron job và Watchdog phục hồi hệ thống máy chủ di động.\n"
-                "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
-                '{"scheduled_jobs": ["Job 1", "Job 2"], "watchdog_status": "Active & Guarded", '
-                '"cron_summary": "Tóm tắt lịch biểu", "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        jobs = "\n".join([f"  • {job}" for job in llm_res.get("scheduled_jobs", [])])
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "scheduled_jobs": llm_res.get("scheduled_jobs", []),
+            "watchdog_status": llm_res.get("watchdog_status", "Đang giám sát"),
+            "cron_summary": llm_res.get("cron_summary", "Đã lập lịch"),
+            "response": (
+                f"**[Tự Động Hóa & Giám Sát Watchdog - Subagent Automation]**\n"
+                f"- Trạng thái Watchdog: **{llm_res.get('watchdog_status')}**\n"
+                f"- Tóm tắt lịch biểu: **{llm_res.get('cron_summary')}**\n"
+                f"- Danh sách tác vụ tự động:\n{jobs}\n\n"
+                f"{llm_res.get('response', '')}"
             )
+        }
 
-            prompt = f"Yêu cầu tự động hóa:\n{query}"
-            if context:
-                prompt += f"\n\nContext tác vụ:\n{context}"
-
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                jobs = "\n".join([f"  • {job}" for job in llm_res.get("scheduled_jobs", [])])
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "scheduled_jobs": llm_res.get("scheduled_jobs", []),
-                    "watchdog_status": llm_res.get("watchdog_status", "Đang giám sát"),
-                    "cron_summary": llm_res.get("cron_summary", "Đã lập lịch"),
-                    "response": (
-                        f"**[Tự Động Hóa & Giám Sát Watchdog - Subagent Automation]**\n"
-                        f"- Trạng thái Watchdog: **{llm_res.get('watchdog_status')}**\n"
-                        f"- Tóm tắt lịch biểu: **{llm_res.get('cron_summary')}**\n"
-                        f"- Danh sách tác vụ tự động:\n{jobs}\n\n"
-                        f"{llm_res.get('response', '')}"
-                    )
-                }
-
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         query_lower = query.lower()
         watchdog_status = "Đang thường trực (Active)"
         cron_summary = "Lập lịch định kỳ tự động"
@@ -86,3 +83,23 @@ class AutomationAgent:
             "scheduled_jobs": scheduled_jobs,
             "response": response_text
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

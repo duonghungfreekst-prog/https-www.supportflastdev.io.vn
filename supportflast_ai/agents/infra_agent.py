@@ -66,35 +66,31 @@ class InfraAgent:
             "latency_ms": _DNS_CACHE.get("latency_ms", 0.45)
         }
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        target_domain = "supportflast.dev.io.vn"
-        dns_res = self.check_dns(target_domain)
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None, dns_res: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Infra Agent, chuyên gia hạ tầng mạng, CDN, CloudFlare, và máy chủ. Giải quyết lỗi server sập, tải chậm, DNS, SSL.\n"
+            "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
+            '{"root_cause": "Nguyên nhân", "action_plan": ["Hành động 1", "Hành động 2"], "response": "Phản hồi"}'
+        )
+        prompt = f"Yêu cầu của người dùng:\n{query}\n\nThông tin DNS hiện tại:\n{dns_res}"
+        if context:
+            prompt += f"\n\nContext:\n{context}"
+        return prompt, system_instruction
 
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Infra Agent, chuyên gia hạ tầng mạng, CDN, CloudFlare, và máy chủ. Giải quyết lỗi server sập, tải chậm, DNS, SSL.\n"
-                "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
-                '{"root_cause": "Nguyên nhân", "action_plan": ["Hành động 1", "Hành động 2"], "response": "Phản hồi"}'
-            )
-            
-            prompt = f"Yêu cầu của người dùng:\n{query}\n\nThông tin DNS hiện tại:\n{dns_res}"
-            if context:
-                prompt += f"\n\nContext:\n{context}"
-                
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                action_plan_formatted = "\n".join([f"  - {act}" for act in llm_res.get("action_plan", [])])
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "domain": target_domain,
-                    "dns_check": dns_res,
-                    "root_cause": llm_res.get("root_cause", "Chưa xác định"),
-                    "action_plan": llm_res.get("action_plan", []),
-                    "response": f"**[Hạ Tầng Phân Phối File Ứng Dụng & CDN Tốc Độ Cao]**\n- Đơn vị tiếp nhận: Subagent Infra ({self.name})\n- Nguyên nhân sự cố: **{llm_res.get('root_cause', 'Chưa xác định')}**\n- Kế hoạch xử lý:\n{action_plan_formatted}\n\n{llm_res.get('response', '')}"
-                }
+    def _format_llm_result(self, llm_res: Dict[str, Any], target_domain: str, dns_res: Dict[str, Any]) -> Dict[str, Any]:
+        action_plan_formatted = "\n".join([f"  - {act}" for act in llm_res.get("action_plan", [])])
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "domain": target_domain,
+            "dns_check": dns_res,
+            "root_cause": llm_res.get("root_cause", "Chưa xác định"),
+            "action_plan": llm_res.get("action_plan", []),
+            "response": f"**[Hạ Tầng Phân Phối File Ứng Dụng & CDN Tốc Độ Cao]**\n- Đơn vị tiếp nhận: Subagent Infra ({self.name})\n- Nguyên nhân sự cố: **{llm_res.get('root_cause', 'Chưa xác định')}**\n- Kế hoạch xử lý:\n{action_plan_formatted}\n\n{llm_res.get('response', '')}"
+        }
 
+    def _rule_based_process(self, query: str, target_domain: str, dns_res: Dict[str, Any]) -> Dict[str, Any]:
         cdn_capabilities = [
             "Hỗ trợ HTTP Range Requests (RFC 7233) - Cho phép tiếp tục tải file (Resume Download) khi mất kết nối mạng.",
             "Tự động tính toán và đối soát mã băm toàn vẹn SHA-256 Checksum cho mọi gói cài đặt tải lên.",
@@ -121,3 +117,29 @@ class InfraAgent:
             "dns_check": dns_res,
             "response": res_body
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        target_domain = "supportflast.dev.io.vn"
+        dns_res = self.check_dns(target_domain)
+
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context, dns_res)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res, target_domain, dns_res)
+
+        return self._rule_based_process(query, target_domain, dns_res)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        target_domain = "supportflast.dev.io.vn"
+        dns_res = self.check_dns(target_domain)
+
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context, dns_res)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res, target_domain, dns_res)
+
+        return self._rule_based_process(query, target_domain, dns_res)

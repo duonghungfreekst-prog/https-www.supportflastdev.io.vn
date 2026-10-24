@@ -79,10 +79,7 @@ func getAIEngineURL() string {
 }
 
 func getInternalServiceSecret() string {
-	if s := strings.TrimSpace(os.Getenv("INTERNAL_SERVICE_SECRET")); s != "" {
-		return s
-	}
-	return strings.TrimSpace(os.Getenv("JWT_SECRET"))
+	return config.GetInternalServiceSecret()
 }
 
 type SubagentMeta struct {
@@ -664,7 +661,7 @@ func main() {
 		})
 	})
 	if database.ActiveDriver() == "postgres" {
-		log.Printf("[ENGINE] [DATABASE] Aiven PostgreSQL Cloud ready at '%s'", database.GetPostgresURI())
+		log.Printf("[ENGINE] [DATABASE] Aiven PostgreSQL Cloud ready at '%s'", database.MaskDBURI(database.GetPostgresURI()))
 	} else {
 		log.Printf("[ENGINE] [DATABASE] DB ready at '%s'", dbPath)
 	}
@@ -777,15 +774,41 @@ func main() {
 	mux.HandleFunc("/api/admin/siem/alerts", security.SIEMAlertsHandler)
 	mux.HandleFunc("/api/admin/siem/stats", security.SIEMStatsHandler)
 
-	// 2.0. API Chẩn đoán kết nối Model AI thực tế (Audit P0 & Mục 4)
+	// 2.0. API Chẩn đoán kết nối Model AI thực tế (Audit P0, P1.5 - Bảo vệ quyền truy cập và Quota)
 	aiDiagHandler := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		// Kiểm tra quyền hạn: Chỉ cho phép Localhost, X-Internal-Token hợp lệ hoặc Quản trị viên (Admin)
+		remoteHost, _, errSplit := net.SplitHostPort(r.RemoteAddr)
+		if errSplit != nil {
+			remoteHost = r.RemoteAddr
+		}
+		clientIP := security.GetRealClientIP(r)
+		isLocal := remoteHost == "127.0.0.1" || remoteHost == "::1" || remoteHost == "localhost" || clientIP == "127.0.0.1" || clientIP == "::1"
+
+		reqToken := strings.TrimSpace(r.Header.Get("X-Internal-Token"))
+		internalSec := getInternalServiceSecret()
+		isInternalToken := internalSec != "" && reqToken != "" && subtle.ConstantTimeCompare([]byte(reqToken), []byte(internalSec)) == 1
+
+		userToken := registry.ExtractToken(r)
+		user, hasUser := registry.GetUserFromToken(userToken)
+		isAdmin := hasUser && user.Role == "admin"
+
+		if !isLocal && !isInternalToken && !isAdmin {
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Forbidden: Yêu cầu quyền Quản Trị Viên (Admin) hoặc xác thực nội bộ để chẩn đoán Model AI",
+				"code":  "ERR_FORBIDDEN_DIAGNOSTICS",
+			})
+			return
+		}
+
 		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, getAIEngineURL()+"/api/ai/diagnostics", nil)
 		if err != nil {
 			http.Error(w, `{"error":"Failed to create diagnostics request"}`, http.StatusInternalServerError)
 			return
 		}
-		req.Header.Set("X-Internal-Token", getInternalServiceSecret())
+		req.Header.Set("X-Internal-Token", internalSec)
 
 		resp, errDo := aiFastHTTPClient.Do(req)
 		if errDo != nil {

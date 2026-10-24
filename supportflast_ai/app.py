@@ -1,5 +1,5 @@
 """FastAPI Entrypoint cho Python Subagent System (supportflast_ai)
-Cổng kết nối AI Engine cho 5 Subagents trên supportflast.dev.io.vn.
+Cổng kết nối AI Engine cho 10 Subagents trên supportflastdev.io.vn.
 """
 import os
 import sys
@@ -16,7 +16,6 @@ from core.subagent_dispatcher import SubagentDispatcher
 from core.security_scanner import PackageSecurityScanner
 from core.siem_engine import SIEMEngine
 
-INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "").strip()
 IS_PROD = os.getenv("ENVIRONMENT", "").lower() == "production" or os.getenv("GO_ENV", "").lower() == "production" or os.getenv("ENV") == "production" 
 
 INSECURE_INTERNAL_SECRETS = {
@@ -47,14 +46,43 @@ def is_insecure_internal_secret(secret: str) -> bool:
         return True
     return False
 
+def get_internal_secret() -> str:
+    """Lấy internal secret từ biến môi trường hoặc tệp chia sẻ an toàn (.internal_secret) để đồng bộ 100% với Go (Audit P0)."""
+    env_sec = os.getenv("INTERNAL_SERVICE_SECRET", "").strip()
+    if env_sec and not is_insecure_internal_secret(env_sec):
+        return env_sec
+
+    # Tìm kiếm tệp bí mật chia sẻ từ Go Engine
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.getenv("JWT_KEYS_DIR", "").strip(),
+        "/app/data/keys",
+        os.path.abspath(os.path.join(base_dir, "..", "data", "keys")),
+        os.path.abspath(os.path.join(base_dir, "data", "keys")),
+        os.path.abspath(os.path.join(os.getcwd(), "data", "keys")),
+    ]
+    for d in candidates:
+        if not d:
+            continue
+        sec_file = os.path.join(d, ".internal_secret")
+        if os.path.isfile(sec_file):
+            try:
+                with open(sec_file, "r", encoding="utf-8") as f:
+                    file_sec = f.read().strip()
+                if file_sec and not is_insecure_internal_secret(file_sec):
+                    return file_sec
+            except Exception:
+                pass
+    return env_sec
+
 def verify_internal_auth(request: Request) -> bool:
-    """Xác thực token nội bộ giữa Go Engine và Python AI (Rule 2.4 & Rule 3.2)."""
+    """Xác thực token nội bộ giữa Go Engine và Python AI (Rule 2.4, Rule 3.2 & Audit P0)."""
     client_host = request.client.host if request.client else ""
     if client_host == "testclient":
         return True
 
     is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
-    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+    current_secret = get_internal_secret()
 
     if is_prod and is_insecure_internal_secret(current_secret):
         logging.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET rỗng hoặc mang giá trị mặc định yếu trong Production! Từ chối toàn bộ request nội bộ.")
@@ -84,11 +112,11 @@ logger = logging.getLogger("supportflast_ai")
 
 app = FastAPI(
     title="supportflast_ai",
-    description="Multi-Agent Service điều phối 5 Subagents cho supportflastdev.io.vn",
+    description="Multi-Agent Service điều phối 10 Subagents cho supportflastdev.io.vn",
     version="1.0.0"
 )
 
-# CORS tuân thủ Phần 3.4 (Exact string match, siết chặt HTTPS trong Production - Audit P1.4)
+# CORS tuân thủ Phần 3.4 (Exact string match, siết chặt HTTPS trong Production)
 if IS_PROD:
     ALLOWED_ORIGINS = [
         "https://supportflastdev.io.vn",
@@ -116,7 +144,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Internal-Token"],
 )
 
 dispatcher = SubagentDispatcher()
@@ -135,7 +163,7 @@ class SIEMEventRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Nội dung yêu cầu hỗ trợ")
-    agent_id: Optional[str] = Field(None, description="Mã Subagent (agent_triage, agent_tech, agent_infra, agent_security, agent_billing)")
+    agent_id: Optional[str] = Field(None, description="Mã Subagent cụ thể nếu muốn chỉ định trực tiếp")
     context: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Ngữ cảnh phiên hỗ trợ")
     mode: Optional[str] = Field("fast", description="Chế độ điều phối: fast (1 agent nhanh), parallel (2-3 agent song song), deep (tối đa 10 agent)")
     timeout_sec: Optional[float] = Field(15.0, description="Deadline tối đa cho toàn bộ lượt gọi")
@@ -180,7 +208,7 @@ async def liveness_check():
 @app.get("/readyz")
 @app.get("/api/health")
 async def health_check():
-    """Readiness probe: xác thực năng lực phục vụ thực tế của Cụm Subagents (Audit P1)."""
+    """Readiness probe: phân biệt rõ 3 trạng thái READY / DEGRADED / UNAVAILABLE (Audit P1.6)."""
     rss_mb = 0.0
     try:
         import psutil
@@ -194,7 +222,7 @@ async def health_check():
         raise HTTPException(
             status_code=503,
             detail={
-                "status": "degraded",
+                "status": "unavailable",
                 "service": "supportflast_ai",
                 "error": "Cụm Subagents AI chưa sẵn sàng (thiếu agent cốt lõi)",
                 "total_agents": total_agents,
@@ -203,23 +231,32 @@ async def health_check():
         )
 
     from core.llm_engine import llm_engine
+    is_healthy_model = llm_engine.is_enabled and getattr(llm_engine, "is_healthy", False)
+    status_str = "healthy" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "ready")
+    mode_str = "gemini_api" if is_healthy_model else "rule_based_fallback"
+
     return {
-        "status": "healthy",
+        "status": status_str,
         "service": "supportflast_ai",
         "domain": "supportflastdev.io.vn",
         "total_agents": total_agents,
         "agents_ready": True,
+        "mode": mode_str,
         "llm_engine_enabled": llm_engine.is_enabled,
         "llm_model": llm_engine.model_name,
+        "llm_status": "online" if is_healthy_model else ("degraded" if llm_engine.is_enabled else "offline"),
         "memory_rss_mb": rss_mb
     }
 
 @app.get("/api/model/status")
 @app.get("/api/ai/diagnostics")
-async def model_diagnostics():
-    """Endpoint chẩn đoán kết nối model thực tế cho quản trị viên (Audit P0 & Mục 4)."""
+async def model_diagnostics(request: Request, refresh: bool = False):
+    """Endpoint chẩn đoán kết nối model thực tế cho quản trị viên (Audit P0, P1.5) - yêu cầu xác thực nội bộ."""
+    if not verify_internal_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
+
     from core.llm_engine import llm_engine
-    health = await llm_engine.check_health()
+    health = await llm_engine.check_health(force_refresh=refresh)
     return {
         "service": "supportflast_ai",
         "gemini_api_key_configured": llm_engine.is_enabled,
@@ -305,12 +342,7 @@ async def scan_package(req: PackageScanRequest, request: Request):
 @app.post("/siem/analyze")
 @app.post("/api/siem/analyze")
 async def siem_analyze(req: SIEMEventRequest, request: Request):
-    """API nội bộ phân tích sự kiện an ninh và tính điểm Threat Score (0 - 100).
-    Go Engine đồng bộ sự kiện sang endpoint này để phân loại mức độ rủi ro:
-      - 0 - 20: Safe (Xanh)
-      - 30 - 60: Warning (Vàng)
-      - 80 - 100: Critical Attack (Đỏ)
-    """
+    """API nội bộ phân tích sự kiện an ninh và tính điểm Threat Score (0 - 100)."""
     if not verify_internal_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
 
@@ -327,13 +359,11 @@ async def siem_get_alerts(
     ip: Optional[str] = None,
     limit: int = 50
 ):
-    """API nội bộ truy vấn danh sách cảnh báo an ninh đã được SIEM AI phát hiện.
-    Hỗ trợ lọc theo min_score, risk_level (WARNING, HIGH, CRITICAL), ip và limit (Rule 7.1).
-    """
+    """API nội bộ truy vấn danh sách cảnh báo an ninh đã được SIEM AI phát hiện."""
     if not verify_internal_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
 
-    safe_limit = max(1, min(limit, 200)) # Giới hạn tối đa 200 bản ghi để chống tràn bộ nhớ
+    safe_limit = max(1, min(limit, 200))
     return siem_engine.get_alerts(
         min_score=min_score,
         risk_level=risk_level,
@@ -344,7 +374,7 @@ async def siem_get_alerts(
 @app.get("/siem/stats")
 @app.get("/api/siem/stats")
 async def siem_stats(request: Request):
-    """API nội bộ lấy số liệu thống kê tình báo mối đe dọa và kiểm tra tài nguyên bộ nhớ (Rule 7.1 & 7.4)."""
+    """API nội bộ lấy số liệu thống kê tình báo mối đe dọa và kiểm tra tài nguyên bộ nhớ."""
     if not verify_internal_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
 
@@ -370,23 +400,22 @@ async def siem_record_event(req: SIEMEventRequest, request: Request):
 
 @app.on_event("startup")
 async def startup_security_checks():
-    """Kiểm tra an ninh khi khởi động service: từ chối khởi động nếu thiếu secret trong Production (Rule Phần 3 & Task 10)."""
+    """Kiểm tra an ninh khi khởi động service: đồng bộ token nội bộ trong Production (Audit P0 & Rule Phần 3)."""
     is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
-    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+    current_secret = get_internal_secret()
     if is_prod:
         if is_insecure_internal_secret(current_secret):
-            logger.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET bắt buộc phải được cấu hình qua biến môi trường an toàn trong Production! Không dùng secret mặc định (Audit P0).")
+            logger.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET bắt buộc phải được cấu hình hoặc chia sẻ an toàn qua file trong Production! (Audit P0).")
         else:
-            logger.info("[AI] [SECURITY] Đã xác thực INTERNAL_SERVICE_SECRET an toàn cho môi trường Production.")
+            logger.info("[AI] [SECURITY] Đã đồng bộ và xác thực INTERNAL_SERVICE_SECRET an toàn cho môi trường Production.")
 
 if __name__ == "__main__":
     import uvicorn
     is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
-    current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
+    current_secret = get_internal_secret()
     if is_prod and is_insecure_internal_secret(current_secret):
         logger.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET thiếu hoặc không an toàn trong Production!")
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     logger.info(f"Starting supportflast_ai on {host}:{port}...")
     uvicorn.run(app, host=host, port=port)
-

@@ -11,41 +11,37 @@ class NetworkAgent:
         self.color = "#06D6A0"
         self.role_description = "Quản lý kết nối mạng Wi-Fi/4G/5G, thiết lập Cloudflare Tunnel đưa máy chủ điện thoại ra Internet toàn cầu"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        context = context or {}
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Network Agent, chuyên gia về kết nối mạng máy chủ di động, Cloudflare Tunnel, Tailscale, Port Forwarding và TCP Keep-Alive.\n"
+            "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
+            '{"network_mode": "Wi-Fi LAN / Cellular 4G-5G / Cloudflare Tunnel", "tunnel_status": "Ready", '
+            '"network_tips": ["Mẹo 1", "Mẹo 2"], "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+        )
+        prompt = f"Yêu cầu về mạng máy chủ:\n{query}"
+        if context:
+            prompt += f"\n\nContext mạng:\n{context}"
+        return prompt, system_instruction
 
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Network Agent, chuyên gia về kết nối mạng máy chủ di động, Cloudflare Tunnel, Tailscale, Port Forwarding và TCP Keep-Alive.\n"
-                "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
-                '{"network_mode": "Wi-Fi LAN / Cellular 4G-5G / Cloudflare Tunnel", "tunnel_status": "Ready", '
-                '"network_tips": ["Mẹo 1", "Mẹo 2"], "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        tips = "\n".join([f"  • {tip}" for tip in llm_res.get("network_tips", [])])
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "network_mode": llm_res.get("network_mode", "Wi-Fi LAN + Tunnel"),
+            "tunnel_status": llm_res.get("tunnel_status", "Ready"),
+            "network_tips": llm_res.get("network_tips", []),
+            "response": (
+                f"**[Điều Phối Mạng & Kết Nối Di Động - Subagent Network]**\n"
+                f"- Chế độ mạng nhận diện: **{llm_res.get('network_mode')}**\n"
+                f"- Trạng thái Đường hầm (Tunnel): **{llm_res.get('tunnel_status')}**\n"
+                f"- Hướng dẫn kết nối:\n{tips}\n\n"
+                f"{llm_res.get('response', '')}"
             )
+        }
 
-            prompt = f"Yêu cầu về mạng máy chủ:\n{query}"
-            if context:
-                prompt += f"\n\nContext mạng:\n{context}"
-
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                tips = "\n".join([f"  • {tip}" for tip in llm_res.get("network_tips", [])])
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "network_mode": llm_res.get("network_mode", "Wi-Fi LAN + Tunnel"),
-                    "tunnel_status": llm_res.get("tunnel_status", "Ready"),
-                    "network_tips": llm_res.get("network_tips", []),
-                    "response": (
-                        f"**[Điều Phối Mạng & Kết Nối Di Động - Subagent Network]**\n"
-                        f"- Chế độ mạng nhận diện: **{llm_res.get('network_mode')}**\n"
-                        f"- Trạng thái Đường hầm (Tunnel): **{llm_res.get('tunnel_status')}**\n"
-                        f"- Hướng dẫn kết nối:\n{tips}\n\n"
-                        f"{llm_res.get('response', '')}"
-                    )
-                }
-
-        # Xử lý On-Device Fallback
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         query_lower = query.lower()
         network_mode = "Mạng Cục Bộ (Wi-Fi LAN)"
         tunnel_status = "Sẵn sàng kết nối"
@@ -90,3 +86,23 @@ class NetworkAgent:
             "network_tips": network_tips,
             "response": response_text
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)

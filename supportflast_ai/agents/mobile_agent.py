@@ -11,44 +11,39 @@ class MobileAgent:
         self.color = "#FFB703"
         self.role_description = "Giám sát pin, kiểm soát nhiệt độ SoC ARM, bảo vệ máy không bị chai pin và duy trì wake-lock chạy ngầm"
 
-    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
-        context = context or {}
+    def _build_prompt_and_instruction(self, query: str, context: Dict[str, Any] = None):
+        system_instruction = (
+            "Bạn là Mobile Agent, chuyên gia tối ưu hóa máy chủ trên điện thoại Android (ARM64/Termux).\n"
+            "Nhiệm vụ: Chẩn đoán tình trạng pin, kiểm soát nhiệt độ SoC ARM, gợi ý thiết lập Wake-lock và Doze mode bypass, "
+            "bảo vệ thiết bị không bị quá nhiệt hoặc chai pin khi chạy server liên tục.\n"
+            "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
+            '{"battery_mode": "Eco/Balanced/Performance", "thermal_status": "Cool/Warm/Throttling", '
+            '"recommendations": ["Khuyến nghị 1", "Khuyến nghị 2"], "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+        )
+        prompt = f"Yêu cầu từ người dùng:\n{query}"
+        if context:
+            prompt += f"\n\nContext phần cứng di động:\n{context}"
+        return prompt, system_instruction
 
-        # 1. Gọi LLM nếu có
-        if llm_engine.is_enabled:
-            system_instruction = (
-                "Bạn là Mobile Agent, chuyên gia tối ưu hóa máy chủ trên điện thoại Android (ARM64/Termux).\n"
-                "Nhiệm vụ: Chẩn đoán tình trạng pin, kiểm soát nhiệt độ SoC ARM, gợi ý thiết lập Wake-lock và Doze mode bypass, "
-                "bảo vệ thiết bị không bị quá nhiệt hoặc chai pin khi chạy server liên tục.\n"
-                "Trả về JSON object duy nhất (không bọc trong markdown block) với cấu trúc:\n"
-                '{"battery_mode": "Eco/Balanced/Performance", "thermal_status": "Cool/Warm/Throttling", '
-                '"recommendations": ["Khuyến nghị 1", "Khuyến nghị 2"], "response": "Phản hồi chi tiết bằng tiếng Việt"}'
+    def _format_llm_result(self, llm_res: Dict[str, Any]) -> Dict[str, Any]:
+        recs = "\n".join([f"  • {rec}" for rec in llm_res.get("recommendations", [])])
+        return {
+            "agent_id": self.agent_id,
+            "agent_name": self.name,
+            "status": "success",
+            "battery_mode": llm_res.get("battery_mode", "Balanced"),
+            "thermal_status": llm_res.get("thermal_status", "Cool (< 40°C)"),
+            "recommendations": llm_res.get("recommendations", []),
+            "response": (
+                f"**[Vệ Binh Phần Cứng & Pin Điện Thoại - Subagent Mobile]**\n"
+                f"- Chế độ năng lượng: **{llm_res.get('battery_mode')}**\n"
+                f"- Trạng thái nhiệt độ SoC: **{llm_res.get('thermal_status')}**\n"
+                f"- Khuyến nghị vận hành tối ưu:\n{recs}\n\n"
+                f"{llm_res.get('response', '')}"
             )
+        }
 
-            prompt = f"Yêu cầu từ người dùng:\n{query}"
-            if context:
-                prompt += f"\n\nContext phần cứng di động:\n{context}"
-
-            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
-            if llm_res:
-                recs = "\n".join([f"  • {rec}" for rec in llm_res.get("recommendations", [])])
-                return {
-                    "agent_id": self.agent_id,
-                    "agent_name": self.name,
-                    "status": "success",
-                    "battery_mode": llm_res.get("battery_mode", "Balanced"),
-                    "thermal_status": llm_res.get("thermal_status", "Cool (< 40°C)"),
-                    "recommendations": llm_res.get("recommendations", []),
-                    "response": (
-                        f"**[Vệ Binh Phần Cứng & Pin Điện Thoại - Subagent Mobile]**\n"
-                        f"- Chế độ năng lượng: **{llm_res.get('battery_mode')}**\n"
-                        f"- Trạng thái nhiệt độ SoC: **{llm_res.get('thermal_status')}**\n"
-                        f"- Khuyến nghị vận hành tối ưu:\n{recs}\n\n"
-                        f"{llm_res.get('response', '')}"
-                    )
-                }
-
-        # 2. Xử lý Rule-based On-Device cực nhanh (0ms, 0% CPU lúc nghỉ)
+    def _rule_based_process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         query_lower = query.lower()
         battery_mode = "Balanced Power"
         thermal_status = "Bình thường (~37°C - 41°C)"
@@ -93,3 +88,23 @@ class MobileAgent:
             "recommendations": recommendations,
             "response": response_text
         }
+
+    async def aprocess(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý bất đồng bộ thực sự qua Async LLM Engine và Semaphore (Audit P1.2)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = await llm_engine.agenerate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
+
+    def process(self, query: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Xử lý đồng bộ (giữ tương thích 100% với mã nguồn cũ và unit test)."""
+        if llm_engine.is_enabled:
+            prompt, system_instruction = self._build_prompt_and_instruction(query, context)
+            llm_res = llm_engine.generate_json(prompt, system_instruction=system_instruction)
+            if llm_res:
+                return self._format_llm_result(llm_res)
+
+        return self._rule_based_process(query, context)
