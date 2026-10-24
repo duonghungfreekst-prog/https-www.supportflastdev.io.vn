@@ -8367,7 +8367,10 @@
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
         if (urlInput) urlInput.value = serverUrl;
       }
-      const apiKey = (keyInput?.value || '').trim();
+      let apiKey = (keyInput?.value || '').trim();
+      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
+        apiKey = '';
+      }
 
       const badge = document.getElementById('web-sql-status-badge');
       if (!apiKey) {
@@ -8384,7 +8387,7 @@
         badge.textContent = 'ĐANG KIỂM TRA...';
       }
 
-      // Nếu đang chạy trong Desktop App (WebView2), ưu tiên gọi qua C# Native HttpClient để chống 100% lỗi CORS & 301
+      // Let the native host validate and persist desktop keys without exposing them to browser fallbacks.
       if (window.chrome && window.chrome.webview) {
         return new Promise((resolve) => {
           let hasSettled = false;
@@ -8411,7 +8414,7 @@
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
 
-          // Keep the native request authoritative; a browser fallback could report a false success.
+          // Do not treat a browser fallback as proof that the desktop host authenticated the key.
           setTimeout(() => {
             if (!hasSettled) {
               finish(applyWebConnectionResult({
@@ -8462,6 +8465,7 @@
         let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
+            redirect: 'error',
             headers: { 
               'Authorization': `Bearer ${apiKey}`,
               'x-api-key': apiKey,
@@ -8473,6 +8477,7 @@
             realProvidersData = (pData && pData.providers) ? pData.providers : (Array.isArray(pData) ? pData : (pData && pData.connections ? pData.connections : []));
           } else {
             const provRes2 = await fetch(`${serverUrl}/api/providers`, {
+              redirect: 'error',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey }
             });
             if (provRes2.ok) {
@@ -8521,6 +8526,7 @@
       }
 
       showToast('Đang lưu khóa và đồng bộ dữ liệu SQL từ Web...', 'info');
+
       const isConnected = await testWebConnection(false, true);
       if (isConnected) {
         let storedInWebView = true;
