@@ -12,15 +12,15 @@ import (
 )
 
 var (
-	rustDLLOnce    sync.Once
-	rustDLL        *syscall.LazyDLL
-	procDeriveKey  *syscall.LazyProc
-	procEncrypt    *syscall.LazyProc
-	procDecrypt    *syscall.LazyProc
-	procHashChunk  *syscall.LazyProc
-	procFreeBuffer *syscall.LazyProc
+	rustDLLOnce        sync.Once
+	rustDLL            *syscall.LazyDLL
+	procDeriveKey      *syscall.LazyProc
+	procEncrypt        *syscall.LazyProc
+	procDecrypt        *syscall.LazyProc
+	procHashChunk      *syscall.LazyProc
+	procFreeBuffer     *syscall.LazyProc
 	procDecryptInPlace *syscall.LazyProc
-	procFreeString *syscall.LazyProc
+	procFreeString     *syscall.LazyProc
 
 	// PQC Procedures từ supportflast_core.dll (Kyber-768 & Dilithium & Hybrid PQC)
 	procPqcKyberKeygen       *syscall.LazyProc
@@ -79,7 +79,7 @@ func initRustDLL() {
 				procDecrypt = rustDLL.NewProc("decrypt_chunk_ffi")
 				procHashChunk = rustDLL.NewProc("hash_chunk_ffi")
 				procFreeBuffer = rustDLL.NewProc("free_rust_buffer")
-		procDecryptInPlace = rustDLL.NewProc("decrypt_chunk_in_place_ffi")
+				procDecryptInPlace = rustDLL.NewProc("decrypt_chunk_in_place_ffi")
 				procFreeString = rustDLL.NewProc("free_rust_string")
 
 				// PQC Procedures

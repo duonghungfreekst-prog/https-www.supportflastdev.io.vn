@@ -14,9 +14,9 @@ import (
 // Các cấu hình mặc định cho Dynamic IP Jail (Rule 7.1 & Rule 8.2)
 const (
 	JailDuration15M = 15 * time.Minute // Khóa 15 phút (mức độ nhẹ / brute-force lần đầu)
-	JailDuration1H  = 1 * time.Hour   // Khóa 1 giờ (mức độ trung bình / quét lỗ hổng thông thường)
-	JailDuration24H = 24 * time.Hour  // Khóa 24 giờ (mức độ nghiêm trọng / tấn công khai thác lỗ hổng)
-	MaxJailEntries  = 10000           // Giới hạn bộ nhớ RAM chống OOM (Rule 7.1)
+	JailDuration1H  = 1 * time.Hour    // Khóa 1 giờ (mức độ trung bình / quét lỗ hổng thông thường)
+	JailDuration24H = 24 * time.Hour   // Khóa 24 giờ (mức độ nghiêm trọng / tấn công khai thác lỗ hổng)
+	MaxJailEntries  = 10000            // Giới hạn bộ nhớ RAM chống OOM (Rule 7.1)
 )
 
 // JailSeverity cấp độ nghiêm trọng của hành vi vi phạm

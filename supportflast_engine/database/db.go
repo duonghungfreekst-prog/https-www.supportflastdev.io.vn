@@ -26,11 +26,36 @@ const (
 	DefaultAdminID          = "usr-admin-001"
 	DefaultAdminUsername    = "admin"
 	DefaultAdminEmail       = "admin@supportflastdev.io.vn"
-	DefaultAdminPassword    = "Admin@2026!SupportFlast"
 	DefaultAdminDisplayName = "Quản Trị Viên Hệ Thống"
 	DefaultAdminRole        = "admin"
 	DefaultAdminAvatar      = "/avatars/admin.png"
 )
+
+var (
+	generatedAdminPassword     string
+	generatedAdminPasswordOnce sync.Once
+)
+
+// GetInitialAdminPassword lấy mật khẩu khởi tạo cho tài khoản admin.
+// Ưu tiên đọc từ biến môi trường ADMIN_PASSWORD (tối thiểu 8 ký tự).
+// Nếu chưa cấu hình, sinh ngẫu nhiên CSPRNG và lưu trong bộ nhớ tiến trình,
+// tuyệt đối không dùng mật khẩu cố định trong mã nguồn (Tuân thủ P0.2 & Rule 3).
+func GetInitialAdminPassword() string {
+	envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
+	if len(envPass) >= 8 {
+		return envPass
+	}
+	generatedAdminPasswordOnce.Do(func() {
+		buf := make([]byte, 12)
+		if _, err := rand.Read(buf); err != nil {
+			generatedAdminPassword = fmt.Sprintf("AdminSecured%d!Gen", time.Now().UnixNano())
+		} else {
+			generatedAdminPassword = fmt.Sprintf("Admin@%s!Secured", hex.EncodeToString(buf))
+		}
+		log.Printf("[ENGINE] [DATABASE] [SECURITY] Đã tạo mật khẩu quản trị ngẫu nhiên CSPRNG: %s (Hãy đặt biến môi trường ADMIN_PASSWORD để cố định)", generatedAdminPassword)
+	})
+	return generatedAdminPassword
+}
 
 var (
 	dbInstance   *sql.DB
@@ -298,7 +323,6 @@ type SystemRelease struct {
 	PublishedBy string `json:"published_by"`
 }
 
-
 // ResolveDBPath đã loại bỏ — hệ thống chỉ sử dụng Aiven PostgreSQL Cloud
 
 // isMySQL kiểm tra xem driver hiện hành, kết nối db hoặc biến môi trường DB_DRIVER có phải là postgres hoặc mysql hay không (Lock-free)
@@ -464,7 +488,7 @@ func SeedInitialData(db *sql.DB, dataDir ...string) error {
 	}
 
 	// Băm mật khẩu quản trị viên với BCrypt cost 12
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(DefaultAdminPassword), 12)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(GetInitialAdminPassword()), 12)
 	if err != nil {
 		return fmt.Errorf("failed to hash default admin password: %w", err)
 	}
@@ -655,7 +679,7 @@ func SeedInitialApps(db *sql.DB, dataDir ...string) error {
 
 	query := fmt.Sprintf(`
 		%s apps (
-			id, name, version, platform, category, ` + "`desc`" + `, file_name,
+			id, name, version, platform, category, `+"`desc`"+`, file_name,
 			size_bytes, size_formatted, sha256, author, downloads,
 			status, published_at, download_url, video_url, guide, user_id
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

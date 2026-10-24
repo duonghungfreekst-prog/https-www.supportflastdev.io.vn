@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	loadOnce    sync.Once
+	loadOnce      sync.Once
 	loadedEnvPath string
 	loadedCount   int
 )
@@ -28,10 +28,10 @@ func ResetForTest() {
 }
 
 // InitEnv tự động kiểm tra, khởi tạo và nạp file '.env' vào môi trường tiến trình.
-// 1. Nếu file '.env' chưa tồn tại, tự động sao chép từ '.env.example' (hoặc sinh cấu hình chuẩn)
-//    và sinh JWT_SECRET, CLOUDPOOL_MASTER_KEY ngẫu nhiên độ phức tạp cao bằng CSPRNG.
-// 2. Nạp toàn bộ các biến môi trường từ '.env' vào tiến trình mà không ghi đè biến hệ thống đã có.
-// 3. Hoàn toàn sử dụng Go Standard Library, không phụ thuộc bất kỳ thư viện ngoài nào.
+//  1. Nếu file '.env' chưa tồn tại, tự động sao chép từ '.env.example' (hoặc sinh cấu hình chuẩn)
+//     và sinh JWT_SECRET, CLOUDPOOL_MASTER_KEY ngẫu nhiên độ phức tạp cao bằng CSPRNG.
+//  2. Nạp toàn bộ các biến môi trường từ '.env' vào tiến trình mà không ghi đè biến hệ thống đã có.
+//  3. Hoàn toàn sử dụng Go Standard Library, không phụ thuộc bất kỳ thư viện ngoài nào.
 func InitEnv() error {
 	var initErr error
 	loadOnce.Do(func() {

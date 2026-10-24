@@ -8394,6 +8394,13 @@
         }
         const savedKey = localStorage.getItem('omnirouter_web_key') || '';
         const urlInput = document.getElementById('web-server-url-input');
+        const mitmBaseInput = document.getElementById('mitm-base-url-input');
+        let savedMitmBase = localStorage.getItem('mitm_router_base_url') || 'http://localhost:20128';
+        if (savedMitmBase.includes('supportflastdev.io.vn')) {
+          savedMitmBase = 'http://localhost:20128';
+          try { localStorage.setItem('mitm_router_base_url', 'http://localhost:20128'); } catch (_) {}
+        }
+        if (mitmBaseInput) mitmBaseInput.value = savedMitmBase;
         const keyInput = document.getElementById('web-api-key-input');
         if (urlInput && savedUrl) urlInput.value = savedUrl;
         if (keyInput && savedKey) {
@@ -8542,6 +8549,7 @@
       try {
         localStorage.setItem('omnirouter_web_url', serverUrl);
         localStorage.setItem('omnirouter_web_key', apiKey);
+
       } catch (_) {}
 
       if (window.chrome && window.chrome.webview) {
@@ -8576,18 +8584,10 @@
         tabId = 'endpoints';
       }
 
-      const isDesktopEnv = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
-                           (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
-      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
-        tabId = 'stats';
-      }
-
       if (!tabId || !document.getElementById('tab-' + tabId)) {
         tabId = getSavedActiveTab() || 'stats';
       }
-      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
-        tabId = 'stats';
-      }
+
       window._currentActiveTabId = tabId;
 
 
@@ -16189,6 +16189,7 @@
 
     // Nút Bật/Tắt Máy Chủ MITM
 
+    
     async function toggleMitmServerAction() {
 
       const btn = document.getElementById('btn-mitm-toggle');

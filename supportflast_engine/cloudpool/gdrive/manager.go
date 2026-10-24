@@ -27,11 +27,11 @@ import (
 )
 
 const (
-	CloudPoolFolderName        = ".cloudpool_storage_data"
-	DriveScopeFull             = "https://www.googleapis.com/auth/drive"
-	DefaultDataDir             = `f:\supportflast.dev\data`
-	DefaultOAuthDir            = `f:\supportflast.dev\data\oauth`
-	DefaultServiceAccountsDir  = `f:\supportflast.dev\data\service_accounts`
+	CloudPoolFolderName         = ".cloudpool_storage_data"
+	DriveScopeFull              = "https://www.googleapis.com/auth/drive"
+	DefaultDataDir              = `f:\supportflast.dev\data`
+	DefaultOAuthDir             = `f:\supportflast.dev\data\oauth`
+	DefaultServiceAccountsDir   = `f:\supportflast.dev\data\service_accounts`
 	DefaultOAuthCredentialsFile = `f:\supportflast.dev\data\oauth\credentials.json`
 
 	// Các chiến lược phân bổ và điều phối tài khoản Google Drive
@@ -40,7 +40,6 @@ const (
 	StrategyRoundRobin  = "round_robin"
 	StrategyRoundRobin2 = "round-robin" // Hỗ trợ định dạng hyphen
 )
-
 
 var sharedTransport = &http.Transport{
 	MaxIdleConns:          500,
@@ -1163,4 +1162,3 @@ func (m *Manager) CheckChunkExists(ctx context.Context, accountID, gdriveFileID 
 
 	return true, nil
 }
-

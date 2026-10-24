@@ -20,20 +20,20 @@ var (
 	initOnce      sync.Once
 
 	// Exported Native HTTP Handlers theo chuẩn CloudPool API
-	FilesHandler       http.HandlerFunc
-	AccountsHandler    http.HandlerFunc
-	StatsHandler       http.HandlerFunc
-	SharesHandler      http.HandlerFunc
-	SQLStudioHandler   http.HandlerFunc
-	SettingsHandler    http.HandlerFunc
-	RemoteHandler      http.HandlerFunc
-	TunnelHandler      http.HandlerFunc
-	AdminDriveHandler  http.HandlerFunc
-	AdminOTPHandler    http.HandlerFunc
+	FilesHandler        http.HandlerFunc
+	AccountsHandler     http.HandlerFunc
+	StatsHandler        http.HandlerFunc
+	SharesHandler       http.HandlerFunc
+	SQLStudioHandler    http.HandlerFunc
+	SettingsHandler     http.HandlerFunc
+	RemoteHandler       http.HandlerFunc
+	TunnelHandler       http.HandlerFunc
+	AdminDriveHandler   http.HandlerFunc
+	AdminOTPHandler     http.HandlerFunc
 	AdminStorageHandler http.HandlerFunc
-	PublicShareHandler http.HandlerFunc
-	UpdateHandler      http.HandlerFunc
-	WebDAVHandler      http.Handler
+	PublicShareHandler  http.HandlerFunc
+	UpdateHandler       http.HandlerFunc
+	WebDAVHandler       http.Handler
 
 	// Auth & Admin User Handlers
 	VerifyAdminPassHandler http.HandlerFunc
@@ -388,4 +388,3 @@ func (s *Server) WebDAVHandler() http.Handler {
 		http.Error(w, `{"error":"WebDAV handler not initialized"}`, http.StatusServiceUnavailable)
 	})
 }
-

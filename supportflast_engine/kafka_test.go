@@ -49,7 +49,7 @@ func GenerateIdempotencyKey(source, eventType string, payloadData string) string
 
 // IdempotencyDeduplicator mô phỏng bộ đệm chống trùng lặp tại Consumer
 type IdempotencyDeduplicator struct {
-	mu      sync.Mutex
+	mu       sync.Mutex
 	seenKeys map[string]time.Time
 }
 

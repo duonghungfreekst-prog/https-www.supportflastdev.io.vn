@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -52,7 +53,8 @@ func init() {
 	}
 }
 
-// IsCloudflareOrLocalIP kiểm tra xem IP kết nối trực tiếp có phải từ Cloudflare Edge hoặc Local Tunnel
+// IsCloudflareOrLocalIP kiểm tra xem IP kết nối trực tiếp có phải từ Cloudflare Edge, Tunnel cục bộ hoặc Proxy tin cậy được quản lý
+// TUYỆT ĐỐI KHÔNG mặc định tin mọi dải IP Private ngẫu nhiên để chống giả mạo header (Spoofing Guard - Audit P1)
 func IsCloudflareOrLocalIP(ipStr string) bool {
 	// Tách host nếu có port (ví dụ: "127.0.0.1:54321")
 	host, _, err := net.SplitHostPort(ipStr)
@@ -65,17 +67,37 @@ func IsCloudflareOrLocalIP(ipStr string) bool {
 		return false
 	}
 
-	// Chấp nhận loopback / localhost khi chạy qua Cloudflare Tunnel (cloudflared)
-	if ip.IsLoopback() || ip.IsPrivate() {
+	// 1. Chỉ chấp nhận loopback (127.0.0.1, ::1) khi chạy qua Cloudflare Tunnel (cloudflared)
+	if ip.IsLoopback() {
 		return true
 	}
 
-	// Kiểm tra đối chiếu với danh sách CIDRs của Cloudflare
+	// 2. Kiểm tra đối chiếu với danh sách CIDRs chính thức của Cloudflare
 	for _, ipNet := range parsedCloudflareNets {
 		if ipNet.Contains(ip) {
 			return true
 		}
 	}
+
+	// 3. Chỉ chấp nhận dải IP Proxy nội bộ cụ thể nếu được quản trị viên chỉ định tường minh qua TRUSTED_PROXIES
+	if trustedEnv := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES")); trustedEnv != "" {
+		for _, trusted := range strings.Split(trustedEnv, ",") {
+			trusted = strings.TrimSpace(trusted)
+			if trusted == "" {
+				continue
+			}
+			if _, trustedNet, err := net.ParseCIDR(trusted); err == nil {
+				if trustedNet.Contains(ip) {
+					return true
+				}
+			} else if trustedIP := net.ParseIP(trusted); trustedIP != nil {
+				if trustedIP.Equal(ip) {
+					return true
+				}
+			}
+		}
+	}
+
 	return false
 }
 
@@ -285,4 +307,3 @@ func VerifyTurnstileToken(secretKey, token, remoteIP string, expectedAction ...s
 
 	return true, nil
 }
-

@@ -77,9 +77,9 @@ func TestSIEMClient_SyncAnalysisWithMockServer(t *testing.T) {
 
 		case "/siem/alerts":
 			json.NewEncoder(w).Encode(ThreatAlertsResponse{
-				Status:             "success",
-				TotalAlertsStored:  1,
-				ReturnedCount:      1,
+				Status:            "success",
+				TotalAlertsStored: 1,
+				ReturnedCount:     1,
 				Alerts: []ThreatAlert{
 					{
 						AlertID:           "alt-001",
@@ -95,9 +95,9 @@ func TestSIEMClient_SyncAnalysisWithMockServer(t *testing.T) {
 
 		case "/siem/stats":
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":         "active",
-				"service":        "supportflast_siem_ai",
-				"memory_rss_mb":  12.5,
+				"status":        "active",
+				"service":       "supportflast_siem_ai",
+				"memory_rss_mb": 12.5,
 				"metrics": map[string]interface{}{
 					"total_events": 10,
 					"critical":     1,

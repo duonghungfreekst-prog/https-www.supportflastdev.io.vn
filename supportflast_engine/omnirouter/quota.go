@@ -1,9 +1,6 @@
 package omnirouter
 
-
-
 import (
-
 	"bytes"
 
 	"os"
@@ -33,92 +30,69 @@ import (
 	"sync"
 
 	"time"
-
 )
 
-
-
 const (
-
-	AntigravityQuotaApiUrl        = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+	AntigravityQuotaApiUrl = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
 
 	AntigravityQuotaSummaryApiUrl = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
 
-	AntigravityUserAgent          = "antigravity/ide/2.11.0 windows/amd64"
+	AntigravityUserAgent = "antigravity/ide/2.11.0 windows/amd64"
 
-	AntigravityIdeVersion         = "2.11.0"
+	AntigravityIdeVersion = "2.11.0"
 
-	QuotaCacheTTL                 = 30 * time.Second
-
+	QuotaCacheTTL = 30 * time.Second
 )
-
-
 
 // QuotaItem đại diện cho một hạn mức quota hiển thị trên UI
 
 type QuotaItem struct {
+	Total int `json:"total"`
 
-	Total               int     `json:"total"`
-
-	Used                int     `json:"used"`
+	Used int `json:"used"`
 
 	RemainingPercentage float64 `json:"remainingPercentage"`
 
-	ResetAt             *string `json:"resetAt"`
+	ResetAt *string `json:"resetAt"`
 
-	DisplayName         string  `json:"displayName"`
+	DisplayName string `json:"displayName"`
 
-	Unlimited           bool    `json:"unlimited"`
-
+	Unlimited bool `json:"unlimited"`
 }
-
-
 
 // CachedQuota lưu giữ hạn mức trong RAM
 
 type CachedQuota struct {
-
-	Quotas    map[string]QuotaItem
+	Quotas map[string]QuotaItem
 
 	FetchedAt time.Time
-
 }
-
-
 
 // BatchQuotaResult kết quả làm mới hàng loạt hạn mức
 
 type BatchQuotaResult struct {
+	Total int `json:"total"`
 
-	Total       int                             `json:"total"`
+	Success int `json:"success"`
 
-	Success     int                             `json:"success"`
+	Failed int `json:"failed"`
 
-	Failed      int                             `json:"failed"`
-
-	DurationMs  int64                           `json:"durationMs"`
+	DurationMs int64 `json:"durationMs"`
 
 	AccountData map[string]map[string]QuotaItem `json:"accountData"`
 
-	Results     map[string]map[string]QuotaItem `json:"results"`
-
+	Results map[string]map[string]QuotaItem `json:"results"`
 }
 
-
-
 var (
+	quotaMemCache sync.Map // connId -> *CachedQuota
 
-	quotaMemCache   sync.Map // connId -> *CachedQuota
+	quotaFetchMu sync.Map // connId -> *sync.Mutex (chống concurrent duplicate requests)
 
-	quotaFetchMu    sync.Map // connId -> *sync.Mutex (chống concurrent duplicate requests)
-
-	quotaClient     *http.Client
+	quotaClient *http.Client
 
 	quotaClientOnce sync.Once
-
 )
-
-
 
 func getQuotaClient() *http.Client {
 
@@ -153,17 +127,14 @@ func getQuotaClient() *http.Client {
 				TLSClientConfig: &tls.Config{
 
 					ServerName: "daily-cloudcode-pa.googleapis.com",
-
 				},
 
-				MaxIdleConns:        50,
+				MaxIdleConns: 50,
 
 				MaxIdleConnsPerHost: 20,
 
-				IdleConnTimeout:     60 * time.Second,
-
+				IdleConnTimeout: 60 * time.Second,
 			},
-
 		}
 
 	})
@@ -172,8 +143,6 @@ func getQuotaClient() *http.Client {
 
 }
 
-
-
 func getConnMutex(connId string) *sync.Mutex {
 
 	val, _ := quotaFetchMu.LoadOrStore(connId, &sync.Mutex{})
@@ -181,8 +150,6 @@ func getConnMutex(connId string) *sync.Mutex {
 	return val.(*sync.Mutex)
 
 }
-
-
 
 // GetCachedQuotas lấy quota từ RAM cache nếu còn hạn TTL 60s
 
@@ -204,23 +171,18 @@ func GetCachedQuotas(connId string) (map[string]QuotaItem, bool) {
 
 }
 
-
-
 // SetCachedQuotas ghi đè cache trong RAM
 
 func SetCachedQuotas(connId string, quotas map[string]QuotaItem) {
 
 	quotaMemCache.Store(connId, &CachedQuota{
 
-		Quotas:    quotas,
+		Quotas: quotas,
 
 		FetchedAt: time.Now(),
-
 	})
 
 }
-
-
 
 // FetchAntigravityQuota lấy hạn mức thực tế của tài khoản Antigravity từ Google API
 
@@ -236,15 +198,11 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 
 	}
 
-
-
 	mu := getConnMutex(conn.ID)
 
 	mu.Lock()
 
 	defer mu.Unlock()
-
-
 
 	// Double-check sau khi acquire lock
 
@@ -258,8 +216,6 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 
 	}
 
-
-
 	creds, err := GetValidCredentials(db, conn)
 
 	if err != nil {
@@ -267,8 +223,6 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 		return nil, fmt.Errorf("không thể xác thực tài khoản %s: %w", conn.Name, err)
 
 	}
-
-
 
 	client := getQuotaClient()
 
@@ -320,8 +274,6 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 
 	}
 
-
-
 	if err != nil {
 
 		// Thử lấy từ cache RAM hoặc data JSON trong DB nếu live call thất bại
@@ -360,13 +312,9 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 
 	}
 
-
-
 	// Cập nhật Cache vào RAM
 
 	SetCachedQuotas(conn.ID, quotas)
-
-
 
 	// Cập nhật Cache vào DB Aiven PostgreSQL an toàn chống Lost Update
 
@@ -394,13 +342,9 @@ func FetchAntigravityQuota(db *sql.DB, conn *ProviderConnection, force bool) (ma
 
 	}()
 
-
-
 	return quotas, nil
 
 }
-
-
 
 func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]QuotaItem, error) {
 
@@ -414,8 +358,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 	bodyBytes, _ := json.Marshal(reqBody)
 
-
-
 	quotas := make(map[string]QuotaItem)
 
 	var qMu sync.Mutex
@@ -425,8 +367,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 	var has401 bool
 
 	var fetchErr error
-
-
 
 	// 1. Gọi fetchAvailableModels song song
 
@@ -453,8 +393,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 		fetchReq.Header.Set("X-Client-Name", "antigravity")
 
 		fetchReq.Header.Set("X-Client-Version", AntigravityIdeVersion)
-
-
 
 		resp, err := client.Do(fetchReq)
 
@@ -488,8 +426,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 		defer resp.Body.Close()
 
-
-
 		if resp.StatusCode == http.StatusUnauthorized {
 
 			qMu.Lock()
@@ -502,28 +438,20 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 		}
 
-
-
 		if resp.StatusCode == http.StatusOK {
 
 			var modelsRes struct {
-
 				Models map[string]struct {
-
 					DisplayName string `json:"displayName"`
 
-					QuotaInfo   *struct {
-
+					QuotaInfo *struct {
 						RemainingFraction float64 `json:"remainingFraction"`
 
-						ResetTime         string  `json:"resetTime"`
-
+						ResetTime string `json:"resetTime"`
 					} `json:"quotaInfo"`
 
 					IsInternal bool `json:"isInternal"`
-
 				} `json:"models"`
-
 			}
 
 			if err := json.NewDecoder(resp.Body).Decode(&modelsRes); err == nil && modelsRes.Models != nil {
@@ -558,8 +486,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 					used := total - remaining
 
-
-
 					var resetAtPtr *string
 
 					if modelData.QuotaInfo.ResetTime != "" {
@@ -570,8 +496,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 					}
 
-
-
 					dispName := modelData.DisplayName
 
 					if dispName == "" {
@@ -580,22 +504,19 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 					}
 
-
-
 					quotas[modelKey] = QuotaItem{
 
-						Total:               total,
+						Total: total,
 
-						Used:                used,
+						Used: used,
 
 						RemainingPercentage: remPct,
 
-						ResetAt:             resetAtPtr,
+						ResetAt: resetAtPtr,
 
-						DisplayName:         dispName,
+						DisplayName: dispName,
 
-						Unlimited:           false,
-
+						Unlimited: false,
 					}
 
 				}
@@ -607,8 +528,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 		}
 
 	}()
-
-
 
 	// 2. Gọi retrieveUserQuotaSummary song song
 
@@ -635,8 +554,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 		summaryReq.Header.Set("X-Client-Name", "antigravity")
 
 		summaryReq.Header.Set("X-Client-Version", AntigravityIdeVersion)
-
-
 
 		resp, err := client.Do(summaryReq)
 
@@ -670,8 +587,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 		defer resp.Body.Close()
 
-
-
 		if resp.StatusCode == http.StatusUnauthorized {
 
 			qMu.Lock()
@@ -684,67 +599,51 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 		}
 
-
-
 		if resp.StatusCode == http.StatusOK {
 
 			var summaryRes struct {
-
 				Groups []struct {
-
 					DisplayName string `json:"displayName"`
 
-					Buckets     []struct {
-
-						BucketId          string  `json:"bucketId"`
-
-						DisplayName       string  `json:"displayName"`
-
-						Window            string  `json:"window"`
-
-						RemainingFraction float64 `json:"remainingFraction"`
-
-						ResetTime         string  `json:"resetTime"`
-
-						Disabled          bool    `json:"disabled"`
-
-					} `json:"buckets"`
-
-				} `json:"groups"`
-
-				QuotaSummary *struct {
-
-					Groups []struct {
+					Buckets []struct {
+						BucketId string `json:"bucketId"`
 
 						DisplayName string `json:"displayName"`
 
-						Buckets     []struct {
+						Window string `json:"window"`
 
-							BucketId          string  `json:"bucketId"`
+						RemainingFraction float64 `json:"remainingFraction"`
 
-							DisplayName       string  `json:"displayName"`
+						ResetTime string `json:"resetTime"`
 
-							Window            string  `json:"window"`
+						Disabled bool `json:"disabled"`
+					} `json:"buckets"`
+				} `json:"groups"`
+
+				QuotaSummary *struct {
+					Groups []struct {
+						DisplayName string `json:"displayName"`
+
+						Buckets []struct {
+							BucketId string `json:"bucketId"`
+
+							DisplayName string `json:"displayName"`
+
+							Window string `json:"window"`
 
 							RemainingFraction float64 `json:"remainingFraction"`
 
-							ResetTime         string  `json:"resetTime"`
+							ResetTime string `json:"resetTime"`
 
-							Disabled          bool    `json:"disabled"`
-
+							Disabled bool `json:"disabled"`
 						} `json:"buckets"`
-
 					} `json:"groups"`
-
 				} `json:"quotaSummary"`
-
 			}
 
 			dataBytes, _ := io.ReadAll(resp.Body)
 
 			_ = json.Unmarshal(dataBytes, &summaryRes)
-
-
 
 			groups := summaryRes.Groups
 
@@ -753,8 +652,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 				groups = summaryRes.QuotaSummary.Groups
 
 			}
-
-
 
 			qMu.Lock()
 
@@ -766,8 +663,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 				isClaudeGpt := strings.Contains(groupName, "claude") || strings.Contains(groupName, "gpt")
 
-
-
 				for _, bucket := range group.Buckets {
 
 					win := strings.ToLower(bucket.Window)
@@ -777,8 +672,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 					isWeekly := win == "weekly" || strings.Contains(bucketText, "weekly")
 
 					isSession := win == "5h" || strings.Contains(bucketText, "five hour") || strings.Contains(bucketText, "5h") || win == "daily" || strings.Contains(bucketText, "daily")
-
-
 
 					if !isWeekly && !isSession {
 
@@ -791,8 +684,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 						continue
 
 					}
-
-
 
 					remFrac := bucket.RemainingFraction
 
@@ -820,8 +711,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 					used := total - remaining
 
-
-
 					var resetAtPtr *string
 
 					if bucket.ResetTime != "" {
@@ -832,8 +721,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 					}
 
-
-
 					if isGemini {
 
 						if isSession {
@@ -842,18 +729,17 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 								quotas["gemini_session"] = QuotaItem{
 
-									Total:               total,
+									Total: total,
 
-									Used:                used,
+									Used: used,
 
 									RemainingPercentage: remPct,
 
-									ResetAt:             resetAtPtr,
+									ResetAt: resetAtPtr,
 
-									DisplayName:         "Gemini (5h)",
+									DisplayName: "Gemini (5h)",
 
-									Unlimited:           false,
-
+									Unlimited: false,
 								}
 
 							}
@@ -864,18 +750,17 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 								quotas["gemini_weekly"] = QuotaItem{
 
-									Total:               total,
+									Total: total,
 
-									Used:                used,
+									Used: used,
 
 									RemainingPercentage: remPct,
 
-									ResetAt:             resetAtPtr,
+									ResetAt: resetAtPtr,
 
-									DisplayName:         "Gemini (Weekly)",
+									DisplayName: "Gemini (Weekly)",
 
-									Unlimited:           false,
-
+									Unlimited: false,
 								}
 
 							}
@@ -890,18 +775,17 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 								quotas["claude_gpt_session"] = QuotaItem{
 
-									Total:               total,
+									Total: total,
 
-									Used:                used,
+									Used: used,
 
 									RemainingPercentage: remPct,
 
-									ResetAt:             resetAtPtr,
+									ResetAt: resetAtPtr,
 
-									DisplayName:         "Claude & GPT (5h)",
+									DisplayName: "Claude & GPT (5h)",
 
-									Unlimited:           false,
-
+									Unlimited: false,
 								}
 
 							}
@@ -912,18 +796,17 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 								quotas["claude_gpt_weekly"] = QuotaItem{
 
-									Total:               total,
+									Total: total,
 
-									Used:                used,
+									Used: used,
 
 									RemainingPercentage: remPct,
 
-									ResetAt:             resetAtPtr,
+									ResetAt: resetAtPtr,
 
-									DisplayName:         "Claude & GPT (Weekly)",
+									DisplayName: "Claude & GPT (Weekly)",
 
-									Unlimited:           false,
-
+									Unlimited: false,
 								}
 
 							}
@@ -942,11 +825,7 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 	}()
 
-
-
 	wg.Wait()
-
-
 
 	if has401 {
 
@@ -954,15 +833,11 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 	}
 
-
-
 	if len(quotas) == 0 && fetchErr != nil {
 
 		return nil, fetchErr
 
 	}
-
-
 
 	// 3. Reconcile: Nếu QuotaSummary thiếu gemini_session hoặc claude_gpt_session, tính từ models
 
@@ -1000,8 +875,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 	}
 
-
-
 	if _, ok := quotas["claude_gpt_session"]; !ok {
 
 		var minRem float64 = 100.0
@@ -1036,8 +909,6 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 	}
 
-
-
 	// 4. Gemini 3.1 Flash Image
 
 	if img, ok := quotas["gemini-3.1-flash-image"]; ok {
@@ -1052,27 +923,22 @@ func executeQuotaFetch(client *http.Client, creds *Credentials) (map[string]Quot
 
 		quotas["gemini_flash_image"] = QuotaItem{
 
-			Total:               1000,
+			Total: 1000,
 
-			Used:                0,
+			Used: 0,
 
 			RemainingPercentage: 100.0,
 
-			DisplayName:         "Gemini 3.1 Flash Image",
+			DisplayName: "Gemini 3.1 Flash Image",
 
-			Unlimited:           false,
-
+			Unlimited: false,
 		}
 
 	}
 
-
-
 	return quotas, nil
 
 }
-
-
 
 // FetchAllAntigravityQuotas làm mới song song toàn bộ hạn mức tài khoản bằng worker pool có điều tiết
 
@@ -1088,8 +954,6 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 
 	}
 
-
-
 	var accounts []ProviderConnection
 
 	for _, p := range allProviders {
@@ -1102,19 +966,14 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 
 	}
 
-
-
 	result := BatchQuotaResult{
 
-		Total:       len(accounts),
+		Total: len(accounts),
 
 		AccountData: make(map[string]map[string]QuotaItem),
 
-		Results:     make(map[string]map[string]QuotaItem),
-
+		Results: make(map[string]map[string]QuotaItem),
 	}
-
-
 
 	if len(accounts) == 0 {
 
@@ -1122,15 +981,11 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 
 	}
 
-
-
 	var mu sync.Mutex
 
 	var wg sync.WaitGroup
 
 	sem := make(chan struct{}, 3) // Giới hạn 3 worker đồng thời tránh dồn dập vào Google API
-
-
 
 	for i := range accounts {
 
@@ -1145,8 +1000,6 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 			sem <- struct{}{}
 
 			defer func() { <-sem }()
-
-
 
 			qMap, qErr := FetchAntigravityQuota(db, &acc, force)
 
@@ -1182,15 +1035,11 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 
 	}
 
-
-
 	wg.Wait()
 
 	result.DurationMs = time.Since(startTime).Milliseconds()
 
 	log.Printf("[ENGINE] [OMNIROUTER] 📊 Hoàn tất làm mới hạn mức: %d/%d tài khoản thành công (%dms)", result.Success, result.Total, result.DurationMs)
-
-
 
 	// Phát sự kiện SSE để UI cập nhật số liệu ngay lập tức (Zero Latency)
 
@@ -1204,11 +1053,7 @@ func FetchAllAntigravityQuotas(db *sql.DB, force bool) BatchQuotaResult {
 
 }
 
-
-
 var backgroundQuotaPollingMu sync.Mutex
-
-
 
 // StartBackgroundQuotaPollingWorker chạy ngầm chu kỳ kiểm tra và nạp hạn mức định kỳ 3 phút
 
@@ -1223,8 +1068,6 @@ func StartBackgroundQuotaPollingWorker(ctx context.Context, db *sql.DB) {
 		return
 
 	}
-
-
 
 	go func() {
 
@@ -1244,15 +1087,11 @@ func StartBackgroundQuotaPollingWorker(ctx context.Context, db *sql.DB) {
 
 		}
 
-
-
 		// Chu kỳ polling điều độ 3 phút (hạn mức đã được tự động sync tức thì khi có request AI thật)
 
 		ticker := time.NewTicker(3 * time.Minute)
 
 		defer ticker.Stop()
-
-
 
 		for {
 
@@ -1279,4 +1118,3 @@ func StartBackgroundQuotaPollingWorker(ctx context.Context, db *sql.DB) {
 	}()
 
 }
-

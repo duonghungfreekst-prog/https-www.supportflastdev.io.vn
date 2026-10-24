@@ -11,7 +11,7 @@ func TestHashSha256Hex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to hash: %v", err)
 	}
-	
+
 	expected := "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
 	if hash != expected {
 		t.Errorf("Expected %s but got %s", expected, hash)
@@ -44,12 +44,12 @@ func TestEncryptDecryptAesGcm(t *testing.T) {
 func TestDeriveKeyArgon2(t *testing.T) {
 	passphrase := "my_secure_password"
 	salt := []byte("1234567890123456") // 16 bytes
-	
+
 	key, err := DeriveKeyArgon2(passphrase, salt)
 	if err != nil {
 		t.Fatalf("Failed to derive key: %v", err)
 	}
-	
+
 	if len(key) != 32 {
 		t.Errorf("Expected key length 32, got %d", len(key))
 	}

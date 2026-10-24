@@ -15,10 +15,10 @@ type DriveChunkChecker interface {
 
 // IntegrityCheckOptions tùy chọn cho quá trình quét chẩn đoán toàn vẹn
 type IntegrityCheckOptions struct {
-	FileID      string `json:"file_id,omitempty"`      // Chỉ định 1 file cụ thể cần kiểm tra (để trống = quét toàn bộ hệ thống)
-	AccountID   string `json:"account_id,omitempty"`   // Lọc theo 1 tài khoản Drive cụ thể
-	Concurrency int    `json:"concurrency,omitempty"`  // Số luồng kiểm tra đồng thời (mặc định 5, tối đa 20)
-	Force       bool   `json:"force,omitempty"`        // Bắt buộc quét lại ngay cả khi chunk đã được đánh dấu
+	FileID      string `json:"file_id,omitempty"`     // Chỉ định 1 file cụ thể cần kiểm tra (để trống = quét toàn bộ hệ thống)
+	AccountID   string `json:"account_id,omitempty"`  // Lọc theo 1 tài khoản Drive cụ thể
+	Concurrency int    `json:"concurrency,omitempty"` // Số luồng kiểm tra đồng thời (mặc định 5, tối đa 20)
+	Force       bool   `json:"force,omitempty"`       // Bắt buộc quét lại ngay cả khi chunk đã được đánh dấu
 }
 
 // ChunkIntegrityIssue chi tiết về chunk bị lỗi hoặc biến mất

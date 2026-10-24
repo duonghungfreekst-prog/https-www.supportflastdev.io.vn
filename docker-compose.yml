@@ -79,9 +79,15 @@ services:
     image: supportflast-ai:latest
     container_name: supportflast-ai
     restart: always
+    env_file:
+      - .env
     environment:
       - PORT=8000
       - HOST=0.0.0.0
+      - ENV=${ENV:-production}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - MAX_INFLIGHT_LLM=${MAX_INFLIGHT_LLM:-8}
       - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://supportflastdev.io.vn,https://www.supportflastdev.io.vn,http://localhost:8080,http://127.0.0.1:8080}
       - TZ=${TZ:-Asia/Ho_Chi_Minh}

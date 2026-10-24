@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"supportflast_engine/config"
 	cloudpoolStorage "supportflast_engine/cloudpool/storage"
+	"supportflast_engine/config"
 	"supportflast_engine/database"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
@@ -264,7 +264,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	if err != nil {
 		// Thử chèn tài khoản admin nếu chưa có
 		log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Admin chưa có trong CSDL, tiến hành tạo mới...")
-		hash, hashErr := bcrypt.GenerateFromPassword([]byte(database.DefaultAdminPassword), 12)
+		hash, hashErr := bcrypt.GenerateFromPassword([]byte(database.GetInitialAdminPassword()), 12)
 		if hashErr != nil {
 			return nil, fmt.Errorf("lỗi băm mật khẩu admin: %w", hashErr)
 		}
@@ -314,7 +314,7 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	} else {
 		res.AdminUserCreated = true
 		// Kiểm tra mật khẩu tài khoản admin
-		if bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(database.DefaultAdminPassword)) == nil {
+		if bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(database.GetInitialAdminPassword())) == nil {
 			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã được xác thực an toàn.")
 		}
 	}

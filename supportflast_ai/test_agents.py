@@ -2,6 +2,7 @@
 Bao gồm kiểm thử đơn vị và benchmark điều phối đồng thời 10 Subagents.
 """
 import unittest
+import asyncio
 from core.subagent_dispatcher import SubagentDispatcher
 
 class TestSubagents(unittest.TestCase):
@@ -93,6 +94,57 @@ class TestSubagents(unittest.TestCase):
         self.assertIn("p95_ms", res)
         # Độ trễ toàn bộ batch phải dưới 500ms
         self.assertLess(res["wall_clock_ms"], 500.0)
+
+    def test_adispatch_fast_mode(self):
+        """Kiểm tra điều phối bất đồng bộ 1 agent nhanh (Nút thắt 1)."""
+        res = asyncio.run(self.dispatcher.adispatch("Bị lỗi NullPointerException khi build", mode="fast"))
+        self.assertEqual(res["status"], "success")
+        self.assertEqual(res["mode"], "fast")
+        self.assertIn("wall_clock_ms", res)
+        self.assertIn("router_ms", res)
+
+    def test_adispatch_parallel_mode(self):
+        """Kiểm tra fan-out song song 2-3 agents (Nút thắt 1 & 3)."""
+        res = asyncio.run(self.dispatcher.adispatch("Bảo mật đóng gói APK và cấu hình CDN", mode="parallel"))
+        self.assertIn(res["status"], ("success", "partial_success"))
+        self.assertEqual(res["mode"], "parallel")
+        self.assertGreaterEqual(res["total_agents"], 2)
+        self.assertIn("agent_results", res)
+        self.assertIn("speedup", res)
+
+    def test_adispatch_deep_mode(self):
+        """Kiểm tra điều phối chuyên sâu 10 agents đồng thời với deadline (Nút thắt 3)."""
+        res = asyncio.run(self.dispatcher.adispatch("Kiểm tra sức khỏe toàn bộ hệ thống phân tán", mode="deep"))
+        self.assertIn(res["status"], ("success", "partial_success"))
+        self.assertEqual(res["mode"], "deep")
+        self.assertEqual(res["total_agents"], 10)
+        self.assertIn("agent_results", res)
+
+    def test_llm_engine_health_check_offline(self):
+        """Kiểm tra cơ chế chẩn đoán kết nối model thực tế (Mục 4)."""
+        from core.llm_engine import llm_engine
+        health = asyncio.run(llm_engine.check_health())
+        self.assertIn("status", health)
+        self.assertIn("code", health)
+        self.assertIn("model", health)
+        self.assertIn("fallback_active", health)
+
+    def test_subagents_list_truthful_model_status(self):
+        """Kiểm tra metadata agent phản ánh trung thực trạng thái model thật (Mục 4)."""
+        agents = self.dispatcher.list_subagents()
+        self.assertEqual(len(agents), 10)
+        for a in agents:
+            self.assertIn("model_status", a)
+            self.assertIn("model_name", a)
+            self.assertIn("provider", a)
+
+    def test_error_classification(self):
+        """Kiểm tra phân loại mã lỗi API chính xác (Mục 4)."""
+        from core.llm_engine import llm_engine
+        self.assertEqual(llm_engine._classify_error("API_KEY_INVALID: Key not valid"), "API_KEY_INVALID")
+        self.assertEqual(llm_engine._classify_error("404: models/gemini-3.8-flash not found"), "MODEL_NOT_FOUND")
+        self.assertEqual(llm_engine._classify_error("ResourceExhausted: 429 Quota exceeded"), "QUOTA_EXCEEDED")
+        self.assertEqual(llm_engine._classify_error("Client timeout after 4000ms"), "TIMEOUT")
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,27 +7,27 @@ import (
 
 // Account represents a connected Google Drive account (Enterprise Level)
 type Account struct {
-	ID                 string     `json:"id"`
-	Email              string     `json:"email"`
-	Name               string     `json:"name"`
-	AvatarURL          string     `json:"avatar_url"`
-	AuthType           string     `json:"auth_type"` // "oauth" or "service_account"
-	CredentialsJSON    string     `json:"-"`         // Stored securely, not exposed in JSON
-	TokenJSON          string     `json:"-"`         // Stored securely, not exposed in JSON
-	RootFolderID       string     `json:"root_folder_id"`
-	TotalQuotaBytes    int64      `json:"total_quota_bytes"`
-	UsedQuotaBytes     int64      `json:"used_quota_bytes"`
-	FreeQuotaBytes     int64      `json:"free_quota_bytes"`
-	UsagePercent       float64    `json:"usage_percent"`
-	Status             string     `json:"status"` // "active", "disabled", "error", "full"
-	IsUploadExcluded   bool       `json:"is_upload_excluded"` // true: Né lưu trữ khi tải lên (bảo vệ chống đầy)
-	IsReconnected      bool       `json:"is_reconnected,omitempty"` // true: Tài khoản đã tồn tại và được kết nối lại
-	HealthStatus       string     `json:"health_status"` // "healthy", "warning", "dead"
-	LastError          string     `json:"last_error,omitempty"`
-	FailCount          int        `json:"fail_count"`
-	RateLimitResetAt   *time.Time `json:"rate_limit_reset_at,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	ID               string     `json:"id"`
+	Email            string     `json:"email"`
+	Name             string     `json:"name"`
+	AvatarURL        string     `json:"avatar_url"`
+	AuthType         string     `json:"auth_type"` // "oauth" or "service_account"
+	CredentialsJSON  string     `json:"-"`         // Stored securely, not exposed in JSON
+	TokenJSON        string     `json:"-"`         // Stored securely, not exposed in JSON
+	RootFolderID     string     `json:"root_folder_id"`
+	TotalQuotaBytes  int64      `json:"total_quota_bytes"`
+	UsedQuotaBytes   int64      `json:"used_quota_bytes"`
+	FreeQuotaBytes   int64      `json:"free_quota_bytes"`
+	UsagePercent     float64    `json:"usage_percent"`
+	Status           string     `json:"status"`                   // "active", "disabled", "error", "full"
+	IsUploadExcluded bool       `json:"is_upload_excluded"`       // true: Né lưu trữ khi tải lên (bảo vệ chống đầy)
+	IsReconnected    bool       `json:"is_reconnected,omitempty"` // true: Tài khoản đã tồn tại và được kết nối lại
+	HealthStatus     string     `json:"health_status"`            // "healthy", "warning", "dead"
+	LastError        string     `json:"last_error,omitempty"`
+	FailCount        int        `json:"fail_count"`
+	RateLimitResetAt *time.Time `json:"rate_limit_reset_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // IsUploadExcludedAccount kiểm tra tài khoản có bị loại trừ (né lưu trữ) khi tải tệp lên hay không
@@ -66,7 +66,7 @@ type User struct {
 	SecurityTier     int        `json:"security_tier"` // 1: Standard, 2: Enhanced PIN, 3: Military Zero-Knowledge
 	DisplayName      string     `json:"display_name"`
 	AvatarURL        string     `json:"avatar_url,omitempty"`
-	Role             string     `json:"role"` // "admin" or "user"
+	Role             string     `json:"role"`   // "admin" or "user"
 	Status           string     `json:"status"` // "active", "locked", "pending"
 	QuotaBytes       int64      `json:"quota_bytes"`
 	UsedBytes        int64      `json:"used_bytes"`
@@ -79,30 +79,30 @@ type User struct {
 
 // VirtualFile represents a virtual file or folder in CloudPool with rich metadata
 type VirtualFile struct {
-	ID             string     `json:"id"`
-	UserID         string     `json:"user_id"`   // Owner of the file
-	ParentID       string     `json:"parent_id"` // Empty string or root ID for top-level
-	Name           string     `json:"name"`
-	Path           string     `json:"path"`
-	IsDir          bool       `json:"is_dir"`
-	SizeBytes      int64      `json:"size_bytes"`
-	MimeType       string     `json:"mime_type"`
-	Extension      string     `json:"extension,omitempty"`
-	SHA256         string     `json:"sha256,omitempty"`
-	ChunkCount     int        `json:"chunk_count"`
-	IsEncrypted    bool       `json:"is_encrypted"`
-	IsStarred      bool       `json:"is_starred"`
-	IsPublic       bool       `json:"is_public"`
-	ShareToken     string     `json:"share_token,omitempty"`
-	DownloadCount  int64      `json:"download_count"`
-	IsTrashed      bool       `json:"is_trashed"`
-	IsAdminOwned   bool       `json:"is_admin_owned,omitempty"`   // True if file belongs to Admin and child user is viewing
-	RequiresOTP    bool       `json:"requires_otp,omitempty"`    // True if OTP is required for child user to view/download
-	Replaced       bool       `json:"replaced,omitempty"`        // True nếu file này đã ghi đè file cũ cùng tên (auto-replace)
-	HasMissingChunks bool     `json:"has_missing_chunks"`        // True nếu tệp bị thiếu dữ liệu nguồn (chunk bị 404 trên Drive)
-	DeletedAt      *time.Time `json:"deleted_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID               string     `json:"id"`
+	UserID           string     `json:"user_id"`   // Owner of the file
+	ParentID         string     `json:"parent_id"` // Empty string or root ID for top-level
+	Name             string     `json:"name"`
+	Path             string     `json:"path"`
+	IsDir            bool       `json:"is_dir"`
+	SizeBytes        int64      `json:"size_bytes"`
+	MimeType         string     `json:"mime_type"`
+	Extension        string     `json:"extension,omitempty"`
+	SHA256           string     `json:"sha256,omitempty"`
+	ChunkCount       int        `json:"chunk_count"`
+	IsEncrypted      bool       `json:"is_encrypted"`
+	IsStarred        bool       `json:"is_starred"`
+	IsPublic         bool       `json:"is_public"`
+	ShareToken       string     `json:"share_token,omitempty"`
+	DownloadCount    int64      `json:"download_count"`
+	IsTrashed        bool       `json:"is_trashed"`
+	IsAdminOwned     bool       `json:"is_admin_owned,omitempty"` // True if file belongs to Admin and child user is viewing
+	RequiresOTP      bool       `json:"requires_otp,omitempty"`   // True if OTP is required for child user to view/download
+	Replaced         bool       `json:"replaced,omitempty"`       // True nếu file này đã ghi đè file cũ cùng tên (auto-replace)
+	HasMissingChunks bool       `json:"has_missing_chunks"`       // True nếu tệp bị thiếu dữ liệu nguồn (chunk bị 404 trên Drive)
+	DeletedAt        *time.Time `json:"deleted_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // FileChunk represents an individual chunk of a virtual file stored on a Google Drive
@@ -146,8 +146,8 @@ type ActivityLog struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
 	Username  string    `json:"username"`
-	Action    string    `json:"action"`     // "LOGIN", "UPLOAD", "DELETE", "SHARE", "RENAME", "SQL_EXEC"
-	Target    string    `json:"target"`     // File name or resource
+	Action    string    `json:"action"` // "LOGIN", "UPLOAD", "DELETE", "SHARE", "RENAME", "SQL_EXEC"
+	Target    string    `json:"target"` // File name or resource
 	IPAddress string    `json:"ip_address"`
 	Details   string    `json:"details,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
@@ -184,10 +184,10 @@ type ChunkDetail struct {
 // Settings represents global system configuration
 type Settings struct {
 	MasterPassphrase      string `json:"master_passphrase,omitempty"`
-	ChunkSizeBytes        int64  `json:"chunk_size_bytes"`     // Default: 20MB (20971520)
-	ParallelWorkers       int    `json:"parallel_workers"`     // Default: 4 parallel upload workers
-	AllocationStrategy    string `json:"allocation_strategy"` // "least_used", "waterfill", "round_robin"
-	GuestAccessMode       string `json:"guest_access_mode"`   // "strict" (cần login), "view_only" (chỉ xem tải), "full_upload" (cho upload)
+	ChunkSizeBytes        int64  `json:"chunk_size_bytes"`        // Default: 20MB (20971520)
+	ParallelWorkers       int    `json:"parallel_workers"`        // Default: 4 parallel upload workers
+	AllocationStrategy    string `json:"allocation_strategy"`     // "least_used", "waterfill", "round_robin"
+	GuestAccessMode       string `json:"guest_access_mode"`       // "strict" (cần login), "view_only" (chỉ xem tải), "full_upload" (cho upload)
 	AllowSelfRegistration bool   `json:"allow_self_registration"` // Cho phép người dùng tự đăng ký
 	WebDAVEnabled         bool   `json:"webdav_enabled"`
 	WebDAVUsername        string `json:"webdav_username"`
@@ -234,7 +234,7 @@ type FileAccessRequest struct {
 
 // PublicShare represents a public download/stream share link with optional password and expiry
 type PublicShare struct {
-	ID            string     `json:"id"`             // Share token / UUID
+	ID            string     `json:"id"` // Share token / UUID
 	FileID        string     `json:"file_id"`
 	FileName      string     `json:"file_name"`
 	FileSize      int64      `json:"file_size"`
@@ -244,7 +244,7 @@ type PublicShare struct {
 	CreatedBy     string     `json:"created_by"`
 	PasswordHash  string     `json:"-"`
 	HasPassword   bool       `json:"has_password"`
-	MaxDownloads  int        `json:"max_downloads"`  // 0 = unlimited
+	MaxDownloads  int        `json:"max_downloads"` // 0 = unlimited
 	DownloadCount int        `json:"download_count"`
 	ExpiresAt     *time.Time `json:"expires_at,omitempty"` // nil = never
 	CreatedAt     time.Time  `json:"created_at"`
@@ -280,6 +280,3 @@ type StorageBreakdownResponse struct {
 	Categories     []StorageCategoryBreakdown `json:"categories"`
 	TopFiles       []TopFileItem              `json:"top_files"`
 }
-
-
-

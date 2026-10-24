@@ -2139,7 +2139,6 @@ func TestSecureCORSOAuth(t *testing.T) {
 	})
 }
 
-
 // TestServerLinkAuthentication kiểm tra liên kết giữa Desktop App, Antigravity IDE và Server Chủ
 func TestServerLinkAuthentication(t *testing.T) {
 	db := setupTestDB(t)
@@ -2177,7 +2176,7 @@ func TestServerLinkAuthentication(t *testing.T) {
 			t.Fatalf("CreateNewClientKey thất bại: %v", err)
 		}
 		req := httptest.NewRequest("GET", "/api/router/providers", nil)
-		req.Header.Set("Authorization", "Bearer " + clientKey.Key)
+		req.Header.Set("Authorization", "Bearer "+clientKey.Key)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {

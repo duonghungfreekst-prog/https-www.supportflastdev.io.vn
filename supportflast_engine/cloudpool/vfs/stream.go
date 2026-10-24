@@ -3,11 +3,11 @@ package vfs
 import (
 	"container/list"
 	"context"
-	"runtime"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -18,11 +18,11 @@ import (
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
 )
+
 const (
 	MaxConcurrentPrefetch = 32
-	MaxPrefetchAhead = 2
+	MaxPrefetchAhead      = 2
 )
-
 
 const (
 	// NativeRangeBlockSize kích thước khối tải dải byte (4MB) cho các tệp native Google Drive không mã hóa.
@@ -52,10 +52,9 @@ type ChunkCache struct {
 var globalChunkCache = &ChunkCache{
 	entries:    make(map[string]*list.Element),
 	lruList:    list.New(),
-	maxEntries: 1024,               // Tối đa 256 entries trong bộ nhớ đệm
+	maxEntries: 1024,              // Tối đa 256 entries trong bộ nhớ đệm
 	maxBytes:   256 * 1024 * 1024, // 256MB giới hạn trần RAM nghiêm ngặt (an toàn dưới ngưỡng 500MB trong Rule PHAN 7.1)
 }
-
 
 func init() {
 	go globalChunkCache.StartJanitor()
@@ -224,15 +223,15 @@ func is404(err error) bool {
 
 // FileStreamer implements io.ReadSeeker, io.ReaderAt, and io.Closer over virtual distributed chunks
 type FileStreamer struct {
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	vfs                 *VFS
-	file                *models.VirtualFile
-	chunks              []models.FileChunk
-	encKey              [32]byte
-	offset              int64
-	chunkSize           int64
-	mu                  sync.Mutex
+	ctx               context.Context
+	cancel            context.CancelFunc
+	vfs               *VFS
+	file              *models.VirtualFile
+	chunks            []models.FileChunk
+	encKey            [32]byte
+	offset            int64
+	chunkSize         int64
+	mu                sync.Mutex
 	lastPrefetchChunk atomic.Int32
 	lastPrefetchBlock atomic.Int64
 }
@@ -281,14 +280,14 @@ func (v *VFS) NewFileStreamer(ctx context.Context, fileID string) (*FileStreamer
 	streamCtx, streamCancel := context.WithCancel(ctx)
 
 	fs := &FileStreamer{
-		ctx:          streamCtx,
-		cancel:       streamCancel,
-		vfs:          v,
-		file:         vFile,
-		chunks:       chunks,
-		encKey:       encKey,
-		offset:       0,
-		chunkSize:    chunkSize,
+		ctx:       streamCtx,
+		cancel:    streamCancel,
+		vfs:       v,
+		file:      vFile,
+		chunks:    chunks,
+		encKey:    encKey,
+		offset:    0,
+		chunkSize: chunkSize,
 	}
 	fs.lastPrefetchChunk.Store(-1)
 	fs.lastPrefetchBlock.Store(-1)
@@ -727,7 +726,7 @@ func (s *FileStreamer) triggerRangePrefetchAhead(chunk models.FileChunk, current
 
 		var mem runtime.MemStats
 		runtime.ReadMemStats(&mem)
-		if mem.Alloc > 400*1024*1024 { 
+		if mem.Alloc > 400*1024*1024 {
 			allQueued = false
 			break
 		}
@@ -824,4 +823,3 @@ func (s *FileStreamer) Close() error {
 	}
 	return nil
 }
-

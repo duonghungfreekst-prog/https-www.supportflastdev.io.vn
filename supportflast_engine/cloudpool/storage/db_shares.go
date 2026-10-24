@@ -3,12 +3,11 @@ package storage
 import (
 	"database/sql"
 	"fmt"
-	"strings"
-	"time"
-	"supportflast_engine/cloudpool/models"
 	"github.com/google/uuid"
+	"strings"
+	"supportflast_engine/cloudpool/models"
+	"time"
 )
-
 
 func (s *DB) CreatePublicShare(share *models.PublicShare) error {
 	s.mu.Lock()
@@ -29,8 +28,6 @@ func (s *DB) CreatePublicShare(share *models.PublicShare) error {
 	}
 	return err
 }
-
-
 
 func (s *DB) GetPublicShare(id string) (*models.PublicShare, error) {
 	s.mu.RLock()
@@ -81,8 +78,6 @@ func (s *DB) GetPublicShare(id string) (*models.PublicShare, error) {
 
 	return &sh, nil
 }
-
-
 
 func (s *DB) ListPublicShares() ([]models.PublicShare, error) {
 	s.mu.RLock()
@@ -140,8 +135,6 @@ func (s *DB) ListPublicShares() ([]models.PublicShare, error) {
 	return list, nil
 }
 
-
-
 func (s *DB) GetFolderStats(folderID string) (int64, int, error) {
 	query := `
 	WITH RECURSIVE folder_tree AS (
@@ -160,8 +153,6 @@ func (s *DB) GetFolderStats(folderID string) (int64, int, error) {
 	err := s.db.QueryRow(query, folderID).Scan(&totalSize, &fileCount)
 	return totalSize, fileCount, err
 }
-
-
 
 func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
@@ -220,7 +211,6 @@ func (s *DB) ListFilesInFolderForShare(rootFolderID, currentFolderID string) ([]
 
 // IsFileDescendantOfFolder kiểm tra xem targetFileID có phải là tệp con cháu nằm trong rootFolderID hay không (Bảo vệ chống IDOR qua Public Share)
 
-
 func (s *DB) IsFileDescendantOfFolder(rootFolderID, targetFileID string) bool {
 	if rootFolderID == "" || targetFileID == "" {
 		return false
@@ -246,14 +236,10 @@ func (s *DB) IsFileDescendantOfFolder(rootFolderID, targetFileID string) bool {
 	return isDescendant > 0
 }
 
-
-
 type FileInTree struct {
 	File         models.VirtualFile
 	RelativePath string
 }
-
-
 
 func (s *DB) GetAllFilesInFolderTree(rootFolderID string) ([]FileInTree, error) {
 	s.mu.RLock()
@@ -303,8 +289,6 @@ func (s *DB) GetAllFilesInFolderTree(rootFolderID string) ([]FileInTree, error) 
 	return files, nil
 }
 
-
-
 func (s *DB) RevokePublicShare(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -316,8 +300,6 @@ func (s *DB) RevokePublicShare(id string) error {
 	return err
 }
 
-
-
 func (s *DB) IncrementPublicShareDownload(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -327,7 +309,6 @@ func (s *DB) IncrementPublicShareDownload(id string) error {
 }
 
 // ConsumePublicShareDownload tăng download_count một cách nguyên tử và kiểm tra max_downloads (P1.5)
-
 
 func (s *DB) ConsumePublicShareDownload(id string) error {
 	s.mu.Lock()
@@ -363,8 +344,6 @@ func (s *DB) ConsumePublicShareDownload(id string) error {
 // Storage Breakdown & Analytics
 // -------------------------------------------------------------
 
-
-
 func (s *DB) CreateFileOTP(otp *models.FileAccessOTP) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -387,8 +366,6 @@ func (s *DB) CreateFileOTP(otp *models.FileAccessOTP) error {
 		otp.ID, otp.FileID, otp.FileName, otp.TargetUserID, otp.OTPCode, otp.CreatedBy, otp.ExpiresAt, otp.CreatedAt)
 	return err
 }
-
-
 
 func (s *DB) VerifyAndBurnOTP(fileID, userID, otpCode string) (bool, error) {
 	s.mu.Lock()
@@ -433,7 +410,6 @@ func (s *DB) VerifyAndBurnOTP(fileID, userID, otpCode string) (bool, error) {
 
 // VerifyOTPOnly kiểm tra tính hợp lệ của mã OTP mà không huỷ/burn mã (dùng cho status check hoặc preview probe)
 
-
 func (s *DB) VerifyOTPOnly(fileID, userID, otpCode string) (bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -467,8 +443,6 @@ func (s *DB) VerifyOTPOnly(fileID, userID, otpCode string) (bool, error) {
 
 	return true, nil
 }
-
-
 
 func (s *DB) ListFileOTPs(limit int) ([]models.FileAccessOTP, error) {
 	s.mu.RLock()
@@ -519,16 +493,12 @@ func (s *DB) ListFileOTPs(limit int) ([]models.FileAccessOTP, error) {
 	return list, nil
 }
 
-
-
 func (s *DB) RevokeFileOTP(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("DELETE FROM file_access_otps WHERE id = ?", id)
 	return err
 }
-
-
 
 func (s *DB) CreateFileAccessRequest(req *models.FileAccessRequest) error {
 	s.mu.Lock()
@@ -552,8 +522,6 @@ func (s *DB) CreateFileAccessRequest(req *models.FileAccessRequest) error {
 		req.ID, req.FileID, req.FileName, req.UserID, req.Username, req.UserDisplayName, req.Status, req.OTPCode, req.CreatedAt, req.UpdatedAt)
 	return err
 }
-
-
 
 func (s *DB) ListFileAccessRequests(status string) ([]models.FileAccessRequest, error) {
 	s.mu.RLock()
@@ -585,8 +553,6 @@ func (s *DB) ListFileAccessRequests(status string) ([]models.FileAccessRequest, 
 	return list, nil
 }
 
-
-
 func (s *DB) ApproveFileAccessRequest(requestID, otpCode string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -594,8 +560,6 @@ func (s *DB) ApproveFileAccessRequest(requestID, otpCode string) error {
 	_, err := s.db.Exec(`UPDATE file_access_requests SET status = 'approved', otp_code = ?, updated_at = ? WHERE id = ?`, otpCode, time.Now(), requestID)
 	return err
 }
-
-
 
 func (s *DB) RejectFileAccessRequest(requestID string) error {
 	s.mu.Lock()

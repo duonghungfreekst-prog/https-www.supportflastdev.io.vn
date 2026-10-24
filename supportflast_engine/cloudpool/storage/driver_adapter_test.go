@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 func TestDBDriver_SQLiteDefaults(t *testing.T) {

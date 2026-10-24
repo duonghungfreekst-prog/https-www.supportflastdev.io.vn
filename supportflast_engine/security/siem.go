@@ -47,43 +47,43 @@ type SecurityEvent struct {
 
 // ThreatAnalysisResult kết quả đánh giá phân tích nguy cơ từ SIEM AI
 type ThreatAnalysisResult struct {
-	EventID            string                 `json:"event_id"`
-	EventType          string                 `json:"event_type"`
-	ClientIP           string                 `json:"client_ip"`
-	Path               string                 `json:"path"`
-	Method             string                 `json:"method"`
-	ThreatScore        int                    `json:"threat_score"`
-	RiskLevel          string                 `json:"risk_level"`
-	RiskColor          string                 `json:"risk_color"`
-	ActionRecommended  string                 `json:"action_recommended"`
-	ThreatIndicators   []string               `json:"threat_indicators"`
-	IPReputation       string                 `json:"ip_reputation"`
-	Summary            string                 `json:"summary"`
-	Timestamp          string                 `json:"timestamp"`
-	Details            map[string]interface{} `json:"details,omitempty"`
+	EventID           string                 `json:"event_id"`
+	EventType         string                 `json:"event_type"`
+	ClientIP          string                 `json:"client_ip"`
+	Path              string                 `json:"path"`
+	Method            string                 `json:"method"`
+	ThreatScore       int                    `json:"threat_score"`
+	RiskLevel         string                 `json:"risk_level"`
+	RiskColor         string                 `json:"risk_color"`
+	ActionRecommended string                 `json:"action_recommended"`
+	ThreatIndicators  []string               `json:"threat_indicators"`
+	IPReputation      string                 `json:"ip_reputation"`
+	Summary           string                 `json:"summary"`
+	Timestamp         string                 `json:"timestamp"`
+	Details           map[string]interface{} `json:"details,omitempty"`
 }
 
 // ThreatAlert cấu trúc bản ghi cảnh báo an ninh được lưu trong SIEM AI
 type ThreatAlert struct {
-	AlertID            string   `json:"alert_id"`
-	EventID            string   `json:"event_id"`
-	ClientIP           string   `json:"client_ip"`
-	ThreatScore        int      `json:"threat_score"`
-	RiskLevel          string   `json:"risk_level"`
-	RiskColor          string   `json:"risk_color"`
-	Summary            string   `json:"summary"`
-	ActionRecommended  string   `json:"action_recommended"`
-	ThreatIndicators   []string `json:"threat_indicators"`
-	Timestamp          string   `json:"timestamp"`
-	Path               string   `json:"path"`
-	Method             string   `json:"method"`
+	AlertID           string   `json:"alert_id"`
+	EventID           string   `json:"event_id"`
+	ClientIP          string   `json:"client_ip"`
+	ThreatScore       int      `json:"threat_score"`
+	RiskLevel         string   `json:"risk_level"`
+	RiskColor         string   `json:"risk_color"`
+	Summary           string   `json:"summary"`
+	ActionRecommended string   `json:"action_recommended"`
+	ThreatIndicators  []string `json:"threat_indicators"`
+	Timestamp         string   `json:"timestamp"`
+	Path              string   `json:"path"`
+	Method            string   `json:"method"`
 }
 
 type ThreatAlertsResponse struct {
-	Status             string        `json:"status"`
-	TotalAlertsStored  int           `json:"total_alerts_stored"`
-	ReturnedCount      int           `json:"returned_count"`
-	Alerts             []ThreatAlert `json:"alerts"`
+	Status            string        `json:"status"`
+	TotalAlertsStored int           `json:"total_alerts_stored"`
+	ReturnedCount     int           `json:"returned_count"`
+	Alerts            []ThreatAlert `json:"alerts"`
 }
 
 // SIEMClient quản lý kết nối và đẩy bất đồng bộ sự kiện từ Go Engine sang SIEM AI
@@ -233,7 +233,7 @@ func (c *SIEMClient) dispatchToAI(evt SecurityEvent) {
 			if result.ThreatScore >= 80 {
 				log.Printf("[SIEM] [CRITICAL THREAT] Score=%d/100 | IP=%s | Action=%s | Summary=%s",
 					result.ThreatScore, result.ClientIP, result.ActionRecommended, result.Summary)
-				
+
 				// Tự động bảo vệ phối hợp: Nếu chưa vào IPJail và hành động là JAIL_IP_24H -> đưa vào IPJail
 				if result.ActionRecommended == "JAIL_IP_24H" {
 					if jailed, _, _ := GlobalIPJail.IsJailed(result.ClientIP); !jailed {
@@ -487,9 +487,9 @@ func SIEMStatsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[SIEM] [WARN] Cannot fetch stats from SIEM AI: %v", err)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":   "warning",
-			"service":  "supportflast_engine_siem_proxy",
-			"error":    "SIEM AI Engine is currently offline or unreachable",
+			"status":    "warning",
+			"service":   "supportflast_engine_siem_proxy",
+			"error":     "SIEM AI Engine is currently offline or unreachable",
 			"queue_len": len(GlobalSIEMClient.eventQueue),
 			"queue_cap": cap(GlobalSIEMClient.eventQueue),
 			"timestamp": time.Now().Format(time.RFC3339),

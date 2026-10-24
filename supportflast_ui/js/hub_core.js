@@ -249,6 +249,7 @@
                         <div style="color: ${meta.color}; font-weight: 700;">✔ [${escapeHtml(name)}] Tiếp nhận Ticket ${ticketId}:</div>
                         <div style="color: #cbd5e1; white-space: pre-wrap; margin: 4px 0 4px 10px; line-height: 1.5;">${escapeHtml(data.response)}</div>
                         ${data.triage_metadata ? `<div style="color: #4ade80; font-size: 0.78rem;">> [SLA]: ${data.triage_metadata.severity} | Cam kết xử lý: <strong>${data.triage_metadata.sla}</strong></div>` : ''}
+                        ${data.mode ? `<div style="color: #38bdf8; font-size: 0.75rem;">⚡ [Orchestration Metrics]: Chế độ: <strong>${data.mode.toUpperCase()}</strong> | Router: <strong>${data.router_ms || 0}ms</strong> | Tổng: <strong>${data.wall_clock_ms || duration}ms</strong>${data.speedup ? ` | Tăng tốc: <strong>${data.speedup}x</strong>` : ''}</div>` : ''}
                     `;
                     termBody.appendChild(resDiv);
                 } else {
@@ -384,35 +385,83 @@
             }
         }
 
-        /* 10. Ping & Giám Sát Cụm 5 Subagents thời gian thực */
+
+        /* Helper: Fetch có cơ chế Timeout chủ động chống treo kết nối (Audit P1) */
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 8000, ...fetchOptions } = options;
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(resource, {
+                    ...fetchOptions,
+                    signal: controller.signal
+                });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
+        /* 10. Ping & Giám Sát Cụm Subagents thời gian thực (Đo thực tế 100%, không fake/random - Audit P1) */
         async function checkAllSubagentsLive() {
             const pingBtnText = document.getElementById('btn-ping-text');
             if (pingBtnText) pingBtnText.innerText = 'Đang kiểm tra Cụm AI...';
 
             try {
                 const startTime = performance.now();
-                const res = await fetch('/api/agents');
+                const res = await fetchWithTimeout('/api/agents', { timeout: 4500 });
                 const duration = Math.round(performance.now() - startTime);
 
                 if (res.ok) {
                     const data = await res.json();
-                    if (pingBtnText) pingBtnText.innerText = `● Cụm AI: ${data.total_agents || 5}/5 Online (${duration}ms)`;
+                    const isOnline = data.ai_service_online !== false && data.status !== 'degraded';
+                    const agentCount = data.total_agents || (Array.isArray(data.agents) ? data.agents.length : 0);
 
-                    ['triage', 'tech', 'infra', 'security', 'billing'].forEach(k => {
-                        const el = document.getElementById('latency-' + k);
-                        if (el) {
-                            el.innerText = `Độ trễ: ${(duration + (Math.random() * 2 - 1)).toFixed(2)}ms`;
-                        }
-                    });
+                    if (isOnline) {
+                        if (pingBtnText) pingBtnText.innerText = `● Cụm AI: ${agentCount}/5 Online (${duration}ms)`;
+                        ['triage', 'tech', 'infra', 'security', 'billing'].forEach(k => {
+                            const el = document.getElementById('latency-' + k);
+                            if (el) {
+                                el.innerText = `Độ trễ: ${duration}ms (Online)`;
+                                el.style.color = '#10b981';
+                            }
+                        });
+                    } else {
+                        if (pingBtnText) pingBtnText.innerText = `⚠ Cụm AI: Ngoại tuyến / Giảm tải (${duration}ms)`;
+                        ['triage', 'tech', 'infra', 'security', 'billing'].forEach(k => {
+                            const el = document.getElementById('latency-' + k);
+                            if (el) {
+                                el.innerText = `Trạng thái: Ngoại tuyến`;
+                                el.style.color = '#ef4444';
+                            }
+                        });
+                    }
 
                     setTimeout(() => {
                         if (pingBtnText) pingBtnText.innerText = 'Ping & Giám Sát Cụm AI';
                     }, 4000);
                 } else {
-                    if (pingBtnText) pingBtnText.innerText = '✖ Lỗi kiểm tra AI';
+                    if (pingBtnText) pingBtnText.innerText = `✖ Cụm AI lỗi (HTTP ${res.status})`;
+                    ['triage', 'tech', 'infra', 'security', 'billing'].forEach(k => {
+                        const el = document.getElementById('latency-' + k);
+                        if (el) {
+                            el.innerText = `Trạng thái: Gián đoạn`;
+                            el.style.color = '#ef4444';
+                        }
+                    });
                 }
             } catch (e) {
-                if (pingBtnText) pingBtnText.innerText = '✖ Mất kết nối Gateway';
+                const errMsg = e.name === 'AbortError' ? '✖ Quá thời gian chờ (Timeout 4.5s)' : '✖ Mất kết nối Gateway';
+                if (pingBtnText) pingBtnText.innerText = errMsg;
+                ['triage', 'tech', 'infra', 'security', 'billing'].forEach(k => {
+                    const el = document.getElementById('latency-' + k);
+                    if (el) {
+                        el.innerText = `Trạng thái: Ngoại tuyến`;
+                        el.style.color = '#ef4444';
+                    }
+                });
             }
         }
 
@@ -743,7 +792,7 @@
             container.innerHTML = '<div style="padding:24px;text-align:center;color:#64748b;font-size:0.85rem;">Đang tải danh sách API Key...</div>';
 
             try {
-                const res = await fetch('/api/keys', {
+                const res = await fetchWithTimeout('/api/keys', { timeout: 6000,
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include'
                 });
@@ -2552,7 +2601,7 @@
         async function loadLiveAppsFromAPI() {
             let appsToRender = DEFAULT_FEATURED_APPS;
             try {
-                const res = await fetch('/api/apps');
+                const res = await fetchWithTimeout('/api/apps', { timeout: 6000 });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.status === 'success' && Array.isArray(data.apps) && data.apps.length > 0) {
@@ -4993,7 +5042,7 @@ function renderCyberRadarEmptyState(options) {
             }
         }
 
-        // 4. Cơ chế Tự Động Làm Mới Ngầm & Đồng Bộ Dữ Liệu Tức Thì (Silent Background Auto-Refresh)
+        // 4. Cơ chế Tự Động Làm Mới Ngầm & Đồng Bộ Dữ Liệu Tức Thì (Có Timeout Guard chống treo vĩnh viễn - Audit P1)
         async function silentAutoRefresh(options = {}) {
             if (isSmartRefreshing || window.__isRestoringLiveState) return;
             isSmartRefreshing = true;
@@ -5025,10 +5074,16 @@ function renderCyberRadarEmptyState(options) {
                     tasks.push(pingSubagentsCluster());
                 }
 
-                await Promise.allSettled(tasks);
+                // Global Timeout Guard 10 giây: Đảm bảo toàn bộ nhóm tác vụ không bao giờ làm treo luồng refresh ngầm
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('SilentAutoRefresh timeout guard (10s)')), 10000));
+                await Promise.race([
+                    Promise.allSettled(tasks),
+                    timeoutPromise
+                ]).catch(() => {});
             } catch (err) {
                 // Tự động bỏ qua lỗi âm thầm
             } finally {
+                // Luôn bảo đảm reset cờ isSmartRefreshing ngay cả khi có task lỗi hoặc timeout
                 isSmartRefreshing = false;
             }
         }

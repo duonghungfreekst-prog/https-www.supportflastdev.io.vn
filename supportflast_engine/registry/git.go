@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	gitSyncMutex   sync.Mutex
-	gitIsSyncing   bool
+	gitSyncMutex    sync.Mutex
+	gitIsSyncing    bool
 	gitLastSyncTime time.Time
 	gitLastSyncMsg  string
 )
@@ -73,13 +73,13 @@ func runGitCommand(ctx context.Context, args ...string) (string, error) {
 
 // GitStatusResponse chứa thông tin trạng thái Git hiện tại
 type GitStatusResponse struct {
-	Status            string    `json:"status"`
-	Repository        string    `json:"repository"`
-	Branch            string    `json:"branch"`
-	IsClean           bool      `json:"is_clean"`
-	HasChanges        bool      `json:"has_changes"`
-	ChangedFilesCount int       `json:"changed_files_count"`
-	ChangedFiles      []string  `json:"changed_files"`
+	Status            string   `json:"status"`
+	Repository        string   `json:"repository"`
+	Branch            string   `json:"branch"`
+	IsClean           bool     `json:"is_clean"`
+	HasChanges        bool     `json:"has_changes"`
+	ChangedFilesCount int      `json:"changed_files_count"`
+	ChangedFiles      []string `json:"changed_files"`
 	LastCommit        struct {
 		Hash    string `json:"hash"`
 		Author  string `json:"author"`

@@ -11,11 +11,10 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
+	"time"
 )
-
 
 func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -104,8 +103,6 @@ func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	settings, _ := s.db.GetSettings()
@@ -146,8 +143,6 @@ func (s *Server) handleMkdir(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, folder)
 }
 
-
-
 func (s *Server) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ID      string `json:"id"`
@@ -179,8 +174,6 @@ func (s *Server) handleRenameFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đổi tên thành công"})
 }
 
-
-
 func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
@@ -209,8 +202,6 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa thành công"})
 }
 
-
-
 func (s *Server) handleBulkDeleteFiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -237,8 +228,6 @@ func (s *Server) handleBulkDeleteFiles(w http.ResponseWriter, r *http.Request) {
 		"deleted_count": deletedCount,
 	})
 }
-
-
 
 func toASCIIFallback(s string) string {
 	var sb strings.Builder
@@ -291,7 +280,6 @@ func toASCIIFallback(s string) string {
 
 // formatBytes chuyển đổi số bytes sang chuỗi định dạng KB, MB, GB
 
-
 func formatBytes(b int64) string {
 	if b <= 0 {
 		return "0 B"
@@ -314,7 +302,6 @@ func formatBytes(b int64) string {
 
 // formatContentDisposition tạo header Content-Disposition tuân thủ RFC 6266 và RFC 5987
 // Hỗ trợ tiếng Việt có dấu chuẩn xác và chống CRLF Header Injection (Rule PHAN 3.6)
-
 
 func formatContentDisposition(dispositionType, filename string) string {
 	if dispositionType == "" {
@@ -344,8 +331,6 @@ func formatContentDisposition(dispositionType, filename string) string {
 
 	return fmt.Sprintf(`%s; filename="%s"; filename*=UTF-8''%s`, dispositionType, fallback, rfc5987.String())
 }
-
-
 
 func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
@@ -469,10 +454,6 @@ func (s *Server) handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, vfile.Name, streamer.ModTime(), streamer)
 }
 
-
-
-
-
 func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	if id == "" {
@@ -590,8 +571,6 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request) {
 	// Hỗ trợ đầy đủ HTTP Range (cho phép pause/resume quá trình tải xuống qua trình duyệt hoặc IDM)
 	http.ServeContent(w, r, vfile.Name, modTime, streamer)
 }
-
-
 
 func (s *Server) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 	var folderID string
@@ -903,8 +882,6 @@ func (s *Server) handleDownloadZip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
-
 func (s *Server) handleListTrashFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
@@ -924,8 +901,6 @@ func (s *Server) handleListTrashFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, files)
 }
-
-
 
 func (s *Server) handleRestoreTrashFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -972,8 +947,6 @@ func (s *Server) handleRestoreTrashFile(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã khôi phục tệp thành công"})
 }
 
-
-
 func (s *Server) handlePurgeTrashFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -1009,8 +982,6 @@ func (s *Server) handlePurgeTrashFile(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa vĩnh viễn tệp và giải phóng dung lượng"})
 }
-
-
 
 func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1055,8 +1026,6 @@ func (s *Server) handleEmptyTrash(w http.ResponseWriter, r *http.Request) {
 // Public Share Links Handlers
 // -------------------------------------------------------------
 
-
-
 func (s *Server) handleStorageBreakdown(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	userID := "all"
@@ -1076,7 +1045,6 @@ func (s *Server) handleStorageBreakdown(w http.ResponseWriter, r *http.Request) 
 // - Tối thiểu 8 ký tự
 // - Phải có ít nhất 1 chữ cái (a-z hoặc A-Z)
 // - Phải có ít nhất 1 chữ số (0-9)
-
 
 func (s *Server) handleFileStatus(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")

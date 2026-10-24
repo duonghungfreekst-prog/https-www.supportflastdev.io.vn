@@ -1,9 +1,6 @@
 package omnirouter
 
-
-
 import (
-
 	"bytes"
 
 	"compress/gzip"
@@ -45,22 +42,15 @@ import (
 	"sync/atomic"
 
 	"time"
-
 )
-
-
 
 // upstreamRealHost lưu IP thật của daily-cloudcode-pa.googleapis.com (bypass hosts file)
 
 var upstreamRealHost string
 
-
-
 // geminiProxyClient HTTP client kết nối trực tiếp IP thật (bypass hosts redirect 127.0.0.1)
 
 var geminiProxyClient *http.Client
-
-
 
 func init() {
 
@@ -80,17 +70,12 @@ func init() {
 
 	}
 
-
-
 	dialer := &net.Dialer{
 
-		Timeout:   8 * time.Second,
+		Timeout: 8 * time.Second,
 
 		KeepAlive: 30 * time.Second,
-
 	}
-
-
 
 	geminiProxyClient = &http.Client{
 
@@ -114,9 +99,9 @@ func init() {
 
 				}
 
-				if hostLower == "daily-cloudcode-pa.googleapis.com" || 
+				if hostLower == "daily-cloudcode-pa.googleapis.com" ||
 
-				   hostLower == "cloudcode-pa.googleapis.com" {
+					hostLower == "cloudcode-pa.googleapis.com" {
 
 					realAddr := net.JoinHostPort(targetHost, port)
 
@@ -131,38 +116,33 @@ func init() {
 			TLSClientConfig: &tls.Config{
 
 				InsecureSkipVerify: false,
-
 			},
 
-			ForceAttemptHTTP2:     true,
+			ForceAttemptHTTP2: true,
 
-			DisableKeepAlives:     false,
+			DisableKeepAlives: false,
 
-			DisableCompression:    true, // Max Speed: Cấm nén gzip khối, truyền raw SSE chunks
+			DisableCompression: true, // Max Speed: Cấm nén gzip khối, truyền raw SSE chunks
 
-			MaxIdleConns:          500,
+			MaxIdleConns: 500,
 
-			MaxIdleConnsPerHost:   250,
+			MaxIdleConnsPerHost: 250,
 
-			IdleConnTimeout:       180 * time.Second,
+			IdleConnTimeout: 180 * time.Second,
 
-			TLSHandshakeTimeout:   2 * time.Second,
+			TLSHandshakeTimeout: 2 * time.Second,
 
 			ResponseHeaderTimeout: 30 * time.Second,
 
 			ExpectContinueTimeout: 100 * time.Millisecond,
 
-			WriteBufferSize:       2048,
+			WriteBufferSize: 2048,
 
-			ReadBufferSize:        2048,
-
+			ReadBufferSize: 2048,
 		},
-
 	}
 
 }
-
-
 
 var (
 	proxyClientCache sync.Map // proxyURL -> *http.Client
@@ -234,8 +214,6 @@ func getClientForAccount(proxyURL string) *http.Client {
 	return client
 }
 
-
-
 // resolveRealIP dùng DNS 8.8.8.8 để lấy IP thật (bypass hosts file)
 
 func resolveRealIP(hostname string) string {
@@ -251,7 +229,6 @@ func resolveRealIP(hostname string) string {
 			return d.DialContext(ctx, "udp", "8.8.8.8:53")
 
 		},
-
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -287,8 +264,6 @@ func resolveRealIP(hostname string) string {
 	return addrs[0]
 
 }
-
-
 
 // CachedIDEQuotaResponse luu giu phan hoi Quota tu upstream cho Antigravity IDE
 type CachedIDEQuotaResponse struct {
@@ -362,8 +337,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		startTime := time.Now()
 
-
-
 		// CORS preflight
 
 		if r.Method == http.MethodOptions {
@@ -409,6 +382,23 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(GetDefaultAvailableModels())
 			log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Fast-Path Model List Responder (<0.2ms): Trả về FULL 100%% Model List cho Antigravity IDE (URL: %s)", r.URL.Path)
+			return
+		}
+
+		if strings.Contains(r.URL.Path, "loadCodeAssist") {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.Header().Set("X-ModelRouter9-Aggregated", "true")
+			w.Header().Set("X-ModelRouter9-FastPath", "true")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(GetDefaultCodeAssistResponse())
+			log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Fast-Path loadCodeAssist (<0.2ms): Kích hoạt TIER_PRO cho Antigravity IDE (URL: %s)", r.URL.Path)
+			return
+		}
+
+		if strings.Contains(r.URL.Path, "cclog") {
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 
@@ -495,8 +485,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-
-
 		// Trích model từ request body (nếu có)
 
 		rawModel := extractModelFromBody(bodyBytes)
@@ -516,8 +504,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		model := sanitizeAndUpgradeModel(mappedModel)
 		log.Printf("[ENGINE] [GEMINI-PROXY] 🔍 Sau alias+sanitize: rawModel=%q → mapped=%q → model=%q", rawModel, mappedModel, model)
 
-
-
 		// Chuẩn hóa model theo yêu cầu của client
 		// NGUYÊN TẮC: TUYỆT ĐỐI KHÔNG tự ý chèn model dự phòng (Claude Sonnet / Gemini Flash...)
 		// khi người dùng không cấu hình nguồn dự phòng.
@@ -534,11 +520,7 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-
-
 		log.Printf("[ENGINE] [GEMINI-PROXY] ⚡ Antigravity IDE: %s %s (Host: %s, Model: %s, Tiers: %v)", r.Method, r.URL.Path, r.Host, model, modelTiers)
-
-
 
 		// KIEM TRA HAN MUC QUOTA CUA CLIENT API KEY TRUOC KHI GOI POOL AI:
 		// Đảm bảo từng API Key hoạt động hoàn toàn độc lập, không bị ảnh hưởng chéo lẫn nhau:
@@ -640,8 +622,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		}
 
-
-
 		// Lọc tài khoản không bị cooldown
 
 		var readyAccounts []ProviderConnection
@@ -670,8 +650,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		}
 
-
-
 		numAccounts := len(readyAccounts)
 		_ = numAccounts // dùng trong orderAccountsForModel
 
@@ -681,8 +659,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		// Nếu không có thông tin quota -> fallback về Session Affinity round-robin thông thường.
 		startIdx := selectWeightedStartIndex(readyAccounts, model)
 
-
-
 		var lastErr error
 
 		var resp *http.Response
@@ -690,8 +666,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		var usedAccount *ProviderConnection
 
 		var successfulModel string
-
-
 
 		// Duyệt tuần tự qua các model tiers (Cascade Fallback)
 
@@ -710,15 +684,11 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 			}
 
-
-
 			// Xoay vòng tài khoản (Load balancing & Failover)
 
 			for attempt := 0; attempt < maxAttempts; attempt++ {
 
 				acc := orderedAccounts[attempt]
-
-
 
 				creds, cErr := GetValidCredentials(db, &acc)
 
@@ -730,8 +700,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				}
 
-
-
 				// Xác định Project ID chuẩn mực: Antigravity IDE mặc định sử dụng "aicode-consumers"
 
 				targetProject := "aicode-consumers"
@@ -741,8 +709,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					targetProject = strings.TrimSpace(creds.ProjectId)
 
 				}
-
-
 
 				// Chuẩn hóa JSON body an toàn tuyệt đối
 
@@ -860,8 +826,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					finalBodyBytes = bytes.ReplaceAll(finalBodyBytes, []byte("\""+model+"\""), []byte("\""+tierModel+"\""))
 				}
 
-
-
 				// Tạo request mới với finalBodyBytes
 
 				fReq, reqErr := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
@@ -873,8 +837,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 
 				}
-
-
 
 				// Copy headers gốc từ IDE (loại bỏ Authorization, Host, Connection, User-Project, Content-Length và Accept-Encoding)
 
@@ -896,8 +858,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				}
 
-
-
 				// Thiết lập Authorization chuẩn xác theo tài khoản Pool (KHÔNG thêm X-Goog-User-Project để tránh xung đột quota project cá nhân)
 
 				fReq.Header.Set("Authorization", "Bearer "+creds.AccessToken)
@@ -918,8 +878,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				}
 
-
-
 				// Chọn HTTP client phù hợp (qua Proxy của tài khoản nếu có cấu hình, hoặc Direct)
 
 				targetClient := geminiProxyClient
@@ -929,8 +887,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					targetClient = getClientForAccount(creds.ProxyUrl)
 
 				}
-
-
 
 				rResp, doErr := targetClient.Do(fReq)
 
@@ -960,8 +916,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 
 				}
-
-
 
 				// Tự động Refresh Token nếu gặp 401 Unauthorized
 
@@ -1005,8 +959,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 						_ = UpdateProviderData(db, acc.ID, dataMap)
 
-
-
 						// Thử lại ngay với token mới
 
 						fReqRetry, _ := http.NewRequestWithContext(r.Context(), r.Method, upstreamURL, bytes.NewReader(finalBodyBytes))
@@ -1024,8 +976,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					}
 
 				}
-
-
 
 				if rResp.StatusCode == http.StatusTooManyRequests {
 					var errSnippet string
@@ -1055,8 +1005,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					continue
 				}
 
-
-
 				if rResp.StatusCode != http.StatusOK {
 
 					// Đọc body lỗi để log, hỗ trợ giải nén gzip nếu upstream trả về gzip
@@ -1078,8 +1026,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 					errBody, _ := io.ReadAll(io.LimitReader(errReader, 1024))
 
 					rResp.Body.Close()
-
-
 
 					// Lọc sạch 100% ký tự nhị phân rác, giữ lại UTF-8 hợp lệ
 
@@ -1103,13 +1049,9 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 					}
 
-
-
 					lastErr = fmt.Errorf("upstream error %d on %s for %s: %s", rResp.StatusCode, acc.Name, tierModel, cleanErrStr)
 
 					log.Printf("[ENGINE] [GEMINI-PROXY] ⚠ Upstream lỗi %d trên %s cho model %s: %s", rResp.StatusCode, acc.Email, tierModel, cleanErrStr)
-
-
 
 					isSubOrQuotaLimit := strings.Contains(cleanErrStr, "Individual quota reached") ||
 						strings.Contains(cleanErrStr, "upgrade your subscription") ||
@@ -1129,8 +1071,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 						break
 					}
 
-
-
 					// Nếu lỗi là do hết capacity (503 MODEL_CAPACITY_EXHAUSTED) hoặc 503 Service Unavailable:
 					// Cooldown tài khoản hiện tại 30s và TIẾP TỤC thử các tài khoản khác trong pool cho CHÍNH MODEL ĐÓ.
 					// TUYỆT ĐỐI KHÔNG break để tránh tự ý đổi sang model khác khi người dùng không cấu hình nguồn dự phòng.
@@ -1145,8 +1085,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 				}
 
-
-
 				resp = rResp
 
 				usedAccount = &acc
@@ -1156,8 +1094,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 				break
 
 			}
-
-
 
 			if resp != nil {
 
@@ -1173,8 +1109,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 		}
 
-
-
 		if resp == nil {
 
 			errMsg := fmt.Sprintf(`{"error":{"message":"Toàn bộ tài khoản và fallback tiers đều bận hoặc lỗi: %v","code":"gateway_error"}}`, lastErr)
@@ -1185,28 +1119,27 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 			GlobalLogHub.RecordLog(RouterLogEntry{
 
-				Timestamp:    now.Format("15:04:05.000"),
+				Timestamp: now.Format("15:04:05.000"),
 
 				TimestampISO: now.Format(time.RFC3339Nano),
 
 				ClientDevice: r.RemoteAddr,
 
-				APIKeyName:   "Antigravity IDE (Native Gemini Proxy)",
+				APIKeyName: "Antigravity IDE (Native Gemini Proxy)",
 
-				Endpoint:     r.URL.Path,
+				Endpoint: r.URL.Path,
 
-				Method:       r.Method,
+				Method: r.Method,
 
-				Provider:     "FAILOVER",
+				Provider: "FAILOVER",
 
-				Model:        model,
+				Model: model,
 
-				LatencyMs:    time.Since(startTime).Milliseconds(),
+				LatencyMs: time.Since(startTime).Milliseconds(),
 
-				StatusCode:   http.StatusBadGateway,
+				StatusCode: http.StatusBadGateway,
 
 				ErrorMessage: fmt.Sprintf("%v", lastErr),
-
 			})
 
 			http.Error(w, errMsg, http.StatusBadGateway)
@@ -1216,8 +1149,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 		}
 
 		defer resp.Body.Close()
-
-
 
 		// Nếu là request Quota (retrieveUserQuotaSummary hoặc fetchAvailableModels), xử lý Virtual Aggregated Quota chuẩn 9Router
 		if isQuotaReq && resp.StatusCode == http.StatusOK {
@@ -1291,8 +1222,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 			}
 		}
 
-
-
 		latencyMs := time.Since(startTime).Milliseconds()
 
 		if usedAccount != nil {
@@ -1337,39 +1266,36 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 
 			GlobalLogHub.RecordLog(RouterLogEntry{
 
-				Timestamp:        now.Format("15:04:05.000"),
+				Timestamp: now.Format("15:04:05.000"),
 
-				TimestampISO:     now.Format(time.RFC3339Nano),
+				TimestampISO: now.Format(time.RFC3339Nano),
 
-				ClientDevice:     r.RemoteAddr,
+				ClientDevice: r.RemoteAddr,
 
-				APIKeyName:       "Antigravity IDE (Native Gemini Proxy)",
+				APIKeyName: "Antigravity IDE (Native Gemini Proxy)",
 
-				Endpoint:         r.URL.Path,
+				Endpoint: r.URL.Path,
 
-				Method:           r.Method,
+				Method: r.Method,
 
-				Provider:         usedAccount.Provider,
+				Provider: usedAccount.Provider,
 
-				AccountID:        usedAccount.ID,
+				AccountID: usedAccount.ID,
 
-				AccountName:      "[Tài khoản bảo vệ]",
+				AccountName: "[Tài khoản bảo vệ]",
 
-				Model:            effectiveModel,
+				Model: effectiveModel,
 
-				LatencyMs:        latencyMs,
+				LatencyMs: latencyMs,
 
-				StatusCode:       http.StatusOK,
+				StatusCode: http.StatusOK,
 
-				PromptTokens:     promptTokens,
+				PromptTokens: promptTokens,
 
 				CompletionTokens: completionTokens,
 
-				IsStream:         strings.Contains(r.URL.RawQuery, "alt=sse"),
-
+				IsStream: strings.Contains(r.URL.RawQuery, "alt=sse"),
 			})
-
-
 
 			// Ghi nhận trừ Quota trực tiếp vào Aiven PostgreSQL Cloud và gửi Live Telemetry lên Web cho ĐÚNG CLIENT KEY NÀY
 			if !isQuotaReq {
@@ -1382,8 +1308,6 @@ func HandleGeminiNativeProxy(db *sql.DB) http.HandlerFunc {
 	}
 
 }
-
-
 
 // sanitizeAndUpgradeModel loại bỏ triệt để toàn bộ model đời cũ (2.5, 2.0, 1.5, claude cũ...)
 
@@ -1477,8 +1401,6 @@ func sanitizeAndUpgradeModel(model string) string {
 
 }
 
-
-
 // extractModelFromBody trích model name từ JSON body
 
 func extractModelFromBody(body []byte) string {
@@ -1490,9 +1412,7 @@ func extractModelFromBody(body []byte) string {
 	}
 
 	var req struct {
-
 		Model string `json:"model"`
-
 	}
 
 	if err := json.Unmarshal(body, &req); err == nil && req.Model != "" {
@@ -1552,19 +1472,13 @@ func extractModelFromBody(body []byte) string {
 
 }
 
-
-
 var (
-
-	currentActiveClientKey   string
+	currentActiveClientKey string
 
 	currentActiveClientKeyMu sync.RWMutex
 
-	telemetryHeartbeatOnce   sync.Once
-
+	telemetryHeartbeatOnce sync.Once
 )
-
-
 
 // SetActiveClientKey cập nhật API Key đang hoạt động trong RAM
 
@@ -1579,8 +1493,6 @@ func SetActiveClientKey(key string) {
 	log.Printf("[ENGINE] [KEY] ✔ Đã cập nhật Active Client Key: %s", maskAPIKey(key))
 
 }
-
-
 
 // GetActiveClientKey tìm kiếm và trả về API Key hợp lệ đang được client sử dụng
 
@@ -1598,8 +1510,6 @@ func GetActiveClientKey(db *sql.DB) string {
 
 	}
 
-
-
 	currentActiveClientKeyMu.Lock()
 
 	defer currentActiveClientKeyMu.Unlock()
@@ -1610,8 +1520,6 @@ func GetActiveClientKey(db *sql.DB) string {
 
 	}
 
-
-
 	// 1. Thử đọc từ config.json ở các vị trí khả dụng
 
 	candidatePaths := []string{
@@ -1619,7 +1527,6 @@ func GetActiveClientKey(db *sql.DB) string {
 		"config.json",
 
 		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "config.json"),
-
 	}
 
 	if exePath, err := os.Executable(); err == nil {
@@ -1631,8 +1538,6 @@ func GetActiveClientKey(db *sql.DB) string {
 		candidatePaths = append(candidatePaths, filepath.Join(filepath.Dir(exeDir), "config.json"))
 
 	}
-
-
 
 	for _, p := range candidatePaths {
 
@@ -1666,28 +1571,18 @@ func GetActiveClientKey(db *sql.DB) string {
 
 	}
 
-
-
 	// 2. TUYỆT ĐỐI KHÔNG query CSDL Cloud ORDER BY created_at DESC LIMIT 1!
 	// Mỗi API Key là của người dùng riêng biệt, không được gán bừa API Key của người khác.
-
-
 
 	return ""
 
 }
 
-
-
 var (
-
-	cachedWebServerURL   string
+	cachedWebServerURL string
 
 	cachedWebServerURLMu sync.RWMutex
-
 )
-
-
 
 // SetCachedWebServerURL cho phép cập nhật URL máy chủ web Render
 
@@ -1700,8 +1595,6 @@ func SetCachedWebServerURL(u string) {
 	cachedWebServerURL = strings.TrimRight(u, "/")
 
 }
-
-
 
 // GetWebServerURL lấy URL máy chủ Web Render để gửi báo cáo telemetry (có cache RAM an toàn)
 
@@ -1721,8 +1614,6 @@ func GetWebServerURL() string {
 
 	cachedWebServerURLMu.RUnlock()
 
-
-
 	cachedWebServerURLMu.Lock()
 
 	defer cachedWebServerURLMu.Unlock()
@@ -1733,14 +1624,11 @@ func GetWebServerURL() string {
 
 	}
 
-
-
 	candidatePaths := []string{
 
 		"config.json",
 
 		filepath.Join("storage", "packages", "APP-ROUTER_ModelRouter9_v2.9.0", "config.json"),
-
 	}
 
 	if exePath, err := os.Executable(); err == nil {
@@ -1789,8 +1677,6 @@ func GetWebServerURL() string {
 
 }
 
-
-
 // ReportProxyUsageAsync ghi nhận telemetry thời gian thực và cập nhật hạn mức quota của Active Key
 
 func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName, reqPath string, latencyMs int64, statusCode int, promptTokens, completionTokens int64) {
@@ -1798,8 +1684,6 @@ func ReportProxyUsageAsync(db *sql.DB, effectiveModel, accountEmail, accountName
 	ReportProxyUsageWithKeyAsync(db, "", effectiveModel, accountEmail, accountName, reqPath, latencyMs, statusCode, promptTokens, completionTokens)
 
 }
-
-
 
 // ReportProxyUsageWithKeyAsync ghi nhận telemetry thời gian thực và cập nhật hạn mức quota của Client Key cụ thể hoặc Active Key
 
@@ -1812,8 +1696,6 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 			_ = recover()
 
 		}()
-
-
 
 		// Ưu tiên key được truyền tường minh từ request, nếu không có thì lấy Active Client Key
 
@@ -1838,8 +1720,6 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		}
 
-
-
 		accDisplay := accountEmail
 
 		if accDisplay == "" {
@@ -1854,20 +1734,16 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		}
 
-
-
 		// 1. Cập nhật số lượt gọi (used_requests) và số token tiêu thụ cho Active Client Key
 
 		// used_requests đã được giữ chỗ nguyên tử trong ReserveClientKeyQuota, ở đây truyền 0 để tránh trừ đúp quota
-		if activeKey != "" && !strings.Contains(activeKey, "native-proxy") { RecordKeyUsageAsync(db, activeKey, 0, totTokens) }
-
-
+		if activeKey != "" && !strings.Contains(activeKey, "native-proxy") {
+			RecordKeyUsageAsync(db, activeKey, 0, totTokens)
+		}
 
 		// 2. Ghi nhật ký vào bảng omni_usage_history để hiển thị chi tiết trên Web & Desktop
 
 		RecordUsageHistoryAsync(db, "Antigravity", effectiveModel, accDisplay, activeKey, reqPath, promptTokens, completionTokens, totTokens, 0.0, "success", latencyMs)
-
-
 
 		// 3. Gửi gói tin telemetry lên Web Server Render để Web Console hiển thị thời gian thực
 
@@ -1875,35 +1751,30 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		reportURL := webURL + "/api/v1/client/report"
 
-
-
 		payload := ClientReportPayload{
 
-			ApiKey:          activeKey,
+			ApiKey: activeKey,
 
-			UsedRequests:    1,
+			UsedRequests: 1,
 
-			TotalTokens:     totTokens,
+			TotalTokens: totTokens,
 
-			Model:           effectiveModel,
+			Model: effectiveModel,
 
-			Endpoint:        reqPath,
+			Endpoint: reqPath,
 
-			AccountName:     accDisplay,
+			AccountName: accDisplay,
 
-			ClientDevice:    "Antigravity IDE (Desktop)",
+			ClientDevice: "Antigravity IDE (Desktop)",
 
-			LatencyMs:       latencyMs,
+			LatencyMs: latencyMs,
 
-			StatusCode:      statusCode,
+			StatusCode: statusCode,
 
-			LogMessage:      fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s (%dms - %d tokens)", effectiveModel, latencyMs, totTokens),
+			LogMessage: fmt.Sprintf("[IDE PROXY] Antigravity IDE gọi thành công model %s (%dms - %d tokens)", effectiveModel, latencyMs, totTokens),
 
 			SkipDBIncrement: false,
-
 		}
-
-
 
 		bodyBytes, err := json.Marshal(payload)
 
@@ -1913,13 +1784,9 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 		}
 
-
-
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 
 		defer cancel()
-
-
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, reportURL, bytes.NewReader(bodyBytes))
 
@@ -1935,8 +1802,6 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 		req.Header.Set("x-api-key", activeKey)
 		req.Header.Set("x-9r-cli-token", "6929c9313fb35a0b")
 
-
-
 		client := &http.Client{Timeout: 4 * time.Second}
 
 		resp, err := client.Do(req)
@@ -1951,8 +1816,6 @@ func ReportProxyUsageWithKeyAsync(db *sql.DB, explicitKey, effectiveModel, accou
 
 }
 
-
-
 // StartClientTelemetryHeartbeat định kỳ gửi heartbeat từ Desktop App lên Web Server
 
 func StartClientTelemetryHeartbeat(db *sql.DB) {
@@ -1964,8 +1827,6 @@ func StartClientTelemetryHeartbeat(db *sql.DB) {
 		return
 
 	}
-
-
 
 	telemetryHeartbeatOnce.Do(func() {
 
@@ -1987,15 +1848,11 @@ func StartClientTelemetryHeartbeat(db *sql.DB) {
 
 			}
 
-
-
 			// Giãn chu kỳ gửi Heartbeat từ Desktop lên Web Server sang 60s để giảm tải đường truyền
 
 			ticker := time.NewTicker(60 * time.Second)
 
 			defer ticker.Stop()
-
-
 
 			for range ticker.C {
 
@@ -2007,27 +1864,20 @@ func StartClientTelemetryHeartbeat(db *sql.DB) {
 
 				}
 
-
-
 				webURL := GetWebServerURL()
 
 				hbURL := webURL + "/api/v1/client/heartbeat"
 
-
-
 				payload := map[string]interface{}{
 
-					"event":    "active",
+					"event": "active",
 
-					"client":   "Antigravity IDE (Desktop)",
+					"client": "Antigravity IDE (Desktop)",
 
 					"hostname": hostName,
 
-					"api_key":  activeKey,
-
+					"api_key": activeKey,
 				}
-
-
 
 				b, _ := json.Marshal(payload)
 
@@ -2062,8 +1912,6 @@ func StartClientTelemetryHeartbeat(db *sql.DB) {
 
 }
 
-
-
 // syncLiveQuotaFromUpstreamResponse trích xuất hạn mức chính xác 100% từ phản hồi của Google Cloud Code PA mà Antigravity IDE vừa nhận
 
 func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqPath string, respBytes []byte) {
@@ -2074,83 +1922,61 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 	}
 
-
-
 	var summaryRes struct {
-
 		Groups []struct {
-
 			DisplayName string `json:"displayName"`
 
-			Buckets     []struct {
-
-				BucketId          string  `json:"bucketId"`
-
-				DisplayName       string  `json:"displayName"`
-
-				Window            string  `json:"window"`
-
-				RemainingFraction float64 `json:"remainingFraction"`
-
-				ResetTime         string  `json:"resetTime"`
-
-				Disabled          bool    `json:"disabled"`
-
-			} `json:"buckets"`
-
-		} `json:"groups"`
-
-		QuotaSummary *struct {
-
-			Groups []struct {
+			Buckets []struct {
+				BucketId string `json:"bucketId"`
 
 				DisplayName string `json:"displayName"`
 
-				Buckets     []struct {
-
-					BucketId          string  `json:"bucketId"`
-
-					DisplayName       string  `json:"displayName"`
-
-					Window            string  `json:"window"`
-
-					RemainingFraction float64 `json:"remainingFraction"`
-
-					ResetTime         string  `json:"resetTime"`
-
-					Disabled          bool    `json:"disabled"`
-
-				} `json:"buckets"`
-
-			} `json:"groups"`
-
-		} `json:"quotaSummary"`
-
-		Models map[string]struct {
-
-			DisplayName string `json:"displayName"`
-
-			QuotaInfo   *struct {
+				Window string `json:"window"`
 
 				RemainingFraction float64 `json:"remainingFraction"`
 
-				ResetTime         string  `json:"resetTime"`
+				ResetTime string `json:"resetTime"`
 
+				Disabled bool `json:"disabled"`
+			} `json:"buckets"`
+		} `json:"groups"`
+
+		QuotaSummary *struct {
+			Groups []struct {
+				DisplayName string `json:"displayName"`
+
+				Buckets []struct {
+					BucketId string `json:"bucketId"`
+
+					DisplayName string `json:"displayName"`
+
+					Window string `json:"window"`
+
+					RemainingFraction float64 `json:"remainingFraction"`
+
+					ResetTime string `json:"resetTime"`
+
+					Disabled bool `json:"disabled"`
+				} `json:"buckets"`
+			} `json:"groups"`
+		} `json:"quotaSummary"`
+
+		Models map[string]struct {
+			DisplayName string `json:"displayName"`
+
+			QuotaInfo *struct {
+				RemainingFraction float64 `json:"remainingFraction"`
+
+				ResetTime string `json:"resetTime"`
 			} `json:"quotaInfo"`
-
 		} `json:"models"`
-
 	}
-
-
 
 	if err := json.Unmarshal(respBytes, &summaryRes); err != nil {
 
 		return
 
 	}
-
-
 
 	parsedQuotas := make(map[string]QuotaItem)
 
@@ -2162,8 +1988,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 	}
 
-
-
 	for _, g := range groups {
 
 		gName := strings.ToLower(g.DisplayName)
@@ -2171,8 +1995,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 		isGem := strings.Contains(gName, "gemini")
 
 		isCld := strings.Contains(gName, "claude") || strings.Contains(gName, "gpt")
-
-
 
 		for _, b := range g.Buckets {
 
@@ -2184,15 +2006,11 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 			isSession := win == "5h" || strings.Contains(bText, "five hour") || strings.Contains(bText, "5h") || win == "daily"
 
-
-
 			if !isWeekly && !isSession {
 
 				continue
 
 			}
-
-
 
 			remFrac := b.RemainingFraction
 
@@ -2212,8 +2030,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 			}
 
-
-
 			remPct := math.Round(remFrac*1000) / 10
 
 			total := 1000
@@ -2221,8 +2037,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 			remCount := int(math.Round(float64(total) * remFrac))
 
 			used := total - remCount
-
-
 
 			var rPtr *string
 
@@ -2234,8 +2048,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 			}
 
-
-
 			if isGem {
 
 				if isSession {
@@ -2245,7 +2057,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 						Total: total, Used: used, RemainingPercentage: remPct,
 
 						ResetAt: rPtr, DisplayName: "Gemini (5h)", Unlimited: false,
-
 					}
 
 				} else if isWeekly {
@@ -2255,7 +2066,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 						Total: total, Used: used, RemainingPercentage: remPct,
 
 						ResetAt: rPtr, DisplayName: "Gemini (Weekly)", Unlimited: false,
-
 					}
 
 				}
@@ -2269,7 +2079,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 						Total: total, Used: used, RemainingPercentage: remPct,
 
 						ResetAt: rPtr, DisplayName: "Claude & GPT (5h)", Unlimited: false,
-
 					}
 
 				} else if isWeekly {
@@ -2279,7 +2088,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 						Total: total, Used: used, RemainingPercentage: remPct,
 
 						ResetAt: rPtr, DisplayName: "Claude & GPT (Weekly)", Unlimited: false,
-
 					}
 
 				}
@@ -2289,8 +2097,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 		}
 
 	}
-
-
 
 	// Nếu là fetchAvailableModels, trích quota các model con
 
@@ -2339,14 +2145,11 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 				Total: total, Used: total - remCount, RemainingPercentage: remPct,
 
 				ResetAt: rPtr, DisplayName: disp, Unlimited: false,
-
 			}
 
 		}
 
 	}
-
-
 
 	if len(parsedQuotas) == 0 {
 
@@ -2354,13 +2157,9 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 	}
 
-
-
 	// Lưu ngay vào RAM Cache của Go Engine
 
 	SetCachedQuotas(acc.ID, parsedQuotas)
-
-
 
 	// Cập nhật CSDL Aiven PostgreSQL Cloud
 
@@ -2380,17 +2179,15 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 		_ = UpdateProviderData(db, acc.ID, dataMap)
 
-		log.Printf("[ENGINE] [QUOTA-SYNC] ✔ Đã đồng bộ Quota thực tế từ IDE cho tài khoản %s (%d hạn mức: Gemini 5h=%.1f%%, Weekly=%.1f%%)", 
+		log.Printf("[ENGINE] [QUOTA-SYNC] ✔ Đã đồng bộ Quota thực tế từ IDE cho tài khoản %s (%d hạn mức: Gemini 5h=%.1f%%, Weekly=%.1f%%)",
 
-			acc.Email, len(parsedQuotas), 
+			acc.Email, len(parsedQuotas),
 
-			parsedQuotas["gemini_session"].RemainingPercentage, 
+			parsedQuotas["gemini_session"].RemainingPercentage,
 
 			parsedQuotas["gemini_weekly"].RemainingPercentage)
 
 	}
-
-
 
 	// Gửi Live Telemetry về Web Render để Web UI cập nhật ngay lập tức
 
@@ -2404,21 +2201,21 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 		payload := ClientReportPayload{
 
-			ApiKey:       activeKey,
+			ApiKey: activeKey,
 
-			Model:        "QuotaSync",
+			Model: "QuotaSync",
 
-			Endpoint:     reqPath,
+			Endpoint: reqPath,
 
-			AccountName:  acc.Email,
+			AccountName: acc.Email,
 
 			ClientDevice: "Antigravity IDE (Live Quota Sync)",
 
-			StatusCode:   200,
+			StatusCode: 200,
 
-			LogMessage: fmt.Sprintf("[LIVE QUOTA] Đồng bộ hạn mức chuẩn xác từ IDE cho %s: Gemini 5h=%.0f%%, Weekly=%.0f%%, Claude Weekly=%.0f%%", 
+			LogMessage: fmt.Sprintf("[LIVE QUOTA] Đồng bộ hạn mức chuẩn xác từ IDE cho %s: Gemini 5h=%.0f%%, Weekly=%.0f%%, Claude Weekly=%.0f%%",
 
-				acc.Email, 
+				acc.Email,
 
 				parsedQuotas["gemini_session"].RemainingPercentage,
 
@@ -2427,7 +2224,6 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 				parsedQuotas["claude_gpt_weekly"].RemainingPercentage),
 
 			SkipDBIncrement: true,
-
 		}
 
 		b, _ := json.Marshal(payload)
@@ -2458,11 +2254,7 @@ func syncLiveQuotaFromUpstreamResponse(db *sql.DB, acc *ProviderConnection, reqP
 
 }
 
-
-
 var tokenRefreshWorkerOnce sync.Once
-
-
 
 // StartBackgroundTokenRefreshWorker chạy ngầm định kỳ 3 phút tự động quét và làm mới token trước khi hết hạn
 
@@ -2477,8 +2269,6 @@ func StartBackgroundTokenRefreshWorker(db *sql.DB) {
 			ticker := time.NewTicker(3 * time.Minute)
 
 			defer ticker.Stop()
-
-
 
 			checkAndRefresh := func() {
 
@@ -2552,11 +2342,7 @@ func StartBackgroundTokenRefreshWorker(db *sql.DB) {
 
 			}
 
-
-
 			checkAndRefresh()
-
-
 
 			for range ticker.C {
 
@@ -2687,7 +2473,6 @@ func selectWeightedStartIndex(accounts []ProviderConnection, model string) int {
 	}
 	return n - 1
 }
-
 
 // applyUserModelAlias tra cứu User Alias Mapping (KV: mitm_alias/mappings) để ánh xạ model slot IDE
 // sang model thực tế người dùng đã cấu hình trong UI (ví dụ: "gemini-3.8-flash-medium" -> "gemini-3.1-pro-high")
@@ -2995,7 +2780,9 @@ func buildVirtualAggregatedQuota(raw []byte) []byte {
 
 // GetDefaultVirtualAggregatedQuota trả về Virtual Aggregated Quota chuẩn 100% cho mọi model ngay từ khi khởi động
 func GetDefaultVirtualAggregatedQuota() []byte {
-	return []byte(`{
+	resetWeekly := time.Now().AddDate(0, 0, 7).Truncate(24 * time.Hour).Format(time.RFC3339)
+	reset5h := time.Now().Add(5 * time.Hour).Format(time.RFC3339)
+	return []byte(fmt.Sprintf(`{
   "groups": [
     {
       "displayName": "Gemini Models",
@@ -3005,7 +2792,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
           "displayName": "Weekly Limit",
           "window": "WEEKLY",
           "remainingFraction": 1.0,
-          "resetTime": "2026-10-30T00:00:00Z",
+          "resetTime": "%s",
           "disabled": false
         },
         {
@@ -3013,7 +2800,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
           "displayName": "5-Hour Limit",
           "window": "FIVE_HOUR",
           "remainingFraction": 1.0,
-          "resetTime": "2026-10-24T03:00:00Z",
+          "resetTime": "%s",
           "disabled": false
         }
       ]
@@ -3026,7 +2813,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
           "displayName": "Weekly Limit",
           "window": "WEEKLY",
           "remainingFraction": 1.0,
-          "resetTime": "2026-10-30T00:00:00Z",
+          "resetTime": "%s",
           "disabled": false
         },
         {
@@ -3034,7 +2821,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
           "displayName": "5-Hour Limit",
           "window": "FIVE_HOUR",
           "remainingFraction": 1.0,
-          "resetTime": "2026-10-24T03:00:00Z",
+          "resetTime": "%s",
           "disabled": false
         }
       ]
@@ -3050,7 +2837,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
             "displayName": "Weekly Limit",
             "window": "WEEKLY",
             "remainingFraction": 1.0,
-            "resetTime": "2026-10-30T00:00:00Z",
+            "resetTime": "%s",
             "disabled": false
           },
           {
@@ -3058,7 +2845,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
             "displayName": "5-Hour Limit",
             "window": "FIVE_HOUR",
             "remainingFraction": 1.0,
-            "resetTime": "2026-10-24T03:00:00Z",
+            "resetTime": "%s",
             "disabled": false
           }
         ]
@@ -3071,7 +2858,7 @@ func GetDefaultVirtualAggregatedQuota() []byte {
             "displayName": "Weekly Limit",
             "window": "WEEKLY",
             "remainingFraction": 1.0,
-            "resetTime": "2026-10-30T00:00:00Z",
+            "resetTime": "%s",
             "disabled": false
           },
           {
@@ -3079,26 +2866,27 @@ func GetDefaultVirtualAggregatedQuota() []byte {
             "displayName": "5-Hour Limit",
             "window": "FIVE_HOUR",
             "remainingFraction": 1.0,
-            "resetTime": "2026-10-24T03:00:00Z",
+            "resetTime": "%s",
             "disabled": false
           }
         ]
       }
     ]
   }
-}`)
+}`, resetWeekly, reset5h, resetWeekly, reset5h, resetWeekly, reset5h, resetWeekly, reset5h))
 }
 
 // GetDefaultAvailableModels trả về danh sách model khả dụng với đầy đủ quota 100%
 func GetDefaultAvailableModels() []byte {
-	return []byte(`{
+	resetWeekly := time.Now().AddDate(0, 0, 7).Truncate(24 * time.Hour).Format(time.RFC3339)
+	return []byte(fmt.Sprintf(`{
   "models": {
     "gemini-3.8-flash-medium": {
       "displayName": "Gemini 3.8 Flash (Medium)",
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gemini-3.8-flash-high": {
@@ -3106,7 +2894,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gemini-3.8-flash-low": {
@@ -3114,7 +2902,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "claude-sonnet-4-6": {
@@ -3122,7 +2910,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "claude-opus-4-6-thinking": {
@@ -3130,7 +2918,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gpt-oss-120b-medium": {
@@ -3138,7 +2926,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gemini-3.1-pro-high": {
@@ -3146,7 +2934,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gemini-3.1-pro-low": {
@@ -3154,7 +2942,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "gemini-pro-agent": {
@@ -3162,7 +2950,7 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     },
     "4-argon": {
@@ -3170,9 +2958,30 @@ func GetDefaultAvailableModels() []byte {
       "isInternal": false,
       "quotaInfo": {
         "remainingFraction": 1.0,
-        "resetTime": "2026-10-30T00:00:00Z"
+        "resetTime": "%s"
       }
     }
   }
+}`, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly, resetWeekly))
+}
+
+// GetDefaultCodeAssistResponse trả về phản hồi TIER_PRO chuẩn cho loadCodeAssist
+func GetDefaultCodeAssistResponse() []byte {
+	return []byte(`{
+  "codeAssistEnabled": true,
+  "billingTier": "TIER_PRO",
+  "userTier": "TIER_PRO",
+  "allowedModels": [
+    "gemini-3.8-flash-medium",
+    "gemini-3.8-flash-high",
+    "gemini-3.8-flash-low",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6-thinking",
+    "gpt-oss-120b-medium",
+    "gemini-3.1-pro-high",
+    "gemini-3.1-pro-low",
+    "gemini-pro-agent",
+    "4-argon"
+  ]
 }`)
 }

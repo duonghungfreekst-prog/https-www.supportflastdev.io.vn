@@ -1329,8 +1329,8 @@ func VerifyPINHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"valid":  true,
+		"status":  "success",
+		"valid":   true,
 		"message": "Xác thực mã PIN hợp lệ",
 	})
 }

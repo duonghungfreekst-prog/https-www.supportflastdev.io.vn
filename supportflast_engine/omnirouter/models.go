@@ -67,13 +67,13 @@ type ClientSyncResponse struct {
 	Accounts        []ClientAccountPayload `json:"accounts"`
 
 	// Quota thực tế của Client Key (phân biệt rõ với Quota của Upstream Accounts)
-	ClientQuota     *ClientKeyQuotaInfo    `json:"client_quota,omitempty"`
-	QuotaRemaining  int64                  `json:"quota_remaining"`
-	QuotaLimit      int64                  `json:"quota_limit"`
-	UsedRequests    int64                  `json:"used_requests"`
-	TotalTokens     int64                  `json:"total_tokens"`
-	LastQuotaAt     string                 `json:"last_quota_at,omitempty"`
-	UpdatedAt       string                 `json:"updated_at,omitempty"`
+	ClientQuota    *ClientKeyQuotaInfo `json:"client_quota,omitempty"`
+	QuotaRemaining int64               `json:"quota_remaining"`
+	QuotaLimit     int64               `json:"quota_limit"`
+	UsedRequests   int64               `json:"used_requests"`
+	TotalTokens    int64               `json:"total_tokens"`
+	LastQuotaAt    string              `json:"last_quota_at,omitempty"`
+	UpdatedAt      string              `json:"updated_at,omitempty"`
 }
 
 // ClientAccountPayload thông tin tài khoản cho client (đã cô lập token upstream, mọi request AI qua Server Proxy)
@@ -192,7 +192,6 @@ type CmdQuickstartPayload struct {
 	BashLinuxMac string `json:"bash_linux_mac"`
 	CurlTest     string `json:"curl_test"`
 }
-
 
 // ClientHeartbeatPayload gói dữ liệu heartbeat từ máy khách gửi lên Web Master
 type ClientHeartbeatPayload struct {

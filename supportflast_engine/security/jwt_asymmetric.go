@@ -421,7 +421,3 @@ func ConstantTimeCompareTokenHash(tokenA, tokenB string) bool {
 	hB := sha256.Sum256([]byte(tokenB))
 	return subtle.ConstantTimeCompare(hA[:], hB[:]) == 1
 }
-
-
-
-

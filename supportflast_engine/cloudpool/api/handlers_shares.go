@@ -6,16 +6,15 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
-	"github.com/google/uuid"
+	"time"
 )
-
 
 func (s *Server) handleCreatePublicShare(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -114,14 +113,12 @@ func (s *Server) handleCreatePublicShare(w http.ResponseWriter, r *http.Request)
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"success":      true,
-		"share_token":  shareToken,
-		"share":        share,
-		"message":      fmt.Sprintf("Đã tạo link chia sẻ %s thành công!", targetType),
+		"success":     true,
+		"share_token": shareToken,
+		"share":       share,
+		"message":     fmt.Sprintf("Đã tạo link chia sẻ %s thành công!", targetType),
 	})
 }
-
-
 
 func (s *Server) handleListPublicShares(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -149,8 +146,6 @@ func (s *Server) handleListPublicShares(w http.ResponseWriter, r *http.Request) 
 
 	writeJSON(w, http.StatusOK, shares)
 }
-
-
 
 func (s *Server) handleRevokePublicShare(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -187,8 +182,6 @@ func (s *Server) handleRevokePublicShare(w http.ResponseWriter, r *http.Request)
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã thu hồi link chia sẻ thành công"})
 }
-
-
 
 func (s *Server) handlePublicShareInfo(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
@@ -228,8 +221,6 @@ func (s *Server) handlePublicShareInfo(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, resp)
 }
-
-
 
 func (s *Server) handlePublicShareBrowseFolder(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
@@ -277,8 +268,6 @@ func (s *Server) handlePublicShareBrowseFolder(w http.ResponseWriter, r *http.Re
 		"items":             items,
 	})
 }
-
-
 
 func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
@@ -347,18 +336,16 @@ func (s *Server) handlePublicShareStream(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Disposition", formatContentDisposition("inline", targetFileName))
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-	
+
 	if models.IsMediaStreamable(mimeType) {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 	} else {
 		w.Header().Set("Cache-Control", "no-cache, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 	}
-	
+
 	http.ServeContent(w, r, targetFileName, streamer.ModTime(), streamer)
 }
-
-
 
 func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
@@ -509,16 +496,12 @@ func (s *Server) handlePublicShareDownload(w http.ResponseWriter, r *http.Reques
 // Storage Breakdown & Analytics Handler
 // -------------------------------------------------------------
 
-
-
 func generateSecureOTP() string {
 	b := make([]byte, 3)
 	_, _ = rand.Read(b)
-	num := (int(b[0])<<16 | int(b[1])<<8 | int(b[2]))%900000 + 100000
+	num := (int(b[0])<<16|int(b[1])<<8|int(b[2]))%900000 + 100000
 	return fmt.Sprintf("%06d", num)
 }
-
-
 
 func (s *Server) handleVerifyFileOTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -563,16 +546,14 @@ func (s *Server) handleVerifyFileOTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"status":       "success",
-		"message":      "Mở khóa tệp tin thành công! Mã OTP đã được sử dụng (1 lần).",
-		"file_id":      req.FileID,
-		"file_name":    fileName,
-		"otp_burned":   true,
-		"auto_unlock":  true, // Frontend dùng để tự động mở file
+		"status":      "success",
+		"message":     "Mở khóa tệp tin thành công! Mã OTP đã được sử dụng (1 lần).",
+		"file_id":     req.FileID,
+		"file_name":   fileName,
+		"otp_burned":  true,
+		"auto_unlock": true, // Frontend dùng để tự động mở file
 	})
 }
-
-
 
 func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -620,8 +601,6 @@ func (s *Server) handleRequestFileOTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleListMyFileRequests(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
@@ -644,8 +623,6 @@ func (s *Server) handleListMyFileRequests(w http.ResponseWriter, r *http.Request
 	}
 	writeJSON(w, http.StatusOK, myRequests)
 }
-
-
 
 func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -717,8 +694,6 @@ func (s *Server) handleGenerateFileOTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleListFileOTPs(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
@@ -733,8 +708,6 @@ func (s *Server) handleListFileOTPs(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, otps)
 }
-
-
 
 func (s *Server) handleRevokeFileOTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -764,8 +737,6 @@ func (s *Server) handleRevokeFileOTP(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã thu hồi và hủy mã OTP thành công"})
 }
 
-
-
 func (s *Server) handleListAdminAccessRequests(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
@@ -780,8 +751,6 @@ func (s *Server) handleListAdminAccessRequests(w http.ResponseWriter, r *http.Re
 	}
 	writeJSON(w, http.StatusOK, requests)
 }
-
-
 
 func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -853,8 +822,6 @@ func (s *Server) handleApproveAccessRequest(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-
-
 func (s *Server) handleRejectAccessRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -878,8 +845,6 @@ func (s *Server) handleRejectAccessRequest(w http.ResponseWriter, r *http.Reques
 	_ = s.db.RejectFileAccessRequest(req.RequestID)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã từ chối yêu cầu cấp OTP"})
 }
-
-
 
 func (s *Server) handleOTPPendingCount(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -912,4 +877,3 @@ func (s *Server) handleOTPPendingCount(w http.ResponseWriter, r *http.Request) {
 // -------------------------------------------------------------
 // Recycle Bin (Trash) Handlers
 // -------------------------------------------------------------
-

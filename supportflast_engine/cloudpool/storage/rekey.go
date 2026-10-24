@@ -103,11 +103,21 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 			rows.Close()
 			return err
 		}
-		if e != nil { a.email = *e }
-		if n != nil { a.name = *n }
-		if av != nil { a.avatar = *av }
-		if c != nil { a.creds = *c }
-		if t != nil { a.token = *t }
+		if e != nil {
+			a.email = *e
+		}
+		if n != nil {
+			a.name = *n
+		}
+		if av != nil {
+			a.avatar = *av
+		}
+		if c != nil {
+			a.creds = *c
+		}
+		if t != nil {
+			a.token = *t
+		}
 		records = append(records, a)
 	}
 	rows.Close()
@@ -161,10 +171,18 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 			userRows.Close()
 			return err
 		}
-		if un != nil { u.username = *un }
-		if e != nil { u.email = *e }
-		if d != nil { u.display = *d }
-		if av != nil { u.avatar = *av }
+		if un != nil {
+			u.username = *un
+		}
+		if e != nil {
+			u.email = *e
+		}
+		if d != nil {
+			u.display = *d
+		}
+		if av != nil {
+			u.avatar = *av
+		}
 		urecords = append(urecords, u)
 	}
 	userRows.Close()
@@ -205,4 +223,3 @@ func (s *DB) RekeyDatabase(oldPassphrase, newPassphrase string) error {
 	log.Printf("[ENGINE] RekeyDatabase hoàn tất thành công cho %d accounts và %d users", len(records), len(urecords))
 	return nil
 }
-

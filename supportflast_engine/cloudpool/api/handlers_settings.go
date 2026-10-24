@@ -19,12 +19,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
 	"supportflast_engine/registry"
+	"time"
 )
-
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := s.db.GetStats()
@@ -44,8 +43,6 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, stats)
 }
 
-
-
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.db.ListAccounts()
 	if err != nil {
@@ -54,8 +51,6 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, accounts)
 }
-
-
 
 func (s *Server) handleOAuthURL(w http.ResponseWriter, r *http.Request) {
 	settings, err := s.db.GetSettings()
@@ -74,8 +69,6 @@ func (s *Server) handleOAuthURL(w http.ResponseWriter, r *http.Request) {
 		"redirect_url": redirectURL,
 	})
 }
-
-
 
 func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
@@ -129,8 +122,6 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, acc)
 }
 
-
-
 func (s *Server) handleAddServiceAccount(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -165,8 +156,6 @@ func (s *Server) handleAddServiceAccount(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, acc)
 }
 
-
-
 func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil || user.Role != "admin" {
@@ -191,8 +180,6 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa tài khoản thành công"})
 }
-
-
 
 func (s *Server) handleRefreshAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -286,8 +273,6 @@ func (s *Server) handleRepairAccounts(w http.ResponseWriter, r *http.Request) {
 		"message":           msg,
 	})
 }
-
-
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -387,8 +372,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
 }
 
-
-
 func (s *Server) handleTurnstileConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -411,8 +394,6 @@ func (s *Server) handleTurnstileConfig(w http.ResponseWriter, r *http.Request) {
 		"site_key": siteKey,
 	})
 }
-
-
 
 func (s *Server) handleRemoteInfo(w http.ResponseWriter, r *http.Request) {
 	settings, _ := s.db.GetSettings()
@@ -446,15 +427,15 @@ func (s *Server) handleRemoteInfo(w http.ResponseWriter, r *http.Request) {
 	publicURL := registry.GetRequestBaseURL(r)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"local_url":       fmt.Sprintf("http://localhost:%d", port),
-		"public_url":      publicURL,
-		"detected_scheme": scheme,
-		"detected_host":   host,
-		"lan_ips":         ips,
-		"lan_web_urls":   lanURLs,
-		"webdav_url":     fmt.Sprintf("http://localhost:%d/webdav", port),
-		"lan_webdav_urls": webdavURLs,
-		"webdav_user":    settings.WebDAVUsername,
+		"local_url":         fmt.Sprintf("http://localhost:%d", port),
+		"public_url":        publicURL,
+		"detected_scheme":   scheme,
+		"detected_host":     host,
+		"lan_ips":           ips,
+		"lan_web_urls":      lanURLs,
+		"webdav_url":        fmt.Sprintf("http://localhost:%d/webdav", port),
+		"lan_webdav_urls":   webdavURLs,
+		"webdav_user":       settings.WebDAVUsername,
 		"windows_mount_cmd": fmt.Sprintf(`net use Z: http://localhost:%d/webdav /user:%s [PASSWORD]`, port, settings.WebDAVUsername),
 		"cloudflare_tunnel_guide": `Cài đặt Cloudflare Tunnel để truy cập từ xa toàn cầu:
 1. Tải cloudflared: winget install --id Cloudflare.cloudflared
@@ -462,8 +443,6 @@ func (s *Server) handleRemoteInfo(w http.ResponseWriter, r *http.Request) {
 3. Bạn sẽ nhận được đường link HTTPS miễn phí dạng https://xxxx.trycloudflare.com để truy cập từ xa mọi lúc mọi nơi!`,
 	})
 }
-
-
 
 func (s *Server) handleToggleAccount(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -498,8 +477,6 @@ func (s *Server) handleToggleAccount(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, acc)
 }
 
-
-
 func (s *Server) handleSQLTables(w http.ResponseWriter, r *http.Request) {
 	tables, err := s.db.GetDatabaseTables()
 	if err != nil {
@@ -508,8 +485,6 @@ func (s *Server) handleSQLTables(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, tables)
 }
-
-
 
 func (s *Server) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -542,8 +517,6 @@ func (s *Server) handleSQLQuery(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-
-
 func (s *Server) handleSQLDownloadDB(w http.ResponseWriter, r *http.Request) {
 	// [BUG FIX] Admin-only guard — prevents unauthorized download of the entire database
 	user := s.getUserFromRequest(r)
@@ -561,8 +534,6 @@ func (s *Server) handleSQLDownloadDB(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, dbPath)
 }
 
-
-
 func (s *Server) handleSQLOptimize(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -575,8 +546,6 @@ func (s *Server) handleSQLOptimize(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã tối ưu hóa và chống phân mảnh CSDL thành công (VACUUM & Optimize)"})
 }
 
-
-
 func (s *Server) handleSQLCheck(w http.ResponseWriter, r *http.Request) {
 	status, err := s.db.CheckDatabaseIntegrity()
 	if err != nil {
@@ -588,8 +557,6 @@ func (s *Server) handleSQLCheck(w http.ResponseWriter, r *http.Request) {
 		"is_ok":  status == "ok",
 	})
 }
-
-
 
 func (s *Server) handleSQLBackup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -609,7 +576,6 @@ func (s *Server) handleSQLBackup(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGDriveBackup thực hiện sao lưu toàn bộ CSDL và upload trực tiếp về Google Drive duongmanhhung9900@gmail.com
-
 
 func findPythonExe() string {
 	candidates := []string{
@@ -631,8 +597,6 @@ func findPythonExe() string {
 	}
 	return "python"
 }
-
-
 
 func findBackupScript(baseDir string) (string, string) {
 	candidates := []string{
@@ -656,7 +620,6 @@ func findBackupScript(baseDir string) (string, string) {
 }
 
 // handleGDriveBackup thực hiện sao lưu toàn bộ CSDL và upload trực tiếp về Google Drive duongmanhhung9900@gmail.com
-
 
 func (s *Server) handleGDriveBackup(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -704,7 +667,6 @@ func (s *Server) handleGDriveBackup(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGDriveBackupHistory lấy danh sách lịch sử các bản sao lưu đã đẩy lên Google Drive
-
 
 func (s *Server) handleGDriveBackupHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -755,8 +717,6 @@ func (s *Server) handleGDriveBackupHistory(w http.ResponseWriter, r *http.Reques
 // User Authentication & Management Handlers
 // -------------------------------------------------------------
 
-
-
 func (s *Server) handleListLogs(w http.ResponseWriter, r *http.Request) {
 	logs, err := s.db.ListActivityLogs(100)
 	if err != nil {
@@ -765,8 +725,6 @@ func (s *Server) handleListLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, logs)
 }
-
-
 
 func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -782,8 +740,6 @@ func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, users)
 }
-
-
 
 func (s *Server) handleUpdateUserQuota(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -814,8 +770,6 @@ func (s *Server) handleUpdateUserQuota(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã cập nhật hạn ngạch thành công"})
 }
 
-
-
 func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -843,8 +797,6 @@ func (s *Server) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã xóa người dùng thành công"})
 }
-
-
 
 func (s *Server) handleUpdateInfo(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -954,8 +906,6 @@ func (s *Server) handleUpdateInfo(w http.ResponseWriter, r *http.Request) {
 		"server_time":      time.Now().Format(time.RFC3339),
 	})
 }
-
-
 
 func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1240,8 +1190,6 @@ func (s *Server) handleUpdateUpload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -1300,8 +1248,6 @@ func (s *Server) handleUpdateRollback(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleRestartEngine(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -1350,8 +1296,6 @@ func (s *Server) handleRestartEngine(w http.ResponseWriter, r *http.Request) {
 // Single-Use OTP File Access & Permission Handlers
 // -------------------------------------------------------------
 
-
-
 func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -1390,8 +1334,6 @@ func (s *Server) handleImportDriveFiles(w http.ResponseWriter, r *http.Request) 
 		"message":        fmt.Sprintf("Đã quét và tự động nạp thành công %d tệp tin có sẵn từ Google Drive vào CloudPool!", count),
 	})
 }
-
-
 
 func (s *Server) handleListDriveFiles(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)

@@ -7,15 +7,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/gdrive"
 	"supportflast_engine/cloudpool/storage"
 	"supportflast_engine/cloudpool/vfs"
 	"supportflast_engine/cloudpool/webdav"
 	"supportflast_engine/internal/middleware"
 	"supportflast_engine/registry"
+	"time"
 )
-
 
 type Server struct {
 	db      *storage.DB
@@ -26,8 +25,6 @@ type Server struct {
 	baseDir string
 	server  *http.Server
 }
-
-
 
 func NewServer(db *storage.DB, gd *gdrive.Manager, vfs *vfs.VFS, port int, uiDir string, baseDir string) *Server {
 	return &Server{
@@ -41,7 +38,6 @@ func NewServer(db *storage.DB, gd *gdrive.Manager, vfs *vfs.VFS, port int, uiDir
 }
 
 // ChunkedUploadSession holds state for a multi-chunk upload in progress.
-
 
 func (s *Server) Start() error {
 	if err := InitJWTKeys(s.baseDir); err != nil {
@@ -113,7 +109,6 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/admin/otp/reject-request", s.handleRejectAccessRequest)
 	mux.HandleFunc("/api/admin/otp/pending-count", s.handleOTPPendingCount) // Polling badge thông báo
 
-
 	mux.HandleFunc("/api/settings", s.handleSettings)
 	mux.HandleFunc("/api/remote/info", s.handleRemoteInfo)
 	mux.HandleFunc("/api/tunnel/start", s.handleTunnelStart)
@@ -167,8 +162,8 @@ func (s *Server) Start() error {
 	handler := s.securityMiddleware(middleware.Gzip(mux))
 
 	s.server = &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.port),
-		Handler:      handler,
+		Addr:              fmt.Sprintf(":%d", s.port),
+		Handler:           handler,
 		ReadHeaderTimeout: 20 * time.Second,
 		ReadTimeout:       60 * time.Minute,
 		WriteTimeout:      0,
@@ -179,8 +174,6 @@ func (s *Server) Start() error {
 	return s.server.ListenAndServe()
 }
 
-
-
 func (s *Server) Stop(ctx context.Context) error {
 	if s.server != nil {
 		return s.server.Shutdown(ctx)
@@ -190,13 +183,12 @@ func (s *Server) Stop(ctx context.Context) error {
 
 // Security Middleware (Rule PHAN 3.4 & 3.5)
 
-
 func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Security Headers (Rule PHAN 3.4)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		
-		// [BUG FIX] Stored XSS Mitigation: 
+
+		// [BUG FIX] Stored XSS Mitigation:
 		// If streaming a raw user-uploaded file inline, we MUST sandbox it to prevent it from executing malicious JS
 		// in the context of the CloudPool domain.
 		if strings.HasPrefix(r.URL.Path, "/api/files/stream") || strings.HasPrefix(r.URL.Path, "/api/public/share/stream") {
@@ -249,7 +241,6 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 
 // JSON Helper
 
-
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
@@ -257,7 +248,6 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 // Error Helper (Rule PHAN 3.5 - Mask internal error from client, log server side)
-
 
 func writeError(w http.ResponseWriter, status int, clientMsg string, serverErr error) {
 	if serverErr != nil {
@@ -276,7 +266,6 @@ func writeError(w http.ResponseWriter, status int, clientMsg string, serverErr e
 // so the cookie is sent in cross-origin/subdomain requests.
 // When accessed via HTTP (localhost), use SameSite=Lax (Secure not needed).
 
-
 func setAuthCookie(w http.ResponseWriter, r *http.Request, token string, maxAge int) {
 	isHTTPS := registry.GetRequestScheme(r) == "https" ||
 		r.TLS != nil ||
@@ -293,7 +282,7 @@ func setAuthCookie(w http.ResponseWriter, r *http.Request, token string, maxAge 
 		// [BUG FIX] CSRF Security Mitigation
 		// Never use SameSiteNoneMode because UI and API are on the exact same domain.
 		// Using SameSiteNoneMode allows cross-site requests to send cookies, enabling CSRF.
-		sameSite = http.SameSiteLaxMode 
+		sameSite = http.SameSiteLaxMode
 		secure = true
 	}
 
@@ -320,4 +309,3 @@ func setAuthCookie(w http.ResponseWriter, r *http.Request, token string, maxAge 
 // -------------------------------------------------------------
 // API Handlers
 // -------------------------------------------------------------
-

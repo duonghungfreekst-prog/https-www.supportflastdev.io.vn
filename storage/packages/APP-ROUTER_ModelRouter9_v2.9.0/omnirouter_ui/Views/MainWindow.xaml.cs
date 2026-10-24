@@ -1384,10 +1384,7 @@ public partial class MainWindow : Window
                 {
                     _lastActiveTab = initialSettings.Launcher.LastActiveTab.Trim();
                 }
-                if (_lastActiveTab == "console" || _lastActiveTab == "stats" || _lastActiveTab == "logs")
-                {
-                    _lastActiveTab = "mitm";
-                }
+// Giu nguyen tab nguoi dung lua chon
             }
             catch (Exception tabEx)
             {
@@ -1413,6 +1410,46 @@ public partial class MainWindow : Window
                     if (!string.IsNullOrEmpty(_lastActiveTab))
                     {
                         _ = AppWebView.CoreWebView2.ExecuteScriptAsync($"if (typeof switchTab === 'function') {{ switchTab('{_lastActiveTab}'); }}");
+                    }
+                    try
+                    {
+                        string projectRoot = GetProjectRoot();
+                        string cfgPath = System.IO.Path.Combine(projectRoot, "config.json");
+                        if (!System.IO.File.Exists(cfgPath))
+                        {
+                            cfgPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                        }
+                        if (System.IO.File.Exists(cfgPath))
+                        {
+                            string cfgJson = System.IO.File.ReadAllText(cfgPath);
+                            using var doc = System.Text.Json.JsonDocument.Parse(cfgJson);
+                            string sUrl = doc.RootElement.TryGetProperty("web_server_url", out var su) ? su.GetString() ?? "" : "";
+                            string aKey = doc.RootElement.TryGetProperty("master_api_key", out var ak) ? ak.GetString() ?? "" : "";
+                            if (string.IsNullOrEmpty(aKey) && doc.RootElement.TryGetProperty("api_key", out var ak2))
+                            {
+                                aKey = ak2.GetString() ?? "";
+                            }
+                            if (string.IsNullOrEmpty(sUrl)) sUrl = "https://www.supportflastdev.io.vn";
+                            if (!string.IsNullOrEmpty(aKey))
+                            {
+                                string injectJs = $@"
+                                    try {{
+                                        localStorage.setItem('omnirouter_web_url', '{sUrl}');
+                                        localStorage.setItem('omnirouter_web_key', '{aKey}');
+                                        const ui = document.getElementById('web-server-url-input');
+                                        const ki = document.getElementById('web-api-key-input');
+                                        if (ui) ui.value = '{sUrl}';
+                                        if (ki) ki.value = '{aKey}';
+                                        if (typeof testWebConnection === 'function') setTimeout(() => testWebConnection(true), 400);
+                                    }} catch(e) {{ console.warn(e); }}
+                                ";
+                                _ = AppWebView.CoreWebView2.ExecuteScriptAsync(injectJs);
+                            }
+                        }
+                    }
+                    catch (Exception cfgEx)
+                    {
+                        Console.WriteLine($"[UI {{DateTime.Now:HH:mm:ss}}] [WARN] Không thể nạp config.json cho WebView2: {{cfgEx.Message}}");
                     }
                 }
             };

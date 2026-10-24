@@ -339,8 +339,8 @@ type virtualFileInfo struct {
 	vfile *models.VirtualFile
 }
 
-func (fi *virtualFileInfo) Name() string       { return fi.vfile.Name }
-func (fi *virtualFileInfo) Size() int64        { return fi.vfile.SizeBytes }
+func (fi *virtualFileInfo) Name() string { return fi.vfile.Name }
+func (fi *virtualFileInfo) Size() int64  { return fi.vfile.SizeBytes }
 func (fi *virtualFileInfo) Mode() os.FileMode {
 	if fi.vfile.IsDir {
 		return os.ModeDir | 0755
@@ -412,4 +412,3 @@ func CreateWebDAVHandler(vfs *vfs.VFS, db *storage.DB) http.Handler {
 		davHandler.ServeHTTP(w, reqWithUser)
 	})
 }
-

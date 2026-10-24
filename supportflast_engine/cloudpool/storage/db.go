@@ -20,8 +20,8 @@ import (
 	"supportflast_engine/database"
 
 	_ "github.com/go-sql-driver/mysql"
-	_ "modernc.org/sqlite"
 	"github.com/google/uuid"
+	_ "modernc.org/sqlite"
 )
 
 // Cấu hình Google OAuth 2.0 Client ID & Secret mặc định chính thức
@@ -95,8 +95,6 @@ func applyStoragePragmas(db *sql.DB) {
 	_, _ = db.Exec("PRAGMA synchronous = NORMAL;")
 }
 
-
-
 type DB struct {
 	db      *sql.DB
 	path    string
@@ -146,7 +144,6 @@ func (s *DB) Checkpoint() error {
 }
 
 // SQLDB trả về con trỏ *sql.DB bên dưới để sử dụng trực tiếp nếu cần
-
 
 func (s *DB) SQLDB() *sql.DB {
 	return s.db
@@ -209,8 +206,6 @@ func openPostgresConnection(dsn string) (*DB, error) {
 	return s, nil
 }
 
-
-
 func openSQLiteConnection(dbPath string) (*DB, error) {
 	if strings.TrimSpace(dbPath) == "" {
 		dbPath = ResolveDBPath()
@@ -262,8 +257,6 @@ func (s *DB) Path() string {
 
 // Checkpoint đã được loại bỏ do không dùng SQLite
 
-
-
 func (s *DB) Close() error {
 	s.cacheMu.Lock()
 	if s.cache != nil {
@@ -280,13 +273,9 @@ func (s *DB) Close() error {
 	return nil
 }
 
-
-
 func (s *DB) migrate() error {
 	return s.migrateSQLite()
 }
-
-
 
 func (s *DB) migrateSQLite() error {
 	queries := []string{
@@ -586,8 +575,6 @@ func (s *DB) migrateSQLite() error {
 	return nil
 }
 
-
-
 func (s *DB) setDefaultSetting(key, val string) {
 	var count int
 	_ = s.db.QueryRow("SELECT COUNT(*) FROM settings WHERE `key` = ?", key).Scan(&count)
@@ -601,8 +588,6 @@ func (s *DB) setDefaultSetting(key, val string) {
 // Account Management
 // -------------------------------------------------------------
 
-
-
 func (s *DB) getMasterKey() [32]byte {
 	var val string
 	_ = s.db.QueryRow("SELECT `value` FROM settings WHERE `key` = 'master_passphrase'").Scan(&val)
@@ -614,12 +599,9 @@ func (s *DB) getMasterKey() [32]byte {
 
 // GetMasterKey trả về khóa mã hóa AES master key của CloudPool
 
-
 func (s *DB) GetMasterKey() [32]byte {
 	return s.getMasterKey()
 }
-
-
 
 func (s *DB) migrateEncryptAllPlaintextSecrets() {
 	masterKey := s.getMasterKey()
@@ -721,7 +703,7 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 			ptEmail := core.DecryptSecret(masterKey, newEmail)
 			usernameHash = core.BlindIndexHash(masterKey, ptUsername)
 			emailHash = core.BlindIndexHash(masterKey, ptEmail)
-			
+
 			if needsUpdate {
 				// In SQLite, username is UNIQUE. To avoid duplicate UNIQUE constraints during migration, we might temporarily conflict if hash isn't replacing properly, but it should be fine.
 				_, _ = s.db.Exec("UPDATE cloudpool_users SET username = ?, email = ?, display_name = ?, avatar_url = ?, username_hash = ?, email_hash = ? WHERE id = ?", newUsername, newEmail, newDisplay, newAvatar, usernameHash, emailHash, rec.id)
@@ -747,8 +729,6 @@ func (s *DB) migrateEncryptAllPlaintextSecrets() {
 		}
 	}
 }
-
-
 
 func (s *DB) EnsurePostgreSQLCloudPoolDataReady() error {
 	s.mu.Lock()
@@ -814,7 +794,6 @@ func (s *DB) EnsurePostgreSQLCloudPoolDataReady() error {
 	}
 
 	// 6. Tự động đồng bộ dự phòng sang file SQLite cục bộ nếu file SQLite bị xóa hoặc rỗng
-	
 
 	log.Printf("[ENGINE] [STORAGE] Xác nhận CSDL Aiven PostgreSQL Cloud sẵn sàng 100%%: %d tài khoản Google Drive, %d tệp tin VFS, %d chunk dữ liệu.",
 		accCount, fileCount, chunkCount)
@@ -822,7 +801,6 @@ func (s *DB) EnsurePostgreSQLCloudPoolDataReady() error {
 }
 
 // seedDefaultSettingsIdempotent khởi tạo toàn bộ cấu hình mặc định bắt buộc
-
 
 func (s *DB) seedDefaultSettingsIdempotent() {
 	s.setDefaultSetting("master_passphrase", "cloudpool_secure_master_key_2026")
@@ -862,15 +840,12 @@ func (s *DB) seedDefaultSettingsIdempotent() {
 // AutoSyncFromSnapshotIfEmpty tự động kiểm tra CSDL và phục hồi dữ liệu từ bản sao lưu JSON snapshot
 // nếu bảng accounts hoặc virtual_files đang rỗng (hỗ trợ khi xóa SQLite hoặc deploy container mới).
 
-
 func (s *DB) AutoSyncFromSnapshotIfEmpty() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	return s.syncFromSnapshotUnlocked()
 }
-
-
 
 func (s *DB) syncFromSnapshotUnlocked() error {
 	var accCount, fileCount int
@@ -903,8 +878,6 @@ func (s *DB) syncFromSnapshotUnlocked() error {
 
 	return nil
 }
-
-
 
 func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	var payload cloudPoolSnapshotPayload
@@ -1093,8 +1066,6 @@ func (s *DB) restoreCloudPoolSnapshot(data []byte) (int, int, int, error) {
 	return insertedAccounts, insertedFiles, insertedChunks, nil
 }
 
-
-
 func findCloudPoolSnapshot() ([]byte, string, error) {
 	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
 	if dataDir == "" {
@@ -1163,8 +1134,6 @@ func findCloudPoolSnapshot() ([]byte, string, error) {
 
 	return nil, "", fmt.Errorf("không tìm thấy file cloudpool_snapshot.json hoặc backup zip hợp lệ")
 }
-
-
 
 func (s *DB) restoreAccountsFromOAuthTokens() (int, error) {
 	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
@@ -1249,8 +1218,6 @@ func (s *DB) restoreAccountsFromOAuthTokens() (int, error) {
 	return restored, nil
 }
 
-
-
 func parseFlexibleTimestamp(val interface{}) interface{} {
 	if val == nil {
 		return nil
@@ -1266,8 +1233,6 @@ func parseFlexibleTimestamp(val interface{}) interface{} {
 	return s
 }
 
-
-
 func getSnapshotStr(m map[string]interface{}, key string) string {
 	if v, ok := m[key]; ok && v != nil {
 		if s, ok := v.(string); ok {
@@ -1277,8 +1242,6 @@ func getSnapshotStr(m map[string]interface{}, key string) string {
 	}
 	return ""
 }
-
-
 
 func getSnapshotInt64(m map[string]interface{}, key string) int64 {
 	if v, ok := m[key]; ok && v != nil {
@@ -1298,14 +1261,9 @@ func getSnapshotInt64(m map[string]interface{}, key string) int64 {
 	return 0
 }
 
-
-
 func getSnapshotInt(m map[string]interface{}, key string) int {
 	return int(getSnapshotInt64(m, key))
 }
-
-
-
 
 type cloudPoolSnapshotPayload struct {
 	Metadata           map[string]interface{}   `json:"_metadata"`
@@ -1321,4 +1279,3 @@ type cloudPoolSnapshotPayload struct {
 	PublicShares       []map[string]interface{} `json:"public_shares"`
 	GDriveBackups      []map[string]interface{} `json:"gdrive_backups"`
 }
-

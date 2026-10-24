@@ -12,7 +12,7 @@ import (
 func main() {
 	uri := os.Getenv("AIVEN_PG_URI")
 	if uri == "" {
-		uri = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
+		log.Fatal("Lỗi: Biến môi trường AIVEN_PG_URI chưa được thiết lập!")
 	}
 	db, err := sql.Open("postgres", uri)
 	if err != nil {

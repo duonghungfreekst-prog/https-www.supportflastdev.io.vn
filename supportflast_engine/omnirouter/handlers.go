@@ -127,7 +127,6 @@ func requireAdminAuth(r *http.Request) bool {
 		}
 	}
 
-
 	// 1. Trích xuất Authorization header và các token dự phòng (X-Admin-Key, X-API-Key)
 
 	authH := strings.TrimSpace(r.Header.Get("Authorization"))
@@ -2761,7 +2760,7 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": "Yêu cầu quyền Quản trị viên (Admin).",
-				"code": "UNAUTHORIZED",
+				"code":  "UNAUTHORIZED",
 			})
 			return
 		}
@@ -3180,18 +3179,18 @@ func HandleListProviders(db *sql.DB) http.HandlerFunc {
 
 		case http.MethodPost:
 			var body struct {
-				Provider             string                 `json:"provider"`
-				Name                 string                 `json:"name"`
-				APIKey               string                 `json:"apiKey"`
-				Token                string                 `json:"token"`
-				Priority             int                    `json:"priority"`
-				IsActive             *bool                  `json:"isActive"`
-				Proxy                string                 `json:"proxy"`
-				ProxyURL             string                 `json:"proxyUrl"`
-				ConnectionProxyURL   string                 `json:"connectionProxyUrl"`
-				ConnectionProxyEnabled *bool                `json:"connectionProxyEnabled"`
-				ProxyPoolID          string                 `json:"proxyPoolId"`
-				ProviderSpecificData map[string]interface{} `json:"providerSpecificData"`
+				Provider               string                 `json:"provider"`
+				Name                   string                 `json:"name"`
+				APIKey                 string                 `json:"apiKey"`
+				Token                  string                 `json:"token"`
+				Priority               int                    `json:"priority"`
+				IsActive               *bool                  `json:"isActive"`
+				Proxy                  string                 `json:"proxy"`
+				ProxyURL               string                 `json:"proxyUrl"`
+				ConnectionProxyURL     string                 `json:"connectionProxyUrl"`
+				ConnectionProxyEnabled *bool                  `json:"connectionProxyEnabled"`
+				ProxyPoolID            string                 `json:"proxyPoolId"`
+				ProviderSpecificData   map[string]interface{} `json:"providerSpecificData"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				http.Error(w, `{"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)

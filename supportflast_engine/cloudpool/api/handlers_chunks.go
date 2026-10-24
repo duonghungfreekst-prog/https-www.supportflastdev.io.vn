@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
 	"log"
 	"net/http"
@@ -13,13 +14,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 	"supportflast_engine/cloudpool/models"
 	"supportflast_engine/cloudpool/storage"
-	"github.com/google/uuid"
+	"sync"
+	"time"
 )
-
 
 type ChunkedUploadSession struct {
 	UploadID    string              `json:"upload_id"`
@@ -28,9 +27,9 @@ type ChunkedUploadSession struct {
 	UserID      string              `json:"user_id"`
 	TotalSize   int64               `json:"total_size"`
 	TotalChunks int                 `json:"total_chunks"`
-	TempDir     string              `json:"temp_dir"` // Thư mục lưu các mảnh trên ổ đĩa: data/temp_chunks/{upload_id}
-	Received    map[int]bool        `json:"received"` // Đánh dấu các index mảnh đã nhận thành công
-	Status      string              `json:"status"`   // "uploading", "assembling", "completed", "error"
+	TempDir     string              `json:"temp_dir"`              // Thư mục lưu các mảnh trên ổ đĩa: data/temp_chunks/{upload_id}
+	Received    map[int]bool        `json:"received"`              // Đánh dấu các index mảnh đã nhận thành công
+	Status      string              `json:"status"`                // "uploading", "assembling", "completed", "error"
 	ResultFile  *models.VirtualFile `json:"result_file,omitempty"` // Resulting VirtualFile when completed
 	ErrorMsg    string              `json:"error_msg,omitempty"`   // Error details if failed
 	mu          sync.Mutex          `json:"-"`
@@ -39,10 +38,7 @@ type ChunkedUploadSession struct {
 
 // chunkedSessions stores active chunked upload sessions keyed by upload_id.
 
-
 var chunkedSessions sync.Map
-
-
 
 func (s *Server) getOrRestoreChunkedSession(uploadID string) (*ChunkedUploadSession, bool) {
 	if uploadID == "" {
@@ -95,7 +91,6 @@ func (s *Server) getOrRestoreChunkedSession(uploadID string) (*ChunkedUploadSess
 
 // cleanupExpiredSessions removes chunked upload sessions older than 2 hours and deletes temp files.
 
-
 func cleanupExpiredSessions(baseDir string) {
 	chunkedSessions.Range(func(key, value interface{}) bool {
 		session, ok := value.(*ChunkedUploadSession)
@@ -147,8 +142,6 @@ func cleanupExpiredSessions(baseDir string) {
 	}
 }
 
-
-
 func StartSessionCleanupWorker(baseDir string) {
 	cleanupWorkerOnce.Do(func() {
 		go func() {
@@ -163,12 +156,9 @@ func StartSessionCleanupWorker(baseDir string) {
 	})
 }
 
-
-
 var cleanupWorkerOnce sync.Once
 
 // StartSessionCleanupWorker khởi chạy background worker định kỳ quét dọn session và thư mục tạm mồ côi
-
 
 func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -311,8 +301,6 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, uploadedFile)
 }
-
-
 
 func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -620,8 +608,6 @@ func (s *Server) handleChunkedUpload(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.URL.Query().Get("upload_id")
 	if uploadID == "" {
@@ -697,7 +683,6 @@ func (s *Server) handleChunkedUploadStatus(w http.ResponseWriter, r *http.Reques
 
 // toASCIIFallback chuyển đổi chuỗi tiếng Việt thành chuỗi ASCII an toàn làm fallback cho client cũ
 
-
 func (s *Server) handleFileChunks(w http.ResponseWriter, r *http.Request) {
 	fileID := r.URL.Query().Get("id")
 	if fileID == "" {
@@ -717,8 +702,6 @@ func (s *Server) handleFileChunks(w http.ResponseWriter, r *http.Request) {
 		"chunks": chunks,
 	})
 }
-
-
 
 func (s *Server) handleIntegrityCheck(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
@@ -767,5 +750,3 @@ func (s *Server) handleIntegrityCheck(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, report)
 }
-
-

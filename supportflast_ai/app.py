@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 from typing import Optional, Dict, Any
 
 from core.subagent_dispatcher import SubagentDispatcher
@@ -16,10 +17,13 @@ from core.security_scanner import PackageSecurityScanner
 from core.siem_engine import SIEMEngine
 
 INTERNAL_SECRET = os.getenv("INTERNAL_SERVICE_SECRET", "").strip()
+IS_PROD = os.getenv("ENVIRONMENT", "").lower() == "production" or os.getenv("GO_ENV", "").lower() == "production" or os.getenv("ENV") == "production" 
 
 INSECURE_INTERNAL_SECRETS = {
     "",
     "CHANGE_ME_INTERNAL_SERVICE_SECRET",
+    "sf_internal_service_prod_secret_2026_a8f9c1d2e3b4",
+    "Admin@2026!SupportFlastSecuredProd",
     "sf_mobile_token_2026",
     "sf_mobile_engine_token_2026",
     "default_secret",
@@ -84,20 +88,28 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS tuân thủ Phần 3.4 (Exact string match, tuyệt đối không dùng *)
-ALLOWED_ORIGINS = [
-    "https://supportflastdev.io.vn",
-    "http://supportflastdev.io.vn",
-    "https://www.supportflastdev.io.vn",
-    "http://www.supportflastdev.io.vn",
-    "https://api.supportflastdev.io.vn",
-    "https://supportflast.dev.io.vn",
-    "http://supportflast.dev.io.vn",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-]
+# CORS tuân thủ Phần 3.4 (Exact string match, siết chặt HTTPS trong Production - Audit P1.4)
+if IS_PROD:
+    ALLOWED_ORIGINS = [
+        "https://supportflastdev.io.vn",
+        "https://www.supportflastdev.io.vn",
+        "https://api.supportflastdev.io.vn",
+        "https://supportflast.dev.io.vn",
+    ]
+else:
+    ALLOWED_ORIGINS = [
+        "https://supportflastdev.io.vn",
+        "https://www.supportflastdev.io.vn",
+        "https://api.supportflastdev.io.vn",
+        "https://supportflast.dev.io.vn",
+        "http://supportflastdev.io.vn",
+        "http://www.supportflastdev.io.vn",
+        "http://supportflast.dev.io.vn",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -125,6 +137,8 @@ class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Nội dung yêu cầu hỗ trợ")
     agent_id: Optional[str] = Field(None, description="Mã Subagent (agent_triage, agent_tech, agent_infra, agent_security, agent_billing)")
     context: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Ngữ cảnh phiên hỗ trợ")
+    mode: Optional[str] = Field("fast", description="Chế độ điều phối: fast (1 agent nhanh), parallel (2-3 agent song song), deep (tối đa 10 agent)")
+    timeout_sec: Optional[float] = Field(15.0, description="Deadline tối đa cho toàn bộ lượt gọi")
 
 class PackageScanRequest(BaseModel):
     file_path: Optional[str] = Field(None, description="Đường dẫn file trên server hoặc tệp cần quét")
@@ -157,9 +171,16 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "Internal server error", "code": "ERR_AI_500"}
     )
 
+@app.get("/livez")
+async def liveness_check():
+    """Liveness probe: kiểm tra tiến trình Python AI còn chạy."""
+    return {"status": "alive", "service": "supportflast_ai"}
+
 @app.get("/health")
+@app.get("/readyz")
 @app.get("/api/health")
 async def health_check():
+    """Readiness probe: xác thực năng lực phục vụ thực tế của Cụm Subagents (Audit P1)."""
     rss_mb = 0.0
     try:
         import psutil
@@ -167,11 +188,44 @@ async def health_check():
         rss_mb = round(mem.rss / (1024 * 1024), 2)
     except Exception:
         pass
+
+    total_agents = len(dispatcher.agents) if (dispatcher and hasattr(dispatcher, 'agents')) else 0
+    if total_agents < 5:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "degraded",
+                "service": "supportflast_ai",
+                "error": "Cụm Subagents AI chưa sẵn sàng (thiếu agent cốt lõi)",
+                "total_agents": total_agents,
+                "memory_rss_mb": rss_mb
+            }
+        )
+
+    from core.llm_engine import llm_engine
     return {
         "status": "healthy",
         "service": "supportflast_ai",
         "domain": "supportflastdev.io.vn",
+        "total_agents": total_agents,
+        "agents_ready": True,
+        "llm_engine_enabled": llm_engine.is_enabled,
+        "llm_model": llm_engine.model_name,
         "memory_rss_mb": rss_mb
+    }
+
+@app.get("/api/model/status")
+@app.get("/api/ai/diagnostics")
+async def model_diagnostics():
+    """Endpoint chẩn đoán kết nối model thực tế cho quản trị viên (Audit P0 & Mục 4)."""
+    from core.llm_engine import llm_engine
+    health = await llm_engine.check_health()
+    return {
+        "service": "supportflast_ai",
+        "gemini_api_key_configured": llm_engine.is_enabled,
+        "model_name": llm_engine.model_name,
+        "concurrency_limit": int(os.getenv("MAX_INFLIGHT_LLM", "8")),
+        "diagnostics": health
     }
 
 @app.get("/api/agents")
@@ -186,7 +240,9 @@ async def get_agents():
 
 @app.post("/api/agents/chat")
 async def chat_with_agent(req: ChatRequest, request: Request):
-    """Gửi yêu cầu tới Subagent cụ thể hoặc tự động phân loại."""
+    """Gửi yêu cầu tới Subagent cụ thể hoặc tự động phân loại theo 3 chế độ (fast, parallel, deep).
+    Tuân thủ kiểm soát Concurrency Semaphore và Deadline tổng (Nút thắt 1, 2, 3).
+    """
     if not verify_internal_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
 
@@ -194,7 +250,13 @@ async def chat_with_agent(req: ChatRequest, request: Request):
     if req.agent_id and req.agent_id not in dispatcher.agents:
         raise HTTPException(status_code=400, detail="Mã Subagent không hợp lệ")
 
-    res = dispatcher.dispatch(query=req.query, agent_id=req.agent_id, context=req.context)
+    res = await dispatcher.adispatch(
+        query=req.query,
+        agent_id=req.agent_id,
+        context=req.context,
+        mode=req.mode or "fast",
+        timeout_sec=req.timeout_sec or 15.0
+    )
     return res
 
 @app.post("/scan")
@@ -224,7 +286,8 @@ async def scan_package(req: PackageScanRequest, request: Request):
     if req.package_name and "name" not in pkg_info:
         pkg_info["name"] = req.package_name
 
-    res = package_scanner.scan(
+    res = await run_in_threadpool(
+        package_scanner.scan,
         file_path=req.file_path,
         package_info=pkg_info,
         raw_content_base64=req.raw_content_base64
@@ -252,7 +315,7 @@ async def siem_analyze(req: SIEMEventRequest, request: Request):
         raise HTTPException(status_code=401, detail="Unauthorized: Yêu cầu xác thực token nội bộ hợp lệ")
 
     event_data = req.model_dump() if hasattr(req, "model_dump") else req.dict()
-    analysis = siem_engine.analyze_event(event_data)
+    analysis = await run_in_threadpool(siem_engine.analyze_event, event_data)
     return analysis
 
 @app.get("/siem/alerts")
@@ -312,8 +375,7 @@ async def startup_security_checks():
     current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
     if is_prod:
         if is_insecure_internal_secret(current_secret):
-            os.environ["INTERNAL_SERVICE_SECRET"] = "sf_internal_service_prod_secret_2026_a8f9c1d2e3b4"
-            logger.warning("[AI] [SECURITY] INTERNAL_SERVICE_SECRET chưa cấu hình hoặc yếu. Đã tự động kích hoạt secret bảo mật dự phòng cho giao tiếp nội bộ.")
+            logger.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET bắt buộc phải được cấu hình qua biến môi trường an toàn trong Production! Không dùng secret mặc định (Audit P0).")
         else:
             logger.info("[AI] [SECURITY] Đã xác thực INTERNAL_SERVICE_SECRET an toàn cho môi trường Production.")
 
@@ -322,8 +384,7 @@ if __name__ == "__main__":
     is_prod = os.getenv("ENV") == "production" or bool(os.getenv("REQUIRE_INTERNAL_AUTH"))
     current_secret = os.getenv("INTERNAL_SERVICE_SECRET", "").strip() or INTERNAL_SECRET
     if is_prod and is_insecure_internal_secret(current_secret):
-        os.environ["INTERNAL_SERVICE_SECRET"] = "sf_internal_service_prod_secret_2026_a8f9c1d2e3b4"
-        logger.warning("[AI] [SECURITY] INTERNAL_SERVICE_SECRET chưa cấu hình hoặc yếu. Đã tự động kích hoạt secret dự phòng.")
+        logger.error("[AI] [SECURITY CRITICAL] INTERNAL_SERVICE_SECRET thiếu hoặc không an toàn trong Production!")
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     logger.info(f"Starting supportflast_ai on {host}:{port}...")

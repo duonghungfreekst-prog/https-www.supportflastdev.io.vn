@@ -115,7 +115,7 @@ ENV PORT=8080 \
     JWT_KEYS_DIR=/app/data/keys \
     DB_DRIVER=postgres \
     CLOUDPOOL_DB_DRIVER=postgres \
-    AIVEN_PG_URI=postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require \
+    AIVEN_PG_URI="" \
     AI_ENGINE_URL=http://supportflast-ai:8000 \
     GOMEMLIMIT=384MiB \
     GOGC=80 \

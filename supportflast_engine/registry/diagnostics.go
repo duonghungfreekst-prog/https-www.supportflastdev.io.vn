@@ -65,18 +65,18 @@ type DatabaseCheckResult struct {
 
 // MemoryCheckResult kết quả kiểm tra bộ nhớ RAM
 type MemoryCheckResult struct {
-	Status             string `json:"status"` // ok, warning
-	Title              string `json:"title"`
-	AllocBytes         uint64 `json:"alloc_bytes"`
-	AllocFormatted     string `json:"alloc_formatted"`
-	TotalAllocBytes    uint64 `json:"total_alloc_bytes"`
+	Status              string `json:"status"` // ok, warning
+	Title               string `json:"title"`
+	AllocBytes          uint64 `json:"alloc_bytes"`
+	AllocFormatted      string `json:"alloc_formatted"`
+	TotalAllocBytes     uint64 `json:"total_alloc_bytes"`
 	TotalAllocFormatted string `json:"total_alloc_formatted"`
-	SysBytes           uint64 `json:"sys_bytes"`
-	SysFormatted       string `json:"sys_formatted"`
-	NumGC              uint32 `json:"num_gc"`
-	Goroutines         int    `json:"goroutines"`
-	StatusDetail       string `json:"status_detail"`
-	Message            string `json:"message"`
+	SysBytes            uint64 `json:"sys_bytes"`
+	SysFormatted        string `json:"sys_formatted"`
+	NumGC               uint32 `json:"num_gc"`
+	Goroutines          int    `json:"goroutines"`
+	StatusDetail        string `json:"status_detail"`
+	Message             string `json:"message"`
 }
 
 // DiskCheckResult kết quả kiểm tra dung lượng ổ đĩa
@@ -97,16 +97,16 @@ type DiskCheckResult struct {
 
 // RSAKeysCheckResult kết quả kiểm tra cặp khóa RSA RS256
 type RSAKeysCheckResult struct {
-	Status               string `json:"status"` // ok, error
-	Title                string `json:"title"`
-	Ready                bool   `json:"ready"`
-	Algorithm            string `json:"algorithm"`
-	KeySizeBits          int    `json:"key_size_bits"`
-	KeysDir              string `json:"keys_dir"`
-	PublicKeyAvailable   bool   `json:"public_key_available"`
-	PrivateKeyAvailable  bool   `json:"private_key_available"`
-	Compliance           string `json:"compliance"`
-	Message              string `json:"message"`
+	Status              string `json:"status"` // ok, error
+	Title               string `json:"title"`
+	Ready               bool   `json:"ready"`
+	Algorithm           string `json:"algorithm"`
+	KeySizeBits         int    `json:"key_size_bits"`
+	KeysDir             string `json:"keys_dir"`
+	PublicKeyAvailable  bool   `json:"public_key_available"`
+	PrivateKeyAvailable bool   `json:"private_key_available"`
+	Compliance          string `json:"compliance"`
+	Message             string `json:"message"`
 }
 
 // NetworkGDriveCheckResult kết quả kiểm tra kết nối Google Drive & mạng ngoài
@@ -123,15 +123,15 @@ type NetworkGDriveCheckResult struct {
 
 // DiagnosticsResponse cấu trúc phản hồi toàn diện của /api/system/diagnostics
 type DiagnosticsResponse struct {
-	Status         string                      `json:"status"`
-	Domain         string                      `json:"domain"`
-	ServerTime     string                      `json:"server_time"`
-	OverallStatus  string                      `json:"overall_status"` // ok (xanh), warning (vàng), error (đỏ)
-	OverallScore   int                         `json:"overall_score"`  // 0 - 100%
-	OverallBadge   string                      `json:"overall_badge"`
-	Rating         string                      `json:"rating"`
-	ChecksSummary  map[string]int              `json:"checks_summary"`
-	Diagnostics    DiagnosticsData             `json:"diagnostics"`
+	Status        string          `json:"status"`
+	Domain        string          `json:"domain"`
+	ServerTime    string          `json:"server_time"`
+	OverallStatus string          `json:"overall_status"` // ok (xanh), warning (vàng), error (đỏ)
+	OverallScore  int             `json:"overall_score"`  // 0 - 100%
+	OverallBadge  string          `json:"overall_badge"`
+	Rating        string          `json:"rating"`
+	ChecksSummary map[string]int  `json:"checks_summary"`
+	Diagnostics   DiagnosticsData `json:"diagnostics"`
 }
 
 // DiagnosticsData chi tiết từng hạng mục kiểm tra

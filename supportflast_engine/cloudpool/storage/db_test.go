@@ -269,34 +269,34 @@ func TestResolveDBPathAndMigratedDB(t *testing.T) {
 	defer db.Close()
 
 	if db.IsSQLite() {
-	// Verify WAL Mode
-	var journalMode string
-	if err := db.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
-		t.Fatalf("Failed to query journal_mode: %v", err)
-	}
-	if journalMode != "wal" && journalMode != "WAL" {
-		t.Fatalf("Expected journal_mode WAL, got %s", journalMode)
-	}
+		// Verify WAL Mode
+		var journalMode string
+		if err := db.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
+			t.Fatalf("Failed to query journal_mode: %v", err)
+		}
+		if journalMode != "wal" && journalMode != "WAL" {
+			t.Fatalf("Expected journal_mode WAL, got %s", journalMode)
+		}
 
-	// Verify Foreign Keys
-	var foreignKeys int
-	if err := db.db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys); err != nil {
-		t.Fatalf("Failed to query foreign_keys: %v", err)
-	}
-	if foreignKeys != 1 {
-		t.Fatalf("Expected foreign_keys 1, got %d", foreignKeys)
-	}
+		// Verify Foreign Keys
+		var foreignKeys int
+		if err := db.db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys); err != nil {
+			t.Fatalf("Failed to query foreign_keys: %v", err)
+		}
+		if foreignKeys != 1 {
+			t.Fatalf("Expected foreign_keys 1, got %d", foreignKeys)
+		}
 
-	// Verify required tables exist
-	requiredTables := []string{"accounts", "users", "virtual_files", "file_chunks", "activity_logs", "login_sessions", "settings", "file_access_otps", "file_access_requests", "public_shares"}
-	for _, tbl := range requiredTables {
-		var count int
-		err := db.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", tbl).Scan(&count)
-		if err != nil || count == 0 {
-			t.Fatalf("Required table %s not found in migrated database", tbl)
+		// Verify required tables exist
+		requiredTables := []string{"accounts", "users", "virtual_files", "file_chunks", "activity_logs", "login_sessions", "settings", "file_access_otps", "file_access_requests", "public_shares"}
+		for _, tbl := range requiredTables {
+			var count int
+			err := db.db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", tbl).Scan(&count)
+			if err != nil || count == 0 {
+				t.Fatalf("Required table %s not found in migrated database", tbl)
+			}
 		}
 	}
-}
 
 }
 
@@ -1779,4 +1779,3 @@ func TestCleanupAndRepairAccounts(t *testing.T) {
 	}
 	t.Logf("Repaired count: %d, emails: %v", repairedCount, repairedEmails)
 }
-

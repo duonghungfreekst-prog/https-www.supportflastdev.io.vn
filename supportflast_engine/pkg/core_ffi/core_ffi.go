@@ -12,12 +12,12 @@ import (
 var (
 	coreDll *syscall.LazyDLL
 
-	procHashSha256Hex       *syscall.LazyProc
-	procFreeRustString      *syscall.LazyProc
-	procFreeRustBytes       *syscall.LazyProc
-	procFfiEncryptAesGcm    *syscall.LazyProc
-	procFfiDecryptAesGcm    *syscall.LazyProc
-	procDeriveKeyArgon2Ffi  *syscall.LazyProc
+	procHashSha256Hex      *syscall.LazyProc
+	procFreeRustString     *syscall.LazyProc
+	procFreeRustBytes      *syscall.LazyProc
+	procFfiEncryptAesGcm   *syscall.LazyProc
+	procFfiDecryptAesGcm   *syscall.LazyProc
+	procDeriveKeyArgon2Ffi *syscall.LazyProc
 )
 
 func init() {
@@ -38,7 +38,7 @@ func cStringToGoString(cStr uintptr) string {
 	if cStr == 0 {
 		return ""
 	}
-	
+
 	var bytes []byte
 	for i := 0; ; i++ {
 		b := *(*byte)(unsafe.Pointer(cStr + uintptr(i)))
@@ -141,23 +141,23 @@ func DeriveKeyArgon2(passphrase string, salt []byte) ([]byte, error) {
 	if len(passphrase) == 0 || len(salt) < 8 {
 		return nil, fmt.Errorf("invalid input")
 	}
-	
+
 	// Convert Go string to null-terminated C string
 	passBytes := append([]byte(passphrase), 0)
-	
+
 	outKey := make([]byte, 32)
-	
+
 	ret, _, _ := procDeriveKeyArgon2Ffi.Call(
 		uintptr(unsafe.Pointer(&passBytes[0])),
 		uintptr(unsafe.Pointer(&salt[0])),
 		uintptr(len(salt)),
 		uintptr(unsafe.Pointer(&outKey[0])),
 	)
-	
+
 	// ret == 0 means success
 	if int32(ret) != 0 {
 		return nil, fmt.Errorf("derive key failed with code: %d", int32(ret))
 	}
-	
+
 	return outKey, nil
 }

@@ -453,7 +453,7 @@ func (v *VFS) UploadFile(ctx context.Context, userID, parentID, fileName string,
 				_ = v.db.DeleteChunksForFile(conflictFile.ID)
 				_ = v.db.UpdateUserUsage(conflictFile.UserID, -conflictFile.SizeBytes)
 				_ = v.db.DeleteVirtualFile(conflictFile.ID)
-				
+
 				if retryErr := v.db.SaveVirtualFile(vFile); retryErr != nil {
 					releaseAllInFlight()
 					return nil, fmt.Errorf("failed to save virtual file metadata after auto-replace retry: %w", retryErr)
@@ -680,7 +680,6 @@ func (v *VFS) DeleteFileOrFolder(ctx context.Context, id string) error {
 	return v.SoftDeleteFileOrFolder(ctx, id)
 }
 
-
 // RenameFileOrFolder renames a file or folder
 func (v *VFS) RenameFileOrFolder(id, newName string) error {
 	vFile, err := v.db.GetVirtualFile(id)
@@ -827,4 +826,3 @@ func (v *VFS) ImportExistingDriveFiles(ctx context.Context, accountID string) (i
 
 	return totalImported, nil
 }
-

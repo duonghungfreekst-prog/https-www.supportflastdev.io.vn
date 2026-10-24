@@ -1,8 +1,8 @@
 package omnirouter
 
 import (
-	_ "embed"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -60,7 +60,6 @@ func getOptimizedModelForSkill(skillID, category, skillModels string) string {
 		return "Gemini 2.5 Pro"
 	}
 }
-
 
 var sharedDBForSkills *sql.DB
 
@@ -649,14 +648,14 @@ func DeepScanActiveSkills() (int, []*ActiveSkillRecord) {
 	resultList := make([]*ActiveSkillRecord, 0, len(allSkills))
 	seenMap := make(map[string]bool)
 	for _, sk := range allSkills {
-	normID := normalizeSkillID(sk.ID)
-	if seenMap[normID] {
-		continue
-	}
-	seenMap[normID] = true
-	if rec, ok := activeSkillsMap[normID]; ok && rec.IsActive {
-		resultList = append(resultList, rec)
-	}
+		normID := normalizeSkillID(sk.ID)
+		if seenMap[normID] {
+			continue
+		}
+		seenMap[normID] = true
+		if rec, ok := activeSkillsMap[normID]; ok && rec.IsActive {
+			resultList = append(resultList, rec)
+		}
 	}
 
 	return len(resultList), resultList
@@ -778,4 +777,3 @@ func HandleToggleSkillEndpoint(w http.ResponseWriter, r *http.Request) {
 		"record":   rec,
 	})
 }
-

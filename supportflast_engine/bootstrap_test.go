@@ -373,4 +373,3 @@ func TestAutoBootstrapping_PostgresFallbackToSQLite(t *testing.T) {
 		t.Fatalf("GetStats trả về nil")
 	}
 }
-

@@ -46,7 +46,7 @@ func GenerateJWTWithRole(userID, username, role string) (string, error) {
 		role = "user"
 	}
 	ttl := registry.GetSessionDuration()
-	
+
 	claims := &security.UserClaims{
 		UserID:    cleanID,
 		Username:  username,
@@ -87,4 +87,3 @@ func VerifyJWTClaims(tokenString string) (*security.UserClaims, error) {
 	}
 	return security.ValidateRS256Token(cleanToken)
 }
-

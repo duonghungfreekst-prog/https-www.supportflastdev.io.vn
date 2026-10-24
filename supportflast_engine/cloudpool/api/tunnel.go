@@ -55,7 +55,7 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 
 	// Sử dụng SSH tích hợp sẵn trên Windows để tạo Tunnel tới localhost.run
 	tunnelCmd = exec.Command("ssh", "-o", "StrictHostKeyChecking=no", "-o", "ServerAliveInterval=30", "-R", "80:localhost:8080", "nokey@localhost.run")
-	
+
 	stdout, err := tunnelCmd.StdoutPipe()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Lỗi tạo đường ống (pipe) mạng", err)
@@ -73,10 +73,10 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tunnelURL = ""
-	
+
 	// Dùng Regex để quét link HTTPS sinh ra từ máy chủ
 	urlRegex := regexp.MustCompile(`https://[a-zA-Z0-9-]+\.lhr\.life`)
-	
+
 	scanOutput := func(r io.Reader) {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
@@ -92,10 +92,10 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[TUNNEL] [WARN] Scanner error: %v", err)
 		}
 	}
-	
+
 	go scanOutput(stdout)
 	go scanOutput(stderr)
-	
+
 	// Giải phóng tiến trình ngầm khi thoát
 	go func() {
 		_ = tunnelCmd.Wait()
@@ -133,4 +133,3 @@ func (s *Server) handleTunnelStop(w http.ResponseWriter, r *http.Request) {
 		"running": false,
 	})
 }
-

@@ -1,12 +1,11 @@
 package storage
 
 import (
-	"time"
+	"github.com/google/uuid"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
-	"github.com/google/uuid"
+	"time"
 )
-
 
 func (s *DB) CreateUser(u *models.User) error {
 	s.mu.Lock()
@@ -29,8 +28,6 @@ func (s *DB) CreateUser(u *models.User) error {
 	}
 	return err
 }
-
-
 
 func (s *DB) GetUserByUsername(username string) (*models.User, error) {
 	s.mu.RLock()
@@ -56,8 +53,6 @@ func (s *DB) GetUserByUsername(username string) (*models.User, error) {
 	return &u, nil
 }
 
-
-
 func (s *DB) GetUserByID(id string) (*models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -79,8 +74,6 @@ func (s *DB) GetUserByID(id string) (*models.User, error) {
 	u.AvatarURL = core.DecryptSecret(masterKey, u.AvatarURL)
 	return &u, nil
 }
-
-
 
 func (s *DB) ListUsers() ([]models.User, error) {
 	s.mu.RLock()
@@ -112,8 +105,6 @@ func (s *DB) ListUsers() ([]models.User, error) {
 	return list, nil
 }
 
-
-
 func (s *DB) DeleteUser(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -126,8 +117,6 @@ func (s *DB) DeleteUser(id string) error {
 	return err
 }
 
-
-
 func (s *DB) UpdateUserQuota(id string, quotaBytes int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -138,8 +127,6 @@ func (s *DB) UpdateUserQuota(id string, quotaBytes int64) error {
 	return err
 }
 
-
-
 func (s *DB) UpdateUserPassword(id, passwordHash string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -147,16 +134,12 @@ func (s *DB) UpdateUserPassword(id, passwordHash string) error {
 	return err
 }
 
-
-
 func (s *DB) UpdateUserSecurityPin(id, pinHash string, tier int) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec("UPDATE cloudpool_users SET security_pin_hash = ?, security_tier = ?, updated_at = ? WHERE id = ?", pinHash, tier, time.Now(), id)
 	return err
 }
-
-
 
 func (s *DB) RecordLoginFailure(username string) (int, bool, error) {
 	s.mu.Lock()
@@ -182,21 +165,17 @@ func (s *DB) RecordLoginFailure(username string) (int, bool, error) {
 	return fails, isLocked, err
 }
 
-
-
 func (s *DB) ResetLoginFailure(username string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	masterKey := s.getMasterKey()
 	usernameHash := core.BlindIndexHash(masterKey, username)
-	
+
 	_, err := s.db.Exec("UPDATE cloudpool_users SET failed_login_count = 0, locked_until = NULL, last_login_at = ?, updated_at = ? WHERE username_hash = ?",
 		time.Now(), time.Now(), usernameHash)
 	return err
 }
-
-
 
 func (s *DB) UpdateUserDisplayName(id, displayName string) error {
 	s.mu.Lock()
@@ -206,8 +185,6 @@ func (s *DB) UpdateUserDisplayName(id, displayName string) error {
 	_, err := s.db.Exec("UPDATE cloudpool_users SET display_name = ?, updated_at = ? WHERE id = ?", encDisplay, time.Now(), id)
 	return err
 }
-
-
 
 func (s *DB) UpdateUserUsage(id string, usedDelta int64) error {
 	s.mu.Lock()
@@ -222,8 +199,6 @@ func (s *DB) UpdateUserUsage(id string, usedDelta int64) error {
 // -------------------------------------------------------------
 // SQL Studio Database Inspector
 // -------------------------------------------------------------
-
-
 
 func (s *DB) LogLoginSession(sess *models.LoginSession) error {
 	s.mu.Lock()
@@ -241,8 +216,6 @@ func (s *DB) LogLoginSession(sess *models.LoginSession) error {
 		sess.ID, sess.UserID, sess.Username, sess.IPAddress, sess.DeviceInfo, sess.LocationInfo, sess.Status, sess.UserAgent, sess.CreatedAt)
 	return err
 }
-
-
 
 func (s *DB) ListLoginSessions(limit int) ([]models.LoginSession, error) {
 	s.mu.RLock()
@@ -274,4 +247,3 @@ func (s *DB) ListLoginSessions(limit int) ([]models.LoginSession, error) {
 // -------------------------------------------------------------
 // Single-Use OTP & File Access Management
 // -------------------------------------------------------------
-

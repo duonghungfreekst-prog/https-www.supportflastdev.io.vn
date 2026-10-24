@@ -86,4 +86,3 @@ func TestDownloadZipValidation(t *testing.T) {
 		t.Errorf("Expected error message mentioning folder_id or file_ids, got: %s", body)
 	}
 }
-

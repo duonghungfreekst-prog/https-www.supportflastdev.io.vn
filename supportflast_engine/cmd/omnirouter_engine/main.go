@@ -63,18 +63,6 @@ func main() {
 	mux := http.NewServeMux()
 	omnirouter.RegisterOmniRouterRoutes(mux, db, false, baseDir)
 
-	// Tự động kích hoạt chuyển hướng DNS (Zero-Delay Intercept) và MITM Server cho Antigravity IDE ngay khi khởi động
-	// Bảo đảm Antigravity IDE được định tuyến ngay lập tức qua ModelRouter9 từ giây đầu tiên,
-	// ngăn chặn triệt để tình trạng request ban đầu bị lọt ra ngoài Google làm trừ quota tài khoản cá nhân.
-	go func() {
-		time.Sleep(200 * time.Millisecond)
-		if err := omnirouter.AutoStartMitm(baseDir); err != nil {
-			log.Printf("[ENGINE] [MITM] ⚠ Cảnh báo khởi động Zero-Delay Intercept: %v", err)
-		} else {
-			log.Printf("[ENGINE] [MITM] ✔ Đã tự động kích hoạt bảo vệ Quota tức thì (Zero-Delay Intercept) cho Antigravity IDE")
-		}
-	}()
-
 	// Nạp trước Active Client Key vào RAM và kích hoạt luồng Live Telemetry Heartbeat
 	go func() {
 		time.Sleep(500 * time.Millisecond)

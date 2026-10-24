@@ -169,7 +169,7 @@ func TestSeedInitialData_AdminOnly(t *testing.T) {
 	}
 
 	// Kiểm tra hash BCrypt hợp lệ
-	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(DefaultAdminPassword))
+	err = bcrypt.CompareHashAndPassword([]byte(hash), []byte(GetInitialAdminPassword()))
 	if err != nil {
 		t.Errorf("Mật khẩu băm BCrypt không khớp với mật khẩu mặc định: %v", err)
 	}
@@ -281,11 +281,11 @@ func TestAuditLogs_AllRequiredActions(t *testing.T) {
 	// - Truy cập Honeypot (honeypot_access)
 	// - Thay đổi cấu hình (config_change, settings_update)
 	testActions := []struct {
-		userID    string
-		action    string
-		ip        string
-		ua        string
-		details   string
+		userID  string
+		action  string
+		ip      string
+		ua      string
+		details string
 	}{
 		{"usr-admin-001", AuditActionLoginSuccess, "192.168.1.10", "Mozilla/5.0", "Admin đăng nhập thành công qua Web UI"},
 		{"", AuditActionLoginFailure, "10.0.0.99", "Python/3.11", "Đăng nhập sai mật khẩu lần 1"},
@@ -640,5 +640,3 @@ func TestDualDatabase_DateTimeAndCompatibility(t *testing.T) {
 		t.Errorf("IsIPBlocked trong mode SQLite vẫn phải nhận diện được IP bị chặn: %v, blocked=%v", err, blocked2)
 	}
 }
-
-

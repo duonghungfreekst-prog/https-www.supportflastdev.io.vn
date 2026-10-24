@@ -238,4 +238,3 @@ func TestOAuthCallbackRoute(t *testing.T) {
 		t.Fatalf("Kỳ vọng route oauth/url được xử lý hợp lệ, thực tế nhận: %d, body: %s", recURL.Code, recURL.Body.String())
 	}
 }
-

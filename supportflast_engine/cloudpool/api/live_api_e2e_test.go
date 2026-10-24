@@ -110,7 +110,7 @@ func TestLiveAPIEndToEndAuditor(t *testing.T) {
 		MimeType:    "application/pdf",
 		SHA256:      "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
 		ChunkCount:  1,
-		IsEncrypted:  true,
+		IsEncrypted: true,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -580,4 +580,3 @@ func TestLiveAPIWithActualProductionDB(t *testing.T) {
 	}
 	t.Logf("=== TOÀN BỘ ENDPOINT TRÊN CSDL PRODUCTION THẬT ĐÃ ĐƯỢC ĐỐI SOÁT HOÀN TẤT ===")
 }
-

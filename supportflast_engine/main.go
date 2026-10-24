@@ -1,8 +1,9 @@
-﻿package main
+package main
 
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -39,6 +40,30 @@ import (
 var (
 	activeServer   *http.Server
 	activeServerMu sync.Mutex
+
+	// aiHTTPTransport tối ưu hóa connection pooling chuyên dụng Go -> Python AI (Nút thắt 4)
+	aiHTTPTransport = &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 32,
+		MaxConnsPerHost:     64,
+		IdleConnTimeout:     90 * time.Second,
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+	}
+
+	// aiHTTPClient tái sử dụng keepalive socket và connection pool cho luồng Chat (Timeout 60s)
+	aiHTTPClient = &http.Client{
+		Transport: aiHTTPTransport,
+		Timeout:   60 * time.Second,
+	}
+
+	// aiFastHTTPClient phục vụ probe kiểm tra danh sách agent / ping (Timeout 3s)
+	aiFastHTTPClient = &http.Client{
+		Transport: aiHTTPTransport,
+		Timeout:   3 * time.Second,
+	}
 )
 
 const (
@@ -69,9 +94,11 @@ type SubagentMeta struct {
 }
 
 type ChatPayload struct {
-	Query   string                 `json:"query"`
-	AgentID string                 `json:"agent_id,omitempty"`
-	Context map[string]interface{} `json:"context,omitempty"`
+	Query      string                 `json:"query"`
+	AgentID    string                 `json:"agent_id,omitempty"`
+	Context    map[string]interface{} `json:"context,omitempty"`
+	Mode       string                 `json:"mode,omitempty"`        // "fast", "parallel", "deep" (Nút thắt 1)
+	TimeoutSec float64                `json:"timeout_sec,omitempty"` // Deadline tổng
 }
 
 var fallbackAgents = []SubagentMeta{
@@ -339,11 +366,11 @@ func createStandardHTTPServer(addr string, handler http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
 		Handler:           handler,
-		ReadHeaderTimeout: 20 * time.Second,
-		ReadTimeout:       60 * time.Minute,
-		WriteTimeout:      0,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      90 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    2 << 20,
+		MaxHeaderBytes:    1 << 20, // 1 MiB chuẩn an toàn (Audit P1)
 	}
 }
 
@@ -365,11 +392,11 @@ func createStandaloneHTTPSServer(addr string, handler http.Handler, tlsConfig *t
 		Addr:              addr,
 		Handler:           handler,
 		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 20 * time.Second,
-		ReadTimeout:       60 * time.Minute,
-		WriteTimeout:      0,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      90 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    2 << 20,
+		MaxHeaderBytes:    1 << 20, // 1 MiB chuẩn an toàn (Audit P1)
 	}
 }
 
@@ -437,6 +464,13 @@ func HandleHealthCheck(w http.ResponseWriter, r *http.Request, autoHTTPSEnabled 
 		"auto_https":  autoHTTPSEnabled,
 	}
 
+	// Trả về đúng HTTP Status Code để Docker Compose curl -f và Kubernetes phát hiện lỗi (Audit P1)
+	if systemStatus != "healthy" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("[ENGINE] [HEALTH] [ERROR] Lỗi serialize phản hồi JSON: %v", err)
 	}
@@ -478,7 +512,11 @@ func main() {
 	// 1.1 Khởi động an toàn: Từ chối chạy nếu phát hiện secret mặc định / placeholder trong Production
 	config.EnsureProductionSecrets()
 	if err := config.ValidateProductionSecrets(); err != nil {
-		log.Printf("[ENGINE] [SECURITY] [WARN] %v", err)
+		if config.IsProduction() {
+			log.Fatalf("[ENGINE] [SECURITY CRITICAL] Dừng khởi động do vi phạm an toàn bí mật Production (Audit P0): %v", err)
+		} else {
+			log.Printf("[ENGINE] [SECURITY] [WARN] %v", err)
+		}
 	}
 	dataDir := bootstrapResult.DataDir
 	dbPath := bootstrapResult.MainDBPath
@@ -503,18 +541,38 @@ func main() {
 	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		HandleHealthCheck(w, r, autoHTTPSConfig.Enabled)
 	}
+	// Liveness Probe (kiểm tra tiến trình còn sống)
+	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"alive","service":"supportflast_engine"}`))
+	})
+	// Readiness Probe & Healthcheck endpoints (kiểm tra toàn diện DB và phụ thuộc)
+	mux.HandleFunc("/readyz", healthHandler)
 	mux.HandleFunc("/api/health", healthHandler)
 	mux.HandleFunc("/health", healthHandler)
 
-	// 1.1. Graceful Shutdown Endpoint (chỉ cho phép localhost)
+	// 1.1. Graceful Shutdown Endpoint (Khóa chặt localhost + xác thực token - Audit P0.3)
 	mux.HandleFunc("/api/system/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		remoteHost, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			remoteHost = r.RemoteAddr
 		}
 		clientIP := security.GetRealClientIP(r)
-		if remoteHost != "127.0.0.1" && remoteHost != "::1" && remoteHost != "localhost" && clientIP != "127.0.0.1" && clientIP != "::1" {
-			http.Error(w, `{"error":"Forbidden: Shutdown endpoint is only accessible from localhost"}`, http.StatusForbidden)
+		isLocalClient := (clientIP == "127.0.0.1" || clientIP == "::1" || clientIP == "localhost")
+		isLocalRemote := (remoteHost == "127.0.0.1" || remoteHost == "::1" || remoteHost == "localhost")
+		if !isLocalClient || !isLocalRemote {
+			http.Error(w, `{"error":"Forbidden: Shutdown endpoint is strictly restricted to local loopback"}`, http.StatusForbidden)
+			return
+		}
+
+		shutdownToken := r.Header.Get("X-Shutdown-Token")
+		expectedToken := os.Getenv("SYSTEM_SHUTDOWN_TOKEN")
+		if expectedToken == "" {
+			expectedToken = config.GetInternalServiceSecret()
+		}
+		if expectedToken == "" || subtle.ConstantTimeCompare([]byte(shutdownToken), []byte(expectedToken)) != 1 {
+			http.Error(w, `{"error":"Unauthorized: Valid X-Shutdown-Token required"}`, http.StatusUnauthorized)
 			return
 		}
 
@@ -548,14 +606,18 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		clientIP := security.GetRealClientIP(r)
 		rayID := r.Header.Get("CF-Ray")
-		if rayID == "" {
-			rayID = security.GenerateRayID()
-		}
 		country := r.Header.Get("CF-IPCountry")
-		if country == "" {
-			country = "VN"
-		}
 		isCF := security.IsCloudflareOrLocalIP(r.RemoteAddr)
+		if rayID == "" {
+			if isCF {
+				rayID = "Cloudflare-Tunnel-Local"
+			} else {
+				rayID = "N/A - Direct Connection"
+			}
+		}
+		if country == "" {
+			country = "Unknown"
+		}
 		sslMode := "Full (Strict) - TLS 1.3"
 		if autoHTTPSConfig.Enabled {
 			sslMode = "Standalone Auto-HTTPS (Let's Encrypt TLS 1.2/1.3)"
@@ -702,6 +764,8 @@ func main() {
 	// 2.6.1. API Tự Động Cập Nhật & Đồng Bộ GitHub (Bảo vệ nghiêm ngặt qua quyền Admin)
 	mux.HandleFunc("/api/admin/git/sync", registry.GitSyncHandler)
 	mux.HandleFunc("/api/admin/git/status", registry.GitStatusHandler)
+	mux.HandleFunc("/api/git/sync", registry.GitSyncHandler)
+	mux.HandleFunc("/api/git/status", registry.GitStatusHandler)
 
 	// 2.7. Tự Động Đồng Bộ Cấu Hình Thiết Bị & Tối Ưu Hóa Hiệu Năng Thích Ứng
 	mux.HandleFunc("/api/device/sync", registry.DeviceSyncHandler)
@@ -714,25 +778,71 @@ func main() {
 	mux.HandleFunc("/api/admin/siem/alerts", security.SIEMAlertsHandler)
 	mux.HandleFunc("/api/admin/siem/stats", security.SIEMStatsHandler)
 
-	// 2. Danh sách 5 Subagents (có cache / fallback)
-	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		// Thử lấy từ AI Engine
-		client := http.Client{Timeout: 2 * time.Second}
-		resp, err := client.Get(getAIEngineURL() + "/api/agents")
-		if err == nil && resp.StatusCode == http.StatusOK {
-			defer resp.Body.Close()
-			io.Copy(w, resp.Body)
+	// 2.0. API Chẩn đoán kết nối Model AI thực tế (Audit P0 & Mục 4)
+	aiDiagHandler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, getAIEngineURL()+"/api/ai/diagnostics", nil)
+		if err != nil {
+			http.Error(w, `{"error":"Failed to create diagnostics request"}`, http.StatusInternalServerError)
 			return
 		}
+		req.Header.Set("X-Internal-Token", getInternalServiceSecret())
 
-		// Fallback trả về cấu hình chuẩn 10 subagents đã lưu
+		resp, errDo := aiFastHTTPClient.Do(req)
+		if errDo != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"status":           "offline",
+				"error":            "Không thể kết nối tới Python AI Engine",
+				"details":          errDo.Error(),
+				"fallback_active":  true,
+				"model_configured": false,
+			})
+			return
+		}
+		defer resp.Body.Close()
+		w.WriteHeader(resp.StatusCode)
+		_, _ = io.Copy(w, resp.Body)
+	}
+	mux.HandleFunc("/api/ai/diagnostics", aiDiagHandler)
+	mux.HandleFunc("/api/model/status", aiDiagHandler)
+
+	// 2. Danh sách 5 Subagents (có cache / fallback)
+	mux.HandleFunc("/api/agents", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		// Thử kết nối trực tiếp tới AI Engine qua Persistent Connection Pool (Timeout 3s - Nút thắt 4)
+		resp, err := aiFastHTTPClient.Get(getAIEngineURL() + "/api/agents")
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var aiData map[string]interface{}
+				if decErr := json.NewDecoder(resp.Body).Decode(&aiData); decErr == nil {
+					aiData["ai_service_online"] = true
+					aiData["status"] = "healthy"
+					json.NewEncoder(w).Encode(aiData)
+					return
+				}
+			}
+		}
+
+		// Nếu AI Engine không phản hồi hoặc gặp lỗi, báo cáo trung thực trạng thái DEGRADED / OFFLINE
+		// TUYỆT ĐỐI KHÔNG báo kết nối tốt giả tạo (Audit P1)
+		degradedAgents := make([]SubagentMeta, len(fallbackAgents))
+		for idx, a := range fallbackAgents {
+			degradedAgents[idx] = a
+			degradedAgents[idx].Status = "offline"
+		}
+
+		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"domain":       registry.GetRequestHost(r),
-			"total_agents": len(fallbackAgents),
-			"agents":       fallbackAgents,
-			"source":       "engine_cache",
+			"domain":            registry.GetRequestHost(r),
+			"total_agents":      len(degradedAgents),
+			"agents":            degradedAgents,
+			"ai_service_online": false,
+			"status":            "degraded",
+			"error":             "Cụm AI Service hiện chưa sẵn sàng hoặc đang ngoại tuyến",
+			"source":            "engine_fallback",
 		})
 	})
 
@@ -797,8 +907,8 @@ func main() {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("X-Internal-Token", getInternalServiceSecret())
 
-			client := http.Client{Timeout: 60 * time.Second}
-			resp, errDo := client.Do(req)
+			// Tái sử dụng aiHTTPClient từ connection pool (Nút thắt 4)
+			resp, errDo := aiHTTPClient.Do(req)
 			if errDo == nil {
 				defer resp.Body.Close()
 				w.WriteHeader(resp.StatusCode)

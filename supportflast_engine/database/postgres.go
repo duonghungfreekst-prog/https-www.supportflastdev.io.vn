@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ import (
 
 // Hằng số kết nối mặc định cho Aiven PostgreSQL
 const (
-	DefaultAivenPostgresURI = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
+	DefaultAivenPostgresURI = "" // TUYỆT ĐỐI KHÔNG hardcode credential trong source code (Audit P0)
 	DefaultPGMaxOpenConns   = 25
 	DefaultPGMaxIdleConns   = 10
 	DefaultPGConnLifetime   = 5 * time.Minute
@@ -190,4 +191,30 @@ func parseDurationEnv(key string, defaultVal time.Duration) time.Duration {
 		return defaultVal
 	}
 	return d
+}
+
+// MaskDBURI che giấu mật khẩu trong chuỗi URI kết nối Database để chống lộ mật khẩu trong logs (Audit P0 & Rule 3.2)
+func MaskDBURI(rawURI string) string {
+	rawURI = strings.TrimSpace(rawURI)
+	if rawURI == "" {
+		return ""
+	}
+	u, err := url.Parse(rawURI)
+	if err != nil {
+		if atIdx := strings.Index(rawURI, "@"); atIdx != -1 {
+			if colonIdx := strings.Index(rawURI[:atIdx], ":"); colonIdx != -1 {
+				schemeIdx := strings.Index(rawURI, "://")
+				if schemeIdx != -1 && colonIdx > schemeIdx+3 {
+					return rawURI[:colonIdx+1] + "***" + rawURI[atIdx:]
+				}
+			}
+		}
+		return "***"
+	}
+	if u.User != nil {
+		if _, hasPass := u.User.Password(); hasPass {
+			u.User = url.UserPassword(u.User.Username(), "***")
+		}
+	}
+	return u.String()
 }

@@ -85,22 +85,22 @@ var (
 	// Danh sách origin được phép cấu hình Exact String Match theo Rule 3.4
 	// TUYỆT ĐỐI KHÔNG dùng wildcard '*' hoặc regex pattern matching
 	allowedOriginsMap = map[string]bool{
-		"http://localhost":                           true,
-		"http://127.0.0.1":                           true,
-		"http://localhost:8080":                      true,
-		"http://127.0.0.1:8080":                      true,
-		"https://localhost:8443":                     true,
-		"https://127.0.0.1:8443":                     true,
-		"http://supportflast.local":                  true,
-		"https://supportflast.local:8443":            true,
+		"http://localhost":                                     true,
+		"http://127.0.0.1":                                     true,
+		"http://localhost:8080":                                true,
+		"http://127.0.0.1:8080":                                true,
+		"https://localhost:8443":                               true,
+		"https://127.0.0.1:8443":                               true,
+		"http://supportflast.local":                            true,
+		"https://supportflast.local:8443":                      true,
 		"https://supportflastdev.io.vn":                        true,
 		"https://www.supportflastdev.io.vn":                    true,
 		"https://supportflastdev-io-vn.onrender.com":           true,
 		"https://https-www-supportflastdev-io-vn.onrender.com": true,
-		"http://omnigateway.local":                   true,
-		"https://omnigateway.local":                  true,
-		"http://localhost:20128":                     true,
-		"http://127.0.0.1:20128":                     true,
+		"http://omnigateway.local":                             true,
+		"https://omnigateway.local":                            true,
+		"http://localhost:20128":                               true,
+		"http://127.0.0.1:20128":                               true,
 	}
 )
 

@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/models"
+	"time"
 )
-
 
 func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 	s.mu.Lock()
@@ -72,7 +71,6 @@ func (s *DB) SaveVirtualFile(f *models.VirtualFile) error {
 
 // parseFlexibleTime chuyển đổi an toàn mọi giá trị ngày tháng từ DB (time.Time, string, []byte) sang time.Time chuẩn
 
-
 func parseFlexibleTime(val interface{}) time.Time {
 	if val == nil {
 		return time.Now()
@@ -113,8 +111,6 @@ func parseFlexibleTime(val interface{}) time.Time {
 		return time.Now()
 	}
 }
-
-
 
 func parseFlexibleTimePtr(val interface{}) *time.Time {
 	if val == nil {
@@ -174,8 +170,6 @@ func parseFlexibleTimePtr(val interface{}) *time.Time {
 	}
 }
 
-
-
 func parseTimeString(s string) time.Time {
 	s = strings.TrimSpace(s)
 	if s == "" || s == "0000-00-00 00:00:00" || s == "0000-00-00" || s == "NULL" || s == "null" {
@@ -208,8 +202,6 @@ func parseTimeString(s string) time.Time {
 	return time.Now()
 }
 
-
-
 func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -240,8 +232,6 @@ func (s *DB) GetVirtualFile(id string) (*models.VirtualFile, error) {
 	f.UpdatedAt = parseFlexibleTime(rawUpdated)
 	return &f, nil
 }
-
-
 
 func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	s.mu.RLock()
@@ -274,8 +264,6 @@ func (s *DB) GetVirtualFileByPath(path string) (*models.VirtualFile, error) {
 	return &f, nil
 }
 
-
-
 func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
 	row := s.db.QueryRow(`SELECT id, user_id, parent_id, name, path, is_dir, size_bytes, mime_type, sha256, chunk_count, is_encrypted, is_deleted, deleted_at, has_missing_chunks, created_at, updated_at FROM virtual_files WHERE id = ?`, id)
 	var f models.VirtualFile
@@ -305,7 +293,6 @@ func (s *DB) getVirtualFileUnsafe(id string) (*models.VirtualFile, error) {
 }
 
 // UpdateFileMissingChunks cập nhật cờ cảnh báo thiếu chunks cho một virtual file
-
 
 func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
@@ -487,7 +474,6 @@ func (s *DB) listVirtualFilesFromDB(userID, parentID string) ([]models.VirtualFi
 
 // isFileOrAncestorSharedUnlocked checks if the given file or any parent folder in its hierarchy has an active public share link
 
-
 func (s *DB) isFileOrAncestorSharedUnlocked(fileID string) bool {
 	if fileID == "" || fileID == "root" {
 		return false
@@ -538,15 +524,12 @@ func (s *DB) isFileOrAncestorSharedUnlocked(fileID string) bool {
 
 // IsFileOrAncestorShared checks if the given file or any parent folder in its hierarchy has an active public share link
 
-
 func (s *DB) IsFileOrAncestorShared(fileID string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	return s.isFileOrAncestorSharedUnlocked(fileID)
 }
-
-
 
 func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
@@ -592,7 +575,6 @@ func (s *DB) ListFilesByAccount(accountID string) ([]models.VirtualFile, error) 
 
 // ensureRootExistsUnlocked đảm bảo thư mục gốc root luôn tồn tại, cấu trúc chuẩn, và không bao giờ bị đánh dấu is_deleted = 1
 
-
 func (s *DB) ensureRootExistsUnlocked() error {
 	var count int
 	_ = s.db.QueryRow("SELECT COUNT(*) FROM virtual_files WHERE id = 'root'").Scan(&count)
@@ -621,14 +603,11 @@ func (s *DB) ensureRootExistsUnlocked() error {
 
 // EnsureRootExists đảm bảo thư mục gốc root luôn tồn tại và không bao giờ bị đánh dấu is_deleted = 1 (thread-safe)
 
-
 func (s *DB) EnsureRootExists() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.ensureRootExistsUnlocked()
 }
-
-
 
 func (s *DB) SoftDeleteVirtualFile(id string) error {
 	s.mu.Lock()
@@ -663,8 +642,6 @@ func (s *DB) SoftDeleteVirtualFile(id string) error {
 	return err
 }
 
-
-
 func (s *DB) RestoreVirtualFile(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -691,8 +668,6 @@ func (s *DB) RestoreVirtualFile(id string) error {
 	}
 	return err
 }
-
-
 
 func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
@@ -741,8 +716,6 @@ func (s *DB) ListTrashFiles(userID string) ([]models.VirtualFile, error) {
 	return list, nil
 }
 
-
-
 func (s *DB) GetTrashFileIDs(userID string) ([]string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -768,8 +741,6 @@ func (s *DB) GetTrashFileIDs(userID string) ([]string, error) {
 	}
 	return ids, nil
 }
-
-
 
 func (s *DB) FindFileByNameInParent(userID, parentID, name string) (*models.VirtualFile, error) {
 	s.mu.RLock()
@@ -820,8 +791,6 @@ func (s *DB) FindFileByNameInParent(userID, parentID, name string) (*models.Virt
 // -------------------------------------------------------------
 // Settings & Stats
 // -------------------------------------------------------------
-
-
 
 func (s *DB) RenameVirtualFile(id string, newName, newPath string) error {
 	s.mu.Lock()
@@ -908,8 +877,6 @@ func (s *DB) RenameVirtualFile(id string, newName, newPath string) error {
 // Chunks
 // -------------------------------------------------------------
 
-
-
 func (s *DB) DeleteVirtualFile(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -923,4 +890,3 @@ func (s *DB) DeleteVirtualFile(id string) error {
 	}
 	return err
 }
-

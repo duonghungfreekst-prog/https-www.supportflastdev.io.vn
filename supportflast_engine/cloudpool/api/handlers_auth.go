@@ -4,18 +4,17 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net"
 	"net/http"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
-	"github.com/google/uuid"
+	"time"
 )
-
 
 func (s *Server) getUserFromRequest(r *http.Request) *models.User {
 	var tokenString string
@@ -162,8 +161,6 @@ func (s *Server) getUserFromRequest(r *http.Request) *models.User {
 	return u
 }
 
-
-
 func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -271,8 +268,6 @@ func (s *Server) handleAuthRegister(w http.ResponseWriter, r *http.Request) {
 		"token":   jwtToken,
 	})
 }
-
-
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -431,8 +426,6 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
-
 func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := s.db.ListLoginSessions(50)
 	if err != nil {
@@ -441,8 +434,6 @@ func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, sessions)
 }
-
-
 
 func parseDeviceInfo(ua string) string {
 	os := "Thiết bị không xác định"
@@ -476,8 +467,6 @@ func parseDeviceInfo(ua string) string {
 	return fmt.Sprintf("%s · %s", os, browser)
 }
 
-
-
 func getClientIP(r *http.Request) string {
 	// [BUG FIX] Only trust CF-Connecting-IP (from Cloudflare) or X-Real-IP (from known trusted reverse proxy).
 	// X-Forwarded-For is intentionally NOT trusted as a primary source because
@@ -503,16 +492,12 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-
-
 func resolveLocation(ip string) string {
 	if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" || strings.HasPrefix(ip, "192.168.") || strings.HasPrefix(ip, "10.") || strings.HasPrefix(ip, "172.") {
 		return "Máy Cục Bộ / Mạng LAN (Local Host)"
 	}
 	return "Việt Nam (Truy cập từ xa / Internet)"
 }
-
-
 
 func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -573,8 +558,6 @@ func (s *Server) handleAuthSecurityPin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã cài đặt mã PIN bảo vệ cấp 2 thành công!"})
 }
 
-
-
 func (s *Server) handleAuthVerifyPin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -606,8 +589,6 @@ func (s *Server) handleAuthVerifyPin(w http.ResponseWriter, r *http.Request) {
 		"message":  "Xác thực mã PIN cấp 2 thành công",
 	})
 }
-
-
 
 func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -696,8 +677,6 @@ func (s *Server) handleVerifyAdminPass(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusUnauthorized, "Mật khẩu Quản trị không chính xác!", nil)
 }
 
-
-
 func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	user := s.getUserFromRequest(r)
 	if user == nil {
@@ -745,8 +724,6 @@ func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
-
-
 func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 	tokenString := ""
 	if ah := r.Header.Get("Authorization"); len(ah) > 7 && strings.EqualFold(ah[:7], "Bearer ") {
@@ -773,8 +750,6 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 	registry.ClearSSOCookies(w, r)
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đăng xuất tài khoản thành công"})
 }
-
-
 
 func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -831,8 +806,6 @@ func (s *Server) handleAuthChangePassword(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Đã đổi mật khẩu thành công"})
 }
 
-
-
 func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "Method not allowed", nil)
@@ -875,8 +848,6 @@ func (s *Server) handleAdminResetPassword(w http.ResponseWriter, r *http.Request
 // -------------------------------------------------------------
 // In-App Software Update & Hot-Patching Handlers
 // -------------------------------------------------------------
-
-
 
 func validatePasswordStrength(password string) error {
 	if len(password) < 8 {

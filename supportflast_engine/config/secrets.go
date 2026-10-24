@@ -20,6 +20,7 @@ var (
 	insecureAdminPasswords = []string{
 		"",
 		"Admin@2026!SupportFlast",
+		"Admin@2026!SupportFlastSecuredProd",
 		"<GENERATE_STRONG_RANDOM_PASSWORD_MIN_24_CHARS>",
 		"admin",
 		"password",
@@ -29,6 +30,8 @@ var (
 	insecureInternalSecrets = []string{
 		"",
 		"CHANGE_ME_INTERNAL_SERVICE_SECRET",
+		"sf_internal_service_prod_secret_2026_a8f9c1d2e3b4",
+		"Admin@2026!SupportFlastSecuredProd",
 		"<GENERATE_SECURE_RANDOM_64_HEX_CHARACTERS>",
 		"<GENERATE_SECURE_INTERNAL_SERVICE_SECRET>",
 		"sf_mobile_token_2026",
@@ -98,16 +101,23 @@ func EnsureProductionSecrets() {
 		}
 	}
 
-	// 3. Tự động thiết lập INTERNAL_SERVICE_SECRET nếu rỗng hoặc placeholder
+	// 3. Tự động sinh INTERNAL_SERVICE_SECRET ngẫu nhiên CSPRNG nếu rỗng (TUYỆT ĐỐI KHÔNG dùng chuỗi cố định - Audit P0)
 	internalSecret := strings.TrimSpace(Get("INTERNAL_SERVICE_SECRET", ""))
 	if internalSecret == "" || IsInsecureInternalSecret(internalSecret) {
-		_ = os.Setenv("INTERNAL_SERVICE_SECRET", "sf_internal_service_prod_secret_2026_a8f9c1d2e3b4")
+		if randSec, err := GenerateSecureHex(32); err == nil {
+			_ = os.Setenv("INTERNAL_SERVICE_SECRET", randSec)
+		}
 	}
 
-	// 4. Đảm bảo ADMIN_PASSWORD không rỗng hoặc placeholder
+	// 4. Kiểm tra ADMIN_PASSWORD: Tuyệt đối không gán mật khẩu mặc định cố định trong Production (Audit P0)
 	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
 	if adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") || len(adminPass) < 16 {
-		_ = os.Setenv("ADMIN_PASSWORD", "Admin@2026!SupportFlastSecuredProd")
+		// Trong môi trường dev/test tự sinh mật khẩu ngẫu nhiên tạm thời, không hardcode
+		if !IsProduction() {
+			if randPass, err := GenerateSecureHex(16); err == nil {
+				_ = os.Setenv("ADMIN_PASSWORD", "Dev@"+randPass)
+			}
+		}
 	}
 }
 

@@ -79,7 +79,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isCloudDB bool, ui
 
 	// 4. API Ping siÃªu nháº¹ & Health check
 	safeRegister(mux, "/ping", HandlePing)
-	safeRegister(mux, "/health", HandleHealth)       // alias cho HTML gateway check
+	safeRegister(mux, "/health", HandleHealth) // alias cho HTML gateway check
 	safeRegister(mux, "/api/health", HandleHealth)
 	safeRegister(mux, "/api/router/health", HandleHealth)
 
@@ -168,7 +168,7 @@ func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isCloudDB bool, ui
 	proxyPoolsHandler := HandleProxyPools(db)
 	safeRegister(mux, "/api/proxy-pools", proxyPoolsHandler)
 	safeRegister(mux, "/api/proxy-pools/", proxyPoolsHandler)
-safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
+	safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	safeRegister(mux, "/api/proxy-pools/bind", HandleBindProxyPool(db))
 	safeRegister(mux, "/api/router/proxy/switch", HandleSwitchProxy(db))
 	safeRegister(mux, "/api/proxy-pools/switch", HandleSwitchProxy(db))
@@ -249,7 +249,6 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	// 8. API KÃ­ch hoáº¡t Ä‘á»“ng bá»™ thá»§ cÃ´ng tá»« data.libsql (náº¿u cÃ³ file)
 	safeRegister(mux, "/api/router/sync-libsql", HandleSyncLibSQLEndpoint(db))
 
-
 	// 9. API Äá»“ng bá»™, Cáº¥u hÃ¬nh MITM & DNS vÃ  BÃ¡o cÃ¡o dÃ nh riÃªng cho App PC / Termux / CMD
 	clientConfigHandler := HandleClientConfig(db)
 	safeRegister(mux, "/api/v1/client/config", clientConfigHandler)
@@ -319,7 +318,6 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	safeRegister(mux, "/v1/audio/transcriptions", sttHandler)
 	safeRegister(mux, "/api/v1/audio/transcriptions", sttHandler)
 	safeRegister(mux, "/v1/models/stt", HandleSTTModels)
-
 
 	// 11. Phá»¥c vá»¥ tÄ©nh thÆ° má»¥c Logo nhÃ  cung cáº¥p (/providers/ vÃ  /router/providers/)
 	providersCandidates := []string{
@@ -434,8 +432,5 @@ safeRegister(mux, "/api/proxy-pools/test", proxyPoolsHandler)
 	safeRegister(mux, "/share", routerHandler)
 	safeRegister(mux, "/share-app", routerHandler)
 
-
-
 	log.Println("[ENGINE] [OMNIROUTER] âœ” ÄÃ£ kÃ­ch hoáº¡t toÃ n bá»™ cá»•ng Ä‘á»‹nh tuyáº¿n Master Gateway")
 }
-

@@ -2,10 +2,9 @@ package storage
 
 import (
 	"database/sql"
-	"time"
 	"supportflast_engine/cloudpool/models"
+	"time"
 )
-
 
 func (s *DB) SaveChunks(chunks []models.FileChunk) error {
 	s.mu.Lock()
@@ -57,8 +56,6 @@ func (s *DB) SaveChunks(chunks []models.FileChunk) error {
 	return err
 }
 
-
-
 func (s *DB) GetChunksForFile(fileID string) ([]models.FileChunk, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -80,8 +77,6 @@ func (s *DB) GetChunksForFile(fileID string) ([]models.FileChunk, error) {
 	return chunks, nil
 }
 
-
-
 func (s *DB) GetChunkByDriveID(driveFileID string) (*models.FileChunk, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -93,8 +88,6 @@ func (s *DB) GetChunkByDriveID(driveFileID string) (*models.FileChunk, error) {
 	}
 	return &c, nil
 }
-
-
 
 func (s *DB) GetChunkDetailsForFile(fileID string) ([]models.ChunkDetail, error) {
 	s.mu.RLock()
@@ -123,8 +116,6 @@ func (s *DB) GetChunkDetailsForFile(fileID string) ([]models.ChunkDetail, error)
 	return details, nil
 }
 
-
-
 func (s *DB) DeleteChunksForFile(fileID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -137,7 +128,6 @@ func (s *DB) DeleteChunksForFile(fileID string) error {
 
 // FindFileByNameInParent tìm file (không phải folder) có cùng tên trong cùng thư mục cha của đúng người dùng đó.
 // Dùng để kiểm tra trùng tên trước khi upload → auto-replace cho riêng từng user (Chống Cross-Tenant Overwrite).
-
 
 func (s *DB) FindChunkByHash(hash string) (*models.FileChunk, error) {
 	s.mu.RLock()
@@ -165,7 +155,6 @@ func (s *DB) FindChunkByHash(hash string) (*models.FileChunk, error) {
 
 // CountChunkReferences returns how many file chunks reference the same Google Drive file ID
 
-
 func (s *DB) CountChunkReferences(gdriveFileID string) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -179,8 +168,6 @@ func (s *DB) CountChunkReferences(gdriveFileID string) (int, error) {
 // Public Share Links
 // -------------------------------------------------------------
 
-
-
 func (s *DB) UpdateChunkStatus(chunkID string, status string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -191,7 +178,6 @@ func (s *DB) UpdateChunkStatus(chunkID string, status string) error {
 
 // UpdateChunkStatusByDriveID cập nhật trạng thái của chunk theo gdrive_file_id
 
-
 func (s *DB) UpdateChunkStatusByDriveID(gdriveFileID string, status string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -201,7 +187,6 @@ func (s *DB) UpdateChunkStatusByDriveID(gdriveFileID string, status string) erro
 }
 
 // GetAllFilesForIntegrityCheck lấy danh sách các tệp (không phải thư mục) chưa bị xóa để kiểm tra toàn vẹn
-
 
 func (s *DB) UpdateFileMissingChunks(fileID string, hasMissing bool) error {
 	s.mu.Lock()
@@ -215,7 +200,6 @@ func (s *DB) UpdateFileMissingChunks(fileID string, hasMissing bool) error {
 }
 
 // UpdateChunkStatus cập nhật trạng thái của chunk ("uploaded", "missing", "failed")
-
 
 func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.VirtualFile, error) {
 	s.mu.RLock()
@@ -268,5 +252,3 @@ func (s *DB) GetAllFilesForIntegrityCheck(filterFileID string) ([]models.Virtual
 	}
 	return files, nil
 }
-
-

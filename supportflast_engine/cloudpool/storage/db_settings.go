@@ -1,4 +1,4 @@
-﻿package storage
+package storage
 
 import (
 	"database/sql"
@@ -9,11 +9,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 	"supportflast_engine/cloudpool/core"
 	"supportflast_engine/cloudpool/models"
+	"time"
 )
-
 
 func (s *DB) SaveAccount(acc *models.Account) error {
 	s.mu.Lock()
@@ -119,8 +118,6 @@ func (s *DB) SaveAccount(acc *models.Account) error {
 	return err
 }
 
-
-
 func (s *DB) GetAccount(id string) (*models.Account, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -155,7 +152,6 @@ func (s *DB) GetAccount(id string) (*models.Account, error) {
 
 // GetAccountByEmail tìm kiếm tài khoản theo email (sử dụng Blind Index email_hash)
 
-
 func (s *DB) GetAccountByEmail(email string) (*models.Account, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -189,8 +185,6 @@ func (s *DB) GetAccountByEmail(email string) (*models.Account, error) {
 	a.IsUploadExcluded = a.IsUploadExcludedAccount()
 	return &a, nil
 }
-
-
 
 func (s *DB) listAccountsFromDB() ([]models.Account, error) {
 	s.mu.RLock()
@@ -230,8 +224,6 @@ func (s *DB) listAccountsFromDB() ([]models.Account, error) {
 	return list, nil
 }
 
-
-
 func (s *DB) DeleteAccount(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -241,8 +233,6 @@ func (s *DB) DeleteAccount(id string) error {
 	}
 	return err
 }
-
-
 
 func (s *DB) UpdateAccountQuota(id string, total, used, free int64, status, lastErr string) error {
 	s.mu.Lock()
@@ -257,7 +247,6 @@ func (s *DB) UpdateAccountQuota(id string, total, used, free int64, status, last
 
 // UpdateAccountToken chỉ cập nhật cột token_json cho tài khoản, không ghi đè quota hay các trường khác.
 // Sử dụng khi persistingTokenSource refresh token để tránh overwrite quota đã stale từ snapshot cũ.
-
 
 func (s *DB) UpdateAccountToken(accountID, tokenJSON string) error {
 	s.mu.Lock()
@@ -274,8 +263,6 @@ func (s *DB) UpdateAccountToken(accountID, tokenJSON string) error {
 // -------------------------------------------------------------
 // Virtual Files & Folders
 // -------------------------------------------------------------
-
-
 
 func (s *DB) ToggleAccountStatus(id, newStatus string) error {
 	s.mu.Lock()
@@ -441,8 +428,6 @@ func (s *DB) RepairAccounts(refreshFn func(accountID string) error) (repairedCou
 	return repairedCount, repairedAccounts, nil
 }
 
-
-
 func (s *DB) getSettingsFromDB() (*models.Settings, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -546,8 +531,6 @@ func (s *DB) getSettingsFromDB() (*models.Settings, error) {
 		TurnstileSecretKey:    turnstileSecretKey,
 	}, nil
 }
-
-
 
 func (s *DB) SaveSettings(set *models.Settings) error {
 	s.mu.Lock()
@@ -710,8 +693,6 @@ func (s *DB) SaveSettings(set *models.Settings) error {
 	return nil
 }
 
-
-
 func (s *DB) getStatsFromDB() (*models.StorageStats, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -757,8 +738,6 @@ func (s *DB) getStatsFromDB() (*models.StorageStats, error) {
 // -------------------------------------------------------------
 // Activity Audit Logs
 // -------------------------------------------------------------
-
-
 
 func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownResponse, error) {
 	s.mu.RLock()
@@ -907,11 +886,7 @@ func (s *DB) GetStorageBreakdown(userID string) (*models.StorageBreakdownRespons
 	}, nil
 }
 
-
-
-
 // StartAutoBackup initiates a background routine that backs up the database every 12 hours (Rule PHAN 7.3)
-
 
 func (s *DB) LogActivity(entry *models.ActivityLog) error {
 	s.mu.Lock()
@@ -929,8 +904,6 @@ func (s *DB) LogActivity(entry *models.ActivityLog) error {
 		entry.ID, entry.UserID, entry.Username, entry.Action, entry.Target, entry.IPAddress, entry.Details, entry.CreatedAt)
 	return err
 }
-
-
 
 func (s *DB) ListActivityLogs(limit int) ([]models.ActivityLog, error) {
 	s.mu.RLock()
@@ -963,8 +936,6 @@ func (s *DB) ListActivityLogs(limit int) ([]models.ActivityLog, error) {
 // User Management & Private Storage
 // -------------------------------------------------------------
 
-
-
 type SQLResult struct {
 	Columns       []string        `json:"columns"`
 	Rows          [][]interface{} `json:"rows"`
@@ -972,8 +943,6 @@ type SQLResult struct {
 	ExecutionMs   float64         `json:"execution_ms"`
 	IsSelectQuery bool            `json:"is_select"`
 }
-
-
 
 type TableColumnInfo struct {
 	CID        int    `json:"cid"`
@@ -984,15 +953,11 @@ type TableColumnInfo struct {
 	IsPK       bool   `json:"is_pk"`
 }
 
-
-
 type TableInfo struct {
 	Name     string            `json:"name"`
 	RowCount int64             `json:"row_count"`
 	Columns  []TableColumnInfo `json:"columns"`
 }
-
-
 
 func (s *DB) GetDatabaseTables() ([]TableInfo, error) {
 	s.mu.RLock()
@@ -1088,8 +1053,6 @@ func (s *DB) GetDatabaseTables() ([]TableInfo, error) {
 	return tables, nil
 }
 
-
-
 func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 	startTime := time.Now()
 	trimmed := strings.TrimSpace(strings.ToUpper(query))
@@ -1177,8 +1140,6 @@ func (s *DB) ExecuteRawSQL(query string) (*SQLResult, error) {
 	}, nil
 }
 
-
-
 func (s *DB) OptimizeDatabase() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -1188,8 +1149,6 @@ func (s *DB) OptimizeDatabase() error {
 	_, err := s.db.Exec("VACUUM; PRAGMA optimize;")
 	return err
 }
-
-
 
 func (s *DB) CheckDatabaseIntegrity() (string, error) {
 	s.mu.RLock()
@@ -1207,8 +1166,6 @@ func (s *DB) CheckDatabaseIntegrity() (string, error) {
 	return result, err
 }
 
-
-
 func (s *DB) BackupDatabase(destPath string) error {
 	if s.IsMySQL() {
 		return fmt.Errorf("sao lưu database qua VACUUM INTO chỉ khả dụng trên SQLite (đối với Aiven PostgreSQL vui lòng dùng Aiven PostgreSQL Backup & Restore BR hoặc mysqldump)")
@@ -1219,8 +1176,6 @@ func (s *DB) BackupDatabase(destPath string) error {
 	_, err := s.db.Exec(fmt.Sprintf("VACUUM INTO '%s'", cleanPath))
 	return err
 }
-
-
 
 func (s *DB) StartAutoBackup() {
 	if s.IsMySQL() {
