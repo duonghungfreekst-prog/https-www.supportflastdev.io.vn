@@ -906,7 +906,25 @@
 
   
 
-  </style>
+  
+      /* Ẩn hoàn toàn khối Endpoints và API Keys nội bộ trên App Desktop theo yêu cầu */
+      html.desktop-mode #gateway-endpoints-container,
+      body.desktop-mode #gateway-endpoints-container,
+      .desktop-app #gateway-endpoints-container,
+      html.desktop-mode #internal-api-keys-section,
+      body.desktop-mode #internal-api-keys-section,
+      .desktop-app #internal-api-keys-section,
+      html.desktop-mode .web-only-block,
+      body.desktop-mode .web-only-block {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+      }
+</style>
 
 </head>
 
@@ -2571,8 +2589,8 @@
             </div>
           </div>
 
-          <!-- 3 Thẻ Endpoint lớn -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- 3 Thẻ Endpoint lớn (CHỈ HIỂN THỊ TRÊN WEB, ẨN HOÀN TOÀN TRÊN APP DESKTOP) -->
+          <div id="gateway-endpoints-container" class="grid grid-cols-1 md:grid-cols-3 gap-5 web-only-block">
 
             
 
@@ -2689,7 +2707,7 @@
 
 
           <!-- Quản lý API Keys (CHỈ HIỂN THỊ TRÊN WEB, ẨN HOÀN TOÀN TRÊN BẢN APP DESKTOP) -->
-          <div id="internal-api-keys-section" class="glass-card rounded-2xl p-6 border border-white/10 space-y-4">
+          <div id="internal-api-keys-section" class="glass-card web-only-block rounded-2xl p-6 border border-white/10 space-y-4">
 
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
@@ -8677,9 +8695,11 @@
       };
 
       if (titles[tabId]) {
-
-        document.getElementById('breadcrumb-title').innerText = titles[tabId];
-
+        let tText = titles[tabId];
+        if (isDesktopEnv && tabId === 'endpoints') {
+          tText = 'Đồng Bộ Dữ Liệu SQL & Hạn Mức Quota';
+        }
+        document.getElementById('breadcrumb-title').innerText = tText;
       }
 
 
@@ -8994,19 +9014,31 @@
 
     const IS_DESKTOP_ENV = isDesktopAppEnv();
     if (!IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
-      document.documentElement.classList.add('web-mode');
-      document.documentElement.classList.remove('desktop-mode');
-      const syncSec = document.getElementById('desktop-web-sync-section');
-      if (syncSec) syncSec.style.setProperty('display', 'none', 'important');
-      const apiSec = document.getElementById('internal-api-keys-section');
-      if (apiSec) apiSec.style.removeProperty('display');
+        document.documentElement.classList.add('web-mode');
+        document.documentElement.classList.remove('desktop-mode');
+        const syncSec = document.getElementById('desktop-web-sync-section');
+        if (syncSec) syncSec.style.setProperty('display', 'none', 'important');
+        const epSec = document.getElementById('gateway-endpoints-container');
+        if (epSec) epSec.style.removeProperty('display');
+        const apiSec = document.getElementById('internal-api-keys-section');
+        if (apiSec) apiSec.style.removeProperty('display');
     } else if (IS_DESKTOP_ENV && typeof document !== 'undefined' && document.documentElement) {
       document.documentElement.classList.add('desktop-mode');
       document.documentElement.classList.remove('web-mode');
       const syncSec = document.getElementById('desktop-web-sync-section');
       if (syncSec) syncSec.style.setProperty('display', 'block', 'important');
-      const apiSec = document.getElementById('internal-api-keys-section');
-      if (apiSec) apiSec.style.removeProperty('display');
+              const epSec = document.getElementById('gateway-endpoints-container');
+        if (epSec) {
+          epSec.style.setProperty('display', 'none', 'important');
+          epSec.style.setProperty('visibility', 'hidden', 'important');
+          epSec.style.setProperty('height', '0', 'important');
+        }
+        const apiSec = document.getElementById('internal-api-keys-section');
+        if (apiSec) {
+          apiSec.style.setProperty('display', 'none', 'important');
+          apiSec.style.setProperty('visibility', 'hidden', 'important');
+          apiSec.style.setProperty('height', '0', 'important');
+        }
       const breadcrumbSub = document.getElementById('breadcrumb-sub');
       if (breadcrumbSub) breadcrumbSub.textContent = 'ModelRouter9 AI Gateway';
       const homeBtn = document.getElementById('btn-nav-home-web');
