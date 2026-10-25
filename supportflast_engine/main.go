@@ -1105,6 +1105,43 @@ func main() {
 
 	// 4.4. Kích hoạt OmniRouter / 9Router Master Gateway & Đồng bộ Cloud Database
 	omnirouter.RegisterOmniRouterRoutes(mux, database.GetDB(), database.ActiveDriver() == "postgres", uiDir)
+	omnirouter.SetExternalKeyValidator(func(rawKey string) (*omnirouter.ClientKey, bool) {
+		trimmed := strings.TrimSpace(rawKey)
+		if trimmed == "" {
+			return nil, false
+		}
+		// 1. Kiểm tra API Key do SupportFlast Hub quản lý (sf_live_...)
+		if registry.VerifyAPIKey(trimmed) {
+			return &omnirouter.ClientKey{
+				ID:       "key_hub_" + omnirouter.HashString(trimmed)[:10],
+				Name:     "SupportFlast Hub API Key",
+				Key:      trimmed,
+				KeyHash:  omnirouter.HashString(trimmed),
+				IsActive: 1,
+			}, true
+		}
+		// 2. Kiểm tra phiên đăng nhập bằng JWT Token của User / Admin
+		if user, ok := registry.GetUserFromToken(trimmed); ok && user != nil {
+			return &omnirouter.ClientKey{
+				ID:       "key_jwt_" + user.Username,
+				Name:     "SupportFlast User (" + user.Username + ")",
+				Key:      trimmed,
+				KeyHash:  omnirouter.HashString(trimmed),
+				IsActive: 1,
+			}, true
+		}
+		// 3. Kiểm tra Internal Service Secret
+		if sec := config.GetInternalServiceSecret(); sec != "" && subtle.ConstantTimeCompare([]byte(trimmed), []byte(sec)) == 1 {
+			return &omnirouter.ClientKey{
+				ID:       "key_internal_system",
+				Name:     "SupportFlast Internal Service Secret",
+				Key:      trimmed,
+				KeyHash:  omnirouter.HashString(trimmed),
+				IsActive: 1,
+			}, true
+		}
+		return nil, false
+	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path

@@ -8353,16 +8353,25 @@
       }
     }
 
-    async function testWebConnection(silent = false, persistApiKey = false) {
-      const urlInput = document.getElementById('web-server-url-input');
-      const keyInput = document.getElementById('web-api-key-input');
-      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
+    function normalizeServerUrl(rawUrl) {
+      let serverUrl = (rawUrl || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
       if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
+      if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+        serverUrl = 'https://' + serverUrl;
+      }
       if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
         serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
-        if (urlInput) urlInput.value = serverUrl;
       }
+      return serverUrl;
+    }
+
+    async function testWebConnection(silent = false, persistApiKey = false) {
+      const urlInput = document.getElementById('web-server-url-input');
+      const keyInput = document.getElementById('web-api-key-input');
+      let serverUrl = normalizeServerUrl(urlInput?.value);
+      if (urlInput) urlInput.value = serverUrl;
+
       let apiKey = (keyInput?.value || '').trim();
       if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
         apiKey = '';
@@ -8410,16 +8419,12 @@
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
 
-          // Keep the native request authoritative; a browser fallback could report a false success.
+          // Timeout 15 giây dự phòng: nếu C# chưa phản hồi, tự động fallback sang direct fetch
           setTimeout(() => {
             if (!hasSettled) {
-              finish(applyWebConnectionResult({
-                success: false,
-                statusCode: 0,
-                errorMessage: 'Ứng dụng desktop không phản hồi khi kiểm tra máy chủ Web.'
-              }, silent));
+              doDirectWebFetchTest(serverUrl, apiKey, silent).then(finish);
             }
-          }, 30000);
+          }, 15000);
         });
       }
 
@@ -8432,7 +8437,7 @@
         const startTime = Date.now();
         const res = await fetch(`${serverUrl}/api/v1/client/config`, {
           method: 'GET',
-          redirect: 'error',
+          redirect: 'follow',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'x-api-key': apiKey,
@@ -8453,7 +8458,7 @@
         const latency = Date.now() - startTime;
         let statsBody = '';
         try {
-          const statsRes = await fetch(`${serverUrl}/api/usage/stats`, { redirect: 'error' });
+          const statsRes = await fetch(`${serverUrl}/api/usage/stats`, { redirect: 'follow' });
           if (statsRes.ok) statsBody = await statsRes.text();
         } catch (statsErr) {
           console.warn('[WebSQL] Không thể tải thống kê sau khi xác thực:', statsErr);
@@ -8461,6 +8466,7 @@
         let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
+            redirect: 'follow',
             headers: { 
               'Authorization': `Bearer ${apiKey}`,
               'x-api-key': apiKey,
@@ -8472,6 +8478,7 @@
             realProvidersData = (pData && pData.providers) ? pData.providers : (Array.isArray(pData) ? pData : (pData && pData.connections ? pData.connections : []));
           } else {
             const provRes2 = await fetch(`${serverUrl}/api/providers`, {
+              redirect: 'follow',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey }
             });
             if (provRes2.ok) {
@@ -8490,10 +8497,16 @@
           providers: JSON.stringify({ providers: realProvidersData, total: realProvidersData.length })
         }, silent);
       } catch (err) {
+        let errMsg = err.message || err;
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+          errMsg = 'Trình duyệt chặn kết nối trực tiếp từ tệp cục bộ (CORS Origin null). Hãy mở trang qua Desktop App hoặc qua cổng http://localhost:20128/';
+        } else {
+          errMsg = `Lỗi mạng: ${errMsg}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`;
+        }
         return applyWebConnectionResult({
           success: false,
           statusCode: 0,
-          errorMessage: `Lỗi mạng: ${err.message || err}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`
+          errorMessage: errMsg
         }, silent);
       }
     }
@@ -8501,13 +8514,9 @@
     async function saveAndSyncWebSQL() {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
-      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
-      if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
-      if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
-        serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
-                             .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
-        if (urlInput) urlInput.value = serverUrl;
-      }
+      let serverUrl = normalizeServerUrl(urlInput?.value);
+      if (urlInput) urlInput.value = serverUrl;
+
       let apiKey = (keyInput?.value || '').trim();
       if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
         apiKey = '';

@@ -282,15 +282,9 @@ func requireAdminAuth(r *http.Request) bool {
 
 		}
 
-		// 5.1 Thẩm định Client API Key (sk-...) được cấp bởi hệ thống Web Router
-		if strings.HasPrefix(token, "sk-") {
-
-			if keyItem, ok := ValidateClientKey(token); ok && keyItem != nil && keyItem.IsActive == 1 {
-
-				return true
-
-			}
-
+		// 5.1 Thẩm định Client API Key hoặc JWT Token được cấp bởi hệ thống Web Router / Hub
+		if keyItem, ok := ValidateClientKey(token); ok && keyItem != nil && keyItem.IsActive == 1 {
+			return true
 		}
 
 	}
@@ -1620,6 +1614,12 @@ func HandleClientConfig(db *sql.DB) http.HandlerFunc {
 				effectiveDomain = DefaultDomain
 
 			}
+
+		}
+
+		if effectiveDomain == "supportflastdev.io.vn" {
+
+			effectiveDomain = "www.supportflastdev.io.vn"
 
 		}
 

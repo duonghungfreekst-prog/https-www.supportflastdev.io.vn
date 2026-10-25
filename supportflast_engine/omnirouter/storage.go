@@ -391,8 +391,8 @@ func SeedEnvProviders(db *sql.DB) {
 	}
 }
 
-// DefaultDomain là tên miền web chính thức của hệ thống
-const DefaultDomain = "supportflastdev.io.vn"
+// DefaultDomain là tên miền web chính thức của hệ thống (sử dụng subdomain www để tránh redirect 301 từ Cloudflare)
+const DefaultDomain = "www.supportflastdev.io.vn"
 
 // GenerateAPIKey tạo chuỗi API Key duy nhất có chứa tên miền web: sk-supportflastdev.io.vn-xxxxxxxx
 func GenerateAPIKey() string {
@@ -433,9 +433,11 @@ func RefreshKeyCache(db *sql.DB) {
 	systemMasterKeys := []string{
 		"sk-" + DefaultDomain + "-master-live",
 		"sk-supportflastdev.io.vn-master-live",
+		"sk-www.supportflastdev.io.vn-master-live",
 		"sk-9r-master-live-gateway-secret",
 		"sk-9router-master-live",
 		"sk-" + DefaultDomain + "-admin-live",
+		"sk-www.supportflastdev.io.vn-admin-live",
 	}
 	for _, mk := range systemMasterKeys {
 		if _, exists := keyCache[mk]; !exists {
@@ -481,9 +483,11 @@ func RefreshKeyCache(db *sql.DB) {
 	// Đảm bảo 100% các Master System Key và CLI Token luôn hiện diện trong RAM cache
 	systemMasterKeys = []string{
 		"sk-supportflastdev.io.vn-master-live",
+		"sk-www.supportflastdev.io.vn-master-live",
 		"sk-9r-master-live-gateway-secret",
 		"sk-9router-master-live",
 		"sk-supportflastdev.io.vn-admin-live",
+		"sk-www.supportflastdev.io.vn-admin-live",
 		"sk-" + DefaultDomain + "-master-live",
 		"sk-" + DefaultDomain + "-admin-live",
 		"6929c9313fb35a0b",
@@ -562,11 +566,31 @@ func CheckClientKeyStatus(rawKey string) (item *ClientKey, status string, errMsg
 	return &kCopy, "OK", ""
 }
 
+var (
+	externalKeyValidatorMu sync.RWMutex
+	externalKeyValidator   func(rawKey string) (*ClientKey, bool)
+)
+
+// SetExternalKeyValidator đăng ký bộ thẩm định khóa bên ngoài (tích hợp với SupportFlast Hub Registry & JWT Auth)
+func SetExternalKeyValidator(v func(rawKey string) (*ClientKey, bool)) {
+	externalKeyValidatorMu.Lock()
+	defer externalKeyValidatorMu.Unlock()
+	externalKeyValidator = v
+}
+
 // ValidateClientKey kiểm tra xem client key có hợp lệ và còn hiệu lực không
 func ValidateClientKey(rawKey string) (*ClientKey, bool) {
 	item, status, _ := CheckClientKeyStatus(rawKey)
 	if status == "OK" && item != nil {
 		return item, true
+	}
+	externalKeyValidatorMu.RLock()
+	v := externalKeyValidator
+	externalKeyValidatorMu.RUnlock()
+	if v != nil {
+		if extItem, ok := v(rawKey); ok && extItem != nil {
+			return extItem, true
+		}
 	}
 	return nil, false
 }

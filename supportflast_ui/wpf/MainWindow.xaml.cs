@@ -1350,6 +1350,11 @@ public partial class MainWindow : Window
 
                         serverUrl = serverUrl.Trim().TrimEnd('/');
                         if (string.IsNullOrEmpty(serverUrl)) serverUrl = "https://www.supportflastdev.io.vn";
+                        if (!serverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                            !serverUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            serverUrl = "https://" + serverUrl;
+                        }
                         if (!serverUrl.Contains("www.") && serverUrl.Contains("supportflastdev.io.vn"))
                         {
                             serverUrl = serverUrl.Replace("https://supportflastdev.io.vn", "https://www.supportflastdev.io.vn")
@@ -1364,11 +1369,13 @@ public partial class MainWindow : Window
                         var sw = Stopwatch.StartNew();
                         using var handler = new System.Net.Http.HttpClientHandler
                         {
-                            AllowAutoRedirect = false
+                            AllowAutoRedirect = true,
+                            MaxAutomaticRedirections = 5
                         };
                         using var client = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
                         client.DefaultRequestHeaders.Add("User-Agent", "SupportFlast-Desktop-Gateway/2.9.0");
                         client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                        client.DefaultRequestHeaders.TryAddWithoutValidation("x-api-key", apiKey);
                         using var response = await client.GetAsync($"{serverUrl}/api/v1/client/config");
                         sw.Stop();
                         string authBody = await response.Content.ReadAsStringAsync();
