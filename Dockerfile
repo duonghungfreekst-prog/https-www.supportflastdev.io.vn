@@ -70,7 +70,7 @@ RUN mkdir -p /app/data /app/data/keys /app/storage/packages /app/supportflast_ui
 COPY --from=builder --chown=appuser:appgroup /build/supportflast /app/supportflast
 
 # Copy shell script wrapper nhận diện biến $PORT động
-COPY --chown=appuser:appgroup entrypoint.sh /app/entrypoint.sh
+COPY --chown=appuser:appgroup scripts/entrypoint.sh /app/entrypoint.sh
 
 # Copy toàn bộ giao diện Web UI (gồm cả thư mục con storage/ cho CloudPool Virtual Storage)
 COPY --chown=appuser:appgroup supportflast_ui /app/supportflast_ui

@@ -84,5 +84,5 @@ ifeq ($(OS),Windows_NT)
 	cmd /c RUN_FULL_SYSTEM.bat
 else
 	@echo "==> Starting SupportFlast Services (Linux)..."
-	@if [ -f entrypoint.sh ]; then ./entrypoint.sh; else cd supportflast_engine && go run .; fi
+	@if [ -f scripts/entrypoint.sh ]; then ./scripts/entrypoint.sh; else cd supportflast_engine && go run .; fi
 endif

@@ -20,7 +20,10 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $cloudflaredBin = "$rootDir\tools\cloudflared.exe"
-$configFile = "$rootDir\cloudflared_config.yml"
+$configFile = "$rootDir\infra\cloudflare\cloudflared_config.yml"
+if (-not (Test-Path $configFile)) {
+    $configFile = "$rootDir\cloudflared_config.yml"
+}
 $tokenFile = "$rootDir\tools\cloudflare_token.txt"
 
 # 1. Kiem tra Binary cloudflared.exe

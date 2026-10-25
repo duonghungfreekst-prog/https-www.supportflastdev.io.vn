@@ -6,7 +6,8 @@ title SupportFlast.dev - Trình Khởi Động Máy Chủ An Toàn (Local & Clou
 color 0B
 
 set "ROOT_DIR=%~dp0"
-set "ENGINE_EXE=%ROOT_DIR%supportflast.exe"
+set "ENGINE_EXE=%ROOT_DIR%bin\supportflast.exe"
+if not exist "%ENGINE_EXE%" set "ENGINE_EXE=%ROOT_DIR%supportflast.exe"
 set "CLOUDFLARED_BIN=%ROOT_DIR%tools\cloudflared.exe"
 set "TOKEN_FILE=%ROOT_DIR%tools\cloudflare_token.txt"
 

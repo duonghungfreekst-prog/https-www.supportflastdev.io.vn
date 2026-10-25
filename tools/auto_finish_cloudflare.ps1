@@ -9,7 +9,10 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $rootDir = "f:\supportflast.dev"
 $cloudflared = "$rootDir\tools\cloudflared.exe"
 $certPath = "$env:USERPROFILE\.cloudflared\cert.pem"
-$configFile = "$rootDir\cloudflared_config.yml"
+$configFile = "$rootDir\infra\cloudflare\cloudflared_config.yml"
+if (-not (Test-Path $configFile)) {
+    $configFile = "$rootDir\cloudflared_config.yml"
+}
 
 Write-Host "==============================================================================" -ForegroundColor Cyan
 Write-Host "       SUPPORTFLAST - TỰ ĐỘNG THIẾT LẬP TOÀN BỘ CLOUDFLARE TUNNEL            " -ForegroundColor Yellow
