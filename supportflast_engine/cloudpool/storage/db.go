@@ -150,7 +150,7 @@ func (s *DB) SQLDB() *sql.DB {
 }
 
 // NewDB khởi tạo đối tượng DB cho CloudPool.
-// Hỗ trợ cả Aiven PostgreSQL (production) và SQLite (local/test).
+// Ưu tiên Aiven PostgreSQL (production) và tự động fallback sang SQLite nếu PostgreSQL chưa cấu hình/offline.
 func NewDB(dbPath string) (*DB, error) {
 	if strings.TrimSpace(dbPath) == "" {
 		envDriver := strings.ToLower(strings.TrimSpace(os.Getenv("CLOUDPOOL_DB_DRIVER")))
@@ -160,7 +160,12 @@ func NewDB(dbPath string) (*DB, error) {
 		if envDriver == "sqlite" || envDriver == "sqlite3" {
 			return NewDBWithConfig("sqlite", "", dbPath)
 		}
-		return NewDBWithConfig("postgres", "", "")
+		pgDB, err := NewDBWithConfig("postgres", "", "")
+		if err == nil {
+			return pgDB, nil
+		}
+		log.Printf("[CLOUDPOOL] [WARN] Kết nối Aiven PostgreSQL chưa sẵn sàng (%v). Tự động fallback sang SQLite...", err)
+		return NewDBWithConfig("sqlite", "", dbPath)
 	}
 	return NewDBWithConfig("sqlite", "", dbPath)
 }

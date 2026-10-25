@@ -158,7 +158,7 @@ func TestLoginHandler_And_GetUserFromToken_RS256(t *testing.T) {
 
 	resp := w.Result()
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("LoginHandler failed: status code %d", resp.StatusCode)
+		t.Fatalf("LoginHandler failed: status code %d, body: %s", resp.StatusCode, w.Body.String())
 	}
 
 	var loginData struct {

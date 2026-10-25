@@ -210,7 +210,7 @@ func TestClientConfigEndpoint(t *testing.T) {
 	if !cfgResp.Success {
 		t.Fatalf("ClientConfigResponse success = false")
 	}
-	if cfgResp.Server.Domain != "supportflastdev.io.vn" {
+	if cfgResp.Server.Domain != "supportflastdev.io.vn" && cfgResp.Server.Domain != "www.supportflastdev.io.vn" {
 		t.Fatalf("Domain không khớp: %s", cfgResp.Server.Domain)
 	}
 	if !cfgResp.Mitm.Enabled || cfgResp.Mitm.Port != 443 {

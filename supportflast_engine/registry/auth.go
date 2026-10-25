@@ -666,24 +666,24 @@ func InitAuth() {
 		return
 	}
 
+	defaultAdminUser := strings.TrimSpace(os.Getenv("ADMIN_USERNAME"))
+	if defaultAdminUser == "" {
+		defaultAdminUser = "admin"
+	}
+	defaultAdminPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
+	if defaultAdminPass == "" {
+		defaultAdminPass = "Admin@2026!SupportFlast"
+	}
+
+	hash, err := HashPassword(defaultAdminPass)
+	if err != nil {
+		log.Printf("[AUTH] Lỗi băm mật khẩu admin: %v\n", err)
+		return
+	}
+
 	var hasAdmin bool
-	err := db.QueryRow("SELECT COUNT(*) > 0 FROM users WHERE username = 'admin' OR role = 'admin'").Scan(&hasAdmin)
+	err = db.QueryRow("SELECT COUNT(*) > 0 FROM users WHERE username = ? OR role = 'admin'", defaultAdminUser).Scan(&hasAdmin)
 	if err != nil || !hasAdmin {
-		defaultAdminUser := strings.TrimSpace(os.Getenv("ADMIN_USERNAME"))
-		if defaultAdminUser == "" {
-			defaultAdminUser = "admin"
-		}
-		defaultAdminPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
-		if defaultAdminPass == "" {
-			defaultAdminPass = "Admin@2026!SupportFlast"
-		}
-
-		hash, err := HashPassword(defaultAdminPass)
-		if err != nil {
-			log.Printf("[AUTH] Lỗi băm mật khẩu admin: %v\n", err)
-			return
-		}
-
 		now := time.Now().Format(time.RFC3339)
 		adminUser := User{
 			ID:           "usr-admin-001",
@@ -701,7 +701,12 @@ func InitAuth() {
 		if err := InsertUser(adminUser); err != nil {
 			log.Printf("[AUTH] [WARN] Lỗi chèn admin user: %v", err)
 		} else {
-			log.Printf("[AUTH] Đã khởi tạo thành công tài khoản Quản Trị Viên ('%s') vào CSDL SQLite.", defaultAdminUser)
+			log.Printf("[AUTH] Đã khởi tạo thành công tài khoản Quản Trị Viên ('%s') vào CSDL.", defaultAdminUser)
+		}
+	} else {
+		// Đảm bảo mật khẩu admin luôn đồng bộ chính xác với cấu hình
+		if _, updateErr := db.Exec("UPDATE users SET password_hash = ? WHERE username = ?", hash, defaultAdminUser); updateErr != nil {
+			log.Printf("[AUTH] [WARN] Cập nhật hash admin thất bại: %v", updateErr)
 		}
 	}
 

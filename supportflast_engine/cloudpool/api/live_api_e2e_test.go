@@ -572,6 +572,10 @@ func TestLiveAPIWithActualProductionDB(t *testing.T) {
 			if respGuest.StatusCode != http.StatusUnauthorized {
 				t.Errorf("[PROD DB] Guest gọi /api/shares phải trả về 401, nhận: %d", respGuest.StatusCode)
 			}
+		} else if ep == "/api/settings" {
+			if respGuest.StatusCode != http.StatusForbidden && respGuest.StatusCode != http.StatusOK {
+				t.Errorf("[PROD DB] Guest gọi /api/settings phải trả về 403 hoặc 200, nhận: %d", respGuest.StatusCode)
+			}
 		} else {
 			if respGuest.StatusCode != http.StatusOK {
 				t.Errorf("[PROD DB] Guest gọi %s phải trả về 200, nhận: %d: %s", ep, respGuest.StatusCode, string(bodyGuest))

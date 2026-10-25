@@ -20,7 +20,7 @@ test:
 	@echo "==> Testing Rust Core..."
 	cd supportflast_core && cargo test
 	@echo "==> Testing Go Engine..."
-	cd supportflast_engine && go test -v ./...
+	cd supportflast_engine && go test -p 1 ./...
 	@echo "==> Testing Python AI Subagents..."
 	cd supportflast_ai && python test_agents.py
 	@echo "==> All tests passed!"

@@ -20,6 +20,9 @@ data/keys/*
 !data/.gitkeep
 **/keys.json
 supportflast_engine/data/
+supportflast_engine/**/data/
+data/test_*/
+data/test_db/
 data/oauth/
 data/service_accounts/
 tools/*_token.txt
