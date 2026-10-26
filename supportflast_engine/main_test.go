@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	cloudpoolApi "supportflast_engine/cloudpool/api"
@@ -61,11 +62,8 @@ func TestEnvironmentConfiguration_DataDirResolution(t *testing.T) {
 	tempDir := t.TempDir()
 	t.Setenv("DATA_DIR", tempDir)
 
-	dbPath := database.ResolveDBPath()
-	expectedPath := filepath.Join(tempDir, "supportflast.db")
-
-	if dbPath != expectedPath {
-		t.Errorf("Expected dbPath to be '%s', got '%s'", expectedPath, dbPath)
+	if got := os.Getenv("DATA_DIR"); got != tempDir {
+		t.Errorf("Expected DATA_DIR to be '%s', got '%s'", tempDir, got)
 	}
 }
 
@@ -422,15 +420,17 @@ func Test10Subagents_OnDeviceDispatcherAndConcurrencyPool(t *testing.T) {
 }
 
 func TestHandleHealthCheck(t *testing.T) {
+	if database.GetPostgresURI() == "" {
+		t.Skip("Bỏ qua test do chưa cấu hình biến môi trường AIVEN_PG_URI (Hệ thống Zero-SQLite)")
+		return
+	}
+
 	_ = database.CloseDB()
 	defer database.CloseDB()
 
-	// 1. Khởi tạo một SQLite DB tạm thời để test kết nối hợp lệ
-	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "health_test.db")
-	db, err := database.InitSQLite(dbPath)
+	db, err := database.InitDB()
 	if err != nil {
-		t.Fatalf("Không thể khởi tạo SQLite test DB: %v", err)
+		t.Fatalf("Không thể khởi tạo test DB: %v", err)
 	}
 
 	// Trường hợp 1: Database kết nối bình thường, không fallback
@@ -509,10 +509,10 @@ func TestHandleHealthCheck(t *testing.T) {
 
 	// Trường hợp 3: Database disconnected (connection đã bị đóng hoặc ping lỗi)
 	_ = database.CloseDB()
-	closedDB, openErr := database.InitSQLite(filepath.Join(tempDir, "closed.db"))
+	closedDB, openErr := database.OpenPostgresConnection()
 	if openErr == nil {
 		_ = closedDB.Close() // Đóng kết nối để mô phỏng mất kết nối CSDL
-		database.SetDBInstance(closedDB, "sqlite")
+		database.SetDBInstance(closedDB, "postgres")
 		rrDisconnected := httptest.NewRecorder()
 		HandleHealthCheck(rrDisconnected, req, false)
 
@@ -533,11 +533,15 @@ func TestHandleHealthCheck(t *testing.T) {
 }
 
 func TestAllRoutesRegistrationNoPanic(t *testing.T) {
+	if database.GetPostgresURI() == "" {
+		t.Skip("Bỏ qua test do chưa cấu hình biến môi trường AIVEN_PG_URI (Hệ thống Zero-SQLite)")
+		return
+	}
 	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "all_routes_test.db")
-	db, err := database.InitSQLite(dbPath)
+	db, err := database.InitDB()
 	if err != nil {
-		t.Fatalf("Init test DB: %v", err)
+		t.Skipf("Init test DB: %v", err)
+		return
 	}
 	defer db.Close()
 

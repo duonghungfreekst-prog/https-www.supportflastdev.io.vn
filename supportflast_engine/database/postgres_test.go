@@ -65,40 +65,6 @@ func TestPostgresConnectionAndRebind(t *testing.T) {
 	t.Logf("✔ Test pgcompat hoàn tất 100%% thành công!")
 }
 
-func TestPostgresUsageHistorySequence(t *testing.T) {
-	if GetPostgresURI() == "" {
-		t.Skip("Bỏ qua test do chưa cấu hình biến môi trường AIVEN_PG_URI")
-	}
-	db, err := OpenPostgresConnection()
-	if err != nil {
-		t.Fatalf("ERR: %v", err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("CREATE SEQUENCE IF NOT EXISTS omni_usage_history_id_seq;")
-	if err != nil {
-		t.Fatalf("Err create seq: %v", err)
-	}
-	_, err = db.Exec("ALTER TABLE omni_usage_history ALTER COLUMN id SET DEFAULT nextval('omni_usage_history_id_seq');")
-	if err != nil {
-		t.Fatalf("Err alter table: %v", err)
-	}
-
-	// Thử INSERT một dòng mà không truyền cột id
-	res, err := db.Exec(`
-		INSERT INTO omni_usage_history 
-		(timestamp, provider, model, connection_id, api_key, endpoint, prompt_tokens, completion_tokens, total_tokens, cost, status, latency_ms)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "2026-10-22T10:24:00Z", "test_prov", "test_model", "test_conn_reg", "test_key", "/test", 10, 20, 30, 0.0, "success", 100)
-	if err != nil {
-		t.Fatalf("LỖI INSERT SAU KHI FIX SEQUENCE: %v", err)
-	}
-	t.Logf("✔ INSERT THÀNH CÔNG VÀO POSTGRESQL! res: %v", res)
-
-	// Dọn dòng test
-	_, _ = db.Exec("DELETE FROM omni_usage_history WHERE connection_id = 'test_conn_reg'")
-}
-
 func TestGetPostgresURI_NoEnv(t *testing.T) {
 	oldAiven := os.Getenv("AIVEN_PG_URI")
 	oldURL := os.Getenv("DATABASE_URL")

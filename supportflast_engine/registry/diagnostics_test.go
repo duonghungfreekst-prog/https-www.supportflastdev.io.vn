@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -134,30 +133,17 @@ func TestIsPostgresOrMySQL(t *testing.T) {
 		t.Errorf("kỳ vọng isPostgres trả về true khi DB_DRIVER=postgres")
 	}
 
-	// 2. Kiểm tra qua DB_DRIVER=mysql
-	t.Setenv("DB_DRIVER", "mysql")
+	// 2. Kiểm tra qua DB_DRIVER=postgres
+	t.Setenv("DB_DRIVER", "postgres")
 	if !isPostgres(nil) {
-		t.Errorf("kỳ vọng isPostgres trả về true khi DB_DRIVER=mysql")
+		t.Errorf("kỳ vọng isPostgres trả về true khi DB_DRIVER=postgres")
 	}
 
-	// 3. Kiểm tra qua DB_DRIVER=sqlite
-	t.Setenv("DB_DRIVER", "sqlite")
-	if isPostgres(nil) {
-		t.Errorf("kỳ vọng isPostgres trả về false khi DB_DRIVER=sqlite")
-	}
-
-	// 4. Kiểm tra qua PG_HOST khi DB_DRIVER không đặt
+	// 3. Kiểm tra qua PG_HOST khi DB_DRIVER không đặt
 	t.Setenv("DB_DRIVER", "")
 	t.Setenv("PG_HOST", "supportflast-postgres.aivencloud.com")
 	if !isPostgres(nil) {
 		t.Errorf("kỳ vọng isPostgres trả về true khi PG_HOST được cấu hình")
-	}
-
-	// 5. Kiểm tra chế độ fallback: DB_DRIVER=postgres nhưng database.ActiveDriver()="sqlite" -> isPostgres trả về false
-	t.Setenv("DB_DRIVER", "postgres")
-	database.SetDBInstance(nil, "sqlite")
-	if isPostgres(nil) {
-		t.Errorf("kỳ vọng isPostgres trả về false khi database.ActiveDriver() là sqlite dù DB_DRIVER=postgres (chế độ fallback)")
 	}
 }
 
@@ -176,12 +162,6 @@ func TestPerformDiagnostics_Postgres_Config(t *testing.T) {
 	t.Setenv("PG_HOST", "supportflast-postgres.aivencloud.com")
 	t.Setenv("PG_PORT", "4000")
 	t.Setenv("PG_DATABASE", "supportflast")
-
-	mockDB, errMock := sql.Open("sqlite", ":memory:")
-	if errMock == nil {
-		defer mockDB.Close()
-		database.SetDBInstance(mockDB, "postgres")
-	}
 
 	resp := PerformDiagnostics()
 

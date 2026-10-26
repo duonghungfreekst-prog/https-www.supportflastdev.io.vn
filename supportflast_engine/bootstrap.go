@@ -192,23 +192,15 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	}
 	log.Printf("[BOOTSTRAP] [RSA] Cặp khóa RSA 2048-bit sẵn sàng tại: '%s'", keysDir)
 
-	// 5. Tự động khởi tạo CSDL (Aiven PostgreSQL hoặc fallback sang SQLite)
-	log.Printf("[BOOTSTRAP] [DATABASE] Đang khởi tạo CSDL (%s)...", database.ActiveDriver())
+	// 5. Tự động khởi tạo CSDL Aiven PostgreSQL Cloud Cluster (Zero-SQLite, Zero-LibSQL)
+	log.Printf("[BOOTSTRAP] [DATABASE] Đang kết nối CSDL Aiven PostgreSQL Cloud Cluster...")
 	db, err := database.InitDB()
 	if err != nil {
-		log.Printf("[BOOTSTRAP] [DATABASE] [WARN] Khởi tạo DB chính thất bại (%v), tự động kích hoạt fallback sang SQLite tại '%s'...", err, dataDir)
-		db, err = database.InitSQLite(filepath.Join(dataDir, "supportflast.db"))
-		if err != nil {
-			return nil, fmt.Errorf("khởi tạo cơ sở dữ liệu thất bại (kể cả fallback SQLite): %w", err)
-		}
-		res.MainDBPath = filepath.Join(dataDir, "supportflast.db")
+		log.Printf("[BOOTSTRAP] [DATABASE] [WARN] Chưa thể kết nối Aiven PostgreSQL Cloud Cluster (%v). Đang ở chế độ chờ kết nối...", err)
+		res.MainDBPath = "aiven-postgres://cloud-cluster/defaultdb"
 	} else {
-		log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu đã kết nối và sẵn sàng!")
-		if database.ActiveDriver() == "postgres" {
-			res.MainDBPath = "postgres://aiven-cluster/defaultdb"
-		} else {
-			res.MainDBPath = filepath.Join(dataDir, "supportflast.db")
-		}
+		log.Printf("[BOOTSTRAP] [DATABASE] Cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster đã kết nối và sẵn sàng 100%%!")
+		res.MainDBPath = "aiven-postgres://cloud-cluster/defaultdb"
 	}
 
 	// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
@@ -220,6 +212,11 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	// Tự động dọn sạch các review mẫu cũ ('rev-001' -> 'rev-006') khỏi bảng reviews
 	if _, cErr := db.Exec("DELETE FROM reviews WHERE id IN ('rev-001', 'rev-002', 'rev-003', 'rev-004', 'rev-005', 'rev-006')"); cErr == nil {
 		log.Println("[BOOTSTRAP] [CLEANUP] Đã dọn sạch toàn bộ đánh giá ảo/mẫu khỏi cơ sở dữ liệu.")
+	}
+
+	// Tự động xóa vĩnh viễn 6 bảng tàn dư và sequence của Router khỏi CSDL Cloud (sau khi Router đã tách sang F:\router)
+	if _, dropErr := db.Exec("DROP TABLE IF EXISTS omni_usage_history, omni_kv, omni_proxy_pools, omni_settings, omni_client_keys, omni_providers CASCADE; DROP SEQUENCE IF EXISTS omni_usage_history_id_seq CASCADE;"); dropErr == nil {
+		log.Println("[BOOTSTRAP] [CLEANUP] Đã xóa hoàn toàn 6 bảng tàn dư của Router khỏi CSDL Aiven PostgreSQL.")
 	}
 
 	// 6. Tự động khởi tạo CSDL CloudPool Storage kết nối Aiven PostgreSQL hoặc fallback SQLite

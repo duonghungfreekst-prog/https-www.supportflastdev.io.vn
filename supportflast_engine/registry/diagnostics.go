@@ -243,40 +243,12 @@ func checkWritePermission(dirPath string) (bool, string) {
 	return true, "Có quyền Đọc/Ghi (Read/Write) hoàn toàn hợp lệ"
 }
 
-// isPostgres xác định xem hệ thống đang cấu hình hoặc kết nối tới Aiven PostgreSQL Cloud/MySQL hay SQLite.
-// Đọc driver thực tế từ database.ActiveDriver() thay vì ưu tiên os.Getenv("DB_DRIVER").
-// Nếu database.ActiveDriver() == "sqlite", trả về false ngay cả khi biến môi trường là "postgres" (chế độ fallback).
+// isPostgres xác định hệ thống luôn sử dụng Aiven PostgreSQL Cloud (Zero-SQLite, Zero-LibSQL, Zero-TiDB)
 func isPostgres(db *sql.DB) bool {
-	active := database.ActiveDriver()
-	if active == "sqlite" {
-		return false
-	}
-	if active == "postgres" || active == "mysql" {
-		return true
-	}
-	if db != nil {
-		driverType := strings.ToLower(fmt.Sprintf("%T", db.Driver()))
-		if strings.Contains(driverType, "sqlite") {
-			return false
-		}
-		if strings.Contains(driverType, "mysql") || strings.Contains(driverType, "postgres") {
-			return true
-		}
-	}
-	driverEnv := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if driverEnv == "sqlite" || driverEnv == "sqlite3" {
-		return false
-	}
-	if driverEnv == "postgres" || driverEnv == "mysql" {
-		return true
-	}
-	if strings.TrimSpace(os.Getenv("PG_HOST")) != "" && driverEnv != "sqlite" {
-		return true
-	}
-	return false
+	return true
 }
 
-// resolvePostgresEndpoint tạo chuỗi định danh máy chủ PostgreSQL/SQLite an toàn không lộ mật khẩu (Rule 3.2 & 3.5)
+
 func resolvePostgresEndpoint() string {
 	host := strings.TrimSpace(os.Getenv("PG_HOST"))
 	if host == "" {
@@ -387,51 +359,6 @@ func PerformDiagnostics() DiagnosticsResponse {
 					dbCheck.TotalTables = tableCount
 					dbCheck.Status = "ok"
 					dbCheck.Message = fmt.Sprintf("CSDL Aiven PostgreSQL Cloud hoạt động tối ưu: Phân tán Multi-Raft Cloud-Native (%d bảng)", tableCount)
-				}
-			}
-		}
-	} else {
-		dbCheck = DatabaseCheckResult{
-			Title:  "Cơ Sở Dữ Liệu SQLite (Database Engine)",
-			Driver: "sqlite",
-			DBPath: database.ResolveDBPath(),
-		}
-		if db == nil {
-			dbCheck.Status = "error"
-			dbCheck.Connected = false
-			dbCheck.Message = "Không thể kết nối hoặc khởi tạo CSDL SQLite hệ thống"
-		} else {
-			dbCheck.Connected = true
-			if err := db.Ping(); err != nil {
-				dbCheck.Status = "error"
-				dbCheck.Connected = false
-				dbCheck.Message = fmt.Sprintf("Ping CSDL SQLite thất bại: %v", err)
-			} else {
-				// Kiểm tra journal_mode
-				var journalMode string
-				_ = db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode)
-				dbCheck.JournalMode = strings.ToLower(strings.TrimSpace(journalMode))
-				dbCheck.WALModeActive = (dbCheck.JournalMode == "wal")
-
-				// Kiểm tra foreign_keys
-				var foreignKeys int
-				_ = db.QueryRow("PRAGMA foreign_keys;").Scan(&foreignKeys)
-				dbCheck.ForeignKeysEnabled = (foreignKeys == 1)
-
-				// Đếm số lượng bảng hệ thống SQLite
-				var tableCount int
-				_ = db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';").Scan(&tableCount)
-				dbCheck.TotalTables = tableCount
-
-				if dbCheck.WALModeActive && dbCheck.ForeignKeysEnabled {
-					dbCheck.Status = "ok"
-					dbCheck.Message = fmt.Sprintf("CSDL hoạt động tối ưu: Chế độ WAL & Foreign Keys đã kích hoạt (%d bảng)", tableCount)
-				} else if dbCheck.ForeignKeysEnabled {
-					dbCheck.Status = "warning"
-					dbCheck.Message = fmt.Sprintf("CSDL hoạt động ở chế độ %s (Khuyến nghị WAL mode cho đa luồng đọc)", strings.ToUpper(dbCheck.JournalMode))
-				} else {
-					dbCheck.Status = "warning"
-					dbCheck.Message = "Foreign Keys chưa được kích hoạt trên kết nối SQLite"
 				}
 			}
 		}

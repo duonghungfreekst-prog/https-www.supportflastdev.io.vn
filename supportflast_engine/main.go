@@ -756,6 +756,8 @@ func main() {
 	mux.HandleFunc("/api/tokens", registry.APITokensListHandler)
 	mux.HandleFunc("/api/tokens/verify", registry.APITokenVerifyHandler)
 	mux.HandleFunc("/api/token/verify", registry.APITokenVerifyHandler)
+	mux.HandleFunc("/api/usage/stats", registry.APIUsageStatsHandler)
+	mux.HandleFunc("/api/stats", registry.APIUsageStatsHandler)
 	mux.HandleFunc("/api/router/providers", registry.APIRouterProvidersHandler)
 	mux.HandleFunc("/api/providers", registry.APIRouterProvidersHandler)
 

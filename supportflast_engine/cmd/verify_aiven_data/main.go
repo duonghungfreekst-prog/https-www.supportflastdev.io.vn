@@ -52,15 +52,14 @@ func main() {
 		fmt.Printf("  ==> Tổng số virtual_files trên Aiven: %d dòng dữ liệu (đã đồng bộ 100%% toàn diện)\n", totalFiles)
 	}
 
-	// 2. Kiểm tra tổng số dòng của tất cả 25 bảng trên Aiven PostgreSQL
-	fmt.Println("\n--- [2] TỔNG KẾT TOÀN BỘ 25 BẢNG ĐÃ CÓ TRÊN AIVEN POSTGRESQL ---")
+	// 2. Kiểm tra tổng số dòng của tất cả 19 bảng trên Aiven PostgreSQL
+	fmt.Println("\n--- [2] TỔNG KẾT TOÀN BỘ 19 BẢNG CỐT LÕI TRÊN AIVEN POSTGRESQL ---")
 	tables := []string{
 		"accounts", "activity_logs", "api_keys", "apps", "audit_logs",
 		"cloudpool_users", "file_access_otps", "file_access_requests",
-		"file_chunks", "gdrive_backups", "login_sessions", "omni_client_keys",
-		"omni_kv", "omni_providers", "omni_proxy_pools", "omni_settings",
-		"omni_usage_history", "public_shares", "reviews", "revoked_tokens",
-		"security_events", "settings", "system_releases", "users", "virtual_files",
+		"file_chunks", "gdrive_backups", "login_sessions", "public_shares",
+		"reviews", "revoked_tokens", "security_events", "settings",
+		"system_releases", "users", "virtual_files",
 	}
 
 	totalAllRows := 0
@@ -74,7 +73,7 @@ func main() {
 			totalAllRows += cnt
 		}
 	}
-	fmt.Printf("\n  ==> TỔNG CỘNG TOÀN CỤM AIVEN: %d dòng dữ liệu trên 25 bảng!\n", totalAllRows)
+	fmt.Printf("\n  ==> TỔNG CỘNG TOÀN CỤM AIVEN: %d dòng dữ liệu trên 19 bảng cốt lõi!\n", totalAllRows)
 
 	// 3. Kiểm tra kết nối từ máy chủ Render tới Aiven
 	fmt.Println("\n--- [3] CÁC KẾT NỐI ĐANG HOẠT ĐỘNG (ACTIVE SESSIONS) TỚI AIVEN ---")

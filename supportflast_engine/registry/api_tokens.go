@@ -757,3 +757,73 @@ func APIRouterProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		"providers": providers,
 	})
 }
+
+// APIUsageStatsHandler trả về thống kê số liệu và token quota cho Desktop App & Web Clients
+func APIUsageStatsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	token := ExtractToken(r)
+	if token == "" {
+		token = r.URL.Query().Get("key")
+	}
+	if token == "" {
+		token = r.Header.Get("x-9r-cli-token")
+	}
+
+	item, valid := VerifyAPITokenKey(token)
+	quota := int64(10000000)
+	usedQuota := int64(0)
+	remainQuota := int64(10000000)
+	tokenName := "SupportFlast AI Master Token"
+	tokenStatus := "active"
+	models := []string{"*"}
+	expiresAt := ""
+
+	if valid && item != nil {
+		quota = item.Quota
+		usedQuota = item.UsedQuota
+		remainQuota = item.RemainQuota
+		tokenName = item.Name
+		tokenStatus = item.Status
+		models = item.Models
+		expiresAt = item.ExpiresAt
+	} else if VerifyAPIKey(token) {
+		tokenName = "Legacy Admin API Key"
+		valid = true
+	}
+
+	var totalRequests int64 = 0
+	db := database.GetDB()
+	if db != nil {
+		if item != nil && item.ID != "" {
+			_ = db.QueryRow("SELECT COUNT(*) FROM token_usage_logs WHERE token_id = ?", item.ID).Scan(&totalRequests)
+		} else {
+			_ = db.QueryRow("SELECT COUNT(*) FROM token_usage_logs").Scan(&totalRequests)
+		}
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":        true,
+		"valid":          valid,
+		"status":         tokenStatus,
+		"name":           tokenName,
+		"quota":          quota,
+		"used_quota":     usedQuota,
+		"remain_quota":   remainQuota,
+		"total_requests": totalRequests,
+		"totalRequests":  totalRequests,
+		"models":         models,
+		"expires_at":     expiresAt,
+		"token_info": map[string]interface{}{
+			"valid":        valid,
+			"name":         tokenName,
+			"quota":        quota,
+			"used_quota":   usedQuota,
+			"remain_quota": remainQuota,
+			"status":       tokenStatus,
+			"models":       models,
+			"expires_at":   expiresAt,
+		},
+	})
+}
+

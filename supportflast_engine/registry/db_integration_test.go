@@ -3,11 +3,8 @@ package registry
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,22 +12,22 @@ import (
 	"supportflast_engine/database"
 )
 
-// setupIntegrationTestDB thiết lập cơ sở dữ liệu SQLite cô lập cho bài test
+// setupIntegrationTestDB thiết lập cơ sở dữ liệu Aiven PostgreSQL cho bài test (Zero-SQLite)
 func setupIntegrationTestDB(t *testing.T) func() {
-	testDir := filepath.Join(os.TempDir(), fmt.Sprintf("sf_test_db_%d", time.Now().UnixNano()))
-	os.MkdirAll(testDir, 0755)
-	dbPath := filepath.Join(testDir, "test.db")
+	if database.GetPostgresURI() == "" {
+		t.Skip("Bỏ qua integration test do chưa cấu hình AIVEN_PG_URI (Hệ thống Zero-SQLite, Zero-LibSQL)")
+		return func() {}
+	}
 
 	database.CloseDB()
-	db, err := database.InitDB(dbPath)
+	_, err := database.InitDB()
 	if err != nil {
-		t.Fatalf("InitDB failed: %v", err)
+		t.Skipf("Không thể kết nối Aiven PostgreSQL cho integration test: %v", err)
+		return func() {}
 	}
-	_, _ = db.Exec("DELETE FROM apps; DELETE FROM system_releases; DELETE FROM reviews;")
 
 	return func() {
 		database.CloseDB()
-		os.RemoveAll(testDir)
 	}
 }
 

@@ -81,15 +81,8 @@ var (
 )
 
 func init() {
-	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if d == "postgres" || d == "postgresql" || d == "aiven" {
-		activeDriver.Store("postgres")
-	} else if d == "sqlite" || d == "sqlite3" {
-		activeDriver.Store("sqlite")
-	} else {
-		// Mặc định toàn hệ thống là Aiven PostgreSQL
-		activeDriver.Store("postgres")
-	}
+	// Mặc định và duy nhất toàn hệ thống là Aiven PostgreSQL (Zero-SQLite, Zero-LibSQL)
+	activeDriver.Store("postgres")
 }
 
 // SchemaDDL danh sách câu lệnh DDL định nghĩa bảng và chỉ mục (INDEX)
@@ -369,24 +362,14 @@ func IsPostgres(db ...*sql.DB) bool {
 	return drv == "postgres" || drv == "postgresql" || drv == "aiven"
 }
 
-// ActiveDriver trả về loại cơ sở dữ liệu hiện hành ("postgres", "sqlite", "postgres") (Lock-free)
+// ActiveDriver trả về loại cơ sở dữ liệu hiện hành (luôn là "postgres" - Zero-SQLite, Zero-LibSQL)
 func ActiveDriver() string {
-	if v, ok := activeDriver.Load().(string); ok && v != "" {
-		return v
-	}
-	d := strings.ToLower(strings.TrimSpace(os.Getenv("DB_DRIVER")))
-	if d == "sqlite" || d == "sqlite3" {
-		return "sqlite"
-	}
-	if d == "postgres" || d == "postgresql" || d == "aiven" {
-		return "postgres"
-	}
 	return "postgres"
 }
 
 // GetActiveDriver là bí danh (alias) của ActiveDriver đảm bảo tương thích ngược
 func GetActiveDriver() string {
-	return ActiveDriver()
+	return "postgres"
 }
 
 // SetDBInstance gán con trỏ kết nối DB và cập nhật activeDriver phục vụ unit test và tích hợp
@@ -394,32 +377,20 @@ func SetDBInstance(db *sql.DB, driver ...string) {
 	dbMutex.Lock()
 	defer dbMutex.Unlock()
 	dbInstance = db
-	drv := "postgres"
-	if len(driver) > 0 && strings.TrimSpace(driver[0]) != "" {
-		drv = strings.ToLower(strings.TrimSpace(driver[0]))
-	}
-	activeDriver.Store(drv)
+	activeDriver.Store("postgres")
 }
 
-// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (Aiven PostgreSQL hoặc fallback SQLite)
+// InitDB khởi tạo kết nối cơ sở dữ liệu thread-safe (100% Aiven PostgreSQL Cloud Cluster)
 func InitDB(customPath ...string) (*sql.DB, error) {
-	if len(customPath) > 0 && strings.TrimSpace(customPath[0]) != "" {
-		return InitSQLite(customPath[0])
+	db, err := InitPostgres()
+	if err != nil {
+		return nil, fmt.Errorf("kết nối Aiven PostgreSQL Cloud Cluster thất bại: %w (Hệ thống Zero-SQLite/Zero-LibSQL)", err)
 	}
-	drv := ActiveDriver()
-	if drv == "postgres" || drv == "postgresql" || drv == "aiven" {
-		db, err := InitPostgres()
-		if err != nil {
-			log.Printf("[ENGINE] [DATABASE] [WARN] Kết nối Aiven PostgreSQL thất bại (%v). Tự động fallback sang SQLite...", err)
-			return InitSQLite()
-		}
-		dbMutex.Lock()
-		dbInstance = db
-		activeDriver.Store("postgres")
-		dbMutex.Unlock()
-		return db, nil
-	}
-	return InitSQLite()
+	dbMutex.Lock()
+	dbInstance = db
+	activeDriver.Store("postgres")
+	dbMutex.Unlock()
+	return db, nil
 }
 
 // GetDB trả về con trỏ kết nối *sql.DB thread-safe cho các module khác truy cập.

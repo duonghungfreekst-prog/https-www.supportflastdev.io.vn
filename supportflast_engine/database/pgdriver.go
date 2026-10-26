@@ -16,15 +16,13 @@ func init() {
 }
 
 var (
-	reReplaceOmniSettings = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_settings"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`)
-	reReplaceOmniKV       = regexp.MustCompile(`(?i)REPLACE\s+INTO\s+"?omni_kv"?\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`)
-	reBoolEqZero          = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*0\b`)
-	reBoolEqOne           = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*1\b`)
-	reBoolNeqZero         = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*0\b`)
-	reBoolNeqOne          = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*1\b`)
-	reZeroEqBool          = regexp.MustCompile(`(?i)\b0\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
-	reOneEqBool           = regexp.MustCompile(`(?i)\b1\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
-	reCoalesceIsDir       = regexp.MustCompile(`(?i)\bCOALESCE\s*\(\s*((?:[a-zA-Z0-9_]+\.)?is_dir)\s*,\s*0\s*\)`)
+	reBoolEqZero    = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*0\b`)
+	reBoolEqOne     = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*=\s*1\b`)
+	reBoolNeqZero   = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*0\b`)
+	reBoolNeqOne    = regexp.MustCompile(`(?i)\b((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\s*(!=|<>)\s*1\b`)
+	reZeroEqBool    = regexp.MustCompile(`(?i)\b0\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
+	reOneEqBool     = regexp.MustCompile(`(?i)\b1\s*=\s*((?:[a-zA-Z0-9_]+\.)?(?:is_deleted|is_dir|is_encrypted|has_missing_chunks))\b`)
+	reCoalesceIsDir = regexp.MustCompile(`(?i)\bCOALESCE\s*\(\s*((?:[a-zA-Z0-9_]+\.)?is_dir)\s*,\s*0\s*\)`)
 )
 
 // RebindPostgres chuyển đổi câu lệnh SQL tương thích PostgreSQL:
@@ -36,16 +34,6 @@ func RebindPostgres(query string) string {
 	q := strings.TrimSpace(query)
 	if q == "" {
 		return q
-	}
-
-	// Xử lý REPLACE INTO cho omni_settings
-	if strings.Contains(strings.ToLower(q), "replace into omni_settings") || strings.Contains(strings.ToLower(q), "replace into \"omni_settings\"") {
-		q = reReplaceOmniSettings.ReplaceAllString(q, `INSERT INTO "omni_settings" ($1) VALUES ($2) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`)
-	}
-
-	// Xử lý REPLACE INTO cho omni_kv
-	if strings.Contains(strings.ToLower(q), "replace into omni_kv") || strings.Contains(strings.ToLower(q), "replace into \"omni_kv\"") {
-		q = reReplaceOmniKV.ReplaceAllString(q, `INSERT INTO "omni_kv" ($1) VALUES ($2) ON CONFLICT (scope, key_name) DO UPDATE SET val_data = EXCLUDED.val_data`)
 	}
 
 	// Xử lý kiểu BOOLEAN cho PostgreSQL (virtual_files: is_deleted, is_dir, is_encrypted, has_missing_chunks)

@@ -7014,4 +7014,264 @@ function renderCyberRadarEmptyState(options) {
             }
         });
 
+        // ============================================================================
+        // CỔNG BÁN & QUẢN LÝ API TOKEN AI CHUẨN 9ROUTER.COM & NEW-API (SUPPORTFLAST HUB)
+        // ============================================================================
+        function openAiTokenBillingModal() {
+            const user = getStoredUser();
+            if (!user) {
+                openAdminLoginModal();
+                if (typeof showStateToast === 'function') {
+                    showStateToast('Vui lòng đăng nhập để quản lý hoặc khởi tạo API Token!', '🔑', 3500);
+                }
+                return;
+            }
+
+            let m = document.getElementById('ai-token-billing-modal');
+            if (!m) {
+                m = document.createElement('div');
+                m.id = 'ai-token-billing-modal';
+                m.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(16px);padding:16px;';
+                m.innerHTML = `
+                    <div style="background:#070d18;border:1px solid rgba(0,229,255,0.4);border-radius:20px;max-width:880px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.95);position:relative;overflow:hidden;">
+                        <!-- HEADER -->
+                        <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;background:rgba(0,229,255,0.03);">
+                            <div style="display:flex;align-items:center;gap:14px;">
+                                <div style="width:44px;height:44px;border-radius:12px;background:rgba(0,229,255,0.15);border:1px solid rgba(0,229,255,0.4);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 0 20px rgba(0,229,255,0.3);">⚡</div>
+                                <div>
+                                    <div style="color:#fff;font-weight:800;font-size:1.2rem;display:flex;align-items:center;gap:10px;">
+                                        <span>Cổng Token AI &amp; Hạn Mức Quota</span>
+                                        <span style="background:rgba(0,229,255,0.15);color:#00e5ff;border:1px solid rgba(0,229,255,0.3);font-size:0.7rem;padding:2px 8px;border-radius:6px;font-weight:700;">9ROUTER COMPATIBLE</span>
+                                    </div>
+                                    <div style="color:#94a3b8;font-size:0.82rem;margin-top:2px;">Tương thích 100% chuẩn OpenAI API, hỗ trợ định tuyến cho ModelRouter9 Desktop App, Cursor, VS Code, Antigravity IDE</div>
+                                </div>
+                            </div>
+                            <button onclick="closeAiTokenBillingModal()" style="background:transparent;border:none;color:#94a3b8;font-size:1.6rem;cursor:pointer;line-height:1;padding:4px 8px;">✕</button>
+                        </div>
+
+                        <!-- BODY SCROLL -->
+                        <div style="padding:22px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:20px;">
+                            
+                            <!-- BẢNG HƯỚNG DẪN KẾT NỐI NHANH CHO APP DESKTOP & IDE -->
+                            <div style="background:linear-gradient(135deg, rgba(0,229,255,0.06), rgba(59,130,246,0.06));border:1px solid rgba(0,229,255,0.25);border-radius:14px;padding:16px 18px;">
+                                <div style="color:#00e5ff;font-weight:700;font-size:0.92rem;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+                                    <span>🚀</span> <span>Thông Số Kết Nối Gateway Cho IDE &amp; App Desktop</span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;font-size:0.82rem;color:#cbd5e1;">
+                                    <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;">
+                                        <div style="color:#94a3b8;font-size:0.75rem;margin-bottom:2px;">ENDPOINT WEB CHỦ (DIRECT)</div>
+                                        <code style="color:#38bdf8;font-family:monospace;font-size:0.84rem;">https://www.supportflastdev.io.vn/v1</code>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;">
+                                        <div style="color:#94a3b8;font-size:0.75rem;margin-bottom:2px;">ENDPOINT MODELROUTER9 APP (LOCAL)</div>
+                                        <code style="color:#4ade80;font-family:monospace;font-size:0.84rem;">http://127.0.0.1:20128/v1</code>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px;">
+                                        <div style="color:#94a3b8;font-size:0.75rem;margin-bottom:2px;">MODELS HỖ TRỢ CHÍNH</div>
+                                        <span style="color:#facc15;">gemini-2.5-pro, claude-3-5-sonnet, gpt-4o</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FORM KHỞI TẠO TOKEN MỚI -->
+                            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;">
+                                <div style="color:#fff;font-weight:700;font-size:0.95rem;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                                    <span>🔑</span> <span>Khởi Tạo API Token Mới Kèm Hạn Mức Quota</span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 180px 140px auto;gap:12px;align-items:center;">
+                                    <input id="ai-token-name" type="text" placeholder="Tên Token (vd: Cursor IDE, Workstation...)" style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;color:#fff;font-size:0.88rem;outline:none;" />
+                                    <select id="ai-token-quota" style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;color:#fff;font-size:0.88rem;outline:none;">
+                                        <option value="1000000">1,000,000 Tokens (~$1)</option>
+                                        <option value="5000000" selected>5,000,000 Tokens (~$5)</option>
+                                        <option value="10000000">10,000,000 Tokens (~$10)</option>
+                                        <option value="50000000">50,000,000 Tokens (~$50)</option>
+                                        <option value="-1">Vô hạn (Không giới hạn)</option>
+                                    </select>
+                                    <select id="ai-token-days" style="background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;color:#fff;font-size:0.88rem;outline:none;">
+                                        <option value="30">Hạn: 30 ngày</option>
+                                        <option value="90">Hạn: 90 ngày</option>
+                                        <option value="365">Hạn: 1 năm</option>
+                                        <option value="0" selected>Vĩnh viễn</option>
+                                    </select>
+                                    <button onclick="createAiUserToken()" id="btn-create-ai-token" style="background:linear-gradient(135deg,#00e5ff,#3b82f6);color:#010308;border:none;border-radius:10px;padding:10px 20px;font-weight:700;font-size:0.88rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,229,255,0.35);">
+                                        <span>⚡ Tạo Token</span>
+                                    </button>
+                                </div>
+
+                                <!-- THÔNG BÁO TOKEN VỪA TẠO (HIỂN THỊ DUY NHẤT 1 LẦN) -->
+                                <div id="ai-token-reveal-box" style="display:none;margin-top:16px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.35);border-radius:12px;padding:14px 16px;">
+                                    <div style="color:#4ade80;font-weight:700;font-size:0.88rem;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                                        <span>✓</span> <span>KHỞI TẠO API TOKEN THÀNH CÔNG!</span>
+                                    </div>
+                                    <div style="color:#94a3b8;font-size:0.8rem;margin-bottom:10px;">
+                                        Mã khóa chỉ được hiển thị đầy đủ MỘT LẦN DUY NHẤT. Hãy sao chép và dán vào ModelRouter9 Desktop App hoặc cài đặt IDE của bạn:
+                                    </div>
+                                    <div style="display:flex;gap:10px;align-items:center;">
+                                        <input id="ai-token-reveal-val" type="text" readonly onclick="this.select();" style="flex:1;background:rgba(0,0,0,0.6);border:1px solid rgba(34,197,94,0.4);border-radius:8px;padding:9px 12px;color:#4ade80;font-family:monospace;font-size:0.85rem;" />
+                                        <button onclick="copyRevealedAiToken()" id="btn-copy-ai-token" style="background:#22c55e;color:#010308;border:none;border-radius:8px;padding:9px 18px;font-weight:700;font-size:0.84rem;cursor:pointer;white-space:nowrap;">
+                                            📋 Sao Chép
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DANH SÁCH TOKENS CỦA TÀI KHOẢN -->
+                            <div>
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                    <div style="color:#fff;font-weight:700;font-size:0.95rem;display:flex;align-items:center;gap:8px;">
+                                        <span>📋</span> <span>Danh Sách API Tokens &amp; Hạn Mức Đã Cấp</span>
+                                        <span id="ai-tokens-count-badge" style="background:rgba(255,255,255,0.1);color:#94a3b8;font-size:0.75rem;padding:2px 8px;border-radius:999px;">0 tokens</span>
+                                    </div>
+                                    <button onclick="loadAiUserTokens()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:0.78rem;cursor:pointer;">
+                                        🔄 Làm mới
+                                    </button>
+                                </div>
+                                <div id="ai-tokens-table-container" style="background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;">
+                                    <div style="padding:24px;text-align:center;color:#64748b;font-size:0.85rem;">Đang tải danh sách Tokens...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(m);
+            }
+
+            m.style.display = 'flex';
+            loadAiUserTokens();
+        }
+
+        function closeAiTokenBillingModal() {
+            const m = document.getElementById('ai-token-billing-modal');
+            if (m) m.style.display = 'none';
+        }
+
+        async function loadAiUserTokens() {
+            const container = document.getElementById('ai-tokens-table-container');
+            const badge = document.getElementById('ai-tokens-count-badge');
+            const token = getAuthHeaderToken();
+
+            try {
+                const res = await fetch('/api/tokens', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const tokens = data.tokens || [];
+
+                if (badge) badge.textContent = `${tokens.length} tokens`;
+
+                if (tokens.length === 0) {
+                    container.innerHTML = '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:0.88rem;">Chưa có API Token nào. Hãy nhấn "Tạo Token" ở trên để cấp phát mã kết nối đầu tiên!</div>';
+                    return;
+                }
+
+                let html = `
+                    <table style="width:100%;border-collapse:collapse;font-size:0.85rem;color:#cbd5e1;">
+                        <thead>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);color:#94a3b8;text-align:left;">
+                                <th style="padding:12px 16px;">Tên Token</th>
+                                <th style="padding:12px 16px;">Mã Khóa (Prefix)</th>
+                                <th style="padding:12px 16px;">Hạn Mức Quota</th>
+                                <th style="padding:12px 16px;">Đã Sử Dụng</th>
+                                <th style="padding:12px 16px;">Trạng Thái</th>
+                                <th style="padding:12px 16px;text-align:right;">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                tokens.forEach(t => {
+                    const quotaFmt = t.quota > 0 ? (t.quota / 1000000).toFixed(1) + 'M' : 'Vô hạn';
+                    const usedFmt = (t.used_quota || 0).toLocaleString();
+                    const isExp = t.status === 'expired';
+                    const statusColor = t.status === 'active' ? '#4ade80' : (isExp ? '#f87171' : '#94a3b8');
+                    const statusText = t.status === 'active' ? 'Hoạt động' : (isExp ? 'Hết hạn' : 'Đã khóa');
+
+                    html += `
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <td style="padding:12px 16px;font-weight:600;color:#fff;">${escapeHtml(t.name)}</td>
+                            <td style="padding:12px 16px;"><code style="color:#00e5ff;font-family:monospace;background:rgba(0,229,255,0.08);padding:3px 8px;border-radius:4px;">${escapeHtml(t.prefix)}</code></td>
+                            <td style="padding:12px 16px;color:#facc15;">${quotaFmt} tokens</td>
+                            <td style="padding:12px 16px;color:#94a3b8;">${usedFmt} tokens</td>
+                            <td style="padding:12px 16px;"><span style="color:${statusColor};font-weight:600;">● ${statusText}</span></td>
+                            <td style="padding:12px 16px;text-align:right;">
+                                <button onclick="copyPrefixToken('${escapeHtml(t.prefix)}')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:6px;padding:4px 10px;font-size:0.78rem;cursor:pointer;">📋 Copy</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div style="padding:24px;text-align:center;color:#ef4444;font-size:0.85rem;">Lỗi tải danh sách token: ${err.message}</div>`;
+            }
+        }
+
+        async function createAiUserToken() {
+            const name = document.getElementById('ai-token-name').value.trim();
+            const quota = parseInt(document.getElementById('ai-token-quota').value, 10);
+            const daysValid = parseInt(document.getElementById('ai-token-days').value, 10);
+            const btn = document.getElementById('btn-create-ai-token');
+            const token = getAuthHeaderToken();
+
+            if (btn) btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/tokens/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ name, quota, days_valid: daysValid, models: ['*'] })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Lỗi tạo token');
+
+                const revealBox = document.getElementById('ai-token-reveal-box');
+                const revealVal = document.getElementById('ai-token-reveal-val');
+                if (revealBox && revealVal) {
+                    revealVal.value = data.token_key;
+                    revealBox.style.display = 'block';
+                }
+
+                document.getElementById('ai-token-name').value = '';
+                loadAiUserTokens();
+                if (typeof showStateToast === 'function') {
+                    showStateToast('Đã khởi tạo API Token thành công!', '⚡', 3000);
+                }
+            } catch (err) {
+                alert('Lỗi tạo token: ' + err.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function copyRevealedAiToken() {
+            const val = document.getElementById('ai-token-reveal-val');
+            const btn = document.getElementById('btn-copy-ai-token');
+            if (val && val.value) {
+                navigator.clipboard.writeText(val.value).then(() => {
+                    if (btn) {
+                        btn.innerText = 'Đã chép! ✓';
+                        btn.style.background = '#4ade80';
+                        setTimeout(() => {
+                            btn.innerText = '📋 Sao Chép';
+                            btn.style.background = '#22c55e';
+                        }, 2000);
+                    }
+                });
+            }
+        }
+
+        function copyPrefixToken(prefix) {
+            navigator.clipboard.writeText(prefix).then(() => {
+                if (typeof showStateToast === 'function') {
+                    showStateToast(`Đã sao chép: ${prefix}`, '📋', 2000);
+                }
+            });
+        }
+
+
 
