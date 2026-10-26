@@ -3716,62 +3716,7 @@ function renderCyberRadarEmptyState(options) {
            Đảm bảo giao diện 100% Bento Cards & Tech Tree 3D
            ngay cả khi mạng trễ hoặc CSDL chưa kịp đồng bộ
            ===================================================== */
-        const DEFAULT_COMMUNITY_REVIEWS = [
-            {
-                id: "rev-001",
-                app_id: "APP-4964",
-                author_name: "Trần Minh Hoàng",
-                author_role: "Kỹ Sư Quản Trị Hệ Thống IT",
-                stars: 5,
-                text: "Bộ công cụ DMH Tools Enterprise và Virtual CloudPool Storage phân tán Google Drive hoạt động cực kỳ ổn định. Tốc độ upload chunk mã hóa AES-256-GCM nhanh và tiết kiệm băng thông vượt bậc so với các giải pháp thông thường.",
-                created_at: "2026-10-01 10:15:00"
-            },
-            {
-                id: "rev-002",
-                app_id: "APP-4964",
-                author_name: "BS. Lê Quang Tuấn",
-                author_role: "Trưởng Phòng Khám Đa Khoa Sài Gòn",
-                stars: 5,
-                text: "Tính năng gọi bệnh nhân tự động TTS bằng AI và cầu nối máy nội soi 4K chạy mượt mà, giúp phòng khám giảm 70% thời gian chờ đợi của bệnh nhân và quản lý dữ liệu chẩn đoán hình ảnh rất an tâm.",
-                created_at: "2026-10-01 14:30:00"
-            },
-            {
-                id: "rev-003",
-                app_id: "APP-5192",
-                author_name: "Phạm Đức Thắng",
-                author_role: "Trưởng Nhóm DevOps & Cloud Architect",
-                stars: 5,
-                text: "Kiến trúc Go Monolith kết hợp Rust Core FFI và Aiven PostgreSQL Cloud Cluster cực kỳ tối ưu, zero memory leak và thời gian đáp ứng API dưới 5ms. Rất khuyên dùng cho các doanh nghiệp cần hạ tầng bảo mật cao.",
-                created_at: "2026-10-02 09:45:00"
-            },
-            {
-                id: "rev-004",
-                app_id: "APP-7290",
-                author_name: "Nguyễn Thị Mai Anh",
-                author_role: "Kỹ Thuật Viên Âm Thanh & Đa Phương Tiện",
-                stars: 5,
-                text: "Giao diện Cyber Nebula 3D đẹp mắt, trực quan và dễ sử dụng. Bộ xử lý âm thanh AI Equalizer 10 băng tần cho chất âm chi tiết, khử nhiễu micro theo thời gian thực rất ấn tượng.",
-                created_at: "2026-10-02 16:20:00"
-            },
-            {
-                id: "rev-005",
-                app_id: "APP-4964",
-                author_name: "Vũ Đình Khoa",
-                author_role: "Chuyên Viên Cứu Hộ & Sửa Chữa Máy Tính",
-                stars: 5,
-                text: "41 công cụ sửa lỗi Windows sâu của DMH Tools xử lý dứt điểm các ca lỗi Print Spooler, chia sẻ máy in LAN 0x11b và trích xuất driver chỉ trong 1 click, không cần cài lại Windows.",
-                created_at: "2026-10-03 08:30:00"
-            },
-            {
-                id: "rev-006",
-                app_id: "APP-3820",
-                author_name: "Đỗ Gia Huy",
-                author_role: "Kỹ Sư Phần Mềm Fullstack",
-                stars: 5,
-                text: "Hệ thống WebDAV và API phân phối Anycast CDN cho ứng dụng cực kỳ tiện lợi. Đội ngũ SupportFlast hỗ trợ kỹ thuật rất tận tình và chuyên nghiệp qua Zalo.",
-                created_at: "2026-10-03 11:00:00"
-            }
-        ];
+        const DEFAULT_COMMUNITY_REVIEWS = [];
 
         /* =====================================================
            HÀM LOAD REVIEWS TỪ SERVER (/api/reviews)
@@ -3783,7 +3728,7 @@ function renderCyberRadarEmptyState(options) {
 
             let reviews = [];
             let total = 0;
-            let avg = 5.0;
+            let avg = 0.0;
             let counts = { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
             let percentages = { "5": 0, "4": 0, "3": 0, "2": 0, "1": 0 };
 
@@ -3800,16 +3745,37 @@ function renderCyberRadarEmptyState(options) {
                     }
                 }
             } catch(err) {
-                console.warn('[CMS] Lỗi load reviews từ server, sử dụng fallback dữ liệu cộng đồng:', err);
+                console.warn('[CMS] Lỗi load reviews từ server:', err);
             }
 
-            // Tự phục hồi dữ liệu: Nếu server chưa có dữ liệu hoặc API lỗi, kích hoạt tập 6 đánh giá cộng đồng tiêu chuẩn
+            // Dữ liệu thực tế: Nếu chưa có đánh giá nào từ cộng đồng
             if (reviews.length === 0) {
-                reviews = DEFAULT_COMMUNITY_REVIEWS;
-                total = reviews.length;
-                avg = 5.0;
-                counts = { "5": 6, "4": 0, "3": 0, "2": 0, "1": 0 };
-                percentages = { "5": 100, "4": 0, "3": 0, "2": 0, "1": 0 };
+                const avgScoreEl = document.getElementById('stat-avg-score');
+                const avgStarsEl = document.getElementById('stat-avg-stars');
+                const totalTextEl = document.getElementById('stat-total-text');
+
+                if (avgScoreEl) avgScoreEl.textContent = "0.0";
+                if (avgStarsEl) avgStarsEl.textContent = "☆☆☆☆☆";
+                if (totalTextEl) {
+                    totalTextEl.innerHTML = `Chưa có phản hồi từ cộng đồng`;
+                }
+
+                ['5', '4', '3', '2', '1'].forEach(star => {
+                    const bar = document.getElementById(`rating-bar-${star}`);
+                    const pctEl = document.getElementById(`rating-percent-${star}`);
+                    const cntEl = document.getElementById(`rating-count-${star}`);
+                    if (bar) bar.style.width = '0%';
+                    if (pctEl) pctEl.textContent = '0%';
+                    if (cntEl) cntEl.textContent = '(0)';
+                });
+
+                container.innerHTML = `
+                    <div id="reviews-empty-state" style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; color: #94a3b8; background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 16px; backdrop-filter: blur(12px);">
+                        <div style="font-size: 36px; margin-bottom: 10px;">💬</div>
+                        <h4 style="font-size: 16px; color: #f1f5f9; margin-bottom: 6px; font-weight: 600;">Chưa có phản hồi từ cộng đồng</h4>
+                        <p style="font-size: 13px; color: #64748b; max-width: 440px; margin: 0 auto;">Hãy là người đầu tiên gửi đánh giá trải nghiệm thực tế của bạn với các công cụ trên SupportFlast!</p>
+                    </div>`;
+                return;
             }
 
             // Tính toán fallback percentages nếu server chưa trả về percentages
