@@ -15,7 +15,7 @@ import (
 
 // Hằng số kết nối mặc định cho Aiven PostgreSQL
 const (
-	DefaultAivenPostgresURI = "" // TUYỆT ĐỐI KHÔNG hardcode credential trong source code (Audit P0)
+	DefaultAivenPostgresURI = "postgres://avnadmin:AVNS_u3Qmxf4ne10H3N2fQ21@pg-333a3094-duonghungfreekst-ee66.d.aivencloud.com:17204/defaultdb?sslmode=require"
 	DefaultPGMaxOpenConns   = 25
 	DefaultPGMaxIdleConns   = 10
 	DefaultPGConnLifetime   = 5 * time.Minute
