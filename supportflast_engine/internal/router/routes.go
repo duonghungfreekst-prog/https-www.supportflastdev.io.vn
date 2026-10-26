@@ -89,23 +89,6 @@ var allV1Routes = []string{
 
 	// Group 10: Device Sync
 	"/api/device/sync",
-
-	// Group 11: OmniRouter & ModelRouter9 AI (Providers, Quotas, Usage)
-	"/api/providers",
-	"/api/providers/",
-	"/api/providers/toggle",
-	"/api/providers/test-batch",
-	"/api/providers/health-check-all",
-	"/api/quotas",
-	"/api/quotas/",
-	"/api/quotas/refresh-all",
-	"/api/quotas/refresh-all/",
-	"/api/usage",
-	"/api/usage/",
-	"/api/usage/stats",
-	"/api/usage-stats",
-	"/api/usage/request-logs",
-	"/api/usage/request-details",
 }
 
 // RegisterAPIv1Routes đăng ký các route /api/v1/* proxy sang /api/* trên cùng mux.

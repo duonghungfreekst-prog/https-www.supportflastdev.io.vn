@@ -136,7 +136,6 @@
                     <a href="javascript:void(0)" id="nav-faq" onclick="switchMainView('faq', this)">Đánh giá</a>
                     <a href="javascript:void(0)" id="nav-changelog" onclick="switchMainView('changelog', this)">Cập nhật</a>
                     <a href="/storage/" id="nav-storage" class="admin-only" style="color: #00e5ff; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>📁</span> Kho Lưu Trữ</a>
-                    <a href="/router/?v=2.9.1" id="nav-router" class="admin-only" style="color: #c084fc; display: none; align-items: center; gap: 4px; font-weight: 600;"><span>⚡</span> 9Router Gateway</a>
                 </div>
 
                 <!-- CỤM TÁC VỤ GÓC PHẢI (NAV RIGHT) -->
@@ -176,10 +175,6 @@
                             <div class="user-dropdown-item" onclick="window.location.href='/storage/'; closeUserDropdown();">
                                 <span>📁</span>
                                 <span>Kho Lưu Trữ Multi-Drive</span>
-                            </div>
-                            <div class="user-dropdown-item" style="color: #c084fc; font-weight: 600;" onclick="window.location.href='/router/?v=' + Date.now(); closeUserDropdown();">
-                                <span>⚡</span>
-                                <span>9Router Gateway &amp; API Keys</span>
                             </div>
                             <div class="user-dropdown-item" onclick="switchMainView('changelog'); closeUserDropdown();">
                                 <span>⚡</span>
@@ -290,92 +285,8 @@
                             <span>Thêm Ứng Dụng Mới &rarr;</span>
                         </span>
                     </button>
-                    <!-- Nút 4: 9Router Master Gateway dành riêng cho Quản Trị Viên (Admin Only) -->
-                    <button class="btn-hero-ghost admin-only" id="btn-hero-router-admin" onclick="window.location.href='/router/?v=' + Date.now();" title="Mở 9Router Master Gateway & Quản Lý API Keys (Chỉ dành cho Admin)" style="border-color: rgba(168, 85, 247, 0.4); color: #c084fc; display: none;">
-                        <span style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.1rem; line-height: 1;">⚡</span>
-                            <span>9Router Gateway &rarr;</span>
-                        </span>
-                    </button>
                 </div>
             </header>
-
-            <!-- ============================================================== -->
-            <!-- LIVE QUOTA HUD BAR: GIÁM SÁT HẠN MỨC & TRẠNG THÁI AI GATEWAY -->
-            <!-- ============================================================== -->
-            <section id="live-quota-hud" class="live-quota-container" aria-label="Bảng theo dõi hạn mức API và trạng thái kết nối OmniRouter Gateway" style="max-width: 1200px; margin: 24px auto 36px; padding: 0 16px;">
-                <div style="background: rgba(13, 22, 38, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 16px; padding: 20px 24px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1); position: relative; overflow: hidden;">
-                    <!-- Laser Top Border Highlight -->
-                    <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #06b6d4, #3b82f6, #a855f7, transparent);"></div>
-                    
-                    <!-- Header HUD -->
-                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 12px #10b981; animation: pulse 2s infinite;"></span>
-                            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 700; color: #a5f3fc; text-transform: uppercase; letter-spacing: 0.08em;">OmniRouter Live Gateway HUD</span>
-                            <span style="background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); color: #38bdf8; font-family: monospace; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 6px;">ĐỒNG BỘ WEB CLOUD</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span id="hud-last-sync" style="font-size: 0.75rem; color: #94a3b8; font-family: monospace;">Đang đồng bộ...</span>
-                            <button type="button" onclick="refreshLiveQuotaHud(true)" style="background: rgba(255,255,255,0.06); hover:background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Làm mới số liệu tức thì">
-                                🔄 Làm Mới
-                            </button>
-                            <a href="/router/?v=2.9.1" style="background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(59,130,246,0.3)); border: 1px solid rgba(6,182,212,0.4); color: #67e8f9; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                ⚡ OmniRouter Web &rarr;
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Grid 4 Chỉ Số -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-                        <!-- KPI 1: Trạng thái Gateway -->
-                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 14px;">
-                            <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Trạng Thái Gateway</div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 1.1rem; font-weight: 800; color: #34d399; font-family: 'JetBrains Mono', monospace;" id="hud-status-text">TRỰC TUYẾN</span>
-                                <span style="font-size: 0.75rem; color: #6ee7b7; background: rgba(16,185,129,0.15); padding: 1px 6px; border-radius: 4px;">Zero Delay</span>
-                            </div>
-                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;" id="hud-status-sub">24/24 Cloud Cluster</div>
-                        </div>
-
-                        <!-- KPI 2: Tài khoản AI Online -->
-                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 14px;">
-                            <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Tài Khoản AI Kết Nối</div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 1.25rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;" id="hud-providers-count">19</span>
-                                <span style="font-size: 0.75rem; color: #93c5fd; background: rgba(59,130,246,0.15); padding: 1px 6px; border-radius: 4px;">Phân Tán</span>
-                            </div>
-                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Google Cloud Code PA</div>
-                        </div>
-
-                        <!-- KPI 3: Key Đang Dùng -->
-                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 14px;">
-                            <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Khóa Quota Đang Dùng</div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 1.1rem; font-weight: 800; color: #c084fc; font-family: 'JetBrains Mono', monospace;" id="hud-key-name">v12</span>
-                                <span style="font-size: 0.75rem; color: #a7f3d0; background: rgba(16,185,129,0.15); padding: 1px 6px; border-radius: 4px;" id="hud-key-status">HOẠT ĐỘNG</span>
-                            </div>
-                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">Antigravity Desktop IDE</div>
-                        </div>
-
-                        <!-- KPI 4: Hạn Mức Quota Đã Dùng -->
-                        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 12px 14px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Quota Đã Sử Dụng</div>
-                                <span id="hud-quota-pct" style="font-size: 0.75rem; font-weight: 700; color: #f59e0b; font-family: monospace;">47.1%</span>
-                            </div>
-                            <div style="display: flex; align-items: baseline; gap: 4px;">
-                                <span style="font-size: 1.25rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace;" id="hud-quota-used">471</span>
-                                <span style="font-size: 0.85rem; color: #94a3b8; font-family: monospace;">/ <span id="hud-quota-max">1,000</span> req</span>
-                            </div>
-                            <!-- Mini Progress Bar -->
-                            <div style="margin-top: 6px; width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
-                                <div id="hud-quota-bar" style="width: 47.1%; height: 100%; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); border-radius: 3px; transition: width 0.4s ease;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             <!-- BENTO GRID GIỚI THIỆU TRỌNG TÂM -->
             <div class="bento-grid" style="margin-top: 30px;">
@@ -2640,63 +2551,6 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 15l-6-6-6 6"/>
         </svg>
-    </button>
-    <!-- SCRIPT ĐỒNG BỘ LIVE QUOTA HUD CHO TRANG CHỦ (SIÊU NHẸ, KHÔNG GÂY LAG) -->
-    <script>
-    (function() {
-        let _lastSyncTime = 0;
-        async function fetchLiveQuotaHud(force) {
-            const now = Date.now();
-            if (!force && now - _lastSyncTime < 8000) return;
-            _lastSyncTime = now;
-            try {
-                const res = await fetch('/api/stats/public?t=' + now, { cache: 'no-store' });
-                if (!res.ok) return;
-                const d = await res.json();
-                if (!d || !d.success) return;
-
-                const statusEl = document.getElementById('hud-status-text');
-                const provEl = document.getElementById('hud-providers-count');
-                const keyNameEl = document.getElementById('hud-key-name');
-                const keyStatusEl = document.getElementById('hud-key-status');
-                const quotaUsedEl = document.getElementById('hud-quota-used');
-                const quotaMaxEl = document.getElementById('hud-quota-max');
-                const quotaPctEl = document.getElementById('hud-quota-pct');
-                const quotaBarEl = document.getElementById('hud-quota-bar');
-                const syncEl = document.getElementById('hud-last-sync');
-
-                if (statusEl && d.gateway_status) statusEl.textContent = d.gateway_status;
-                if (provEl && typeof d.active_providers === 'number') provEl.textContent = d.active_providers;
-                
-                if (d.active_key) {
-                    const ak = d.active_key;
-                    if (keyNameEl && ak.name) keyNameEl.textContent = ak.name;
-                    if (keyStatusEl && ak.status) keyStatusEl.textContent = ak.status;
-                    if (quotaUsedEl && typeof ak.used_requests === 'number') quotaUsedEl.textContent = ak.used_requests.toLocaleString();
-                    if (quotaMaxEl && typeof ak.max_requests === 'number') quotaMaxEl.textContent = ak.max_requests.toLocaleString();
-                    if (quotaPctEl && typeof ak.percentage === 'number') quotaPctEl.textContent = ak.percentage + '%';
-                    if (quotaBarEl && typeof ak.percentage === 'number') {
-                        const clamped = Math.min(Math.max(ak.percentage, 0), 100);
-                        quotaBarEl.style.width = clamped + '%';
-                    }
-                }
-                if (syncEl) {
-                    const dt = new Date();
-                    syncEl.textContent = 'Cập nhật: ' + dt.toLocaleTimeString('vi-VN');
-                }
-            } catch (err) {
-                console.warn('[HUD] Lỗi đồng bộ public stats:', err);
-            }
-        }
-        window.refreshLiveQuotaHud = function(force) { fetchLiveQuotaHud(force); };
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() { fetchLiveQuotaHud(true); }, 300);
-            setInterval(function() {
-                if (!document.hidden) fetchLiveQuotaHud(false);
-            }, 20000);
-        });
-    })();
-    </script>
 </body>
 </html>
 

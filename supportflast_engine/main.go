@@ -27,7 +27,6 @@ import (
 	"supportflast_engine/database"
 	"supportflast_engine/internal/middleware"
 	"supportflast_engine/internal/router"
-	"supportflast_engine/omnirouter"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
 	"sync"
@@ -1102,61 +1101,8 @@ func main() {
 	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
-
-	// 4.4. Kích hoạt OmniRouter / 9Router Master Gateway & Đồng bộ Cloud Database
-	omnirouter.RegisterOmniRouterRoutes(mux, database.GetDB(), database.ActiveDriver() == "postgres", uiDir)
-	omnirouter.SetExternalKeyValidator(func(rawKey string) (*omnirouter.ClientKey, bool) {
-		trimmed := strings.TrimSpace(rawKey)
-		if trimmed == "" {
-			return nil, false
-		}
-		// 1. Kiểm tra API Key do SupportFlast Hub quản lý (sf_live_...)
-		if registry.VerifyAPIKey(trimmed) {
-			return &omnirouter.ClientKey{
-				ID:       "key_hub_" + omnirouter.HashString(trimmed)[:10],
-				Name:     "SupportFlast Hub API Key",
-				Key:      trimmed,
-				KeyHash:  omnirouter.HashString(trimmed),
-				IsActive: 1,
-			}, true
-		}
-		// 2. Kiểm tra phiên đăng nhập bằng JWT Token của User / Admin
-		if user, ok := registry.GetUserFromToken(trimmed); ok && user != nil {
-			return &omnirouter.ClientKey{
-				ID:       "key_jwt_" + user.Username,
-				Name:     "SupportFlast User (" + user.Username + ")",
-				Key:      trimmed,
-				KeyHash:  omnirouter.HashString(trimmed),
-				IsActive: 1,
-			}, true
-		}
-		// 3. Kiểm tra Internal Service Secret
-		if sec := config.GetInternalServiceSecret(); sec != "" && subtle.ConstantTimeCompare([]byte(trimmed), []byte(sec)) == 1 {
-			return &omnirouter.ClientKey{
-				ID:       "key_internal_system",
-				Name:     "SupportFlast Internal Service Secret",
-				Key:      trimmed,
-				KeyHash:  omnirouter.HashString(trimmed),
-				IsActive: 1,
-			}, true
-		}
-		return nil, false
-	})
-
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-		if path == "/v1" || path == "/v1/" || path == "/api/v1" || path == "/api/v1/" {
-			omnirouter.HandleV1Base(w, r)
-			return
-		}
-
-		// Neu nguoi dung truy cap truc tiep goc http://127.0.0.1:20128 hoac http://localhost:20128, tu dong chuyen huong ve /router/
-		if path == "/" || path == "" {
-			if strings.Contains(r.Host, "20128") || strings.Contains(r.Host, "20127") {
-				http.Redirect(w, r, "/router/", http.StatusFound)
-				return
-			}
-		}
 
 		// Chặn hoàn toàn truy cập web vào thư mục desktop WPF và mã nguồn C#
 		cleanPath := strings.ToLower(filepath.ToSlash(filepath.Clean(path)))

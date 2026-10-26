@@ -14,7 +14,6 @@ import (
 	cloudpoolVFS "supportflast_engine/cloudpool/vfs"
 	"supportflast_engine/database"
 	"supportflast_engine/internal/router"
-	"supportflast_engine/omnirouter"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
 	"testing"
@@ -667,9 +666,6 @@ func TestAllRoutesRegistrationNoPanic(t *testing.T) {
 	mux.HandleFunc("/api/admin/users/delete", cloudpoolApi.DeleteUserHandler)
 	mux.Handle("/webdav", cloudpoolApi.WebDAVHandler)
 	mux.Handle("/webdav/", cloudpoolApi.WebDAVHandler)
-
-	// OmniRouter
-	omnirouter.RegisterOmniRouterRoutes(mux, db, false, tempDir)
 
 	// Root static
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {})
