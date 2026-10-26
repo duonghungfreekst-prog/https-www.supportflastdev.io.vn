@@ -67,8 +67,11 @@ func safeRegisterHandler(mux *http.ServeMux, pattern string, handler http.Handle
 func RegisterOmniRouterRoutes(mux *http.ServeMux, db *sql.DB, isCloudDB bool, uiDir string) {
 	// 1. Khá»Ÿi táº¡o cáº¥u trÃºc lÆ°u trá»¯ báº£ng
 	if err := InitStorage(db, isCloudDB); err != nil {
-		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khá»Ÿi táº¡o báº£ng OmniRouter: %v", err)
+		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Khởi tạo bảng OmniRouter: %v", err)
 	}
+	// Đảm bảo RAM Cache luôn được nạp sẵn kể cả khi có warning khởi tạo
+	RefreshKeyCache(db)
+	RefreshProviderCache(db)
 	SetSkillsDB(db)
 
 	// 2. TuÃ¢n thá»§ Rule 9: KhÃ´ng tá»± Ã½ náº¡p tÃ i khoáº£n máº«u/giáº£ láº­p vÃ o CSDL

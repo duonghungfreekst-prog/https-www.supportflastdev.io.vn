@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"supportflast_engine/config"
+	"supportflast_engine/database"
 	"supportflast_engine/security"
 	"sync"
 	"sync/atomic"
@@ -227,12 +228,12 @@ func requireAdminAuth(r *http.Request) bool {
 
 	// Phục hồi các Master Key hệ thống phục vụ liên kết Server Chủ cho Desktop App và Antigravity
 	addSecret("sk-supportflastdev.io.vn-master-live")
-
+	addSecret("sk-www.supportflastdev.io.vn-master-live")
+	addSecret("sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9")
 	addSecret("sk-9r-master-live-gateway-secret")
-
 	addSecret("sk-9router-master-live")
-
 	addSecret("sk-supportflastdev.io.vn-admin-live")
+	addSecret("sk-www.supportflastdev.io.vn-admin-live")
 	addSecret("sk-" + DefaultDomain + "-master-live")
 	addSecret("sk-" + DefaultDomain + "-admin-live")
 
@@ -830,15 +831,11 @@ func HandleClientSync(db *sql.DB) http.HandlerFunc {
 
 			var dbIsActive int
 
-			err := db.QueryRow(`
-
+			err := db.QueryRow(database.RebindPostgres(`
 				SELECT quota_limit, used_requests, total_tokens, expires_at, created_at, last_used_at, is_active
-
 				FROM omni_client_keys
-
 				WHERE api_key = ? OR id = ?
-
-			`, clientKey, keyItem.ID).Scan(&dbQuotaLimit, &dbUsedRequests, &dbTotalTokens, &dbExpiresAt, &dbCreatedAt, &dbLastUsedAt, &dbIsActive)
+			`), clientKey, keyItem.ID).Scan(&dbQuotaLimit, &dbUsedRequests, &dbTotalTokens, &dbExpiresAt, &dbCreatedAt, &dbLastUsedAt, &dbIsActive)
 
 			if err == nil {
 

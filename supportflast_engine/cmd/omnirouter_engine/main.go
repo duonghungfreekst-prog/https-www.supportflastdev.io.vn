@@ -42,19 +42,19 @@ func main() {
 	log.Printf("[ENGINE] Khởi động OmniRouter Engine v3.0.0 (PID: %d)", os.Getpid())
 	log.Printf("[ENGINE] [CSDL] KẾT NỐI TRỰC TIẾP 100%% VÀO AIVEN POSTGRESQL CLUSTER")
 
-	// 1. Kết nối cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster
+	// 1. Kết nối cơ sở dữ liệu Aiven PostgreSQL Cloud Cluster hoặc Web Client Mode (Zero-SQLite)
 	db, err := database.OpenPostgresConnection()
 	if err != nil {
-		log.Printf("[ENGINE] [POSTGRES] [CẢNH BÁO] Không thể kết nối trực tiếp Aiven PostgreSQL: %v. Tự động chuyển sang CSDL SQLite cục bộ...", err)
-		sqlitePath := filepath.Join(baseDir, "data", "supportflast.db")
-		sqliteDB, _, sqliteErr := database.OpenSQLiteConnection(sqlitePath)
-		if sqliteErr != nil {
-			log.Printf("[ENGINE] [SQLITE] [CẢNH BÁO] Khởi tạo SQLite fallback thất bại (%v). Chạy chế độ In-Memory cache.", sqliteErr)
-			db = nil
-		} else {
-			db = sqliteDB
-			log.Printf("[ENGINE] [SQLITE] ✔ Đã kích hoạt CSDL SQLite cục bộ tại '%s'", sqlitePath)
-		}
+		webURL := omnirouter.GetWebServerURL()
+		log.Printf("[ENGINE] [WEB-CLIENT] Kích hoạt chế độ Pure Web Client: Trỏ trực tiếp 100%% về Web chủ '%s' để lấy thông tin (Hoàn toàn không dùng SQLite)", webURL)
+		db = nil
+		go func() {
+			time.Sleep(1 * time.Second)
+			activeKey := omnirouter.GetActiveClientKey(nil)
+			if _, syncErr := omnirouter.SyncProvidersFromWebServer(webURL, activeKey); syncErr != nil {
+				log.Printf("[ENGINE] [WEB-CLIENT] [WARN] Lần đầu kết nối Web chủ: %v (Sẽ tự động thử lại khi có request)", syncErr)
+			}
+		}()
 	} else {
 		log.Printf("[ENGINE] [POSTGRES] ✔ Đã kết nối thành công tới Aiven PostgreSQL Cloud Cluster!")
 	}

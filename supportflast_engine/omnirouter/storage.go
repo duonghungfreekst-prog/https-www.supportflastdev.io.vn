@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -41,11 +42,11 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 				email VARCHAR(191) DEFAULT '',
 				priority INT DEFAULT 1,
 				is_active INT DEFAULT 1,
-				data LONGTEXT NOT NULL,
+				data TEXT NOT NULL,
 				created_at VARCHAR(64) NOT NULL,
-				updated_at VARCHAR(64) NOT NULL,
-				INDEX idx_omni_prov_active (is_active, priority)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+				updated_at VARCHAR(64) NOT NULL
+			);`,
+			`CREATE INDEX IF NOT EXISTS idx_omni_prov_active ON omni_providers (is_active, priority);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_client_keys (
 				id VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -59,33 +60,33 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 				duration_hours INT DEFAULT 0,
 				is_active INT DEFAULT 1,
 				created_at VARCHAR(64) NOT NULL,
-				last_used_at VARCHAR(64) DEFAULT '',
-				INDEX idx_omni_key_active (is_active)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+				last_used_at VARCHAR(64) DEFAULT ''
+			);`,
+			`CREATE INDEX IF NOT EXISTS idx_omni_key_active ON omni_client_keys (is_active);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_settings (
 				id INT NOT NULL PRIMARY KEY,
-				data LONGTEXT NOT NULL
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+				data TEXT NOT NULL
+			);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_proxy_pools (
 				id VARCHAR(64) NOT NULL PRIMARY KEY,
 				is_active INT DEFAULT 1,
 				test_status VARCHAR(64) DEFAULT '',
-				data LONGTEXT NOT NULL,
+				data TEXT NOT NULL,
 				created_at VARCHAR(64) NOT NULL,
 				updated_at VARCHAR(64) NOT NULL
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+			);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_kv (
 				scope VARCHAR(64) NOT NULL,
 				key_name VARCHAR(128) NOT NULL,
-				val_data LONGTEXT NOT NULL,
+				val_data TEXT NOT NULL,
 				PRIMARY KEY (scope, key_name)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+			);`,
 
 			`CREATE TABLE IF NOT EXISTS omni_usage_history (
-				id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+				id BIGSERIAL PRIMARY KEY,
 				timestamp VARCHAR(64) NOT NULL,
 				provider VARCHAR(64) NOT NULL,
 				model VARCHAR(128) NOT NULL,
@@ -95,19 +96,19 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 				prompt_tokens BIGINT DEFAULT 0,
 				completion_tokens BIGINT DEFAULT 0,
 				total_tokens BIGINT DEFAULT 0,
-				cost DOUBLE DEFAULT 0,
+				cost DOUBLE PRECISION DEFAULT 0,
 				status VARCHAR(64) DEFAULT 'success',
 				tokens TEXT,
-				meta LONGTEXT,
+				meta TEXT,
 				latency_ms BIGINT DEFAULT 0,
 				ttft_ms BIGINT DEFAULT 0,
-				tps DOUBLE DEFAULT 0,
+				tps DOUBLE PRECISION DEFAULT 0,
 				cached_tokens BIGINT DEFAULT 0,
 				status_code INT DEFAULT 200,
-				error_code VARCHAR(64) DEFAULT '',
-				INDEX idx_omni_uh_ts (timestamp),
-				INDEX idx_omni_uh_conn (connection_id)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`,
+				error_code VARCHAR(64) DEFAULT ''
+			);`,
+			`CREATE INDEX IF NOT EXISTS idx_omni_uh_ts ON omni_usage_history (timestamp);`,
+			`CREATE INDEX IF NOT EXISTS idx_omni_uh_conn ON omni_usage_history (connection_id);`,
 		}
 	} else {
 		queries = []string{
@@ -951,8 +952,77 @@ func RefreshProviderCache(db *sql.DB) {
 	providerCacheMu.Unlock()
 }
 
+// SyncProvidersFromWebServer kết nối trực tiếp tới Web chủ để nạp danh sách tài khoản AI vào RAM cache (Zero-SQLite)
+func SyncProvidersFromWebServer(webServerURL string, apiKey string) ([]ProviderConnection, error) {
+	webServerURL = strings.TrimRight(webServerURL, "/")
+	if webServerURL == "" {
+		webServerURL = "https://www.supportflastdev.io.vn"
+	}
+	targetURL := fmt.Sprintf("%s/api/router/providers?force=true", webServerURL)
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SupportFlast-DirectWebClient/3.0")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("x-api-key", apiKey)
+	}
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fallbackURL := fmt.Sprintf("%s/api/providers?force=true", webServerURL)
+		req2, err2 := http.NewRequest("GET", fallbackURL, nil)
+		if err2 != nil {
+			return nil, err
+		}
+		req2.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SupportFlast-DirectWebClient/3.0")
+		if apiKey != "" {
+			req2.Header.Set("Authorization", "Bearer "+apiKey)
+			req2.Header.Set("x-api-key", apiKey)
+		}
+		resp, err = client.Do(req2)
+		if err != nil {
+			return nil, fmt.Errorf("không thể kết nối tới Web chủ: %w", err)
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Web chủ trả về mã HTTP %d", resp.StatusCode)
+	}
+
+	var payload struct {
+		Success   bool                 `json:"success"`
+		Total     int                  `json:"total"`
+		Providers []ProviderConnection `json:"providers"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("lỗi giải mã JSON từ Web chủ: %w", err)
+	}
+
+	if len(payload.Providers) > 0 {
+		SetCachedActiveProviders(payload.Providers)
+		log.Printf("[ENGINE] [WEB-CLIENT] ✔ Đã đồng bộ trực tiếp %d tài khoản AI từ Web chủ (%s) vào RAM (Zero-SQLite)", len(payload.Providers), webServerURL)
+	}
+	return payload.Providers, nil
+}
+
 // GetCachedActiveProviders lấy danh sách tài khoản AI từ RAM
 func GetCachedActiveProviders() []ProviderConnection {
+	providerCacheMu.RLock()
+	count := len(providerCache)
+	providerCacheMu.RUnlock()
+
+	if count == 0 {
+		webURL := GetWebServerURL()
+		activeKey := GetActiveClientKey(nil)
+		if list, err := SyncProvidersFromWebServer(webURL, activeKey); err == nil && len(list) > 0 {
+			return list
+		}
+	}
+
 	providerCacheMu.RLock()
 	defer providerCacheMu.RUnlock()
 	res := make([]ProviderConnection, len(providerCache))

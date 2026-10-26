@@ -147,10 +147,17 @@ func TestLoginHandler_And_GetUserFromToken_RS256(t *testing.T) {
 
 	InitAuth()
 
-	adminPass := "admin"
+	adminPass := database.GetInitialAdminPassword()
+	if adminPass == "" {
+		adminPass = "admin"
+	}
 	if u, err := GetUserByUsernameOrEmail("admin"); err == nil && u != nil {
-		if CheckPassword(u.PasswordHash, "Admin@2026!SupportFlast") {
+		if CheckPassword(u.PasswordHash, adminPass) {
+			// adminPass khớp với password_hash được sinh
+		} else if CheckPassword(u.PasswordHash, "Admin@2026!SupportFlast") {
 			adminPass = "Admin@2026!SupportFlast"
+		} else if CheckPassword(u.PasswordHash, "admin") {
+			adminPass = "admin"
 		}
 	}
 	body := fmt.Sprintf(`{"username_or_email":"admin","password":"%s"}`, adminPass)
