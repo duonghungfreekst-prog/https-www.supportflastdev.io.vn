@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strings"
+
+	"supportflast_engine/database"
 )
 
 // CoreAIAccountSeed ??nh ngh?a c?u tr?c h?t nh?n c?a m?t t?i kho?n AI
@@ -507,7 +508,7 @@ var EmbeddedAIAccounts = []CoreAIAccountSeed{
 	},
 }
 
-// SeedEmbeddedDataToDB n?p 19 t?i kho?n AI v? c?u h?nh h?t nh?n v?o CSDL Aiven PostgreSQL Cloud ho?c SQLite
+// SeedEmbeddedDataToDB nạp 19 tài khoản AI và cấu hình hạt nhân vào CSDL Aiven PostgreSQL Cloud hoặc SQLite
 func SeedEmbeddedDataToDB(targetDB *sql.DB) error {
 	if targetDB == nil {
 		return fmt.Errorf("targetDB is nil")
@@ -515,94 +516,67 @@ func SeedEmbeddedDataToDB(targetDB *sql.DB) error {
 
 	// 1. Seed Proxy Pools
 	for _, p := range EmbeddedProxyPools {
-		_, err := targetDB.Exec(`
+		q := database.RebindPostgres(`
 			INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?)
-			ON DUPLICATE KEY UPDATE 
-				is_active = VALUES(is_active),
-				test_status = VALUES(test_status),
-				data = VALUES(data),
-				updated_at = VALUES(updated_at)
-		`, p.ID, p.IsActive, p.TestStatus, p.DataJSON, p.CreatedAt, p.UpdatedAt)
-
-		if err != nil && strings.Contains(err.Error(), "syntax error") {
-			_, _ = targetDB.Exec(`
-				INSERT INTO omni_proxy_pools (id, is_active, test_status, data, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?)
-				ON CONFLICT(id) DO UPDATE SET
-					is_active = excluded.is_active,
-					test_status = excluded.test_status,
-					data = excluded.data,
-					updated_at = excluded.updated_at
-			`, p.ID, p.IsActive, p.TestStatus, p.DataJSON, p.CreatedAt, p.UpdatedAt)
+			ON CONFLICT(id) DO UPDATE SET
+				is_active = excluded.is_active,
+				test_status = excluded.test_status,
+				data = excluded.data,
+				updated_at = excluded.updated_at
+		`)
+		if _, err := targetDB.Exec(q, p.ID, p.IsActive, p.TestStatus, p.DataJSON, p.CreatedAt, p.UpdatedAt); err != nil {
+			log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed proxy pool %s: %v", p.ID, err)
 		}
 	}
 
 	// 2. Seed Settings
-	_, err := targetDB.Exec(`
+	qSettings := database.RebindPostgres(`
 		INSERT INTO omni_settings (id, data) VALUES (1, ?)
-		ON DUPLICATE KEY UPDATE data = VALUES(data)
-	`, EmbeddedSettingsJSON)
-	if err != nil && strings.Contains(err.Error(), "syntax error") {
-		_, _ = targetDB.Exec(`
-			INSERT INTO omni_settings (id, data) VALUES (1, ?)
-			ON CONFLICT(id) DO UPDATE SET data = excluded.data
-		`, EmbeddedSettingsJSON)
+		ON CONFLICT(id) DO UPDATE SET data = excluded.data
+	`)
+	if _, err := targetDB.Exec(qSettings, EmbeddedSettingsJSON); err != nil {
+		log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed settings: %v", err)
 	}
 
 	// 3. Seed KV
 	for _, k := range EmbeddedKVList {
-		_, err := targetDB.Exec(`
+		qKV := database.RebindPostgres(`
 			INSERT INTO omni_kv (scope, key_name, val_data) VALUES (?, ?, ?)
-			ON DUPLICATE KEY UPDATE val_data = VALUES(val_data)
-		`, k.Scope, k.KeyName, k.ValData)
-		if err != nil && strings.Contains(err.Error(), "syntax error") {
-			_, _ = targetDB.Exec(`
-				INSERT INTO omni_kv (scope, key_name, val_data) VALUES (?, ?, ?)
-				ON CONFLICT(scope, key_name) DO UPDATE SET val_data = excluded.val_data
-			`, k.Scope, k.KeyName, k.ValData)
+			ON CONFLICT(scope, key_name) DO UPDATE SET val_data = excluded.val_data
+		`)
+		if _, err := targetDB.Exec(qKV, k.Scope, k.KeyName, k.ValData); err != nil {
+			log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed KV %s/%s: %v", k.Scope, k.KeyName, err)
 		}
 	}
 
 	// 4. Seed 19 AI Provider Connections
 	seededCount := 0
 	for _, acc := range EmbeddedAIAccounts {
-		_, err := targetDB.Exec(`
+		qProv := database.RebindPostgres(`
 			INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON DUPLICATE KEY UPDATE 
-				provider = VALUES(provider),
-				auth_type = VALUES(auth_type),
-				name = VALUES(name),
-				email = VALUES(email),
-				priority = VALUES(priority),
-				is_active = VALUES(is_active),
-				data = VALUES(data),
-				updated_at = VALUES(updated_at)
-		`, acc.ID, acc.Provider, acc.AuthType, acc.Name, acc.Email, acc.Priority, acc.IsActive, acc.RawDataJSON, acc.CreatedAt, acc.UpdatedAt)
-
-		if err != nil && strings.Contains(err.Error(), "syntax error") {
-			_, _ = targetDB.Exec(`
-				INSERT INTO omni_providers (id, provider, auth_type, name, email, priority, is_active, data, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(id) DO UPDATE SET
-					provider = excluded.provider,
-					auth_type = excluded.auth_type,
-					name = excluded.name,
-					email = excluded.email,
-					priority = excluded.priority,
-					is_active = excluded.is_active,
-					data = excluded.data,
-					updated_at = excluded.updated_at
-			`, acc.ID, acc.Provider, acc.AuthType, acc.Name, acc.Email, acc.Priority, acc.IsActive, acc.RawDataJSON, acc.CreatedAt, acc.UpdatedAt)
+			ON CONFLICT(id) DO UPDATE SET
+				provider = excluded.provider,
+				auth_type = excluded.auth_type,
+				name = excluded.name,
+				email = excluded.email,
+				priority = excluded.priority,
+				is_active = excluded.is_active,
+				data = excluded.data,
+				updated_at = excluded.updated_at
+		`)
+		if _, err := targetDB.Exec(qProv, acc.ID, acc.Provider, acc.AuthType, acc.Name, acc.Email, acc.Priority, acc.IsActive, acc.RawDataJSON, acc.CreatedAt, acc.UpdatedAt); err != nil {
+			log.Printf("[ENGINE] [OMNIROUTER] [WARN] Seed account %s: %v", acc.Email, err)
+		} else {
+			seededCount++
 		}
-		seededCount++
 	}
 
-	// L?m m?i b? nh? ??m RAM
+	// Làm mới bộ nhớ đệm RAM
 	RefreshProviderCache(targetDB)
 	RefreshKeyCache(targetDB)
 
-	log.Printf("[ENGINE] [OMNIROUTER] [SEED] ?? nh?ng c? ??nh th?nh c?ng %d t?i kho?n AI v?o CSDL Aiven PostgreSQL Cloud/SQLite", seededCount)
+	log.Printf("[ENGINE] [OMNIROUTER] [SEED] Đã nhúng cố định thành công %d tài khoản AI vào CSDL Aiven PostgreSQL Cloud/SQLite", seededCount)
 	return nil
 }

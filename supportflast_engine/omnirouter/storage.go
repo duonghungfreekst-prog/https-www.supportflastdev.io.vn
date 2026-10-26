@@ -259,6 +259,15 @@ func InitStorage(db *sql.DB, isCloudDB bool) error {
 	// Tự động nhận diện và đăng ký 4 nhà cung cấp API model miễn phí (OpenRouter, Groq, Mistral, Cloudflare) từ biến môi trường
 	SeedEnvProviders(db)
 
+	// Nếu chạy trên Cloud DB và omni_providers đang trống, tự động nạp cố định toàn bộ tài khoản AI vào CSDL Aiven PostgreSQL
+	if isCloudDB {
+		var provCount int
+		_ = db.QueryRow("SELECT COUNT(*) FROM omni_providers").Scan(&provCount)
+		if provCount == 0 {
+			_ = SeedEmbeddedDataToDB(db)
+		}
+	}
+
 	log.Println("[ENGINE] [OMNIROUTER] Đã khởi tạo hoàn tất cấu trúc lưu trữ SupportFlast Router trong Database")
 	// Nạp sẵn cache
 	RefreshKeyCache(db)
