@@ -313,6 +313,22 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		res.AdminUserCreated = true
 	} else {
 		res.AdminUserCreated = true
+		// Kiểm tra nếu biến môi trường ADMIN_PASSWORD được cấu hình và khác với hash hiện tại, tự động đồng bộ
+		envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
+		if envPass != "" && bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(envPass)) != nil {
+			if newHash, hErr := bcrypt.GenerateFromPassword([]byte(envPass), 12); hErr == nil {
+				updateSQL := "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"
+				if database.ActiveDriver() == "postgres" || strings.ToLower(os.Getenv("DB_DRIVER")) == "postgres" {
+					updateSQL = "UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3"
+				}
+				nowStr := time.Now().UTC().Format(time.RFC3339)
+				if _, uErr := db.Exec(updateSQL, string(newHash), nowStr, adminUser.ID); uErr == nil {
+					log.Println("[BOOTSTRAP] [ADMIN] Đã cập nhật mật khẩu Admin theo biến môi trường ADMIN_PASSWORD mới.")
+				} else {
+					log.Printf("[BOOTSTRAP] [ADMIN] Cảnh báo lỗi đồng bộ mật khẩu Admin: %v", uErr)
+				}
+			}
+		}
 		log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã tồn tại an toàn trong CSDL.")
 	}
 
