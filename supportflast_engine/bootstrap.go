@@ -314,7 +314,13 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	} else {
 		res.AdminUserCreated = true
 		// Kiểm tra mật khẩu tài khoản admin
-		if bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(database.GetInitialAdminPassword())) == nil {
+		if bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(database.GetInitialAdminPassword())) != nil {
+			log.Println("[BOOTSTRAP] [ADMIN] Mật khẩu admin hiện tại chưa đồng bộ với cấu hình, tiến hành cập nhật lại...")
+			if newHash, err := bcrypt.GenerateFromPassword([]byte(database.GetInitialAdminPassword()), 12); err == nil {
+				_, _ = db.Exec("UPDATE users SET password_hash = ? WHERE username = 'admin'", string(newHash))
+				log.Println("[BOOTSTRAP] [ADMIN] Đã đồng bộ mật khẩu Quản Trị Viên theo cấu hình thành công.")
+			}
+		} else {
 			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã được xác thực an toàn.")
 		}
 	}
