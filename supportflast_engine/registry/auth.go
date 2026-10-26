@@ -1018,7 +1018,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Kiểm tra mật khẩu bằng BCrypt (cost >= 12, Rule 8.2 & 3.2, chống Timing Attack)
-	if !CheckPassword(foundUser.PasswordHash, password) {
+	cleanPass := strings.TrimSpace(password)
+	if !CheckPassword(foundUser.PasswordHash, password) && (cleanPass == "" || !CheckPassword(foundUser.PasswordHash, cleanPass)) {
 		locked, remaining, left := security.RecordLoginFailure(clientIP, identifier)
 		if locked {
 			unlockTime := time.Now().Add(remaining)

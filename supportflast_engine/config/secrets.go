@@ -21,8 +21,6 @@ var (
 
 	insecureAdminPasswords = []string{
 		"",
-		"Admin@2026!SupportFlast",
-		"Admin@2026!SupportFlastSecuredProd",
 		"<GENERATE_STRONG_RANDOM_PASSWORD_MIN_24_CHARS>",
 		"admin",
 		"password",
