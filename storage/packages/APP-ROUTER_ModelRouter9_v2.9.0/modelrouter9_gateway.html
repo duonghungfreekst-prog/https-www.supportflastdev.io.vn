@@ -883,16 +883,18 @@
       border: none !important;
     }
 
-    /* Hiển thị rõ ràng 3 nút tab desktop */
+    /* Hiển thị rõ ràng các nút tab desktop */
     html.desktop-mode #btn-tab-mitm,
+    html.desktop-mode #btn-tab-quota,
     html.desktop-mode #btn-tab-endpoints,
     html.desktop-mode #btn-tab-skills {
       display: flex !important;
       visibility: visible !important;
     }
 
-    /* Tren App Desktop: Dam bao 3 tabs luon hien thi day du 100% noi dung khi active */
+    /* Tren App Desktop: Dam bao cac tabs luon hien thi day du 100% noi dung khi active */
     html.desktop-mode #tab-mitm.active,
+    html.desktop-mode #tab-quota.active,
     html.desktop-mode #tab-endpoints.active,
     html.desktop-mode #tab-skills.active,
     div.tab-content.desktop-only-feature.active,
@@ -1181,7 +1183,7 @@
             </button>
 
             <!-- Mục 3: Theo dõi hạn mức -->
-            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent desktop-hide-tab">
+            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -8336,15 +8338,11 @@
           savedUrl = 'https://www.supportflastdev.io.vn';
           localStorage.setItem('omnirouter_web_url', savedUrl);
         }
-        const savedKey = localStorage.getItem('omnirouter_web_key') || '';
-        const urlInput = document.getElementById('web-server-url-input');
-        const mitmBaseInput = document.getElementById('mitm-base-url-input');
-        let savedMitmBase = localStorage.getItem('mitm_router_base_url') || 'http://localhost:20128';
-        if (savedMitmBase.includes('supportflastdev.io.vn')) {
-          savedMitmBase = 'http://localhost:20128';
-          try { localStorage.setItem('mitm_router_base_url', 'http://localhost:20128'); } catch (_) {}
+        let savedKey = localStorage.getItem('omnirouter_web_key') || '';
+        if (!savedKey || savedKey.includes('...') || savedKey.includes('***')) {
+          savedKey = '';
         }
-        if (mitmBaseInput) mitmBaseInput.value = savedMitmBase;
+        const urlInput = document.getElementById('web-server-url-input');
         const keyInput = document.getElementById('web-api-key-input');
         if (urlInput && savedUrl) urlInput.value = savedUrl;
         if (keyInput && savedKey) {
@@ -8357,24 +8355,40 @@
       }
     }
 
-    async function testWebConnection(silent = false) {
-      const urlInput = document.getElementById('web-server-url-input');
-      const keyInput = document.getElementById('web-api-key-input');
-      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
+    function normalizeServerUrl(rawUrl) {
+      let serverUrl = (rawUrl || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
       if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
+      if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+        serverUrl = 'https://' + serverUrl;
+      }
       if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
         serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
                              .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
-        if (urlInput) urlInput.value = serverUrl;
       }
-      const apiKey = (keyInput?.value || '').trim();
+      return serverUrl;
+    }
 
-      const badge = document.getElementById('web-sql-status-badge');
+    async function testWebConnection(silent = false, persistApiKey = false) {
+      const urlInput = document.getElementById('web-server-url-input');
+      const keyInput = document.getElementById('web-api-key-input');
+      let serverUrl = normalizeServerUrl(urlInput?.value);
+      if (urlInput) urlInput.value = serverUrl;
+
+      let apiKey = (keyInput?.value || '').trim();
+      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
+        apiKey = '';
+      }
+
       if (!apiKey) {
-        if (!silent) showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        applyWebConnectionResult({
+          success: false,
+          statusCode: 401,
+          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
+        }, silent);
         return false;
       }
 
+      const badge = document.getElementById('web-sql-status-badge');
       if (badge) {
         badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono bg-yellow-500/20 text-yellow-300 font-bold border border-yellow-500/30';
         badge.textContent = 'ĐANG KIỂM TRA...';
@@ -8399,7 +8413,7 @@
 
           try {
             window.chrome.webview.postMessage(JSON.stringify({
-              action: 'testWebConnection',
+              action: persistApiKey ? 'saveWebApiKey' : 'testWebConnection',
               serverUrl: serverUrl,
               apiKey: apiKey
             }));
@@ -8407,12 +8421,12 @@
             console.warn('[WebSQL] postMessage testWebConnection failed:', e);
           }
 
-          // Timeout dự phòng 6 giây: nếu C# chưa phản hồi, tự động fallback sang direct fetch
+          // Timeout 15 giây dự phòng: nếu C# chưa phản hồi, tự động fallback sang direct fetch
           setTimeout(() => {
             if (!hasSettled) {
               doDirectWebFetchTest(serverUrl, apiKey, silent).then(finish);
             }
-          }, 6000);
+          }, 15000);
         });
       }
 
@@ -8423,18 +8437,38 @@
     async function doDirectWebFetchTest(serverUrl, apiKey, silent = false) {
       try {
         const startTime = Date.now();
-        const res = await fetch(`${serverUrl}/api/usage/stats`, {
+        const res = await fetch(`${serverUrl}/api/v1/client/config`, {
           method: 'GET',
+          redirect: 'follow',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'x-api-key': apiKey,
             'Accept': 'application/json'
           }
         });
+        const authData = res.ok ? await res.json() : null;
+        if (!res.ok || authData?.success !== true) {
+          return applyWebConnectionResult({
+            success: false,
+            statusCode: res.status || 502,
+            serverUrl: serverUrl,
+            errorMessage: res.ok
+              ? 'Máy chủ không xác nhận API Key.'
+              : `Máy chủ từ chối xác thực API Key (HTTP ${res.status}).`
+          }, silent);
+        }
         const latency = Date.now() - startTime;
+        let statsBody = '';
+        try {
+          const statsRes = await fetch(`${serverUrl}/api/usage/stats`, { redirect: 'follow' });
+          if (statsRes.ok) statsBody = await statsRes.text();
+        } catch (statsErr) {
+          console.warn('[WebSQL] Không thể tải thống kê sau khi xác thực:', statsErr);
+        }
         let realProvidersData = [];
         try {
           const provRes = await fetch(`${serverUrl}/api/router/providers`, {
+            redirect: 'follow',
             headers: { 
               'Authorization': `Bearer ${apiKey}`,
               'x-api-key': apiKey,
@@ -8446,6 +8480,7 @@
             realProvidersData = (pData && pData.providers) ? pData.providers : (Array.isArray(pData) ? pData : (pData && pData.connections ? pData.connections : []));
           } else {
             const provRes2 = await fetch(`${serverUrl}/api/providers`, {
+              redirect: 'follow',
               headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey }
             });
             if (provRes2.ok) {
@@ -8456,17 +8491,24 @@
         } catch (_) {}
 
         return applyWebConnectionResult({
-          success: res.ok || realProvidersData.length > 0,
+          success: true,
           statusCode: res.status,
           serverUrl: serverUrl,
           latencyMs: latency,
+          stats: statsBody,
           providers: JSON.stringify({ providers: realProvidersData, total: realProvidersData.length })
         }, silent);
       } catch (err) {
+        let errMsg = err.message || err;
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+          errMsg = 'Trình duyệt chặn kết nối trực tiếp từ tệp cục bộ (CORS Origin null). Hãy mở trang qua Desktop App hoặc qua cổng http://localhost:20128/';
+        } else {
+          errMsg = `Lỗi mạng: ${errMsg}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`;
+        }
         return applyWebConnectionResult({
           success: false,
           statusCode: 0,
-          errorMessage: `Lỗi mạng: ${err.message || err}. Hãy kiểm tra kết nối internet hoặc URL máy chủ.`
+          errorMessage: errMsg
         }, silent);
       }
     }
@@ -8474,43 +8516,41 @@
     async function saveAndSyncWebSQL() {
       const urlInput = document.getElementById('web-server-url-input');
       const keyInput = document.getElementById('web-api-key-input');
-      let serverUrl = (urlInput?.value || 'https://www.supportflastdev.io.vn').trim().replace(/\/+$/, '');
-      if (!serverUrl) serverUrl = 'https://www.supportflastdev.io.vn';
-      if (!serverUrl.includes('www.') && serverUrl.includes('supportflastdev.io.vn')) {
-        serverUrl = serverUrl.replace('https://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn')
-                             .replace('http://supportflastdev.io.vn', 'https://www.supportflastdev.io.vn');
-        if (urlInput) urlInput.value = serverUrl;
+      let serverUrl = normalizeServerUrl(urlInput?.value);
+      if (urlInput) urlInput.value = serverUrl;
+
+      let apiKey = (keyInput?.value || '').trim();
+      if (!apiKey || apiKey.includes('...') || apiKey.includes('***')) {
+        apiKey = '';
       }
-      const apiKey = (keyInput?.value || '').trim();
 
       if (!apiKey) {
-        showToast('Vui lòng nhập API Key do Web sinh ra!', 'warning');
+        applyWebConnectionResult({
+          success: false,
+          statusCode: 401,
+          errorMessage: 'Vui lòng nhập API Key hợp lệ do Web sinh ra.'
+        });
         return;
       }
 
       showToast('Đang lưu khóa và đồng bộ dữ liệu SQL từ Web...', 'info');
 
-      try {
-        localStorage.setItem('omnirouter_web_url', serverUrl);
-        localStorage.setItem('omnirouter_web_key', apiKey);
-
-      } catch (_) {}
-
-      if (window.chrome && window.chrome.webview) {
-        try {
-          window.chrome.webview.postMessage(JSON.stringify({
-            action: 'saveWebApiKey',
-            serverUrl: serverUrl,
-            apiKey: apiKey
-          }));
-        } catch (e) {
-          console.warn('[WebSQL] Không thể gửi WebMessage tới C#:', e);
-        }
-      }
-
-      const isConnected = await testWebConnection(false);
+      const isConnected = await testWebConnection(false, true);
       if (isConnected) {
-        showToast('✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!', 'success');
+        let storedInWebView = true;
+        try {
+          localStorage.setItem('omnirouter_web_url', serverUrl);
+          localStorage.setItem('omnirouter_web_key', apiKey);
+        } catch (storageErr) {
+          storedInWebView = false;
+          console.warn('[WebSQL] Không thể lưu cấu hình máy chủ Web:', storageErr);
+        }
+        showToast(
+          storedInWebView
+            ? '✔ Đã lưu API Key và đồng bộ dữ liệu SQL thành công!'
+            : 'Đã xác thực và lưu API Key cho gateway, nhưng không lưu được vào bộ nhớ giao diện.',
+          storedInWebView ? 'success' : 'warning'
+        );
       }
     }
 
@@ -8522,16 +8562,20 @@
     }
 
     function switchTab(tabId) {
-      const isDesktopEnvNow = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
-                              (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
-      if (isDesktopEnvNow && tabId !== 'mitm' && tabId !== 'endpoints' && tabId !== 'skills') {
-        tabId = 'endpoints';
+// Cho phep truy cap day du cac tab tren Desktop va Web
+
+      const isDesktopEnv = (typeof isDesktopAppEnv === 'function' && isDesktopAppEnv()) ||
+                           (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList.contains('desktop-mode'));
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+        tabId = 'stats';
       }
 
       if (!tabId || !document.getElementById('tab-' + tabId)) {
         tabId = getSavedActiveTab() || 'stats';
       }
-
+      if (!isDesktopEnv && (tabId === 'mitm' || tabId === 'dns' || tabId === 'media' || tabId === 'cli-tools' || tabId === 'translator' || tabId === 'pxpipe')) {
+        tabId = 'stats';
+      }
       window._currentActiveTabId = tabId;
 
 
@@ -10464,15 +10508,54 @@
             const rawActive = isConnActive(k);
             const isAct = rawActive && !isQuotaExceeded && !isExpired;
 
-            let quotaDisplay = 'Không giới hạn';
-            if (qLimit > 0) {
+            let quotaDisplay = '';
+            if (qLimit <= 0) {
+              quotaDisplay = `
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">∞ KHÔNG GIỚI HẠN</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono">Đã dùng: <strong class="text-cyan-300 font-bold">${uReq.toLocaleString('vi-VN')}</strong> req</div>
+                </div>
+              `;
+            } else {
+              const rem = Math.max(0, qLimit - uReq);
+              const remPct = Math.max(0, Math.min(100, Math.round(((qLimit - uReq) / qLimit) * 1000) / 10));
+              let barColor = 'bg-cyan-400';
+              let textColor = 'text-cyan-300';
+              if (isQuotaExceeded) {
+                barColor = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+                textColor = 'text-rose-400 font-bold';
+              } else if (remPct <= 5) {
+                barColor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]';
+                textColor = 'text-red-400 font-bold';
+              } else if (remPct <= 25) {
+                barColor = 'bg-rose-400';
+                textColor = 'text-rose-300';
+              } else if (remPct <= 70) {
+                barColor = 'bg-amber-400';
+                textColor = 'text-amber-300';
+              }
+
+              let badgeHtml = '';
               if (isQuotaExceeded) {
                 const over = uReq - qLimit;
-                quotaDisplay = `<span class="text-rose-400 font-bold">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold ml-1">VƯỢT ${over.toLocaleString('vi-VN')}</span>`;
+                badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">VƯỢT ${over.toLocaleString('vi-VN')}</span>`;
               } else {
-                const rem = qLimit - uReq;
-                quotaDisplay = `<span class="text-cyan-300">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span> <span class="text-slate-500 text-[10px] font-sans ml-1">(còn ${rem.toLocaleString('vi-VN')})</span>`;
+                badgeHtml = `<span class="text-[10px] text-slate-400 font-sans font-normal">(còn ${rem.toLocaleString('vi-VN')} req • ${remPct.toFixed(1)}%)</span>`;
               }
+
+              quotaDisplay = `
+                <div class="space-y-1 min-w-[210px] max-w-[280px]">
+                  <div class="flex items-center justify-between text-xs font-mono">
+                    <span class="${textColor}">${uReq.toLocaleString('vi-VN')} / ${qLimit.toLocaleString('vi-VN')} req</span>
+                    ${badgeHtml}
+                  </div>
+                  <div class="w-full h-1.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/5 my-1">
+                    <div class="h-full rounded-full transition-all duration-500 ${barColor}" style="width: ${remPct}%"></div>
+                  </div>
+                </div>
+              `;
             }
 
             let statusBadge = '';
@@ -10514,6 +10597,7 @@
               </td>
               <td class="py-3.5 px-3 text-right space-x-2 font-mono">
                 ${actionBtn}
+                ${qLimit > 0 ? `<button onclick="resetApiKeyQuota('${k.id}')" class="text-amber-400 hover:text-amber-300 hover:underline text-xs" title="Đặt lại số lượt sử dụng về 0">Reset</button>` : ''}
                 <button onclick="copyToClipboard('${k.key || shortKey}')" class="text-cyan-400 hover:underline">Sao chép</button>
                 <button onclick="revokeKeyLive('${k.id}')" class="text-red-400 hover:underline">Xóa</button>
               </td>
@@ -16156,7 +16240,6 @@
 
     // Nút Bật/Tắt Máy Chủ MITM
 
-    
     async function toggleMitmServerAction() {
 
       const btn = document.getElementById('btn-mitm-toggle');
@@ -27248,27 +27331,56 @@
 
 
 
-        // 5. Model hình ảnh phụ mặc định bị ẩn
+        // Hỗ trợ Quota Ngày (Daily) nếu có
+        if (qMap?.gemini_daily) {
+          const gemDaily = qMap.gemini_daily;
+          quotas.push({
+            key: 'gemini_daily',
+            displayName: gemDaily.displayName || 'Gemini (Daily)',
+            total: gemDaily.total !== undefined ? gemDaily.total : 1000,
+            used: gemDaily.used !== undefined ? gemDaily.used : 0,
+            remainingPercentage: gemDaily.remainingPercentage !== undefined ? Number(gemDaily.remainingPercentage) : null,
+            remainingFraction: gemDaily.remainingFraction,
+            resetAt: gemDaily.resetAt || null,
+            hasData: true,
+            status: gemDaily.status || 'LIVE',
+            source: gemDaily.source || 'live_api'
+          });
+        }
 
-        quotas.push({
+        if (qMap?.claude_gpt_daily) {
+          const cldDaily = qMap.claude_gpt_daily;
+          quotas.push({
+            key: 'claude_gpt_daily',
+            displayName: cldDaily.displayName || 'Claude & GPT (Daily)',
+            total: cldDaily.total !== undefined ? cldDaily.total : 1000,
+            used: cldDaily.used !== undefined ? cldDaily.used : 0,
+            remainingPercentage: cldDaily.remainingPercentage !== undefined ? Number(cldDaily.remainingPercentage) : null,
+            remainingFraction: cldDaily.remainingFraction,
+            resetAt: cldDaily.resetAt || null,
+            hasData: true,
+            status: cldDaily.status || 'LIVE',
+            source: cldDaily.source || 'live_api'
+          });
+        }
 
-          key: 'gemini_flash_image',
-
-          displayName: 'Gemini 3.1 Flash Image',
-
-          total: 1000,
-
-          used: 0,
-
-          remainingPercentage: 100,
-
-          resetAt: null,
-
-          hasData: true,
-
-          defaultHidden: true
-
-        });
+        // 5. Model hình ảnh phụ - chỉ hiển thị nếu Backend thực sự có dữ liệu thật (Khắc phục lỗi P0)
+        if (qMap?.gemini_flash_image) {
+          const imgQ = qMap.gemini_flash_image;
+          quotas.push({
+            key: 'gemini_flash_image',
+            displayName: imgQ.displayName || 'Gemini 3.1 Flash Image',
+            total: imgQ.total !== undefined ? imgQ.total : 1000,
+            used: imgQ.used !== undefined ? imgQ.used : 0,
+            remainingPercentage: imgQ.remainingPercentage !== undefined ? Number(imgQ.remainingPercentage) : null,
+            remainingFraction: imgQ.remainingFraction,
+            resetAt: imgQ.resetAt || null,
+            hasData: true,
+            status: imgQ.status || 'LIVE',
+            source: imgQ.source || 'live_api',
+            defaultHidden: true
+          });
+        }
 
 
 
@@ -27475,6 +27587,11 @@
           connections = data.providers;
         } else if (data && Array.isArray(data.data) && data.data.length > 0) {
           connections = data.data;
+        }
+
+        // Fallback an toàn nếu API trả về mảng rỗng: nạp ngay từ SEED_CONNECTIONS
+        if (connections.length === 0 && typeof SEED_CONNECTIONS !== 'undefined' && Array.isArray(SEED_CONNECTIONS) && SEED_CONNECTIONS.length > 0) {
+          connections = SEED_CONNECTIONS;
         }
 
         // Lưu cache toàn cục
@@ -27858,23 +27975,30 @@
 
         } else {
 
+          const isStale = allQuotas.some(q => q && (q.status === 'STALE' || q.source === 'db_cache' || q.source === 'ram_cache'));
+          const liveBadge = isStale
+            ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-[9px] font-mono text-amber-300" title="Dữ liệu lưu tạm (Cache)">CACHE</span>`
+            : `<span class="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-mono text-emerald-300 flex items-center gap-1" title="Đồng bộ trực tiếp từ Google API"><span class="w-1 h-1 rounded-full bg-emerald-400 animate-ping"></span>LIVE</span>`;
+
           const isCldEmpty = cld5h?.hasData && cld5h.remainingPercentage !== null && cld5h.remainingPercentage <= 1;
 
           const isGemEmpty = gem5h?.hasData && gem5h.remainingPercentage !== null && gem5h.remainingPercentage <= 1;
 
-
-
           if (isCldEmpty && isGemEmpty) {
 
-            statusBadgeHtml = `<span class="px-1.5 py-0.5 rounded bg-rose-600/30 border border-rose-500/50 text-[9px] font-mono text-rose-300 font-extrabold animate-pulse">CẠN HẠN MỨC</span>`;
+            statusBadgeHtml = `${liveBadge} <span class="px-1.5 py-0.5 rounded bg-rose-600/30 border border-rose-500/50 text-[9px] font-mono text-rose-300 font-extrabold animate-pulse">CẠN HẠN MỨC</span>`;
 
           } else if (isCldEmpty) {
 
-            statusBadgeHtml = `<span class="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-[9px] font-mono text-red-300 font-semibold">Claude 0%</span>`;
+            statusBadgeHtml = `${liveBadge} <span class="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/40 text-[9px] font-mono text-red-300 font-semibold">Claude 0%</span>`;
 
           } else if (isGemEmpty) {
 
-            statusBadgeHtml = `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] font-mono text-amber-300 font-semibold">Gemini 0%</span>`;
+            statusBadgeHtml = `${liveBadge} <span class="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] font-mono text-amber-300 font-semibold">Gemini 0%</span>`;
+
+          } else {
+
+            statusBadgeHtml = liveBadge;
 
           }
 
@@ -31145,4 +31269,3 @@
   </body>
 
 </html>
-

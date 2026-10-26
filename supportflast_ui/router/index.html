@@ -883,16 +883,18 @@
       border: none !important;
     }
 
-    /* Hiển thị rõ ràng 3 nút tab desktop */
+    /* Hiển thị rõ ràng các nút tab desktop */
     html.desktop-mode #btn-tab-mitm,
+    html.desktop-mode #btn-tab-quota,
     html.desktop-mode #btn-tab-endpoints,
     html.desktop-mode #btn-tab-skills {
       display: flex !important;
       visibility: visible !important;
     }
 
-    /* Tren App Desktop: Dam bao 3 tabs luon hien thi day du 100% noi dung khi active */
+    /* Tren App Desktop: Dam bao cac tabs luon hien thi day du 100% noi dung khi active */
     html.desktop-mode #tab-mitm.active,
+    html.desktop-mode #tab-quota.active,
     html.desktop-mode #tab-endpoints.active,
     html.desktop-mode #tab-skills.active,
     div.tab-content.desktop-only-feature.active,
@@ -1181,7 +1183,7 @@
             </button>
 
             <!-- Mục 3: Theo dõi hạn mức -->
-            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent desktop-hide-tab">
+            <button onclick="switchTab('quota')" id="btn-tab-quota" class="nav-btn w-full group flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all text-xs font-medium cursor-pointer border border-transparent">
               <div class="flex items-center gap-3">
                 <svg class="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -27585,6 +27587,11 @@
           connections = data.providers;
         } else if (data && Array.isArray(data.data) && data.data.length > 0) {
           connections = data.data;
+        }
+
+        // Fallback an toàn nếu API trả về mảng rỗng: nạp ngay từ SEED_CONNECTIONS
+        if (connections.length === 0 && typeof SEED_CONNECTIONS !== 'undefined' && Array.isArray(SEED_CONNECTIONS) && SEED_CONNECTIONS.length > 0) {
+          connections = SEED_CONNECTIONS;
         }
 
         // Lưu cache toàn cục
