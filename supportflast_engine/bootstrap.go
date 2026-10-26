@@ -216,6 +216,12 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 	_ = database.SeedInitialKeys(db, dataDir)
 	_ = database.SeedInitialReleases(db, dataDir)
 
+	// Tuân thủ PHẦN 9 (Quy chuẩn cấm dữ liệu ảo / giả lập / demo):
+	// Tự động dọn sạch các review mẫu cũ ('rev-001' -> 'rev-006') khỏi bảng reviews
+	if _, cErr := db.Exec("DELETE FROM reviews WHERE id IN ('rev-001', 'rev-002', 'rev-003', 'rev-004', 'rev-005', 'rev-006')"); cErr == nil {
+		log.Println("[BOOTSTRAP] [CLEANUP] Đã dọn sạch toàn bộ đánh giá ảo/mẫu khỏi cơ sở dữ liệu.")
+	}
+
 	// 6. Tự động khởi tạo CSDL CloudPool Storage kết nối Aiven PostgreSQL hoặc fallback SQLite
 	var storageDB *cloudpoolStorage.DB
 	if database.ActiveDriver() == "postgres" {
