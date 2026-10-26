@@ -188,6 +188,10 @@
                                 <span>🔑</span>
                                 <span>Cấp &amp; Quản Lý Mã API Key</span>
                             </div>
+                            <div class="user-dropdown-item" onclick="openAiTokenBillingModal(); closeUserDropdown();" style="color:#00e5ff;">
+                                <span>⚡</span>
+                                <span>Cổng Token AI &amp; Quota (9router Gateway)</span>
+                            </div>
                             <div class="user-dropdown-item" onclick="openGitSyncModal(); closeUserDropdown();">
                                 <span>🐙</span>
                                 <span>Đồng Bộ GitHub (Auto-Sync)</span>
@@ -1201,7 +1205,7 @@
                 <!-- BAI VIET HUONG DAN DMH TOOLS -->
                 <div class="faq-item" id="item-doc-dmh" onclick="openAppGuideModal('APP-4964')" style="border: 1px solid rgba(0, 229, 255, 0.4); background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(13, 17, 23, 0.9) 100%); box-shadow: 0 4px 20px rgba(0, 229, 255, 0.1); cursor: pointer;">
                     <div class="faq-q" style="color: #00e5ff;"><span class="faq-badge" style="background: rgba(0, 229, 255, 0.2); color: #00e5ff; border: 1px solid rgba(0, 229, 255, 0.4);">Cẩm Nang v1.2.0</span> 📘 Bài Viết Hướng Dẫn Chi Tiết A-Z: DMH Tools Enterprise</div>
-                    <div class="faq-a">Cẩm nang hướng dẫn đầy đủ 15 phân hệ: Cài đặt giọng đọc tiếng Việt Neural TTS, cấu hình 9router HIS, 41 Fixes lỗi Windows, sao lưu DriverStore PnP, cứu hộ in LAN và bản quyền Ed25519.</div>
+                    <div class="faq-a">Cẩm nang hướng dẫn đầy đủ 15 phân hệ: Cài đặt giọng đọc tiếng Việt Neural TTS, cấu hình gọi bệnh nhân HIS phòng khám, 41 Fixes lỗi Windows, sao lưu DriverStore PnP, cứu hộ in LAN và bản quyền Ed25519.</div>
                     <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem;">
                         <span style="color: #cbd5e1;">📋 15 Phân hệ • Đầy đủ cú pháp &amp; ảnh</span>
                         <span style="color: #00e5ff; font-weight: 700;">Đọc Bài Viết Hướng Dẫn &rarr;</span>
@@ -1693,17 +1697,17 @@
                         <h2 style="color: #00e5ff; font-size: 1.25rem; font-weight: 800; border-bottom: 1px solid rgba(0, 229, 255, 0.25); padding-bottom: 8px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
                             <span>📢 Chương 3: Gọi Bệnh Nhân HIS &amp; Màn Chờ TV Phòng Khám</span>
                         </h2>
-                        <p>Tích hợp trực tiếp với CSDL Phòng khám và phần mềm điều phối hàng đợi 9router để tự động gọi tên bệnh nhân bằng giọng nói và hiển thị lên TV chờ phòng khám.</p>
+                        <p>Tích hợp trực tiếp với CSDL Phòng khám và hệ thống điều phối hàng đợi để tự động gọi tên bệnh nhân bằng giọng nói và hiển thị lên TV chờ phòng khám.</p>
                         <h4 style="color: #fff; margin-top: 12px; font-size: 0.95rem;">Các thông số kết nối chính:</h4>
                         <ul style="padding-left: 22px;">
-                            <li><strong>IP Máy Bảng Hàng Đợi:</strong> Địa chỉ IP máy cài 9router (VD: <code>192.168.3.249</code>).</li>
-                            <li><strong>Port:</strong> Cổng TCP của 9router — mặc định DMH_Tools dùng <strong><code>98989</code></strong>.</li>
+                            <li><strong>IP Máy Bảng Hàng Đợi:</strong> Địa chỉ IP máy điều phối hàng đợi (VD: <code>192.168.3.249</code>).</li>
+                            <li><strong>Port:</strong> Cổng TCP điều phối — mặc định DMH_Tools dùng <strong><code>98989</code></strong>.</li>
                             <li><strong>Mã Bảng Hiển Thị:</strong> Mã hiển thị bảng LED treo cửa phòng (Ví dụ: <code>B01</code>).</li>
                             <li><strong>Mã Nơi Thực Hiện (Phòng):</strong> Mã phòng để lọc bệnh nhân trong CSDL (VD: <code>2</code> hoặc <code>2,3,5</code> nhiều phòng).</li>
                             <li><strong>Chuỗi kết nối SQL Server HIS:</strong> Kết nối trực tiếp CSDL HIS (VD: <code>Server=192.168.1.200;Database=HIS_DB;User Id=sa;Password=mat_khau;TrustServerCertificate=true;</code>).</li>
                         </ul>
                         <div style="background: rgba(234, 179, 8, 0.08); border-left: 4px solid #facc15; padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 0.86rem; color: #fde047; margin: 12px 0;">
-                            ⚡ <strong>Cơ chế tự phục hồi kết nối:</strong> Nếu gói tin TCP gửi sang 9router bị ngắt đoạn, DMH_Tools tự động <strong>retry 1 lần sau 1.5 giây</strong> và ghi log chi tiết trong ô Nhật Ký.
+                            ⚡ <strong>Cơ chế tự phục hồi kết nối:</strong> Nếu gói tin TCP gửi sang máy điều phối bị ngắt đoạn, DMH_Tools tự động <strong>retry 1 lần sau 1.5 giây</strong> và ghi log chi tiết trong ô Nhật Ký.
                         </div>
                         <h4 style="color: #fff; margin-top: 14px; font-size: 0.95rem;">Quy trình sử dụng tại bàn khám:</h4>
                         <ol style="padding-left: 22px;">
@@ -2547,10 +2551,4 @@
     </a>
 
     <!-- Nút Cuộn Nhanh Lên Đầu Trang Tối Ưu Chạm (Touch-friendly Back-to-Top) -->
-    <button id="btn-back-to-top" class="btn-back-to-top" aria-label="Cuộn lên đầu trang" title="Cuộn lên đầu trang" onclick="scrollToTopSmooth()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 15l-6-6-6 6"/>
-        </svg>
-</body>
-</html>
-
+    <button id="btn-back-to-top" class="btn-back-to-top" aria-label="Cuộ

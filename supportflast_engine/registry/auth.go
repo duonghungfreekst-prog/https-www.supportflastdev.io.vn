@@ -704,7 +704,19 @@ func InitAuth() {
 			log.Printf("[AUTH] Đã khởi tạo thành công tài khoản Quản Trị Viên ('%s') vào CSDL.", defaultAdminUser)
 		}
 	} else {
-		log.Printf("[AUTH] Tài khoản Quản Trị Viên ('%s') đã tồn tại an toàn trong CSDL.", defaultAdminUser)
+		// Tự động đồng bộ mật khẩu Admin từ cấu hình hệ thống nếu có thay đổi
+		var currentHash string
+		var adminID string
+		qErr := db.QueryRow("SELECT id, password_hash FROM users WHERE username = ? OR role = 'admin' LIMIT 1", defaultAdminUser).Scan(&adminID, &currentHash)
+		if qErr == nil && currentHash != "" && !CheckPassword(currentHash, defaultAdminPass) {
+			if uErr := UpdateUserPasswordHash(adminID, hash); uErr == nil {
+				log.Printf("[AUTH] Đã tự động đồng bộ và cập nhật mật khẩu Admin ('%s') theo biến môi trường ADMIN_PASSWORD mới.", defaultAdminUser)
+			} else {
+				log.Printf("[AUTH] [WARN] Lỗi cập nhật mật khẩu Admin: %v", uErr)
+			}
+		} else {
+			log.Printf("[AUTH] Tài khoản Quản Trị Viên ('%s') đã tồn tại an toàn trong CSDL.", defaultAdminUser)
+		}
 	}
 
 	// Di chuyển tài khoản phụ từ users.json nếu có (ví dụ quocviet_dev)

@@ -5812,18 +5812,18 @@ function renderCyberRadarEmptyState(options) {
                     },
                     {
                         title: "Chương 6: Gọi Bệnh Nhân TV Màn 2 & Nội Soi AI 4K",
-                        desc: "Kết nối HIS 9router, đọc tên BN bằng giọng tiếng Việt Neural TTS, cập nhật TV phòng khám và chụp ảnh y tế 4K.",
+                        desc: "Kết nối HIS phòng khám, đọc tên BN bằng giọng tiếng Việt Neural TTS, cập nhật TV phòng khám và chụp ảnh y tế 4K.",
                         time: "11:30",
                         sec: 690,
                         pct: 95,
-                        voice: "Chương sáu: Gọi bệnh nhân HIS và Nội soi AI 4K. Tích hợp trực tiếp 9router cổng 98989, giọng đọc Hoài My Neural và nâng cấp ảnh y tế chuẩn 4K bằng Real-ESRGAN.",
+                        voice: "Chương sáu: Gọi bệnh nhân HIS và Nội soi AI 4K. Tích hợp trực tiếp máy chủ điều phối cổng 98989, giọng đọc Hoài My Neural và nâng cấp ảnh y tế chuẩn 4K bằng Real-ESRGAN.",
                         cursor: { x: 200, y: 190 },
                         renderScene: function(container) {
                             container.innerHTML = `
                                 <div style="display:flex; flex-direction:column; gap:10px; height:100%;">
                                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; flex:1;">
                                         <div style="background:#010409; border:1px solid rgba(0,229,255,0.3); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
-                                            <div style="color:#00e5ff; font-weight:bold; font-size:0.8rem;">📢 ĐIỀU PHỐI HÀNG ĐỢI (HIS 9ROUTER):</div>
+                                            <div style="color:#00e5ff; font-weight:bold; font-size:0.8rem;">📢 ĐIỀU PHỐI HÀNG ĐỢI (HIS PHÒNG KHÁM):</div>
                                             <div style="background:#020617; border:1px solid #00e5ff; border-radius:6px; padding:8px; text-align:center;">
                                                 <div style="color:#94a3b8; font-size:0.7rem;">SỐ THỨ TỰ ĐANG GỌI</div>
                                                 <div style="color:#facc15; font-size:1.8rem; font-weight:800; font-family:'JetBrains Mono',monospace;">024</div>

@@ -712,6 +712,8 @@ func main() {
 
 	// Khởi tạo hệ thống người dùng & tài khoản Admin mặc định
 	registry.InitAuth()
+	// Khởi tạo Schema và Master Token cho hệ thống Quản lý / Bán API Token (chuẩn New-API & OpenAI-compatible)
+	registry.InitAPITokenSchema()
 
 	// 1.2. Nạp cấu hình CORS Whitelist từ biến môi trường ALLOWED_ORIGINS
 	security.LoadAllowedOriginsFromEnv()
@@ -748,6 +750,19 @@ func main() {
 	mux.HandleFunc("/api/keys/generate", registry.KeyGenerateHandler)
 	mux.HandleFunc("/api/keys/revoke", registry.KeyRevokeHandler)
 	mux.HandleFunc("/api/keys", registry.KeyListHandler)
+
+	// 2.5.1 Quản Lý Bán / Cấp API Token & Quota (Quy chuẩn New-API & OpenAI-compatible)
+	mux.HandleFunc("/api/tokens/create", registry.APITokensCreateHandler)
+	mux.HandleFunc("/api/tokens", registry.APITokensListHandler)
+	mux.HandleFunc("/api/tokens/verify", registry.APITokenVerifyHandler)
+	mux.HandleFunc("/api/token/verify", registry.APITokenVerifyHandler)
+	mux.HandleFunc("/api/router/providers", registry.APIRouterProvidersHandler)
+	mux.HandleFunc("/api/providers", registry.APIRouterProvidersHandler)
+
+	// 2.5.2 Cổng Định Tuyến AI Gateway Chuẩn OpenAI cho IDE & Desktop App
+	mux.HandleFunc("/v1/models", registry.V1ModelsHandler)
+	mux.HandleFunc("/v1/chat/completions", registry.V1ChatCompletionsHandler)
+	mux.HandleFunc("/v1/dashboard/billing/usage", registry.V1BillingUsageHandler)
 
 	// 2.6. Trung Tâm Cập Nhật & Quản Trị Hệ Thống Web (Web System Updater & Admin)
 	mux.HandleFunc("/api/system/status", registry.SystemStatusHandler)

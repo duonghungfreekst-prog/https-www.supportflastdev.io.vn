@@ -1,5 +1,5 @@
 -- ======================================================================
--- SUPPORTFLAST / OMNIROUTER POSTGRESQL DUMP CHO AIVEN POSTGRES
+-- SUPPORTFLAST POSTGRESQL DUMP CHO AIVEN POSTGRES
 -- Nguồn xuất: Aiven PostgreSQL Cloud Cluster (supportflast)
 -- Đích: Aiven PostgreSQL (pg-333a3094)
 -- Thời gian xuất: 2026-10-19T20:48:59+07:00
@@ -248,8 +248,8 @@ Hoặc trong thư mục cài đặt: `resources\scripts\install_tts.bat`
 
 **Cấu hình kết nối với phần mềm HIS:**
 
-1. **IP Máy Bảng Hàng Đợi:** Nhập đúng IP của máy cài 9router (Ví dụ: `192.168.3.249`).
-2. **Port:** Port của 9router — mặc định DMH_Tools dùng **`98989`**.
+1. **IP Máy Bảng Hàng Đợi:** Nhập đúng IP của máy điều phối hàng đợi (Ví dụ: `192.168.3.249`).
+2. **Port:** Port điều phối — mặc định DMH_Tools dùng **`98989`**.
 3. **Mã Bảng Hiển Thị:** Mã hiển thị bảng LED (Ví dụ: `B01`).
 4. **Mã Nơi Thực Hiện (Phòng):** Mã phòng để lọc danh sách BN (Ví dụ: `2` hoặc `2,3,5` nhiều phòng).
 5. **Chuỗi kết nối SQL Server:** Kết nối tới Database HIS (VD: `Server=192.168.1.xxx;Database=Tên_DB;User Id=sa;Password=mat_khau;TrustServerCertificate=true;`).
@@ -261,7 +261,7 @@ Hoặc trong thư mục cài đặt: `resources\scripts\install_tts.bat`
 2. Bấm **[▶ GỌI TIẾP THEO]** — phần mềm đọc tên và cập nhật bảng LED + TV đồng thời.
 3. Bấm **[🔔 GỌI LẠI]** nếu bệnh nhân chưa vào.
 
-> **Lưu ý 9router:** Phần mềm tự động **retry 1 lần sau 1.5 giây** nếu lần gửi đầu thất bại. Xem trạng thái TCP trong ô **Nhật Ký**.
+> **Lưu ý kết nối TCP:** Phần mềm tự động **retry 1 lần sau 1.5 giây** nếu lần gửi đầu thất bại. Xem trạng thái TCP trong ô **Nhật Ký**.
 
 ---
 
