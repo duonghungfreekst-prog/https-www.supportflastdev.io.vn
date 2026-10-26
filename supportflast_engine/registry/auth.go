@@ -704,10 +704,7 @@ func InitAuth() {
 			log.Printf("[AUTH] Đã khởi tạo thành công tài khoản Quản Trị Viên ('%s') vào CSDL.", defaultAdminUser)
 		}
 	} else {
-		// Đảm bảo mật khẩu admin luôn đồng bộ chính xác với cấu hình
-		if _, updateErr := db.Exec("UPDATE users SET password_hash = ? WHERE username = ?", hash, defaultAdminUser); updateErr != nil {
-			log.Printf("[AUTH] [WARN] Cập nhật hash admin thất bại: %v", updateErr)
-		}
+		log.Printf("[AUTH] Tài khoản Quản Trị Viên ('%s') đã tồn tại an toàn trong CSDL.", defaultAdminUser)
 	}
 
 	// Di chuyển tài khoản phụ từ users.json nếu có (ví dụ quocviet_dev)

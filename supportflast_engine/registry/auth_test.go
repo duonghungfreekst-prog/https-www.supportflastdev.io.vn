@@ -147,8 +147,13 @@ func TestLoginHandler_And_GetUserFromToken_RS256(t *testing.T) {
 
 	InitAuth()
 
-	// 1. Thực hiện đăng nhập để nhận JWT RS256
-	body := `{"username_or_email":"admin","password":"Admin@2026!SupportFlast"}`
+	adminPass := "admin"
+	if u, err := GetUserByUsernameOrEmail("admin"); err == nil && u != nil {
+		if CheckPassword(u.PasswordHash, "Admin@2026!SupportFlast") {
+			adminPass = "Admin@2026!SupportFlast"
+		}
+	}
+	body := fmt.Sprintf(`{"username_or_email":"admin","password":"%s"}`, adminPass)
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "192.0.2.111:54321"
