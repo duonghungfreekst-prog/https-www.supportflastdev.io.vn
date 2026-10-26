@@ -434,13 +434,15 @@ func RefreshKeyCache(db *sql.DB) {
 		"sk-" + DefaultDomain + "-master-live",
 		"sk-supportflastdev.io.vn-master-live",
 		"sk-www.supportflastdev.io.vn-master-live",
+		"sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9",
 		"sk-9r-master-live-gateway-secret",
 		"sk-9router-master-live",
 		"sk-" + DefaultDomain + "-admin-live",
 		"sk-www.supportflastdev.io.vn-admin-live",
+		"6929c9313fb35a0b",
 	}
 	for _, mk := range systemMasterKeys {
-		if _, exists := keyCache[mk]; !exists {
+		if entry, exists := keyCache[mk]; !exists {
 			keyCache[mk] = &ClientKey{
 				ID:         "master_" + HashString(mk)[:12],
 				Name:       "Master System Key",
@@ -450,6 +452,9 @@ func RefreshKeyCache(db *sql.DB) {
 				IsActive:   1,
 				CreatedAt:  "2026-01-01T00:00:00Z",
 			}
+		} else if entry != nil {
+			entry.IsActive = 1
+			entry.QuotaLimit = 0
 		}
 	}
 	keyCacheMu.Unlock()
@@ -484,6 +489,7 @@ func RefreshKeyCache(db *sql.DB) {
 	systemMasterKeys = []string{
 		"sk-supportflastdev.io.vn-master-live",
 		"sk-www.supportflastdev.io.vn-master-live",
+		"sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9",
 		"sk-9r-master-live-gateway-secret",
 		"sk-9router-master-live",
 		"sk-supportflastdev.io.vn-admin-live",
@@ -493,7 +499,7 @@ func RefreshKeyCache(db *sql.DB) {
 		"6929c9313fb35a0b",
 	}
 	for _, mk := range systemMasterKeys {
-		if _, exists := keyCache[mk]; !exists {
+		if entry, exists := keyCache[mk]; !exists {
 			keyCache[mk] = &ClientKey{
 				ID:         "master_" + HashString(mk)[:12],
 				Name:       "Master System Key",
@@ -503,6 +509,9 @@ func RefreshKeyCache(db *sql.DB) {
 				IsActive:   1,
 				CreatedAt:  "2026-01-01T00:00:00Z",
 			}
+		} else if entry != nil {
+			entry.IsActive = 1
+			entry.QuotaLimit = 0
 		}
 	}
 }

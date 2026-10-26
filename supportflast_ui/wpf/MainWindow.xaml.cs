@@ -430,6 +430,12 @@ public partial class MainWindow : Window
             // 1. Ưu tiên khởi chạy Golang Core Engine (omnirouter_engine.exe) hiệu năng cao, không phụ thuộc Node.js
             string? goEngineExe = null;
             string[] goCandidates = [
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "supportflast.exe"),
+                System.IO.Path.Combine(projectRoot, "bin", "supportflast.exe"),
+                System.IO.Path.Combine(projectRoot, "supportflast.exe"),
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modelrouter9_engine.exe"),
+                System.IO.Path.Combine(projectRoot, "supportflast_engine", "modelrouter9_engine.exe"),
+                System.IO.Path.Combine(projectRoot, "modelrouter9_engine.exe"),
                 System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "omnirouter_engine.exe"),
                 System.IO.Path.Combine(projectRoot, "dist", "OmniRouter", "omnirouter_engine.exe"),
                 System.IO.Path.Combine(projectRoot, "omnirouter_engine", "omnirouter_engine.exe"),

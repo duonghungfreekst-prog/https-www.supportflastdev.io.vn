@@ -284,9 +284,23 @@ func TestClientConfigEndpoint(t *testing.T) {
 		t.Fatalf("Unmarshal error response thất bại: %v", err)
 	}
 	if errRespExp["error"] != "Yêu cầu API key hợp lệ" {
-		t.Fatalf("Kỳ vọng error 'Yêu cầu API key hợp lệ', nhận: %v", errRespExp["error"])
+		t.Fatalf("Kỳ vọng error 'Yêu cầu API key hợp lệ', nhận: %v", errRespBadKey["error"])
 	}
 
+	// 7. Test các master key và key mặc định của hệ thống BẮT BUỘC 200 OK
+	for _, masterKey := range []string{
+		"sk-www.supportflastdev.io.vn-4b134c2b19bae0bf106c19a6f94154f9",
+		"sk-supportflastdev.io.vn-master-live",
+		"sk-www.supportflastdev.io.vn-master-live",
+	} {
+		reqMaster := httptest.NewRequest("GET", "/api/v1/client/config", nil)
+		reqMaster.Header.Set("Authorization", "Bearer "+masterKey)
+		recMaster := httptest.NewRecorder()
+		mux.ServeHTTP(recMaster, reqMaster)
+		if recMaster.Code != http.StatusOK {
+			t.Fatalf("Master key %s kỳ vọng 200 OK, nhận: %d: %s", masterKey, recMaster.Code, recMaster.Body.String())
+		}
+	}
 }
 
 func TestClientQuotaCLIEndpoint(t *testing.T) {
