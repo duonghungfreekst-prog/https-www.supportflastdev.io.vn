@@ -120,24 +120,24 @@ Tệp **`f:\supportflast.dev\Caddyfile`** đã được cấu hình tối ưu. K
 caddy run --config f:\supportflast.dev\Caddyfile
 ```
 
-### Phương Án 5: Triển Khai 1-Click Tự Động Lên Linux VPS (Khuyên Dùng)
-Hệ thống cung cấp sẵn script tự động hóa **`deploy_vps.sh`** cho Ubuntu 22.04 / 24.04 LTS:
+### Phương Án 4: Triển Khai & Vận Hành Đồng Nhất (Khuyên Dùng)
+Toàn bộ logic vận hành, mã hóa AES-256-GCM, Cloudflare Tunnel và VFS phân tán đã được tích hợp thành một thể thống nhất trong nhị phân Go Engine:
+
 ```bash
-# Cấp quyền thực thi và triển khai tự động bằng Docker Compose
-chmod +x deploy_vps.sh backup_sqlite.sh
-sudo ./deploy_vps.sh --docker
+# 1. Khởi chạy nhanh toàn bộ hệ thống trên Windows:
+run_supportflast.bat
 
-# Hoặc triển khai Bare-Metal Binary với Systemd & Nginx (Tối ưu RAM 1GB)
-sudo ./deploy_vps.sh --binary
+# 2. Hoặc khởi chạy bằng Makefile đa nền tảng:
+make run
+
+# 3. Biên dịch lại toàn bộ các module:
+make build
 ```
-
-> 📖 **Xem hướng dẫn chi tiết toàn diện tại**: [`HOSTING_DEPLOYMENT_GUIDE.md`](HOSTING_DEPLOYMENT_GUIDE.md)
-> Bao gồm: Triển khai VPS Linux, Cloud Serverless (Render/Fly.io/Railway), Cloudflare Pages Frontend, WAF Security và Quy trình sao lưu SQLite WAL định kỳ.
 
 ---
 
 ## 🛡️ AN TOÀN & BẢO VỆ TÀI NGUYÊN (Zero Hanging Tasks & OOM Guard)
 - Toàn bộ mã nguồn dự án được lưu trữ tuyệt đối trên phân vùng làm việc `f:\supportflast.dev\`, không ghi file vào ổ C hệ thống.
-- Cấu chế ngắt kết nối an toàn (Graceful Shutdown) và kiểm soát bộ nhớ RAM (< 500MB cảnh báo tự động).
-- Tuân thủ quy tắc quản lý tác vụ: Không để tiến trình ngầm treo vô hạn sau khi kiểm tra.
-- Tự động sao lưu dữ liệu SQLite an toàn (Zero Downtime) qua script `backup_sqlite.sh` lập lịch lúc 02:00 sáng hàng ngày.
+- Cơ chế ngắt kết nối an toàn (Graceful Shutdown) và kiểm soát bộ nhớ RAM (< 500MB cảnh báo tự động).
+- Tuân thủ quy tắc quản lý tác vụ: Zero Hanging Tasks, không để tiến trình ngầm treo vô hạn.
+- Cơ sở dữ liệu đám mây tập trung 100% trên cụm **Aiven PostgreSQL Cloud**, tự động mã hóa dữ liệu nhạy cảm AES-256-GCM và backup tự động 24/7 trên Cloud Cluster.

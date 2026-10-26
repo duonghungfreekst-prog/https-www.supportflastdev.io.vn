@@ -81,7 +81,7 @@ docker-multiarch:
 run:
 ifeq ($(OS),Windows_NT)
 	@echo "==> Starting SupportFlast Services (Windows)..."
-	cmd /c RUN_FULL_SYSTEM.bat
+	cmd /c run_supportflast.bat
 else
 	@echo "==> Starting SupportFlast Services (Linux)..."
 	@if [ -f scripts/entrypoint.sh ]; then ./scripts/entrypoint.sh; else cd supportflast_engine && go run .; fi
