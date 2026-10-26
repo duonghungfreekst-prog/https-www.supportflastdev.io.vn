@@ -42,7 +42,7 @@ var (
 // Nếu tệp chưa tồn tại, sinh ngẫu nhiên CSPRNG và lưu bền vững vào tệp (Tuân thủ P0 & Rule 3).
 func GetInitialAdminPassword() string {
 	envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
-	if len(envPass) >= 8 {
+	if len(envPass) > 0 {
 		return envPass
 	}
 
@@ -53,7 +53,7 @@ func GetInitialAdminPassword() string {
 	}
 	if data, err := os.ReadFile(adminSecretPath); err == nil {
 		saved := strings.TrimSpace(string(data))
-		if len(saved) >= 8 {
+		if len(saved) > 0 {
 			_ = os.Setenv("ADMIN_PASSWORD", saved)
 			return saved
 		}

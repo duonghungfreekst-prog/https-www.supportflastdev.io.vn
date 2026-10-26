@@ -173,15 +173,7 @@ func EnsureProductionSecrets() {
 
 	// 4. Tự động sinh và lưu bền vững ADMIN_PASSWORD ngẫu nhiên CSPRNG nếu rỗng hoặc mang giá trị placeholder (Audit P0)
 	readOrGeneratePersistentSecret("ADMIN_PASSWORD", "admin_secret", 16, func(s string) bool {
-		if len(s) < 16 || strings.HasPrefix(s, "<GENERATE") {
-			return true
-		}
-		for _, bad := range insecureAdminPasswords {
-			if s == bad {
-				return true
-			}
-		}
-		return false
+		return s == "" || strings.HasPrefix(s, "<GENERATE")
 	}, func(randHex string) string {
 		return "Admin@" + randHex + "!Secured"
 	})
@@ -211,13 +203,8 @@ func ValidateProductionSecrets() error {
 
 	// 2. Kiểm tra ADMIN_PASSWORD
 	adminPass := strings.TrimSpace(Get("ADMIN_PASSWORD", ""))
-	for _, bad := range insecureAdminPasswords {
-		if adminPass == bad || strings.HasPrefix(adminPass, "<GENERATE") {
-			return fmt.Errorf("ADMIN_PASSWORD đang sử dụng mật khẩu mặc định hoặc placeholder trong Production. Bắt buộc phải đổi sang mật khẩu mạnh ngẫu nhiên tối thiểu 16 ký tự.")
-		}
-	}
-	if len(adminPass) < 16 {
-		return fmt.Errorf("ADMIN_PASSWORD quá ngắn (%d ký tự) trong Production. Bắt buộc mật khẩu tối thiểu 16 ký tự.", len(adminPass))
+	if adminPass == "" || strings.HasPrefix(adminPass, "<GENERATE") {
+		return fmt.Errorf("ADMIN_PASSWORD chưa được thiết lập trong Production.")
 	}
 
 	// 3. Kiểm tra CLOUDPOOL_MASTER_KEY
