@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -14,35 +15,53 @@ import (
 	"supportflast_engine/registry"
 )
 
+func defaultUnavailableHandler(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":  "CloudPool " + name + " service is initializing or temporarily unavailable",
+			"code":   "ERR_CLOUDPOOL_INITIALIZING",
+			"status": "degraded",
+		})
+	}
+}
+
 var (
 	// DefaultServer giữ instance của CloudPool Server đã khởi tạo
 	DefaultServer *Server
 	initOnce      sync.Once
 
-	// Exported Native HTTP Handlers theo chuẩn CloudPool API
-	FilesHandler        http.HandlerFunc
-	AccountsHandler     http.HandlerFunc
-	StatsHandler        http.HandlerFunc
-	SharesHandler       http.HandlerFunc
-	SQLStudioHandler    http.HandlerFunc
-	SettingsHandler     http.HandlerFunc
-	RemoteHandler       http.HandlerFunc
-	TunnelHandler       http.HandlerFunc
-	AdminDriveHandler   http.HandlerFunc
-	AdminOTPHandler     http.HandlerFunc
-	AdminStorageHandler http.HandlerFunc
-	PublicShareHandler  http.HandlerFunc
-	UpdateHandler       http.HandlerFunc
-	WebDAVHandler       http.Handler
+	// Exported Native HTTP Handlers theo chuẩn CloudPool API - Luôn có giá trị mặc định non-nil chống panic "http: nil handler"
+	FilesHandler        http.HandlerFunc = defaultUnavailableHandler("Files")
+	AccountsHandler     http.HandlerFunc = defaultUnavailableHandler("Accounts")
+	StatsHandler        http.HandlerFunc = defaultUnavailableHandler("Stats")
+	SharesHandler       http.HandlerFunc = defaultUnavailableHandler("Shares")
+	SQLStudioHandler    http.HandlerFunc = defaultUnavailableHandler("SQLStudio")
+	SettingsHandler     http.HandlerFunc = defaultUnavailableHandler("Settings")
+	RemoteHandler       http.HandlerFunc = defaultUnavailableHandler("Remote")
+	TunnelHandler       http.HandlerFunc = defaultUnavailableHandler("Tunnel")
+	AdminDriveHandler   http.HandlerFunc = defaultUnavailableHandler("AdminDrive")
+	AdminOTPHandler     http.HandlerFunc = defaultUnavailableHandler("AdminOTP")
+	AdminStorageHandler http.HandlerFunc = defaultUnavailableHandler("AdminStorage")
+	PublicShareHandler  http.HandlerFunc = defaultUnavailableHandler("PublicShare")
+	UpdateHandler       http.HandlerFunc = defaultUnavailableHandler("Update")
+	WebDAVHandler       http.Handler     = defaultUnavailableHandler("WebDAV")
 
 	// Auth & Admin User Handlers
-	VerifyAdminPassHandler http.HandlerFunc
-	UpdateUserQuotaHandler http.HandlerFunc
-	DeleteUserHandler      http.HandlerFunc
+	VerifyAdminPassHandler http.HandlerFunc = defaultUnavailableHandler("VerifyAdminPass")
+	UpdateUserQuotaHandler http.HandlerFunc = defaultUnavailableHandler("UpdateUserQuota")
+	DeleteUserHandler      http.HandlerFunc = defaultUnavailableHandler("DeleteUser")
 )
 
 // InitHandlers khởi tạo và liên kết toàn bộ Native Route Handlers cho CloudPool
 func InitHandlers(db *storage.DB, gd *gdrive.Manager, vfsEngine *vfs.VFS, uiDir string, baseDir string) *Server {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ENGINE] [CLOUDPOOL] [WARN] Bắt được panic trong InitHandlers, bảo vệ an toàn: %v", r)
+		}
+	}()
+
 	initOnce.Do(func() {
 		if err := InitJWTKeys(baseDir); err != nil {
 			log.Printf("[ENGINE] [CLOUDPOOL] [WARN] Khởi tạo khóa JWT keys thất bại: %v", err)
@@ -72,7 +91,9 @@ func InitHandlers(db *storage.DB, gd *gdrive.Manager, vfsEngine *vfs.VFS, uiDir 
 		AdminStorageHandler = s.AdminStorageHandler
 		PublicShareHandler = s.PublicShareHandler
 		UpdateHandler = s.UpdateHandler
-		WebDAVHandler = s.WebDAVHandler()
+		if dav := s.WebDAVHandler(); dav != nil {
+			WebDAVHandler = dav
+		}
 
 		// Auth & Admin User Handlers
 		VerifyAdminPassHandler = s.handleVerifyAdminPass

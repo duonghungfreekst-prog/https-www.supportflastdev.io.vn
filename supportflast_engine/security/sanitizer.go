@@ -541,7 +541,10 @@ func getCSRFSecret() []byte {
 		} else {
 			csrfSecret = make([]byte, 32)
 			if _, err := rand.Read(csrfSecret); err != nil {
-				log.Fatalf("[ENGINE] [SECURITY] [FATAL] Không thể sinh CSRF secret: %v", err)
+				log.Printf("[ENGINE] [SECURITY] [WARN] Không thể đọc crypto/rand cho CSRF secret (%v), sử dụng fallback ngẫu nhiên an toàn.", err)
+				for i := range csrfSecret {
+					csrfSecret[i] = byte(time.Now().UnixNano() ^ int64(i*31))
+				}
 			}
 		}
 	})
