@@ -530,6 +530,9 @@ func main() {
 	// Ghi nhận chỉ số bộ nhớ ban đầu khi khởi động (Rule 7.4)
 	logMemoryStats()
 
+	// Tự động giải phóng toàn bộ danh sách IP Jail khi khởi động lại (gỡ ban cho toàn bộ hệ thống)
+	security.ClearAllIPJail()
+
 	// Phân tích cấu hình Standalone Auto-HTTPS / Let's Encrypt (không cần Nginx)
 	autoHTTPSConfig := getAutoHTTPSConfig(dataDir)
 
@@ -660,6 +663,48 @@ func main() {
 			"tls_min_version":    "TLS 1.2",
 			"hsts":               "max-age=31536000; includeSubDomains; preload",
 			"timestamp":          time.Now().Format(time.RFC3339),
+		})
+	})
+
+	// 1.7. API Gỡ Ban IP / Giải phóng danh sách đen IP Jail
+	mux.HandleFunc("/api/security/unjail", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		token := registry.ExtractToken(r)
+		user, isAuth := registry.GetUserFromToken(token)
+		masterKey := r.Header.Get("X-Master-Key")
+		expectedKey := os.Getenv("MASTER_KEY")
+		if expectedKey == "" {
+			expectedKey = config.GetInternalServiceSecret()
+		}
+
+		isMaster := expectedKey != "" && subtle.ConstantTimeCompare([]byte(masterKey), []byte(expectedKey)) == 1
+		isAdmin := isAuth && user != nil && (user.Role == "admin" || user.Username == "admin")
+
+		if !isMaster && !isAdmin {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": "unauthorized",
+				"error":  "Yêu cầu quyền Quản Trị Viên hoặc X-Master-Key hợp lệ để thực hiện thao tác gỡ ban.",
+			})
+			return
+		}
+
+		targetIP := strings.TrimSpace(r.URL.Query().Get("ip"))
+		if targetIP == "" || targetIP == "all" {
+			security.ClearAllIPJail()
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"status":  "success",
+				"message": "Đã giải phóng thành công 100% địa chỉ IP khỏi danh sách đen IP Jail.",
+			})
+			return
+		}
+
+		unjailed := security.UnjailIP(targetIP)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":   "success",
+			"target":   targetIP,
+			"unjailed": unjailed,
+			"message":  fmt.Sprintf("Đã gỡ ban thành công cho IP: %s", targetIP),
 		})
 	})
 	if database.ActiveDriver() == "postgres" {

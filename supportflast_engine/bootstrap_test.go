@@ -145,52 +145,58 @@ func TestAutoBootstrapping_BlankHosting(t *testing.T) {
 		t.Errorf("File .env thiếu CLOUDPOOL_MASTER_KEY")
 	}
 
-	// 5. Kiểm tra tự động khởi tạo CSDL SQLite 'data/supportflast.db'
-	mainDBPath := filepath.Join(testDataDir, "supportflast.db")
-	if _, err := os.Stat(mainDBPath); err != nil {
-		t.Fatalf("File CSDL supportflast.db không tồn tại: %v", err)
-	}
-
-	dbDSN := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)", filepath.ToSlash(mainDBPath))
-	mainDB, err := sql.Open("sqlite", dbDSN)
-	if err != nil {
-		t.Fatalf("Không thể mở CSDL supportflast.db: %v", err)
-	}
-	defer mainDB.Close()
-
-	// Kiểm tra các bảng cốt lõi trong supportflast.db
-	expectedTables := []string{
-		"users", "apps", "api_keys", "reviews", "audit_logs", "system_releases", "security_events",
-	}
-	for _, tbl := range expectedTables {
-		var count int
-		query := fmt.Sprintf("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='%s'", tbl)
-		if err := mainDB.QueryRow(query).Scan(&count); err != nil || count == 0 {
-			t.Errorf("Bảng bắt buộc '%s' không tồn tại trong supportflast.db", tbl)
+	// 5. Kiểm tra tự động kết nối CSDL (Aiven PostgreSQL Cloud hoặc fallback SQLite)
+	if database.ActiveDriver() == "postgres" {
+		if res.MainDBPath == "" {
+			t.Fatalf("Đường dẫn CSDL PostgreSQL rỗng")
 		}
-	}
+	} else {
+		mainDBPath := filepath.Join(testDataDir, "supportflast.db")
+		if _, err := os.Stat(mainDBPath); err != nil {
+			t.Fatalf("File CSDL supportflast.db không tồn tại: %v", err)
+		}
 
-	// 6. Kiểm tra tự động tạo tài khoản Admin mặc định ('admin' / 'Admin@2026!SupportFlast')
-	var adminID, adminUser, adminEmail, adminPassHash, adminRole string
-	err = mainDB.QueryRow(`
-		SELECT id, username, email, password_hash, role 
-		FROM users 
-		WHERE username = 'admin'
-	`).Scan(&adminID, &adminUser, &adminEmail, &adminPassHash, &adminRole)
-	if err != nil {
-		t.Fatalf("Không tìm thấy tài khoản admin trong CSDL: %v", err)
-	}
+		dbDSN := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)", filepath.ToSlash(mainDBPath))
+		mainDB, err := sql.Open("sqlite", dbDSN)
+		if err != nil {
+			t.Fatalf("Không thể mở CSDL supportflast.db: %v", err)
+		}
+		defer mainDB.Close()
 
-	if adminUser != "admin" {
-		t.Errorf("Username admin mong đợi 'admin', thực tế: '%s'", adminUser)
-	}
-	if adminRole != "admin" {
-		t.Errorf("Role admin mong đợi 'admin', thực tế: '%s'", adminRole)
-	}
+		// Kiểm tra các bảng cốt lõi trong supportflast.db
+		expectedTables := []string{
+			"users", "apps", "api_keys", "reviews", "audit_logs", "system_releases", "security_events",
+		}
+		for _, tbl := range expectedTables {
+			var count int
+			query := fmt.Sprintf("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='%s'", tbl)
+			if err := mainDB.QueryRow(query).Scan(&count); err != nil || count == 0 {
+				t.Errorf("Bảng bắt buộc '%s' không tồn tại trong supportflast.db", tbl)
+			}
+		}
 
-	// Xác minh mật khẩu Admin qua BCrypt
-	if err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte("Admin@2026!SupportFlast")); err != nil {
-		t.Errorf("Mật khẩu Admin đã băm không khớp với 'Admin@2026!SupportFlast': %v", err)
+		// 6. Kiểm tra tự động tạo tài khoản Admin mặc định ('admin' / 'Admin@2026!SupportFlast')
+		var adminID, adminUser, adminEmail, adminPassHash, adminRole string
+		err = mainDB.QueryRow(`
+			SELECT id, username, email, password_hash, role 
+			FROM users 
+			WHERE username = 'admin'
+		`).Scan(&adminID, &adminUser, &adminEmail, &adminPassHash, &adminRole)
+		if err != nil {
+			t.Fatalf("Tài khoản admin chưa được khởi tạo: %v", err)
+		}
+
+		if adminUser != "admin" {
+			t.Errorf("Username admin mong đợi 'admin', thực tế: '%s'", adminUser)
+		}
+		if adminRole != "admin" {
+			t.Errorf("Role admin mong đợi 'admin', thực tế: '%s'", adminRole)
+		}
+
+		// Xác minh mật khẩu Admin qua BCrypt
+		if err := bcrypt.CompareHashAndPassword([]byte(adminPassHash), []byte("Admin@2026!SupportFlast")); err != nil {
+			t.Errorf("Mật khẩu Admin không khớp: %v", err)
+		}
 	}
 
 	// 7. Kiểm tra tự động khởi tạo CSDL SQLite 'data/cloudpool_metadata.db'

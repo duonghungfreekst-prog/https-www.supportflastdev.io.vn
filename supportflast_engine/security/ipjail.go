@@ -83,11 +83,12 @@ func NewIPJail(maxEntries int) *IPJail {
 		jail.whitelist[ip] = true
 	}
 
-	// 2. Thêm các dải mạng nội bộ an toàn (Private IP Ranges)
+	// 2. Thêm các dải mạng nội bộ an toàn (Private IP Ranges & Carrier Grade NAT)
 	privateCIDRs := []string{
 		"10.0.0.0/8",
 		"172.16.0.0/12",
 		"192.168.0.0/16",
+		"100.64.0.0/10", // Carrier Grade NAT trên Cloud PaaS (Render, Fly.io)
 		"fc00::/7",
 	}
 	for _, cidr := range privateCIDRs {
@@ -544,4 +545,10 @@ func RemoveIPWhitelist(ipOrCIDR string) {
 
 func IsIPWhitelisted(ip string) bool {
 	return GlobalIPJail.IsWhitelisted(ip)
+}
+
+// ClearAllIPJail xóa sạch toàn bộ danh sách giam giữ trong bộ nhớ (gỡ ban ngay lập tức cho toàn bộ hệ thống)
+func ClearAllIPJail() {
+	GlobalIPJail.ClearJail()
+	log.Println("[ENGINE] [IP_JAIL] Toàn bộ danh sách đen IP Jail đã được gỡ bỏ sạch sẽ.")
 }

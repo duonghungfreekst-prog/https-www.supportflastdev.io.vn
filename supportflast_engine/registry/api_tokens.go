@@ -636,6 +636,17 @@ func V1ChatCompletionsHandler(w http.ResponseWriter, r *http.Request) {
 		promptTokens += int64(len(m.Content) / 4)
 	}
 
+	// Thiết lập các header RateLimit & Quota chuẩn OpenAPI/OpenRouter để client tự động đồng bộ Quota thời gian thực
+	w.Header().Set("X-RateLimit-Limit-Tokens", fmt.Sprintf("%d", item.Quota))
+	w.Header().Set("X-RateLimit-Remaining-Tokens", fmt.Sprintf("%d", item.RemainQuota))
+	w.Header().Set("X-RateLimit-Used-Tokens", fmt.Sprintf("%d", item.UsedQuota))
+	if item.Name != "" {
+		w.Header().Set("X-Token-Name", item.Name)
+	}
+	if item.Prefix != "" {
+		w.Header().Set("X-Token-Prefix", item.Prefix)
+	}
+
 	if reqPayload.Stream {
 		// Xử lý Streaming SSE
 		w.Header().Set("Content-Type", "text/event-stream")

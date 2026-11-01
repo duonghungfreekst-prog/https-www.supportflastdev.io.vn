@@ -98,13 +98,24 @@ func OpenPostgresConnection(customURI ...string) (*sql.DB, error) {
 	db.SetConnMaxLifetime(lifetime)
 	db.SetConnMaxIdleTime(idleTime)
 
-	// Ping check kiểm tra tính sẵn sàng của kết nối mạng và SSL
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultPGConnectTimeout)
-	defer cancel()
+	// Ping check kiểm tra tính sẵn sàng của kết nối mạng và SSL (kèm cơ chế retry 3 lần tự phục hồi)
+	var pingErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultPGConnectTimeout)
+		pingErr = db.PingContext(ctx)
+		cancel()
+		if pingErr == nil {
+			break
+		}
+		if attempt < 3 {
+			log.Printf("[ENGINE] [POSTGRES] [RETRY] Lần thử %d/3 kết nối Aiven PostgreSQL thất bại (%v). Thử lại sau 2 giây...", attempt, pingErr)
+			time.Sleep(2 * time.Second)
+		}
+	}
 
-	if err := db.PingContext(ctx); err != nil {
+	if pingErr != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("ping kiểm tra kết nối Aiven PostgreSQL thất bại: %w", err)
+		return nil, fmt.Errorf("ping kiểm tra kết nối Aiven PostgreSQL thất bại sau 3 lần thử: %w", pingErr)
 	}
 
 	log.Printf("[ENGINE] [POSTGRES] ✔ Kết nối Aiven PostgreSQL thành công! (Pool: MaxOpen=%d, MaxIdle=%d, Lifetime=%v)",

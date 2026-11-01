@@ -43,12 +43,28 @@ var cloudflareCIDRs = []string{
 }
 
 var parsedCloudflareNets []*net.IPNet
+var parsedPrivateProxyNets []*net.IPNet
+
+// Dải mạng nội bộ an toàn và Carrier-Grade NAT dùng bởi các Cloud PaaS (Render, Docker, K8s)
+var privateProxyCIDRs = []string{
+	"10.0.0.0/8",
+	"172.16.0.0/12",
+	"192.168.0.0/16",
+	"100.64.0.0/10", // Carrier Grade NAT trên Render / Fly.io
+	"fc00::/7",
+}
 
 func init() {
 	for _, cidr := range cloudflareCIDRs {
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err == nil {
 			parsedCloudflareNets = append(parsedCloudflareNets, ipNet)
+		}
+	}
+	for _, cidr := range privateProxyCIDRs {
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err == nil {
+			parsedPrivateProxyNets = append(parsedPrivateProxyNets, ipNet)
 		}
 	}
 }
@@ -79,7 +95,17 @@ func IsCloudflareOrLocalIP(ipStr string) bool {
 		}
 	}
 
-	// 3. Chỉ chấp nhận dải IP Proxy nội bộ cụ thể nếu được quản trị viên chỉ định tường minh qua TRUSTED_PROXIES
+	// 3. Chấp nhận các Proxy nội bộ tin cậy khi chạy trong môi trường Cloud PaaS (Render, Fly.io, Container)
+	isCloudPaaS := os.Getenv("RENDER") != "" || os.Getenv("RENDER_SERVICE_ID") != "" || os.Getenv("IS_PROXY") == "true"
+	if isCloudPaaS {
+		for _, proxyNet := range parsedPrivateProxyNets {
+			if proxyNet.Contains(ip) {
+				return true
+			}
+		}
+	}
+
+	// 4. Chấp nhận dải IP Proxy nội bộ cụ thể nếu được quản trị viên chỉ định tường minh qua TRUSTED_PROXIES
 	if trustedEnv := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES")); trustedEnv != "" {
 		for _, trusted := range strings.Split(trustedEnv, ",") {
 			trusted = strings.TrimSpace(trusted)

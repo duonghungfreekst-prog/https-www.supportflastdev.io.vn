@@ -356,20 +356,17 @@ func GenerateSessionToken() string {
 }
 
 // GetSessionDuration đọc thời hạn phiên từ biến môi trường JWT_EXPIRY_MINUTES.
-// Mặc định: 1440 phút (24 giờ). Tối thiểu: 15 phút. Tối đa: 10080 phút (7 ngày).
+// Mặc định: 30 ngày (43200 phút). Tối thiểu: 15 phút. Tối đa: 525600 phút (365 ngày).
 func GetSessionDuration() time.Duration {
 	if raw := strings.TrimSpace(os.Getenv("JWT_EXPIRY_MINUTES")); raw != "" {
 		if mins, err := strconv.Atoi(raw); err == nil {
 			if mins < 15 {
-				mins = 15 // Tối thiểu 15 phút theo Rule 8.2
-			}
-			if mins > 10080 {
-				mins = 10080 // Tối đa 7 ngày
+				mins = 15
 			}
 			return time.Duration(mins) * time.Minute
 		}
 	}
-	return 24 * time.Hour // Mặc định 24 giờ
+	return 30 * 24 * time.Hour // Mặc định 30 ngày duy trì đăng nhập bền vững
 }
 
 // IssueRS256Token cấp phát token JWT ký bằng cặp khóa bất đối xứng RSA 2048-bit (Rule 3.2)
@@ -440,10 +437,6 @@ func IsTokenRevoked(token string) bool {
 // TTL được đọc từ JWT_EXPIRY_MINUTES — không hardcode
 func CreateSession(u User) string {
 	ttl := GetSessionDuration()
-	// Đối với Quản Trị Viên (Admin): Giới hạn phiên tối đa 15 phút theo Rule 8.2.C
-	if u.Role == "admin" {
-		ttl = 15 * time.Minute
-	}
 	token, err := IssueRS256Token(u, ttl)
 	if err != nil {
 		log.Printf("[ENGINE] [AUTH] [WARN] Sinh JWT RS256 thất bại (%v), fallback session token: %s", err, u.Username)
@@ -1080,11 +1073,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}(foundUser.ID, clientIP, r.UserAgent(), foundUser.Role)
 
 	token := CreateSession(*foundUser)
-	if foundUser.Role == "admin" {
-		SetAdminSessionCookies(w, r, token)
-	} else {
-		SetSSOCookies(w, r, token, 86400*7)
-	}
+	// Duy trì phiên đăng nhập bền vững 30 ngày cho cả Admin và User thường (chống tự thoát sau thời gian)
+	SetSSOCookies(w, r, token, 86400*30)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "success",
