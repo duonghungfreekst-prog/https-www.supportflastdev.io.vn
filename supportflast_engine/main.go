@@ -675,8 +675,9 @@ func main() {
 	// Ghi nhận chỉ số bộ nhớ ban đầu khi khởi động (Rule 7.4)
 	logMemoryStats()
 
-	// Tự động giải phóng toàn bộ danh sách IP Jail khi khởi động lại (gỡ ban cho toàn bộ hệ thống)
+	// Tự động giải phóng toàn bộ danh sách IP Jail và Rate Limits khi khởi động lại (gỡ ban cho toàn bộ hệ thống)
 	security.ClearAllIPJail()
+	security.ResetAllRateLimits()
 
 	// Phân tích cấu hình Standalone Auto-HTTPS / Let's Encrypt (không cần Nginx)
 	autoHTTPSConfig := getAutoHTTPSConfig(dataDir)

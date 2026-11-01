@@ -10,15 +10,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
-
 	cloudpoolStorage "supportflast_engine/cloudpool/storage"
 	"supportflast_engine/config"
 	"supportflast_engine/database"
 	"supportflast_engine/registry"
 	"supportflast_engine/security"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // BootstrapResult chứa thông tin chi tiết về các tài nguyên đã tự động khởi tạo
@@ -230,6 +226,10 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (re
 
 	// 6. Tự động kiểm tra và khởi tạo dữ liệu trong CSDL nếu kết nối đã sẵn sàng
 	if db != nil {
+		// Tự động kiểm tra cấu trúc bảng và đảm bảo tài khoản Admin luôn sẵn sàng (Self-Healing)
+		_ = database.EnsureSchema(db)
+		_ = database.EnsureAdminUser(db)
+
 		// Tự động kiểm tra và seed dữ liệu apps, api_keys, system_releases nếu bảng rỗng
 		_ = database.SeedInitialApps(db, dataDir)
 		_ = database.SeedInitialKeys(db, dataDir)
@@ -316,82 +316,12 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (re
 					log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Xác thực Admin gặp sự cố, tự động phục hồi: %v", r)
 				}
 			}()
-			// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc Aiven PostgreSQL)
-			var adminUser database.User
-			err = db.QueryRow("SELECT id, username, email, password_hash, role FROM users WHERE username = 'admin'").Scan(
-				&adminUser.ID, &adminUser.Username, &adminUser.Email, &adminUser.PasswordHash, &adminUser.Role,
-			)
-			if err != nil {
-				// Thử chèn tài khoản admin nếu chưa có
-				log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Admin chưa có trong CSDL, tiến hành tạo mới...")
-				hash, hashErr := bcrypt.GenerateFromPassword([]byte(database.GetInitialAdminPassword()), 12)
-				if hashErr != nil {
-					log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Lỗi băm mật khẩu admin: %v", hashErr)
-					return
-				}
-
-				var adminExists int
-				_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR id = ?", database.DefaultAdminUsername, database.DefaultAdminID).Scan(&adminExists)
-				if adminExists == 0 {
-					isMySQL := database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
-
-					var insertSQL string
-					var nowVal interface{}
-					var lastLoginVal interface{}
-
-					if isMySQL {
-						nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
-						lastLoginVal = nil
-						insertSQL = `
-							INSERT IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
-							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-						`
-					} else {
-						nowVal = time.Now().UTC().Format(time.RFC3339)
-						lastLoginVal = ""
-						insertSQL = `
-							INSERT OR IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
-							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-						`
-					}
-
-					_, insertErr := db.Exec(insertSQL,
-						database.DefaultAdminID,
-						database.DefaultAdminUsername,
-						database.DefaultAdminEmail,
-						string(hash),
-						database.DefaultAdminDisplayName,
-						database.DefaultAdminRole,
-						database.DefaultAdminAvatar,
-						nowVal,
-						nowVal,
-						lastLoginVal,
-					)
-					if insertErr != nil {
-						log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Lỗi khởi tạo tài khoản admin: %v", insertErr)
-					}
-				}
-				res.AdminUserCreated = true
+			if err := database.EnsureAdminUser(db); err != nil {
+				log.Printf("[BOOTSTRAP] [ADMIN] [WARN] EnsureAdminUser thông báo: %v", err)
 			} else {
-				res.AdminUserCreated = true
-				// Kiểm tra nếu biến môi trường ADMIN_PASSWORD được cấu hình và khác với hash hiện tại, tự động đồng bộ
-				envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
-				if envPass != "" && bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(envPass)) != nil {
-					if newHash, hErr := bcrypt.GenerateFromPassword([]byte(envPass), 12); hErr == nil {
-						updateSQL := "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"
-						if database.ActiveDriver() == "postgres" || strings.ToLower(os.Getenv("DB_DRIVER")) == "postgres" {
-							updateSQL = "UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3"
-						}
-						nowStr := time.Now().UTC().Format(time.RFC3339)
-						if _, uErr := db.Exec(updateSQL, string(newHash), nowStr, adminUser.ID); uErr == nil {
-							log.Println("[BOOTSTRAP] [ADMIN] Đã cập nhật mật khẩu Admin theo biến môi trường ADMIN_PASSWORD mới.")
-						} else {
-							log.Printf("[BOOTSTRAP] [ADMIN] Cảnh báo lỗi đồng bộ mật khẩu Admin: %v", uErr)
-						}
-					}
-				}
-				log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã tồn tại an toàn trong CSDL.")
+				log.Println("[BOOTSTRAP] [ADMIN] ✔ Tài khoản Quản Trị Viên ('admin', role='admin') đã tồn tại an toàn trong CSDL.")
 			}
+			res.AdminUserCreated = true
 		}()
 	} else {
 		res.AdminUserCreated = true
