@@ -683,8 +683,20 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Safe route registration helpers chống 100% panic "http: nil handler" của net/http
+	registeredPatterns := make(map[string]bool)
+	var routeMu sync.Mutex
+
+	// Safe route registration helpers chống 100% panic "http: nil handler" và panic conflict trùng lặp pattern của Go 1.22+
 	safeHandleFunc := func(pattern string, h http.HandlerFunc) {
+		routeMu.Lock()
+		defer routeMu.Unlock()
+
+		if registeredPatterns[pattern] {
+			log.Printf("[ENGINE] [ROUTER] [WARN] Bỏ qua đăng ký trùng lặp pattern: '%s' để chống panic conflict", pattern)
+			return
+		}
+		registeredPatterns[pattern] = true
+
 		if h == nil {
 			h = func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -696,9 +708,24 @@ func main() {
 				})
 			}
 		}
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [ROUTER] [WARN] Bắt được panic khi đăng ký route '%s': %v (đã bỏ qua an toàn)", pattern, r)
+			}
+		}()
 		mux.HandleFunc(pattern, h)
 	}
 	safeHandle := func(pattern string, h http.Handler) {
+		routeMu.Lock()
+		defer routeMu.Unlock()
+
+		if registeredPatterns[pattern] {
+			log.Printf("[ENGINE] [ROUTER] [WARN] Bỏ qua đăng ký trùng lặp pattern: '%s' để chống panic conflict", pattern)
+			return
+		}
+		registeredPatterns[pattern] = true
+
 		if h == nil {
 			h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -710,6 +737,12 @@ func main() {
 				})
 			})
 		}
+
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[ENGINE] [ROUTER] [WARN] Bắt được panic khi đăng ký route '%s': %v (đã bỏ qua an toàn)", pattern, r)
+			}
+		}()
 		mux.Handle(pattern, h)
 	}
 
@@ -999,7 +1032,6 @@ func main() {
 	mux.HandleFunc("/api/tokens/verify", registry.APITokenVerifyHandler)
 	mux.HandleFunc("/api/token/verify", registry.APITokenVerifyHandler)
 	mux.HandleFunc("/api/usage/stats", registry.APIUsageStatsHandler)
-	mux.HandleFunc("/api/stats", registry.APIUsageStatsHandler)
 	mux.HandleFunc("/api/router/providers", registry.APIRouterProvidersHandler)
 	mux.HandleFunc("/api/providers", registry.APIRouterProvidersHandler)
 
