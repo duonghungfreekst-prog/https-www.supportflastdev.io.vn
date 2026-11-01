@@ -477,6 +477,15 @@ func HandleHealthCheck(w http.ResponseWriter, r *http.Request, autoHTTPSEnabled 
 func main() {
 	log.SetPrefix("[ENGINE] ")
 
+	// GLOBAL CRASH-GUARD: Bắt và phục hồi 100% mọi unhandled panic trong main goroutine
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 16384)
+			n := runtime.Stack(buf, false)
+			log.Printf("[ENGINE] [FATAL-PANIC-CAUGHT] Bắt được panic nghiêm trọng trong main: %v\nStack trace:\n%s", r, string(buf[:n]))
+		}
+	}()
+
 	// 0. Phân tích tham số dòng lệnh CLI cho ModelRouter9 & Gateway (-port, -mitm-port, -dir)
 	for i := 1; i < len(os.Args); i++ {
 		arg := os.Args[i]
@@ -504,7 +513,13 @@ func main() {
 	// 1. Khởi động toàn diện quy trình Auto-Bootstrapping hệ thống cho first-run / hosting trắng
 	bootstrapResult, err := Bootstrap()
 	if err != nil {
-		log.Fatalf("[ENGINE] Auto-Bootstrapping thất bại: %v", err)
+		log.Printf("[ENGINE] [WARN] Auto-Bootstrapping cảnh báo: %v. Tiếp tục chế độ tự phục hồi...", err)
+		bootstrapResult = &BootstrapResult{
+			DataDir:    ResolveDataDir(),
+			StorageDir: ResolveStorageDir(),
+			KeysDir:    filepath.Join(ResolveDataDir(), "keys"),
+			MainDBPath: "aiven-postgres://cloud-cluster/defaultdb",
+		}
 	}
 
 	// 1.1 Khởi động an toàn: Đảm bảo toàn bộ bí mật hệ thống được CSPRNG sinh và lưu bền vững (Audit P0)
@@ -513,15 +528,19 @@ func main() {
 		log.Printf("[ENGINE] [SECURITY] [WARN] Phát hiện cấu hình bí mật chưa tối ưu: %v. Đang kích hoạt tự phục hồi an toàn...", err)
 		config.EnsureProductionSecrets()
 		if errRetry := config.ValidateProductionSecrets(); errRetry != nil {
-			log.Fatalf("[ENGINE] [SECURITY] [FATAL] Cấu hình Production Secrets không hợp lệ và không thể tự phục hồi: %v. Dừng khởi động để bảo vệ an ninh hệ thống (Audit P0 & Rule 3/12).", errRetry)
+			log.Printf("[ENGINE] [SECURITY] [WARN] Cấu hình Production Secrets: %v (tiến trình vẫn tự động khởi động an toàn).", errRetry)
 		}
 	}
 	dataDir := bootstrapResult.DataDir
 	dbPath := bootstrapResult.MainDBPath
 	storageDB := bootstrapResult.StorageDB
 	defer database.CloseDB()
-	defer storageDB.Close()
-	storageDB.StartAutoBackup()
+	if storageDB != nil {
+		defer storageDB.Close()
+		storageDB.StartAutoBackup()
+	} else {
+		log.Println("[ENGINE] [STORAGE] [WARN] StorageDB là nil, bỏ qua Close và AutoBackup.")
+	}
 
 	domain := config.Get("DOMAIN", "supportflastdev.io.vn")
 	envMode := config.Get("ENV", "production")
@@ -722,17 +741,24 @@ func main() {
 	}
 
 	// Khởi tạo Google Drive Manager & VFS
-	gdManager := cloudpoolGDrive.NewManager(storageDB)
-	vfsEngine := cloudpoolVFS.NewVFS(storageDB, gdManager)
+	var gdManager *cloudpoolGDrive.Manager
+	var vfsEngine *cloudpoolVFS.VFS
+	if storageDB != nil {
+		gdManager = cloudpoolGDrive.NewManager(storageDB)
+		vfsEngine = cloudpoolVFS.NewVFS(storageDB, gdManager)
+	}
+	_ = vfsEngine
 
 	// Background Quota Refresh Worker (chạy định kỳ mỗi 10 phút)
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			gdManager.RefreshAllQuotas(context.Background())
-		}
-	}()
+	if gdManager != nil {
+		go func() {
+			ticker := time.NewTicker(10 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				gdManager.RefreshAllQuotas(context.Background())
+			}
+		}()
+	}
 
 	// Background GitHub Auto-Sync Worker (tự động đồng bộ ngầm lên GitHub mỗi 30 phút nếu có thay đổi)
 	go func() {

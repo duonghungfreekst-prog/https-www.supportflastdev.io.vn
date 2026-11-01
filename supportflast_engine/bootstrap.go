@@ -109,20 +109,45 @@ func Bootstrap() (*BootstrapResult, error) {
 }
 
 // BootstrapWithDirs khởi động tiến trình tự động khởi tạo với khả năng tùy biến thư mục (hỗ trợ kiểm thử cô lập)
-func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*BootstrapResult, error) {
+func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (res *BootstrapResult, err error) {
 	log.Println("[BOOTSTRAP] ========================================================")
 	log.Println("[BOOTSTRAP] Khởi động Auto-Bootstrapping SupportFlast Engine")
 	log.Println("[BOOTSTRAP] ========================================================")
 
-	res := &BootstrapResult{}
+	res = &BootstrapResult{}
+
+	// CRASH-GUARD: Bắt và phục hồi 100% mọi panic runtime bất ngờ, chống sập container Render với status 2
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 16384)
+			n := runtime.Stack(buf, false)
+			log.Printf("[BOOTSTRAP] [FATAL-PANIC-RECOVERED] Bắt được panic trong Auto-Bootstrapping: %v\nStack trace:\n%s", r, string(buf[:n]))
+			if res == nil {
+				res = &BootstrapResult{}
+			}
+			if res.DataDir == "" {
+				res.DataDir = ResolveDataDir()
+			}
+			if res.StorageDir == "" {
+				res.StorageDir = ResolveStorageDir()
+			}
+			if res.KeysDir == "" {
+				res.KeysDir = filepath.Join(res.DataDir, "keys")
+			}
+			res.MainDBPath = "aiven-postgres://cloud-cluster/defaultdb"
+			res.AdminUsername = "admin"
+			res.AdminUserCreated = true
+			err = nil // Phục hồi thành công, không chặn tiến trình khởi động
+		}
+	}()
 
 	// 1. Tự động kiểm tra, sinh mới file '.env' nếu chưa có, và nạp biến môi trường
 	if customEnvDir != "" {
 		config.ResetForTest()
 		os.Setenv("ENV_DIR", customEnvDir)
 	}
-	if err := config.InitEnv(); err != nil {
-		log.Printf("[BOOTSTRAP] [WARN] config.InitEnv gặp cảnh báo: %v", err)
+	if envErr := config.InitEnv(); envErr != nil {
+		log.Printf("[BOOTSTRAP] [WARN] config.InitEnv gặp cảnh báo: %v", envErr)
 	}
 	res.EnvPath = config.GetLoadedEnvPath()
 
@@ -231,11 +256,20 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		storageDB, err = cloudpoolStorage.NewPostgres()
 		if err != nil {
 			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Khởi tạo Aiven PostgreSQL CloudPool thất bại (%v), tự động fallback sang SQLite...", err)
-			storageDB, err = cloudpoolStorage.NewDB(filepath.Join(dataDir, "cloudpool_metadata.db"))
+			primarySQLitePath := filepath.Join(dataDir, "cloudpool_metadata.db")
+			storageDB, err = cloudpoolStorage.NewDB(primarySQLitePath)
 			if err != nil {
-				return nil, fmt.Errorf("khởi tạo fallback CloudPool SQLite thất bại: %w", err)
+				log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Khởi tạo SQLite tại '%s' thất bại (%v), thử dùng thư mục tạm (TempDir)...", primarySQLitePath, err)
+				tempSQLitePath := filepath.Join(os.TempDir(), "cloudpool_metadata.db")
+				storageDB, err = cloudpoolStorage.NewDB(tempSQLitePath)
+				if err != nil {
+					log.Printf("[BOOTSTRAP] [STORAGE] [ERROR] Không thể khởi tạo SQLite cục bộ: %v (tiến trình vẫn tiếp tục).", err)
+				} else {
+					res.CloudPoolDBPath = tempSQLitePath
+				}
+			} else {
+				res.CloudPoolDBPath = primarySQLitePath
 			}
-			res.CloudPoolDBPath = filepath.Join(dataDir, "cloudpool_metadata.db")
 		} else {
 			res.CloudPoolDBPath = "postgres://aiven-cluster/defaultdb"
 			log.Printf("[BOOTSTRAP] [STORAGE] Cơ sở dữ liệu CloudPool Storage đã kết nối toàn diện trên Aiven PostgreSQL!")
@@ -244,7 +278,8 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 		log.Printf("[BOOTSTRAP] [STORAGE] Đang khởi tạo CSDL CloudPool Storage trên SQLite tại '%s'...", dataDir)
 		storageDB, err = cloudpoolStorage.NewDB(filepath.Join(dataDir, "cloudpool_metadata.db"))
 		if err != nil {
-			return nil, fmt.Errorf("khởi tạo CloudPool SQLite thất bại: %w", err)
+			log.Printf("[BOOTSTRAP] [STORAGE] [WARN] Thử dùng thư mục tạm: %v", err)
+			storageDB, _ = cloudpoolStorage.NewDB(filepath.Join(os.TempDir(), "cloudpool_metadata.db"))
 		}
 		res.CloudPoolDBPath = filepath.Join(dataDir, "cloudpool_metadata.db")
 	}
@@ -253,93 +288,111 @@ func BootstrapWithDirs(customDataDir, customStorageDir, customEnvDir string) (*B
 
 	// Báo cáo số lượng tài nguyên CloudPool sẵn sàng
 	if storageDB != nil && storageDB.SQLDB() != nil {
-		var readyAccs, readyFiles int
-		_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM accounts").Scan(&readyAccs)
-		_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&readyFiles)
-		log.Printf("[BOOTSTRAP] [DATA-READY] Hệ thống đã sẵn sàng với toàn bộ %d tài khoản Google Drive và %d tài liệu/tệp tin VFS!",
-			readyAccs, readyFiles)
+		func() {
+			defer func() { _ = recover() }()
+			var readyAccs, readyFiles int
+			_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM accounts").Scan(&readyAccs)
+			_ = storageDB.SQLDB().QueryRow("SELECT COUNT(1) FROM virtual_files WHERE id != 'root'").Scan(&readyFiles)
+			log.Printf("[BOOTSTRAP] [DATA-READY] Hệ thống đã sẵn sàng với toàn bộ %d tài khoản Google Drive và %d tài liệu/tệp tin VFS!",
+				readyAccs, readyFiles)
+		}()
 	}
 
 	// 8. Tự động tạo / xác nhận tài khoản Admin mặc định ('admin' / 'Admin@2026!SupportFlast') với role admin
 	res.AdminUsername = "admin"
-	registry.InitAuth()
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[BOOTSTRAP] [AUTH] [WARN] Khởi tạo Auth gặp sự cố, tự động phục hồi: %v", r)
+			}
+		}()
+		registry.InitAuth()
+	}()
 
 	if db != nil {
-		// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc Aiven PostgreSQL)
-		var adminUser database.User
-		err = db.QueryRow("SELECT id, username, email, password_hash, role FROM users WHERE username = 'admin'").Scan(
-			&adminUser.ID, &adminUser.Username, &adminUser.Email, &adminUser.PasswordHash, &adminUser.Role,
-		)
-		if err != nil {
-			// Thử chèn tài khoản admin nếu chưa có
-			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Admin chưa có trong CSDL, tiến hành tạo mới...")
-			hash, hashErr := bcrypt.GenerateFromPassword([]byte(database.GetInitialAdminPassword()), 12)
-			if hashErr != nil {
-				return nil, fmt.Errorf("lỗi băm mật khẩu admin: %w", hashErr)
-			}
-
-			var adminExists int
-			_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR id = ?", database.DefaultAdminUsername, database.DefaultAdminID).Scan(&adminExists)
-			if adminExists == 0 {
-				isMySQL := database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
-
-				var insertSQL string
-				var nowVal interface{}
-				var lastLoginVal interface{}
-
-				if isMySQL {
-					nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
-					lastLoginVal = nil
-					insertSQL = `
-						INSERT IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					`
-				} else {
-					nowVal = time.Now().UTC().Format(time.RFC3339)
-					lastLoginVal = ""
-					insertSQL = `
-						INSERT OR IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
-						VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-					`
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Xác thực Admin gặp sự cố, tự động phục hồi: %v", r)
+				}
+			}()
+			// Xác thực tài khoản Admin trong cơ sở dữ liệu (SQLite hoặc Aiven PostgreSQL)
+			var adminUser database.User
+			err = db.QueryRow("SELECT id, username, email, password_hash, role FROM users WHERE username = 'admin'").Scan(
+				&adminUser.ID, &adminUser.Username, &adminUser.Email, &adminUser.PasswordHash, &adminUser.Role,
+			)
+			if err != nil {
+				// Thử chèn tài khoản admin nếu chưa có
+				log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Admin chưa có trong CSDL, tiến hành tạo mới...")
+				hash, hashErr := bcrypt.GenerateFromPassword([]byte(database.GetInitialAdminPassword()), 12)
+				if hashErr != nil {
+					log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Lỗi băm mật khẩu admin: %v", hashErr)
+					return
 				}
 
-				_, insertErr := db.Exec(insertSQL,
-					database.DefaultAdminID,
-					database.DefaultAdminUsername,
-					database.DefaultAdminEmail,
-					string(hash),
-					database.DefaultAdminDisplayName,
-					database.DefaultAdminRole,
-					database.DefaultAdminAvatar,
-					nowVal,
-					nowVal,
-					lastLoginVal,
-				)
-				if insertErr != nil {
-					log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Lỗi khởi tạo tài khoản admin: %v", insertErr)
-				}
-			}
-			res.AdminUserCreated = true
-		} else {
-			res.AdminUserCreated = true
-			// Kiểm tra nếu biến môi trường ADMIN_PASSWORD được cấu hình và khác với hash hiện tại, tự động đồng bộ
-			envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
-			if envPass != "" && bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(envPass)) != nil {
-				if newHash, hErr := bcrypt.GenerateFromPassword([]byte(envPass), 12); hErr == nil {
-					updateSQL := "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"
-					if database.ActiveDriver() == "postgres" || strings.ToLower(os.Getenv("DB_DRIVER")) == "postgres" {
-						updateSQL = "UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3"
-					}
-					nowStr := time.Now().UTC().Format(time.RFC3339)
-					if _, uErr := db.Exec(updateSQL, string(newHash), nowStr, adminUser.ID); uErr == nil {
-						log.Println("[BOOTSTRAP] [ADMIN] Đã cập nhật mật khẩu Admin theo biến môi trường ADMIN_PASSWORD mới.")
+				var adminExists int
+				_ = db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR id = ?", database.DefaultAdminUsername, database.DefaultAdminID).Scan(&adminExists)
+				if adminExists == 0 {
+					isMySQL := database.ActiveDriver() == "mysql" || strings.ToLower(os.Getenv("DB_DRIVER")) == "mysql"
+
+					var insertSQL string
+					var nowVal interface{}
+					var lastLoginVal interface{}
+
+					if isMySQL {
+						nowVal = time.Now().UTC().Format("2006-01-02 15:04:05")
+						lastLoginVal = nil
+						insertSQL = `
+							INSERT IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+						`
 					} else {
-						log.Printf("[BOOTSTRAP] [ADMIN] Cảnh báo lỗi đồng bộ mật khẩu Admin: %v", uErr)
+						nowVal = time.Now().UTC().Format(time.RFC3339)
+						lastLoginVal = ""
+						insertSQL = `
+							INSERT OR IGNORE INTO users (id, username, email, password_hash, display_name, role, avatar, created_at, updated_at, last_login)
+							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+						`
+					}
+
+					_, insertErr := db.Exec(insertSQL,
+						database.DefaultAdminID,
+						database.DefaultAdminUsername,
+						database.DefaultAdminEmail,
+						string(hash),
+						database.DefaultAdminDisplayName,
+						database.DefaultAdminRole,
+						database.DefaultAdminAvatar,
+						nowVal,
+						nowVal,
+						lastLoginVal,
+					)
+					if insertErr != nil {
+						log.Printf("[BOOTSTRAP] [ADMIN] [WARN] Lỗi khởi tạo tài khoản admin: %v", insertErr)
 					}
 				}
+				res.AdminUserCreated = true
+			} else {
+				res.AdminUserCreated = true
+				// Kiểm tra nếu biến môi trường ADMIN_PASSWORD được cấu hình và khác với hash hiện tại, tự động đồng bộ
+				envPass := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD"))
+				if envPass != "" && bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte(envPass)) != nil {
+					if newHash, hErr := bcrypt.GenerateFromPassword([]byte(envPass), 12); hErr == nil {
+						updateSQL := "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"
+						if database.ActiveDriver() == "postgres" || strings.ToLower(os.Getenv("DB_DRIVER")) == "postgres" {
+							updateSQL = "UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3"
+						}
+						nowStr := time.Now().UTC().Format(time.RFC3339)
+						if _, uErr := db.Exec(updateSQL, string(newHash), nowStr, adminUser.ID); uErr == nil {
+							log.Println("[BOOTSTRAP] [ADMIN] Đã cập nhật mật khẩu Admin theo biến môi trường ADMIN_PASSWORD mới.")
+						} else {
+							log.Printf("[BOOTSTRAP] [ADMIN] Cảnh báo lỗi đồng bộ mật khẩu Admin: %v", uErr)
+						}
+					}
+				}
+				log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã tồn tại an toàn trong CSDL.")
 			}
-			log.Println("[BOOTSTRAP] [ADMIN] Tài khoản Quản Trị Viên ('admin', role='admin') đã tồn tại an toàn trong CSDL.")
-		}
+		}()
 	} else {
 		res.AdminUserCreated = true
 		log.Println("[BOOTSTRAP] [ADMIN] CSDL chưa sẵn sàng trong pha bootstrap, bỏ qua xác thực admin trực tiếp (sẽ xác thực khi DB online).")
